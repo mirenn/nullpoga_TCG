@@ -1,7 +1,6 @@
-from nullpoga.state import State
-from monte_carlo_tree_search.node import Node
-from monte_carlo_tree_search.monte_carlo_tree_search import MonteCarloTreeSearch
-
+from state import State
+from npg_monte_carlo_tree_search.node import Node
+from npg_monte_carlo_tree_search.monte_carlo_tree_search import MonteCarloTreeSearch
 
 GAMES = 100
 
@@ -40,6 +39,5 @@ for _ in range(GAMES):
         print()
 
     point += first_player_point(state)
-
 
 print(f"VS Random {point}")

@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 from typing import List
 from nullpoga_system import CardType
 import uuid
@@ -25,7 +24,7 @@ class MonsterCard:
         self.attack = attack
         self.life = life
         self.stun_count = 0
-        self.activity_done_f = False
+        self.can_act = True
 
     def __str__(self):
         return f"{self.card_name}"

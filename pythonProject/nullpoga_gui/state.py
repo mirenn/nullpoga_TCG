@@ -1,13 +1,16 @@
 from __future__ import annotations
 from random import choice
-from monte_carlo_tree_search.istate import IState
-from typing import List, Optional, Final, Union, Any, Tuple
+from npg_monte_carlo_tree_search.istate import IState
+from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
 from enum import Enum
 from gameutils.monster_cards import MonsterCard
 from gameutils.spell_cards import SpellCard
 from gameutils.nullpoga_system import instance_card
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import uuid
+from uuid import UUID
+from itertools import zip_longest
 
 LENGTH: Final[int] = 3
 HEIGHT: Final[int] = 3
@@ -18,7 +21,11 @@ DECK_2: Final = [4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2]
 
 
 class NullPoGaPiece:
+    summon_phase_actions: list[Action]
+
     def __init__(self, deckcards: List[int]):
+        self.turn_count = 0
+        self.player_id: UUID = uuid.uuid4()
         # デッキの状態(シャッフルはしないので、シャッフルしてから渡す)
         self.deck_cards: List[Union[MonsterCard, SpellCard]] = [instance_card(card_no) for card_no in deckcards]
         self.plan_deck_cards: List[Union[MonsterCard, SpellCard]] = [instance_card(card_no) for card_no in deckcards]
@@ -30,22 +37,104 @@ class NullPoGaPiece:
         self.plan_zone = Zone()
         # フェイズも管理。
         self.phase = PhaseKind.SPELL_PHASE
-        self.mana = 0
+        self.plan_mana = 0
+        self.mana = 0  # 相手のマナに干渉するカードを考えるためにplanと分けた
 
-        self.spell_phase_actions: List = []
-        self.summon_phase_actions: List = []
-        self.activity_phase_actions: List = []
+        self.spell_phase_actions: List[Action] = []
+        self.summon_phase_actions: List[Action] = []
+        self.activity_phase_actions: List[Action] = []
 
     def legal_actions(self) -> List[Action]:
         if self.phase == PhaseKind.SPELL_PHASE:
             spell_phase_actions: List[Union[Action]] = [
-                Action(action_type=ActionType.CAST_SPELL, action_data=card) for card in self.plan_hand_cards if
+                Action(action_type=ActionType.CAST_SPELL, action_data=ActionData(spell_card=card)) for card in
+                self.plan_hand_cards if
                 isinstance(card, SpellCard) and card.mana_cost <= self.mana]
             spell_phase_actions.append(Action(action_type=ActionType.SPELL_PHASE_END))
+            # メモ：スペルの取れる選択肢の数だけactionsは増えるのでspell実装し始めたらそうする
             return spell_phase_actions
         elif self.phase == PhaseKind.SUMMON_PHASE:
-            possible_monster_cards = [card for card in self.plan_hand_cards if
-                                      isinstance(card, MonsterCard) and card.mana_cost <= self.mana]
+            # プレイ可能なモンスターカードをフィルタリング
+            possible_monster_cards = [
+                card for card in self.plan_hand_cards
+                if isinstance(card, MonsterCard) and card.mana_cost <= self.plan_mana
+            ]
+            # カードを配置可能なフィールドの位置を見つける
+            empty_field_positions = [
+                i for i, sd in enumerate(self.plan_zone.standby_field)
+                if sd is None
+            ]
+            # 可能な組み合わせを生成
+            combinations = [
+                Action(action_type=ActionType.SUMMON_MONSTER, action_data=ActionData(index=position, monster_card=card))
+                for card in possible_monster_cards
+                for position in empty_field_positions
+            ]
+            combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
+            return combinations
+        elif self.phase == PhaseKind.ACTIVITY_PHASE:
+            combinations = []
+            for i in range(len(self.zone.battle_field)):
+                if self.zone.battle_field[i] and self.zone.battle_field[i].card.can_act:
+                    card = self.zone.battle_field[i].card
+                    combinations.append(
+                        Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(monster_card=card)))
+                    if not self.zone.battle_field[i - 1]:
+                        combinations.append(
+                            Action(action_type=ActionType.MONSTER_MOVE, action_data=ActionData(move_direction="left")))
+                    if not self.zone.battle_field[i + 1]:
+                        combinations.append(
+                            Action(action_type=ActionType.MONSTER_MOVE, action_data=ActionData(move_direction="right")))
+            combinations.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
+            return combinations
+
+    def select_plan_action(self, action: Action):
+        if Action.action_type == ActionType.CAST_SPELL:
+            # 未実装
+            pass
+        elif Action.action_type == ActionType.SPELL_PHASE_END:
+            self.phase = PhaseKind.SUMMON_PHASE
+            # スペル使用未実装
+            # 進軍フェイズはスペルフェイズ終了時に処理してしまう
+            self.move_forward(self.plan_zone)
+
+        elif Action.action_type == ActionType.SUMMON_MONSTER:
+            self.summon_phase_actions.append(action)
+            self.plan_mana -= action.action_data.monster_card.mana_cost
+            self.plan_zone.standby_field[action.action_data.index] = action.action_data.monster_card
+            # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
+            self.plan_hand_cards = [card for card in self.plan_hand_cards if
+                                    card.uniq_id != action.action_data.monster_card.uniq_id]
+
+        elif Action.action_type == ActionType.SUMMON_PHASE_END:
+            self.phase = PhaseKind.ACTIVITY_PHASE
+        elif Action.action_type == ActionType.MONSTER_ATTACK:
+            self.activity_phase_actions.append(action)
+            for i, slt in enumerate(self.plan_zone.battle_field):
+                if slt.card.uniq_id == action.action_data.monster_card.uniq_id:
+                    slt.card.can_act = False
+                    break
+        elif Action.action_type == ActionType.MONSTER_MOVE:
+            self.activity_phase_actions.append(action)
+            for i, slt in enumerate(self.plan_zone.battle_field):
+                if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
+                    slt.card.can_act = False
+                    if action.action_data.move_direction == "right" and i + 1 < len(self.plan_zone.battle_field):
+                        self.plan_zone.battle_field[i + 1].card = slt.card
+                        slt.card = None
+                    elif action.action_data.move_direction == "left" and i - 1 >= 0:
+                        self.plan_zone.battle_field[i - 1].card = slt.card
+                        slt.card = None
+                    break
+        elif Action.action_type == ActionType.ACTIVITY_PHASE_END:
+            self.phase = PhaseKind.END_PHASE
+
+    @staticmethod
+    def move_forward(zone: Zone):
+        for i, sb in enumerate(zone.standby_field):
+            if sb and not zone.battle_field[i].card:
+                sb.can_act = False
+                zone.battle_field[i].card = sb
 
 
 class State(IState):
@@ -56,8 +145,33 @@ class State(IState):
 
     def next(self, action: int) -> State:
         pieces = copy.deepcopy(self.pieces)
-        pieces[action] = 1
-        return State(self.enemy_pieces, pieces)
+        actions = pieces.legal_actions()
+        pieces.select_plan_action(actions[action])
+        if pieces.phase == PhaseKind.END_PHASE:
+            if self.enemy_pieces == PhaseKind.END_PHASE:
+                e_pieces = copy.deepcopy(self.enemy_pieces)
+                # 実際に処理する必要がある
+                self.execute_plan(pieces, e_pieces)
+                return State(e_pieces, pieces)
+            else:
+                return State(self.enemy_pieces, pieces)
+
+        else:
+            return State(pieces, self.enemy_pieces)
+
+    def execute_plan(self, pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        # スペルフェイズ未実装
+        # 進軍フェイズ
+        pieces.move_forward(pieces.zone)
+        e_pieces.move_forward(e_pieces.zone)
+        # summonフェイズ
+        self.execute_summon(pieces, e_pieces)
+
+    @staticmethod
+    def execute_summon(pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        for my_act, e_act in zip_longest(pieces.summon_phase_actions, e_pieces.summon_phase_actions):
+            if my_act and not pieces.zone.standby_field[my_act.action_data.index]:
+                pieces.zone.standby_field[my_act.action_data.index] =
 
     def legal_actions(self) -> List[int]:
         return [i for i in range(HEIGHT * WIDTH) if self.pieces[i] == 0 and self.enemy_pieces[i] == 0]
@@ -154,6 +268,8 @@ class FieldStatus(Enum):
 
 
 class Slot:
+    __slots__ = ['status', 'card']
+
     def __init__(self):
         self.status: FieldStatus = FieldStatus.NORMAL
         self.card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
@@ -178,6 +294,8 @@ class PhaseKind(Enum):
 class ActionType(Enum):
     CAST_SPELL = "CAST_SPELL"
     SUMMON_MONSTER = "SUMMON_MONSTER"
+    MONSTER_ATTACK = "MONSTER_ATTACK"
+    MONSTER_MOVE = "MONSTER_MOVE"
     SPELL_PHASE_END = "SPELL_PHASE_END"
     SUMMON_PHASE_END = "SUMMON_PHASE_END"
     ACTIVITY_PHASE_END = "ACTIVITY_PHASE_END"
@@ -186,4 +304,12 @@ class ActionType(Enum):
 @dataclass
 class Action:
     action_type: ActionType
-    action_data: Optional[Any] = None  # 未定
+    action_data: Optional[ActionData] = None  # 未定
+
+
+@dataclass
+class ActionData:
+    index: Optional[int] = field(default=None)
+    move_direction: Optional[Literal["right", "left"]] = field(default=None)
+    monster_card: Optional[MonsterCard] = field(default=None)
+    spell_card: Optional[SpellCard] = field(default=None)
