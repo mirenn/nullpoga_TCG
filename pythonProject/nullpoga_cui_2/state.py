@@ -173,7 +173,13 @@ class State(IState):
                 break
 
         # ターン終了
-        # TODO: 移動済みモンスターが攻撃できないようにする場合はここで移動済みフラグをリセットする
+        # 移動済みモンスターが攻撃できないようにする場合はここで行動済みフラグをリセットする
+        for idx, slot in enumerate(player_1.zone.battle_field):
+            if slot.card is not None and slot.card.attack_declaration:
+                slot.card.done_activity = False
+        for idx, slot in enumerate(player_2.zone.battle_field):
+            if slot.card is not None:
+                slot.card.done_activity = False
 
         # デッキ切れ判定（とりあえず引き分け）
         if len(temp_state.player_1.deck_cards) == 0 or len(temp_state.player_2.deck_cards) == 0:

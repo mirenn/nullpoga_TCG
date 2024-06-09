@@ -26,6 +26,7 @@ class MonsterCard:
         self.stun_count = 0
         self.can_act = True  # 行動（攻撃）可能か。必要？
         self.attack_declaration = False  # 攻撃宣言済みか
+        self.done_activity = False # 行動済みかどうか
 
     def __str__(self):
         return f"{self.card_name}"

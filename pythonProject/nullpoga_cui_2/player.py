@@ -241,6 +241,9 @@ class Player:
         if target_slot.card is None:
             logging.debug("# 移動対象の列にモンスターカードが存在しない不発")
             return
+        if target_slot.card.done_activity:
+            logging.debug("# 移動対象のモンスターカードが行動済みのため不発")
+            return
 
         if action.action_data.move_direction == "left":
             assert idx > 0
@@ -248,6 +251,7 @@ class Player:
             if slot.card is not None:
                 logging.debug("# 移動先にモンスターカードが存在するため不発")
                 return
+            target_slot.card.done_activity = True
             self.zone.set_battle_field_card(idx - 1, target_slot.card)
 
         if action.action_data.move_direction == "right":
@@ -256,9 +260,11 @@ class Player:
             if slot.card is not None:
                 logging.debug("# 移動先にモンスターカードが存在するため不発")
                 return
+            target_slot.card.done_activity = True
             self.zone.set_battle_field_card(idx + 1, target_slot.card)
 
         self.zone.remove_battle_field_card(idx)
+
         logging.debug("# アクション完了")
 
     def do_monster_attack_declaration(self, action: Action):
@@ -271,11 +277,15 @@ class Player:
         assert action.action_type == ActionType.MONSTER_ATTACK
 
         idx = action.action_data.attack_declaration_idx
-        slot = self.zone.get_battle_field_slot(idx)
-        if slot.card is None:
+        target_slot = self.zone.get_battle_field_slot(idx)
+        if target_slot.card is None:
             logging.debug("# 攻撃宣言箇所にモンスターカードが存在しないため不発")
             return
-        slot.card.attack_declaration = True
+        if target_slot.card.done_activity:
+            logging.debug("# 攻撃宣言対象のモンスターカードが行動済みのため不発")
+            return
+        target_slot.card.done_activity = True
+        target_slot.card.attack_declaration = True
         logging.debug("# アクション完了")
 
     def move_forward(self):
