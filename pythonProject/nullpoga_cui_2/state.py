@@ -251,13 +251,13 @@ class State(IState):
 
         # 各種勝敗判定
         # 先手のプレイヤーが勝ち
-        if new_state.second_player().life <= 0:
+        if new_state.second_player().life <= 0 and new_state.second_player().life < new_state.first_player().life:
             new_state = State(player_1, player_2)
             new_state.game_finished = True
             new_state.first_player_win = True
             return new_state
         # 後手のプレイヤーが勝ち
-        if new_state.first_player().life <= 0:
+        if new_state.first_player().life <= 0 and new_state.first_player().life < new_state.second_player().life:
             new_state = State(player_1, player_2)
             new_state.game_finished = True
             new_state.second_player_win = True
