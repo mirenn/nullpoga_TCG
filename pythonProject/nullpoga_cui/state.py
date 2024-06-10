@@ -4,13 +4,14 @@ from npg_monte_carlo_tree_search.istate import IState
 from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
 from enum import Enum
-from gameutils.monster_cards import MonsterCard
 from gameutils.spell_cards import SpellCard
 from gameutils.nullpoga_system import instance_card
 from dataclasses import dataclass, field
 import uuid
 from uuid import UUID
 from itertools import zip_longest
+
+from nullpoga_cui.gameutils.monster_cards import MonsterCard
 
 LENGTH: Final[int] = 3
 HEIGHT: Final[int] = 3
@@ -25,6 +26,7 @@ class NullPoGaPiece:
 
     def __init__(self, deckcards: List[int]):
         self.turn_count = 0
+        self.life_point = 20
         self.player_id: UUID = uuid.uuid4()
         # デッキの状態(シャッフルはしないので、シャッフルしてから渡す)
         self.deck_cards: List[Union[MonsterCard, SpellCard]] = [instance_card(card_no) for card_no in deckcards]
@@ -116,16 +118,17 @@ class NullPoGaPiece:
                     break
         elif Action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
-            for i, slt in enumerate(self.plan_zone.battle_field):
-                if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
-                    slt.card.can_act = False
-                    if action.action_data.move_direction == "right" and i + 1 < len(self.plan_zone.battle_field):
-                        self.plan_zone.battle_field[i + 1].card = slt.card
-                        slt.card = None
-                    elif action.action_data.move_direction == "left" and i - 1 >= 0:
-                        self.plan_zone.battle_field[i - 1].card = slt.card
-                        slt.card = None
-                    break
+            # for i, slt in enumerate(self.plan_zone.battle_field):
+            #     if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
+            #         slt.card.can_act = False
+            #         if action.action_data.move_direction == "right" and i + 1 < len(self.plan_zone.battle_field):
+            #             self.plan_zone.battle_field[i + 1].card = slt.card
+            #             slt.card = None
+            #         elif action.action_data.move_direction == "left" and i - 1 >= 0:
+            #             self.plan_zone.battle_field[i - 1].card = slt.card
+            #             slt.card = None
+            #         break
+            self.monster_move(action, self.plan_zone)
         elif Action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
 
@@ -135,6 +138,38 @@ class NullPoGaPiece:
             if sb and not zone.battle_field[i].card:
                 sb.can_act = False
                 zone.battle_field[i].card = sb
+
+    @staticmethod
+    def monster_move(action: Action, zone: Zone) -> None:
+        for i, slt in enumerate(zone.battle_field):
+            if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
+                slt.card.can_act = False
+                if (action.action_data.move_direction == "right" and i + 1 < len(zone.battle_field)
+                        and zone.battle_field[i + 1].card):
+                    zone.battle_field[i + 1].card = slt.card
+                    slt.card = None
+                elif (action.action_data.move_direction == "left" and i - 1 >= 0
+                      and zone.battle_field[i - 1].card):
+                    zone.battle_field[i - 1].card = slt.card
+                    slt.card = None
+                break
+
+    def monster_attacked(self, e_action: Action, e_zone: Zone):
+        """
+        相手のライフを減らすには相手のライフが必要で受け身にしているためややこしくなっている。
+        もう少しわかりやすくできるはず
+        :param e_action:
+        :param e_zone:
+        :return:
+        """
+        for i, slt in enumerate(e_zone.battle_field):
+            if slt.card and slt.card.uniq_id == e_action.action_data.monster_card.uniq_id:
+                slt.card.can_act = False
+                if self.zone.battle_field[4 - i].card:
+                    self.zone.battle_field[4 - i].card.life -= slt.card.attack
+                else:
+                    self.life_point -= slt.card.attack
+                    self.zone.battle_field[4 - i].set_wild()
 
 
 class State(IState):
@@ -160,18 +195,74 @@ class State(IState):
             return State(pieces, self.enemy_pieces)
 
     def execute_plan(self, pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        """
+        planの内容を実際に実行する。
+        :param pieces:
+        :param e_pieces:
+        :return:
+        """
         # スペルフェイズ未実装
         # 進軍フェイズ
         pieces.move_forward(pieces.zone)
         e_pieces.move_forward(e_pieces.zone)
         # summonフェイズ
         self.execute_summon(pieces, e_pieces)
+        # activityフェイズ
+        self.execute_activity(pieces, e_pieces)
 
     @staticmethod
     def execute_summon(pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        """
+        召喚実行
+        :param pieces:
+        :param e_pieces:
+        :return:
+        """
         for my_act, e_act in zip_longest(pieces.summon_phase_actions, e_pieces.summon_phase_actions):
-            if my_act and not pieces.zone.standby_field[my_act.action_data.index]:
-                pieces.zone.standby_field[my_act.action_data.index] =
+            if (my_act and not pieces.zone.standby_field[my_act.action_data.index] and
+                    my_act.action_data.monster_card.mana_cost <= pieces.mana):
+                pieces.mana -= my_act.action_data.monster_card.mana_cost
+                pieces.zone.standby_field[my_act.action_data.index] = my_act.action_data.monster_card
+                # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
+                pieces.hand_cards = [card for card in pieces.hand_cards if
+                                     card.uniq_id != my_act.action_data.monster_card.uniq_id]
+            if (e_act and not e_pieces.zone.standby_field[e_act.action_data.index] and
+                    e_act.action_data.monster_card.mana_cost <= e_pieces.mana):
+                e_pieces.mana -= e_act.action_data.monster_card.mana_cost
+                e_pieces.zone.standby_field[e_act.action_data.index] = e_act.action_data.monster_card
+                # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
+                e_pieces.hand_cards = [card for card in e_pieces.hand_cards if
+                                       card.uniq_id != e_act.action_data.monster_card.uniq_id]
+            # メモ召喚時効果未実装
+        pieces.summon_phase_actions = []
+        e_pieces.summon_phase_actions = []
+
+    def execute_activity(self, my_pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        for my_act, e_act in zip_longest(my_pieces.activity_phase_actions, e_pieces.activity_phase_actions):
+            if my_act and my_act.action_type == ActionType.MONSTER_MOVE:
+                my_pieces.monster_move(my_act, my_pieces.zone)
+            if e_act and e_act.action_type == ActionType.MONSTER_MOVE:
+                e_pieces.monster_move(e_act, e_pieces.zone)
+            if my_act and my_act.action_type == ActionType.MONSTER_ATTACK:
+                e_pieces.monster_attacked(my_act, my_pieces.zone)
+            if e_act and e_act.action_type == ActionType.MONSTER_ATTACK:
+                my_pieces.monster_attacked(e_act, e_pieces.zone)
+            self.delete_monster(my_pieces, e_pieces)
+
+
+    def delete_monster(self, my_pieces: NullPoGaPiece, e_pieces: NullPoGaPiece):
+        """
+        ライフがゼロ以下になったモンスターを削除する
+        :param my_pieces:
+        :param e_pieces:
+        :return:
+        """
+        for i, slt in enumerate(my_pieces.zone.battle_field):
+            if slt.card is not None and slt.card.life <= 0:
+                slt.card = None
+        for i, slt in enumerate(e_pieces.zone.battle_field):
+            if slt.card is not None and slt.card.life <= 0:
+                slt.card = None
 
     def legal_actions(self) -> List[int]:
         return [i for i in range(HEIGHT * WIDTH) if self.pieces[i] == 0 and self.enemy_pieces[i] == 0]
@@ -231,9 +322,11 @@ class State(IState):
 
 
 class Zone:
+    battle_field: list[Slot]
+
     def __init__(self):
         # 自分から見ての5列の場をフィールドとして初期化
-        self.battle_field = [Slot() for _ in range(5)]
+        self.battle_field: list[Slot] = [Slot() for _ in range(5)]
         self.standby_field: List[Optional[MonsterCard]] = [None, None, None, None, None]
 
     def set_battle_field_card(self, index: int, card: MonsterCard):
@@ -268,6 +361,7 @@ class FieldStatus(Enum):
 
 
 class Slot:
+    card: MonsterCard | None
     __slots__ = ['status', 'card']
 
     def __init__(self):
