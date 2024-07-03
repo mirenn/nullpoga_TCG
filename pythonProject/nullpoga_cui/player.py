@@ -157,11 +157,11 @@ class Player:
 
         self.is_first_player: Optional[bool] = None
 
-    def legal_actions(self) -> List[Action]:
+    def legal_actions2(self) -> List[Action]:
         """現在の盤面を見て合法手（というか意味のある手）を列挙する"""
         return self.legal_move_actions() + self.legal_summon_actions() + self.legal_attack_actions()
 
-    def legal_actions_mock(self) -> List[Action]:
+    def legal_actions(self) -> List[Action]:
         """nagai 仮実装中"""
         if self.phase == PhaseKind.SPELL_PHASE:
             spell_phase_actions: List[Union[Action]] = [
@@ -217,7 +217,7 @@ class Player:
             self.phase = PhaseKind.SUMMON_PHASE
             # スペル使用未実装
             # 進軍フェイズはスペルフェイズ終了時に処理してしまう
-            self.move_forward(self.plan_zone)
+            self.move_forward_mock(self.plan_zone)
 
         elif Action.action_type == ActionType.SUMMON_MONSTER:
             self.summon_phase_actions.append(action)
@@ -237,7 +237,7 @@ class Player:
                     break
         elif Action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
-            self.monster_move(action, self.plan_zone)
+            self.monster_move_mock(action, self.plan_zone)
         elif Action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
 
@@ -399,6 +399,14 @@ class Player:
                 standby_card.can_act = False
                 self.zone.battle_field[i].card = standby_card
                 self.zone.standby_field[i] = None
+
+    @staticmethod
+    def move_forward_mock(zone: Zone):
+        for i, sb in enumerate(zone.standby_field):
+            if sb and not zone.battle_field[i].card:
+                sb.can_act = False
+                zone.battle_field[i].card = sb
+                zone.standby_field[i] = None
 
     def draw_card(self):
         """デッキから１枚引く"""

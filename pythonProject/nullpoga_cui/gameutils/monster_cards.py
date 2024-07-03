@@ -1,5 +1,5 @@
 from typing import List
-from nullpoga_system import CardType
+from .card_type import CardType
 import uuid
 from uuid import UUID
 
@@ -24,7 +24,9 @@ class MonsterCard:
         self.attack = attack
         self.life = life
         self.stun_count = 0
-        self.can_act = True
+        self.can_act = True  # 行動（攻撃）可能か。必要？
+        self.attack_declaration = False  # 攻撃宣言済みか
+        self.done_activity = False # 行動済みかどうか
 
     def __str__(self):
         return f"{self.card_name}"

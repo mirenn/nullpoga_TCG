@@ -16,6 +16,7 @@ point = 0
 
 for _ in range(GAMES):
     state = State()
+    state.init_game()
     while True:
         if state.is_done():
             if state.is_draw():
@@ -32,7 +33,7 @@ for _ in range(GAMES):
             action = MonteCarloTreeSearch.select_action(root_node)
             state = state.next(action)
         else:
-            action = state.random_action()
+            action = state.random_action_mock()
             state = state.next(action)
 
         print(state)

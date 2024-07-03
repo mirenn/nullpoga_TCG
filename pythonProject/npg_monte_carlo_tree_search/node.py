@@ -62,8 +62,8 @@ class Node:
             return -1
         if state.is_draw():
             return 0
-        n_state = state.next(state.random_action())
-        if state.pieces.player_id != n_state.pieces.player_id:
+        n_state = state.next(state.random_action_mock())
+        if state.player_1.is_first_player != n_state.player_1.is_first_player:
             return -Node.playout(n_state)
         else:
             return Node.playout(n_state)

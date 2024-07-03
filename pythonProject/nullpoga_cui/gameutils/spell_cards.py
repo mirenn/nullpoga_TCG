@@ -1,7 +1,7 @@
 import types
 from abc import ABC, abstractmethod
 from typing import List
-from nullpoga_system import CardType
+from .card_type import CardType
 import uuid
 from uuid import UUID
 from typing import Callable

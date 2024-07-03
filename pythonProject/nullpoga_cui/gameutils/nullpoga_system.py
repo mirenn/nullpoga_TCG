@@ -1,6 +1,6 @@
 from enum import Enum
-from spell_cards import SpellCard
-from monster_cards import MonsterCard
+from .spell_cards import SpellCard
+from .monster_cards import MonsterCard
 import types
 
 
