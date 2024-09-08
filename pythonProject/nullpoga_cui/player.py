@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 import uuid
 from uuid import UUID
 import logging
+import json
 
 
 class Zone:
@@ -76,23 +77,30 @@ class Action:
     action_data: Optional[ActionData] = None
 
     def __str__(self):
-        if self.action_type == ActionType.SUMMON_MONSTER:
-            card_no = self.action_data.summon_card_no
-            idx = self.action_data.summon_standby_field_idx
-            return f"召喚アクション {card_no}を{idx}に召喚"
-        if self.action_type == ActionType.MONSTER_MOVE:
-            idx = self.action_data.move_battle_field_idx
-            direction = self.action_data.move_direction
-            return f"移動アクション 列{idx}のカードを{direction}に移動"
-        if self.action_type == ActionType.MONSTER_ATTACK:
-            idx = self.action_data.attack_declaration_idx
-            return f"攻撃宣言アクション 列{idx}のカードで攻撃"
+        # data = self.__dict__
+        data = {
+            "action_type": self.action_type.name,
+            "action_data": str(self.action_data)
+        }
+        return json.dumps(data)
+        # if self.action_type == ActionType.SUMMON_MONSTER:
+        #     card_name = self.action_data.monster_card.card_name
+        #     cost = self.action_data.monster_card.mana_cost
+        #     return f"召喚アクション {cost}コス{card_name}を{self.action_data.summon_standby_field_idx}に召喚"
+        # if self.action_type == ActionType.MONSTER_MOVE:
+        #     idx = self.action_data.move_battle_field_idx
+        #     direction = self.action_data.move_direction
+        #     return f"移動アクション 列{idx}のカードを{direction}に移動"
+        # if self.action_type == ActionType.MONSTER_ATTACK:
+        #     idx = self.action_data.attack_declaration_idx
+        #     return f"攻撃宣言アクション 列{idx}のカードで攻撃"
 
 
 @dataclass
 class ActionData:
     # SUMMON_MONSTER用
-    summon_card_no: Optional[int] = field(default=None)  # モンスターカードの番号
+    # summon_card_no: Optional[int] = field(default=None)  # モンスターカードの番号
+    monster_card: Optional[MonsterCard] = field(default=None)  # モンスターカード
     summon_standby_field_idx: Optional[int] = field(default=None)  # 左から何番目か
     # MONSTER_MOVE用
     move_battle_field_idx: Optional[int] = field(default=None)  # 左から何番目か
@@ -101,8 +109,13 @@ class ActionData:
     attack_declaration_idx: Optional[int] = field(default=None)  # 攻撃宣言するバトルフィールドのインデックス
     # 以下現状不使用
     index: Optional[int] = field(default=None)
-    monster_card: Optional[MonsterCard] = field(default=None)
     spell_card: Optional[SpellCard] = field(default=None)
+
+    def __str__(self):
+        return json.dumps({
+            "monster_card": str(self.monster_card),
+            "summon_standby_field_idx": self.summon_standby_field_idx
+        })
 
 
 class PhaseKind(Enum):
@@ -129,14 +142,20 @@ class Player:
 
     summon_phase_actions: list[Action]
 
-    def __init__(self, deck_cards: List[int]):
+    def __init__(self, deck_cards: List[int], mana=3):
+        """
+
+        :param deck_cards:デッキのカードの順番になる。シャッフルしてから渡す
+        :param mana:
+        """
         self.turn_count = 0
         self.player_id: UUID = uuid.uuid4()
-        # デッキの状態(シャッフルはしないので、シャッフルしてから渡す)
-        self.deck_cards: List[Union[MonsterCard, SpellCard]] = [instance_card(card_no) for card_no in deck_cards]
+        dk_cards = [instance_card(card_no) for card_no in deck_cards]
+        # デッキの状態
+        self.deck_cards: List[Union[MonsterCard, SpellCard]] = dk_cards[5:]
         self.plan_deck_cards: List[Union[MonsterCard, SpellCard]] = copy.deepcopy(self.deck_cards)
-        # 手札
-        self.hand_cards: List[Union[MonsterCard, SpellCard]] = []
+        # 手札　最初から5枚引いておく
+        self.hand_cards: List[Union[MonsterCard, SpellCard]] = dk_cards[:5]
         self.plan_hand_cards: List[Union[MonsterCard, SpellCard]] = copy.deepcopy(self.hand_cards)
 
         # 場の札 memo:場の札。5レーンのため。
@@ -147,7 +166,7 @@ class Player:
         # self.phase = PhaseKind.SPELL_PHASE
         self.phase = PhaseKind.SUMMON_PHASE
 
-        self.mana = 0  # 相手のマナに干渉するカードを考えるためにplanと分けた
+        self.mana = mana  # 相手のマナに干渉するカードを考えるためにplanと分けた
         self.plan_mana = copy.copy(self.mana)
         self.life = 15
 
@@ -162,7 +181,9 @@ class Player:
         return self.legal_move_actions() + self.legal_summon_actions() + self.legal_attack_actions()
 
     def legal_actions(self) -> List[Action]:
-        """nagai 仮実装中"""
+        """nagai 現在の盤面を見て合法手を返す
+        plan_manaで可能なマナを考慮する。"""
+        print("legal_actions 現在のphase:", self.phase)
         if self.phase == PhaseKind.SPELL_PHASE:
             spell_phase_actions: List[Union[Action]] = [
                 Action(action_type=ActionType.CAST_SPELL, action_data=ActionData(spell_card=card)) for card in
@@ -183,11 +204,12 @@ class Player:
                 if sd is None
             ]
             # 可能な組み合わせを生成
-            combinations = [
-                Action(action_type=ActionType.SUMMON_MONSTER, action_data=ActionData(index=position, monster_card=card))
-                for card in possible_monster_cards
-                for position in empty_field_positions
-            ]
+            combinations = []
+            for card in possible_monster_cards:
+                for position in empty_field_positions:
+                    action = Action(action_type=ActionType.SUMMON_MONSTER,
+                                    action_data=ActionData(summon_standby_field_idx=position, monster_card=card))
+                    combinations.append(action)
             combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
             return combinations
         elif self.phase == PhaseKind.ACTIVITY_PHASE:
@@ -206,43 +228,43 @@ class Player:
             combinations.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
             return combinations
 
-    def select_plan_action_mock(self, action: Action):
+    def select_plan_action(self, action: Action):
         """PlanのActionの配列があり、randomの場合次にするActionの
         一つが適当に選ばれる。選ばれたアクションをここに入れて処理する
         """
-        if Action.action_type == ActionType.CAST_SPELL:
+        if action.action_type == ActionType.CAST_SPELL:
             # 未実装
             pass
-        elif Action.action_type == ActionType.SPELL_PHASE_END:
+        elif action.action_type == ActionType.SPELL_PHASE_END:
             self.phase = PhaseKind.SUMMON_PHASE
             # スペル使用未実装
             # 進軍フェイズはスペルフェイズ終了時に処理してしまう
             self.move_forward_mock(self.plan_zone)
 
-        elif Action.action_type == ActionType.SUMMON_MONSTER:
+        elif action.action_type == ActionType.SUMMON_MONSTER:
             self.summon_phase_actions.append(action)
             self.plan_mana -= action.action_data.monster_card.mana_cost
-            self.plan_zone.standby_field[action.action_data.index] = action.action_data.monster_card
+            self.plan_zone.standby_field[action.action_data.summon_standby_field_idx] = action.action_data.monster_card
             # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
             self.plan_hand_cards = [card for card in self.plan_hand_cards if
                                     card.uniq_id != action.action_data.monster_card.uniq_id]
 
-        elif Action.action_type == ActionType.SUMMON_PHASE_END:
+        elif action.action_type == ActionType.SUMMON_PHASE_END:
             self.phase = PhaseKind.ACTIVITY_PHASE
-        elif Action.action_type == ActionType.MONSTER_ATTACK:
+        elif action.action_type == ActionType.MONSTER_ATTACK:
             self.activity_phase_actions.append(action)
             for i, slt in enumerate(self.plan_zone.battle_field):
                 if slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                     slt.card.can_act = False
                     break
-        elif Action.action_type == ActionType.MONSTER_MOVE:
+        elif action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
-            self.monster_move_mock(action, self.plan_zone)
-        elif Action.action_type == ActionType.ACTIVITY_PHASE_END:
+            self.monster_move(action, self.plan_zone)
+        elif action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
 
     @staticmethod
-    def monster_move_mock(action: Action, zone: Zone) -> None:
+    def monster_move(action: Action, zone: Zone) -> None:
         for i, slt in enumerate(zone.battle_field):
             if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                 slt.card.can_act = False
@@ -310,8 +332,9 @@ class Player:
         assert action.action_type == ActionType.SUMMON_MONSTER
 
         # 手札から召喚対象のカード１枚を見つける
-        target_card = next((card for card in self.hand_cards if card.card_no == action.action_data.summon_card_no),
-                           None)
+        target_card = next(
+            (card for card in self.hand_cards if card.card_no == action.action_data.monster_card.card_no),
+            None)
         if target_card is None:
             logging.debug("# 召喚対象のモンスターが手札に存在しないため不発")
             return

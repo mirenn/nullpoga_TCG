@@ -15,7 +15,7 @@ def instance_card(card_no: int):
         case 1:
             return MonsterCard(card_no, 1, "ネズミ", 1, 1)
         case 2:
-            card = MonsterCard(card_no, 2, "柴犬ランダル", 2, 1)
+            card = MonsterCard(card_no, 2, "柴犬ラン丸", 2, 1)
 
             def custom_move_effect(self):
                 self.attack = self.attack + 1
@@ -41,7 +41,7 @@ def instance_card(card_no: int):
             card.turn_start_effect = types.MethodType(custom_turn_start_effect, card)
             return card
         case 5:
-            return MonsterCard(card_no, 2, "亀吉", 0, 4)
+            return MonsterCard(card_no, 2, "亀", 0, 4)
         case 6:
             card = MonsterCard(card_no, 2, "電気クラゲ", 1, 1)
 
@@ -56,6 +56,8 @@ def instance_card(card_no: int):
             return card
         case 7:
             return MonsterCard(card_no, 3, "イノシシ", 3, 2)
+        case 11:
+            return MonsterCard(card_no, 7, "炎のドラゴン", 5, 6)
 
         case 100:
             def cast_spell():

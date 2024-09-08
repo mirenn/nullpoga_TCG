@@ -11,8 +11,9 @@ from npg_monte_carlo_tree_search.istate import IState
 from gameutils.monster_cards import MonsterCard
 from gameutils.spell_cards import SpellCard
 from itertools import zip_longest
-from player import Player, Action, ActionData, ActionType, Slot, FieldStatus
+from player import Player, Action, ActionData, ActionType, Slot, FieldStatus, PhaseKind
 import logging
+import json
 
 DECK_1: Final = [7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2]
 DECK_2: Final = [4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2]
@@ -79,13 +80,13 @@ class State(IState):
         random.shuffle(self.player_2.deck_cards)
 
         # ５枚ドロー
-        for _ in range(5):
-            self.player_1.draw_card()
-            self.player_2.draw_card()
+        # for _ in range(5):
+        #     self.player_1.draw_card()
+        #     self.player_2.draw_card()
 
-        # 初期マナを付与（デッキ枚数とゲームスピードの調整のため少し多めにしている）
-        self.player_1.mana += 10
-        self.player_2.mana += 10
+        # # 初期マナを付与（デッキ枚数とゲームスピードの調整のため少し多めにしている）
+        # self.player_1.mana += 10
+        # self.player_2.mana += 10
 
     def to_json(self):
         """お試し。ゲーム情報のインポート、エクスポート用"""
@@ -311,63 +312,60 @@ class State(IState):
         player_2 = copy.deepcopy(self.player_2)
         return State(player_2, player_1)
 
-    def next_mock(self, action: int) -> State:
+    def next(self, action_: Action) -> State:
         """
         Player1とPlayer2がエンドフェイズだったときは、
         処理を実行する、という処理を挟む
-        :param action:
+        :param action_:
         :return:
         """
         player_1 = copy.deepcopy(self.player_1)
         player_2 = copy.deepcopy(self.player_2)
 
-        actions = player_1.legal_actions()
-        player_1.select_plan_action(actions[action])
-        if pieces.phase == PhaseKind.END_PHASE:
-            if self.enemy_pieces == PhaseKind.END_PHASE:
-                e_pieces = copy.deepcopy(self.enemy_pieces)
+        player_1.select_plan_action(action_)  # nagaiまずここから直すよさそう?
+        if player_1.phase == PhaseKind.END_PHASE:
+            if player_2.phase == PhaseKind.END_PHASE:
                 # 実際に処理する必要がある
-                self.execute_plan(pieces, e_pieces)
-                return State(e_pieces, pieces)
+                self.execute_plan(player_1, player_2)  # ?あっているかどうか全然わからん
             else:
-                return State(self.enemy_pieces, pieces)
-
+                pass
+            return State(player_2, player_1)  # nagai順番を変更する
         else:
-            return State(pieces, self.enemy_pieces)
+            return State(player_1, player_2)
 
-    def next(self, action: Action) -> State:
-        """アクションを受け付け、状態を更新して次の状態を返す。
-        めっちゃ細かい。実質デバッグ用。
-
-        Parameters
-        ----------
-        action : Action
-            アクション
-
-        Returns
-        -------
-        State
-            新しいゲームの状態
-        """
-        # 古い状態を辺にいじらないようにコピーする
-        player_1 = copy.deepcopy(self.player_1)
-        player_2 = copy.deepcopy(self.player_2)
-
-        if action.action_type == ActionType.SUMMON_MONSTER:
-            logging.debug(f"ActionType.SUMMON_MONSTER {str(action)}")
-            player_1.do_summon_monster(action)
-        if action.action_type == ActionType.MONSTER_MOVE:
-            logging.debug(f"ActionType.MONSTER_MOVE {str(action)}")
-            player_1.do_move_monster(action)
-        if action.action_type == ActionType.MONSTER_ATTACK:
-            logging.debug(f"ActionType.MONSTER_ATTACK {str(action)}")
-            player_1.do_monster_attack_declaration(action)
-
-        new_state = State(player_1, player_2)
-        if DEBUG:
-            new_state.print()
-            input("デバッグモード・・・適当なキーを押してください")
-        return new_state
+    # def next(self, action: Action) -> State:
+    #     """アクションを受け付け、状態を更新して次の状態を返す。
+    #     めっちゃ細かい。実質デバッグ用。
+    #
+    #     Parameters
+    #     ----------
+    #     action : Action
+    #         アクション
+    #
+    #     Returns
+    #     -------
+    #     State
+    #         新しいゲームの状態
+    #     """
+    #     # 古い状態を変にいじらないようにコピーする
+    #     player_1 = copy.deepcopy(self.player_1)
+    #     player_2 = copy.deepcopy(self.player_2)
+    #
+    #     if action.action_type == ActionType.SUMMON_MONSTER:
+    #         logging.debug(f"ActionType.SUMMON_MONSTER {str(action)}")
+    #         player_1.do_summon_monster(action)
+    #     if action.action_type == ActionType.MONSTER_MOVE:
+    #         logging.debug(f"ActionType.MONSTER_MOVE {str(action)}")
+    #         player_1.do_move_monster(action)
+    #     if action.action_type == ActionType.MONSTER_ATTACK:
+    #         logging.debug(f"ActionType.MONSTER_ATTACK {str(action)}")
+    #         player_1.do_monster_attack_declaration(action)
+    #
+    #     new_state = State(player_1, player_2)
+    #     if DEBUG:
+    #         new_state.print()
+    #         input("デバッグモード・・・適当なキーを押してください")
+    #     return new_state
 
     def legal_actions(self) -> List[Action]:
         """手番のプレイヤーの現在の状態での合法手を列挙する。
@@ -379,19 +377,21 @@ class State(IState):
         """
         return self.player_1.legal_actions()
 
-    def random_action(self) -> None:
-        """手番のプレイヤーのアクションを設定する"""
-        summon_actions = self.player_1.legal_summon_actions()
-        random.shuffle(summon_actions)
-        self.player_1.summon_phase_actions = summon_actions
+    # def random_action(self) -> None:
+    #     """手番のプレイヤーのアクションを設定する"""
+    #     summon_actions = self.player_1.legal_summon_actions()
+    #     random.shuffle(summon_actions)
+    #     self.player_1.summon_phase_actions = summon_actions
+    #
+    #     move_actions = self.player_1.legal_move_actions()
+    #     attack_actions = self.player_1.legal_attack_actions()
+    #     activity_actions = move_actions + attack_actions
+    #     random.shuffle(activity_actions)
+    #     self.player_1.activity_phase_actions = activity_actions
 
-        move_actions = self.player_1.legal_move_actions()
-        attack_actions = self.player_1.legal_attack_actions()
-        activity_actions = move_actions + attack_actions
-        random.shuffle(activity_actions)
-        self.player_1.activity_phase_actions = activity_actions
-
-    def random_action_mock(self) -> Action:
+    def random_action(self) -> Action:
+        """"player1の可能な手を返す
+        """
         return choice(self.legal_actions())
 
     def is_lose_first_player(self) -> bool:
@@ -420,32 +420,33 @@ class State(IState):
         return self.is_lose_first_player()
 
     def __str__(self) -> str:
+        return json.dumps(self.__dict__)  # nagaiすべて出力してみる
         """コンソールでの確認用"""
-        L = 110
-        s = "=" * L + "\n"
-        s += "player2_mana    : " + f"{self.player_2.mana:>3}" + "\n"
-        s += "player2_life    : " + f"{self.player_2.life:>3} ({self.player_2.phase})" + "\n"
-        s += "player2_hand    : " + ",".join(f"[{get_view(card)}]" for card in self.player_2.hand_cards[::-1]) + "\n"
-        s += "-" * L + "\n"
-        s += "player2_standby : " + ",".join(
-            f"[{get_view(card)}]" for card in self.player_2.zone.standby_field[::-1]) + "\n"
-        s += "-" * L + "\n"
-        s += "player2_battle  : " + ",".join(
-            f"[{get_view(card)}]" for card in self.player_2.zone.battle_field[::-1]) + "\n"
-        s += "=" * L + "\n"
-        s += "player1_battle  : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.zone.battle_field) + "\n"
-        s += "-" * L + "\n"
-        s += "player1_standby : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.zone.standby_field) + "\n"
-        s += "-" * L + "\n"
-        s += "player1_hand    : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.hand_cards) + "\n"
-        s += "player1_life    : " + f"{self.player_1.life:>3} ({self.player_1.phase})" + "\n"
-        s += "player1_mana    : " + f"{self.player_1.mana:>3}" + "\n"
-        s += "=" * L + "\n"
-        if self.is_first_player():
-            s += f"(先手番視点)\n"
-        else:
-            s += f"(後手番視点)\n"
-        return s
+        # L = 110
+        # s = "=" * L + "\n"
+        # s += "player2_mana    : " + f"{self.player_2.mana:>3}" + "\n"
+        # s += "player2_life    : " + f"{self.player_2.life:>3} ({self.player_2.phase})" + "\n"
+        # s += "player2_hand    : " + ",".join(f"[{get_view(card)}]" for card in self.player_2.hand_cards[::-1]) + "\n"
+        # s += "-" * L + "\n"
+        # s += "player2_standby : " + ",".join(
+        #     f"[{get_view(card)}]" for card in self.player_2.zone.standby_field[::-1]) + "\n"
+        # s += "-" * L + "\n"
+        # s += "player2_battle  : " + ",".join(
+        #     f"[{get_view(card)}]" for card in self.player_2.zone.battle_field[::-1]) + "\n"
+        # s += "=" * L + "\n"
+        # s += "player1_battle  : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.zone.battle_field) + "\n"
+        # s += "-" * L + "\n"
+        # s += "player1_standby : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.zone.standby_field) + "\n"
+        # s += "-" * L + "\n"
+        # s += "player1_hand    : " + ",".join(f"[{get_view(card)}]" for card in self.player_1.hand_cards) + "\n"
+        # s += "player1_life    : " + f"{self.player_1.life:>3} ({self.player_1.phase})" + "\n"
+        # s += "player1_mana    : " + f"{self.player_1.mana:>3}" + "\n"
+        # s += "=" * L + "\n"
+        # if self.is_first_player():
+        #     s += f"(先手番視点)\n"
+        # else:
+        #     s += f"(後手番視点)\n"
+        # return s
 
     def print(self):
         print(str(self))
@@ -454,7 +455,7 @@ class State(IState):
         """後手が負けているかを判定"""
         return self.game_finished and self.first_player_win
 
-    def execute_plan(self, pieces: Player, e_pieces: Player):
+    def execute_plan(self, player_1: Player, player_2: Player):
         """
         planの内容を実際に実行する。
         :param pieces:
@@ -463,8 +464,8 @@ class State(IState):
         """
         # スペルフェイズ未実装
         # 進軍フェイズ
-        pieces.move_forward(pieces.zone)
-        e_pieces.move_forward(e_pieces.zone)
+        player_1.move_forward()
+        player_2.move_forward()
         # summonフェイズ
         self.execute_summon(pieces, e_pieces)
         # activityフェイズ
@@ -497,17 +498,17 @@ class State(IState):
         pieces.summon_phase_actions = []
         e_pieces.summon_phase_actions = []
 
-    def execute_activity(self, my_pieces: Player, e_pieces: Player):
-        for my_act, e_act in zip_longest(my_pieces.activity_phase_actions, e_pieces.activity_phase_actions):
+    def execute_activity(self, player_1: Player, player_2: Player):
+        for my_act, e_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
             if my_act and my_act.action_type == ActionType.MONSTER_MOVE:
-                my_pieces.monster_move(my_act, my_pieces.zone)
+                player_1.monster_move(my_act, player_1.zone)
             if e_act and e_act.action_type == ActionType.MONSTER_MOVE:
-                e_pieces.monster_move(e_act, e_pieces.zone)
+                player_2.monster_move(e_act, player_2.zone)
             if my_act and my_act.action_type == ActionType.MONSTER_ATTACK:
-                e_pieces.monster_attacked(my_act, my_pieces.zone)
+                player_2.monster_attacked(my_act, player_1.zone)
             if e_act and e_act.action_type == ActionType.MONSTER_ATTACK:
-                my_pieces.monster_attacked(e_act, e_pieces.zone)
-            self.delete_monster(my_pieces, e_pieces)
+                player_1.monster_attacked(e_act, player_2.zone)
+            self.delete_monster(player_1, player_2)
 
     def delete_monster(self, my_pieces: Player, e_pieces: Player):
         """

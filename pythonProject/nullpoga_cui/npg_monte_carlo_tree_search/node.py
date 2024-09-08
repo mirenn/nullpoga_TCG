@@ -4,6 +4,9 @@ from typing import List, Optional
 from nullpoga_cui.state import State
 from npg_monte_carlo_tree_search.util.ucb1 import ucb1
 from npg_monte_carlo_tree_search.util.argmax import argmax
+from gameutils.utils import log_debug_message
+
+DEBUG = True
 
 
 class Node:
@@ -40,7 +43,16 @@ class Node:
 
     def expand(self) -> None:
         """self (current Node) を展開する."""
-        self.children = [Node(self.state.next(action), self.expand_base) for action in self.state.legal_actions()]
+        if DEBUG:
+            print("expand 可能なactionの数だけchildrenを生やす。")
+            # print("可能なaction", self.state.legal_actions())
+
+        # self.children = [Node(self.state.next(action), self.expand_base) for action in self.state.legal_actions()]
+        self.children = []
+        for action in self.state.legal_actions():
+            next_state = self.state.next(action)  # nagai がおかしい。
+            child_node = Node(next_state, self.expand_base)
+            self.children.append(child_node)
 
     def next_child_based_ucb(self) -> Node:
         """self (current Node) の子ノードから1ノード選択する."""
@@ -62,7 +74,7 @@ class Node:
             return -1
         if state.is_draw():
             return 0
-        n_state = state.next(state.random_action_mock())
+        n_state = state.next(state.random_action())
         if state.player_1.is_first_player != n_state.player_1.is_first_player:
             return -Node.playout(n_state)
         else:

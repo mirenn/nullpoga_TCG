@@ -33,11 +33,10 @@ for _ in range(GAMES):
             action = MonteCarloTreeSearch.select_action(root_node)
             state = state.next(action)
         else:
-            action = state.random_action_mock()
+            action = state.random_action()
             state = state.next(action)
 
         print(state)
-        print()
 
     point += first_player_point(state)
 
