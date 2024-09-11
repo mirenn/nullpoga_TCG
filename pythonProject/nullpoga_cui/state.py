@@ -200,6 +200,82 @@ class State(IState):
 
         return temp_state
 
+    def is_game_end(self):
+        """"
+        - どちらかのライフがゼロ
+        - どちらかがデッキアウトしたとき
+        - バトルフィールドが全て荒野状態になったとき
+        ゲーム終了と判定"""
+        # 先手フィールドの荒野判定
+        player_1_wilderness_all = True
+        for idx, slot in enumerate(self.player_1.zone.battle_field):
+            if slot.status != FieldStatus.WILDERNESS:
+                player_1_wilderness_all = False
+                break
+        if player_1_wilderness_all:
+            return True
+
+        player_2_wilderness_all = True
+        for idx, slot in enumerate(self.player_2.zone.battle_field):
+            if slot.status != FieldStatus.WILDERNESS:
+                player_2_wilderness_all = False
+                break
+        if player_2_wilderness_all:
+            return True
+
+        return (self.player_1.life <= 0) or (self.player_2.life <= 0) or (len(self.player_1.deck_cards) < 1) and (
+                len(self.player_2.deck_cards) < 1)
+
+    def evaluate_result(self):
+        """
+        game_endが確定しているときに、ゲームの結果値を返す
+        :return
+        player_1が勝利 1
+        player_2が勝利 -1
+        引き分け 0
+
+        - ライフによる勝利+1
+        - デッキアウトによる勝利+1
+        - 荒野状態による勝利+1
+        これら全てを判定してplayer_1、player_2どちらが勝っているかを見て産出
+        """
+        player_1_point = 0
+        player_2_point = 0
+
+        if self.player_2.life <= 0 and self.player_1.life > self.player_2.life:
+            player_1_point += 1
+        elif self.player_2.life <= 0 and self.player_1.life < self.player_2.life:
+            player_2_point += 1
+
+        # デッキアウト勝ち
+        if len(self.player_2.deck_cards) < 1 and len(self.player_1.deck_cards) >= 1:
+            player_1_point += 1
+        elif len(self.player_1.deck_cards) < 1 and len(self.player_2.deck_cards) >= 1:
+            player_2_point += 1
+
+        # 荒野状態による勝利
+        # 先手フィールドの荒野判定
+        player_2_point += 1
+        for idx, slot in enumerate(self.player_1.zone.battle_field):
+            if slot.status != FieldStatus.WILDERNESS:
+                player_2_point -= 1
+                break
+        player_1_point += 1
+        for idx, slot in enumerate(self.player_2.zone.battle_field):
+            if slot.status != FieldStatus.WILDERNESS:
+                player_1_point -= 1
+                break
+
+        if player_1_point > player_2_point:
+            return 1
+        elif player_1_point < player_2_point:
+            return -1
+        else:
+            return 0
+
+    def player_2_win(self):
+        return self.is_game_end() and self.player_1.life < self.player_2.life
+
     def resolve_attack_phase_1step(self) -> State:
         """1回分の攻撃処理。新しいゲームの状態を返す"""
         player_1 = copy.deepcopy(self.player_1)
@@ -326,7 +402,7 @@ class State(IState):
         if player_1.phase == PhaseKind.END_PHASE:
             if player_2.phase == PhaseKind.END_PHASE:
                 # 実際に処理する必要がある
-                self.execute_plan(player_1, player_2)  # ?あっているかどうか全然わからん
+                self.do_endphase(player_1, player_2)  # ?あっているかどうか全然わからん
             else:
                 pass
             return State(player_2, player_1)  # nagai順番を変更する
@@ -455,11 +531,11 @@ class State(IState):
         """後手が負けているかを判定"""
         return self.game_finished and self.first_player_win
 
-    def execute_plan(self, player_1: Player, player_2: Player):
+    def do_endphase(self, player_1: Player, player_2: Player):
         """
         planの内容を実際に実行する。
-        :param pieces:
-        :param e_pieces:
+        :param player_1:
+        :param player_2:
         :return:
         """
         # スペルフェイズ未実装
@@ -467,9 +543,9 @@ class State(IState):
         player_1.move_forward()
         player_2.move_forward()
         # summonフェイズ
-        self.execute_summon(pieces, e_pieces)
+        self.execute_summon(player_1, player_2)
         # activityフェイズ
-        self.execute_activity(pieces, e_pieces)
+        self.execute_activity(player_1, player_2)
 
     @staticmethod
     def execute_summon(pieces: Player, e_pieces: Player):
@@ -499,16 +575,19 @@ class State(IState):
         e_pieces.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
-        for my_act, e_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
-            if my_act and my_act.action_type == ActionType.MONSTER_MOVE:
-                player_1.monster_move(my_act, player_1.zone)
-            if e_act and e_act.action_type == ActionType.MONSTER_MOVE:
-                player_2.monster_move(e_act, player_2.zone)
-            if my_act and my_act.action_type == ActionType.MONSTER_ATTACK:
-                player_2.monster_attacked(my_act, player_1.zone)
-            if e_act and e_act.action_type == ActionType.MONSTER_ATTACK:
-                player_1.monster_attacked(e_act, player_2.zone)
+        for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
+            if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
+                player_1.monster_move(p1_act, player_1.zone)
+            if p2_act and p2_act.action_type == ActionType.MONSTER_MOVE:
+                player_2.monster_move(p2_act, player_2.zone)
+            if p1_act and p1_act.action_type == ActionType.MONSTER_ATTACK:
+                player_2.monster_attacked(p1_act, player_1.zone)
+            if p2_act and p2_act.action_type == ActionType.MONSTER_ATTACK:
+                player_1.monster_attacked(p2_act, player_2.zone)
             self.delete_monster(player_1, player_2)
+            ##ゲームエンドなら即終了する(先にゼロにしたらそこで終わりにすべきなため)
+            if self.is_game_end():
+                break
 
     def delete_monster(self, my_pieces: Player, e_pieces: Player):
         """
@@ -519,9 +598,11 @@ class State(IState):
         """
         for i, slt in enumerate(my_pieces.zone.battle_field):
             if slt.card is not None and slt.card.life <= 0:
-                slt.card = None
+                # slt.card = None
+                slt.remove_card()
         for i, slt in enumerate(e_pieces.zone.battle_field):
             if slt.card is not None and slt.card.life <= 0:
+                # slt.card = None
                 slt.card = None
 
     @staticmethod

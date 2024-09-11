@@ -10,7 +10,8 @@ import copy
 
 import pytest
 from state import State
-from player import Player, ActionType
+from player import Player, ActionType, Action, ActionData, FieldStatus
+from gameutils.nullpoga_system import instance_card
 
 
 @pytest.fixture
@@ -71,11 +72,44 @@ def test_fcds_select_plan_action_summon_monster(few_cards_instance_state):
     assert len(few_cards_instance_state.player_1.plan_hand_cards) == len(copy_player_1.plan_hand_cards) - 1
 
 
-def test_fcds_execute_plan_summon():
+def test_monster_attacked(few_cards_instance_state):
+    few_cards_instance_state.player_1.zone.battle_field[0].card = instance_card(1)
+    few_cards_instance_state.player_2.zone.battle_field[4].card = instance_card(1)
+    few_cards_instance_state.player_2.zone.battle_field[0].card = instance_card(1)
+
+    p1_life = copy.deepcopy(few_cards_instance_state.player_1.life)
+    few_cards_instance_state.player_1.monster_attacked(Action(ActionType.MONSTER_MOVE, ActionData(
+        monster_card=few_cards_instance_state.player_2.zone.battle_field[4].card)),
+                                                       few_cards_instance_state.player_2.zone)
+    # ネズミのライフが0に
+    assert few_cards_instance_state.player_1.zone.battle_field[0].card.life == 0
+    # 攻撃したモンスター行動不能状態
+    assert few_cards_instance_state.player_2.zone.battle_field[4].card.can_act is False
+
+    few_cards_instance_state.player_1.monster_attacked(Action(ActionType.MONSTER_MOVE, ActionData(
+        monster_card=few_cards_instance_state.player_2.zone.battle_field[0].card)),
+                                                       few_cards_instance_state.player_2.zone)
+    # ダイレクトアタックでライフが1減る
+    assert p1_life - 1 == few_cards_instance_state.player_1.life
+    # ダイレクトアタックでwildに
+    assert few_cards_instance_state.player_1.zone.battle_field[4].status == FieldStatus.WILDERNESS
+
+    # nagaiついでにdelete_monsterも確認する
+    few_cards_instance_state.delete_monster(few_cards_instance_state.player_1, few_cards_instance_state.player_2)
+    assert few_cards_instance_state.player_1.zone.battle_field[0].card is None
+
+    few_cards_instance_state.player_1.monster_attacked(Action(ActionType.MONSTER_MOVE, ActionData(
+        monster_card=few_cards_instance_state.player_2.zone.battle_field[0].card)),
+                                                       few_cards_instance_state.player_2.zone)
+    # 一度攻撃したものはもう一度攻撃できないためライフに変動がないことを確認
+    assert p1_life - 1 == few_cards_instance_state.player_1.life
+
+
+def test_fcds_execute_summon():
     pass
 
 
-def test_fcds_execute_plan_activity():
+def test_fcds_execute_activity():
     pass
 
 

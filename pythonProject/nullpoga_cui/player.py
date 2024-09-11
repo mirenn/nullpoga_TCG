@@ -129,6 +129,7 @@ class ActionType(Enum):
     CAST_SPELL = "CAST_SPELL"  # スペル。未実装
     SUMMON_MONSTER = "SUMMON_MONSTER"  # 召喚
     MONSTER_MOVE = "MONSTER_MOVE"  # 移動
+    DISABLE_ACTION = "DISABLE_ACTION"  # 何もしないを選んだ場合
     MONSTER_ATTACK = "MONSTER_ATTACK"  # 攻撃宣言
     SPELL_PHASE_END = "SPELL_PHASE_END"  # スペルフェイズ終了宣言。未実装というか不要？
     SUMMON_PHASE_END = "SUMMON_PHASE_END"  # 召喚フェイズ終了宣言。未実装というか不要？
@@ -225,6 +226,8 @@ class Player:
                     if not self.zone.battle_field[i + 1]:
                         combinations.append(
                             Action(action_type=ActionType.MONSTER_MOVE, action_data=ActionData(move_direction="right")))
+                    # あえて何もしない場合のパターンもここに追加する予定、一旦ここにはなしにしておく一応用意しておくが
+
             combinations.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
             return combinations
 
@@ -265,6 +268,7 @@ class Player:
 
     @staticmethod
     def monster_move(action: Action, zone: Zone) -> None:
+        """staticにする必要なさそう"""
         for i, slt in enumerate(zone.battle_field):
             if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                 slt.card.can_act = False
@@ -277,6 +281,23 @@ class Player:
                     zone.battle_field[i - 1].card = slt.card
                     slt.card = None
                 break
+
+    def monster_attacked(self, action: Action, zone: Zone):
+        """
+        攻撃を受ける
+        - フィールドにモンスターがいればダメージを受ける
+        - 何もなければダイレクトダメージ + wildness
+        """
+        for idx, slot in enumerate(zone.battle_field):
+            if (slot.card is not None and slot.card.can_act is True
+                    and slot.card.uniq_id == action.action_data.monster_card.uniq_id):
+                slot.card.can_act = False  # 攻撃した
+                # フィールドに
+                if self.zone.battle_field[-idx - 1].card is not None:
+                    self.zone.battle_field[-idx - 1].card.life -= slot.card.attack
+                else:
+                    self.zone.battle_field[-idx - 1].set_wild()
+                    self.life -= slot.card.attack
 
     def legal_summon_actions(self) -> List[Action]:
         """合法な（というか意味のある）モンスター召喚宣言アクション"""

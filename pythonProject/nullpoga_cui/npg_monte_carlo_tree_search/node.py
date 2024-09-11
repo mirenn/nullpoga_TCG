@@ -70,10 +70,9 @@ class Node:
     @classmethod
     def playout(cls, state: State) -> float:
         """決着がつくまでランダムにプレイする."""
-        if state.is_lose():
-            return -1
-        if state.is_draw():
-            return 0
+        if state.is_game_end():
+            return state.evaluate_result()
+
         n_state = state.next(state.random_action())
         if state.player_1.is_first_player != n_state.player_1.is_first_player:
             return -Node.playout(n_state)
