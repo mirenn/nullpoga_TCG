@@ -104,11 +104,13 @@ class ActionData:
     summon_standby_field_idx: Optional[int] = field(default=None)  # 左から何番目か
     # MONSTER_MOVE用
     move_battle_field_idx: Optional[int] = field(default=None)  # 左から何番目か
-    move_direction: Optional[Literal["right", "left"]] = field(default=None)  # 移動方向
+    move_direction: Optional[Literal["RIGHT", "LEFT"]] = field(default=None)  # 移動方向
     # MONSTER_ATTACK用
-    attack_declaration_idx: Optional[int] = field(default=None)  # 攻撃宣言するバトルフィールドのインデックス
+    attack_declaration_idx: Optional[int] = field(default=None)  # 不使用になるかも：攻撃宣言するバトルフィールドのインデックス
+
+    # SUMMON_MONSTER用
+    summon_index: Optional[int] = field(default=None)  # index:召喚するときに使用
     # 以下現状不使用
-    index: Optional[int] = field(default=None)
     spell_card: Optional[SpellCard] = field(default=None)
 
     def __str__(self):
@@ -177,10 +179,6 @@ class Player:
 
         self.is_first_player: Optional[bool] = None
 
-    def legal_actions2(self) -> List[Action]:
-        """現在の盤面を見て合法手（というか意味のある手）を列挙する"""
-        return self.legal_move_actions() + self.legal_summon_actions() + self.legal_attack_actions()
-
     def legal_actions(self) -> List[Action]:
         """nagai 現在の盤面を見て合法手を返す
         plan_manaで可能なマナを考慮する。"""
@@ -209,7 +207,7 @@ class Player:
             for card in possible_monster_cards:
                 for position in empty_field_positions:
                     action = Action(action_type=ActionType.SUMMON_MONSTER,
-                                    action_data=ActionData(summon_standby_field_idx=position, monster_card=card))
+                                    action_data=ActionData(card, summon_standby_field_idx=position))
                     combinations.append(action)
             combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
             return combinations
@@ -219,13 +217,15 @@ class Player:
                 if self.zone.battle_field[i] and self.zone.battle_field[i].card.can_act:
                     card = self.zone.battle_field[i].card
                     combinations.append(
-                        Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(monster_card=card)))
+                        Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(card)))
                     if not self.zone.battle_field[i - 1]:
                         combinations.append(
-                            Action(action_type=ActionType.MONSTER_MOVE, action_data=ActionData(move_direction="left")))
+                            Action(action_type=ActionType.MONSTER_MOVE,
+                                   action_data=ActionData(card, move_direction="LEFT")))
                     if not self.zone.battle_field[i + 1]:
                         combinations.append(
-                            Action(action_type=ActionType.MONSTER_MOVE, action_data=ActionData(move_direction="right")))
+                            Action(action_type=ActionType.MONSTER_MOVE,
+                                   action_data=ActionData(monster_card=card, move_direction="RIGHT")))
                     # あえて何もしない場合のパターンもここに追加する予定、一旦ここにはなしにしておく一応用意しておくが
 
             combinations.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
@@ -262,22 +262,21 @@ class Player:
                     break
         elif action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
-            self.monster_move(action, self.plan_zone)
+            self.monster_move(action)
         elif action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
 
-    @staticmethod
-    def monster_move(action: Action, zone: Zone) -> None:
-        """staticにする必要なさそう"""
+    def monster_move(self, action: Action) -> None:
+        zone = self.zone
         for i, slt in enumerate(zone.battle_field):
             if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                 slt.card.can_act = False
-                if (action.action_data.move_direction == "right" and i + 1 < len(zone.battle_field)
-                        and zone.battle_field[i + 1].card):
+                if (action.action_data.move_direction == "RIGHT" and i + 1 < len(zone.battle_field)
+                        and zone.battle_field[i + 1].card is None):
                     zone.battle_field[i + 1].card = slt.card
                     slt.card = None
-                elif (action.action_data.move_direction == "left" and i - 1 >= 0
-                      and zone.battle_field[i - 1].card):
+                elif (action.action_data.move_direction == "LEFT" and i - 1 >= 0
+                      and zone.battle_field[i - 1].card is None):
                     zone.battle_field[i - 1].card = slt.card
                     slt.card = None
                 break
@@ -298,50 +297,6 @@ class Player:
                 else:
                     self.zone.battle_field[-idx - 1].set_wild()
                     self.life -= slot.card.attack
-
-    def legal_summon_actions(self) -> List[Action]:
-        """合法な（というか意味のある）モンスター召喚宣言アクション"""
-        actions = []
-        for card in self.hand_cards:
-            for standby_field_idx in range(5):
-                actions.append(
-                    Action(
-                        ActionType.SUMMON_MONSTER,
-                        action_data=ActionData(summon_card_no=card.card_no, summon_standby_field_idx=standby_field_idx),
-                    )
-                )
-        return actions
-
-    def legal_move_actions(self) -> List[Action]:
-        """合法な（というか意味のある）モンスター移動宣言アクション"""
-        actions = []
-        for battle_field_idx in range(5):
-            directions = []
-            if battle_field_idx != 0:
-                directions.append("left")
-            if battle_field_idx != 4:
-                directions.append("right")
-
-            for direction in directions:
-                actions.append(
-                    Action(
-                        ActionType.MONSTER_MOVE,
-                        action_data=ActionData(move_battle_field_idx=battle_field_idx, move_direction=direction),
-                    )
-                )
-        return actions
-
-    def legal_attack_actions(self) -> List[Action]:
-        """合法な（というか意味のある）モンスター攻撃宣言アクション"""
-        actions = []
-        for battle_field_idx in range(5):
-            actions.append(
-                Action(
-                    ActionType.MONSTER_ATTACK,
-                    action_data=ActionData(attack_declaration_idx=battle_field_idx),
-                )
-            )
-        return actions
 
     def do_summon_monster(self, action: Action):
         """モンスターを召喚する
@@ -393,7 +348,7 @@ class Player:
             logging.debug("# 移動対象のモンスターカードが行動済みのため不発")
             return
 
-        if action.action_data.move_direction == "left":
+        if action.action_data.move_direction == "LEFT":
             assert idx > 0
             slot = self.zone.get_battle_field_slot(idx - 1)
             if slot.card is not None:
@@ -402,7 +357,7 @@ class Player:
             target_slot.card.done_activity = True
             self.zone.set_battle_field_card(idx - 1, target_slot.card)
 
-        if action.action_data.move_direction == "right":
+        if action.action_data.move_direction == "RIGHT":
             assert idx < 4
             slot = self.zone.get_battle_field_slot(idx + 1)
             if slot.card is not None:

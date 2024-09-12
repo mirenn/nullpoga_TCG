@@ -556,17 +556,20 @@ class State(IState):
         :return:
         """
         for my_act, e_act in zip_longest(pieces.summon_phase_actions, e_pieces.summon_phase_actions):
-            if (my_act and not pieces.zone.standby_field[my_act.action_data.index] and
-                    my_act.action_data.monster_card.mana_cost <= pieces.mana):
+            # 出そうとしているフィールドが空いている、マナが十分にある、該当のモンスターカードが手札にある
+            if (my_act and not pieces.zone.standby_field[my_act.action_data.summon_index] and
+                    my_act.action_data.monster_card.mana_cost <= pieces.mana and any(
+                        card.uniq_id == my_act.action_data.monster_card.uniq_id for card in pieces.hand_cards)):
                 pieces.mana -= my_act.action_data.monster_card.mana_cost
-                pieces.zone.standby_field[my_act.action_data.index] = my_act.action_data.monster_card
+                pieces.zone.standby_field[my_act.action_data.summon_index] = my_act.action_data.monster_card
                 # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
                 pieces.hand_cards = [card for card in pieces.hand_cards if
                                      card.uniq_id != my_act.action_data.monster_card.uniq_id]
-            if (e_act and not e_pieces.zone.standby_field[e_act.action_data.index] and
-                    e_act.action_data.monster_card.mana_cost <= e_pieces.mana):
+            if (e_act and not e_pieces.zone.standby_field[
+                e_act.action_data.summon_index] and e_act.action_data.monster_card.mana_cost <= e_pieces.mana) and any(
+                card.uniq_id == e_act.action_data.monster_card.uniq_id for card in e_pieces.hand_cards):
                 e_pieces.mana -= e_act.action_data.monster_card.mana_cost
-                e_pieces.zone.standby_field[e_act.action_data.index] = e_act.action_data.monster_card
+                e_pieces.zone.standby_field[e_act.action_data.summon_index] = e_act.action_data.monster_card
                 # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
                 e_pieces.hand_cards = [card for card in e_pieces.hand_cards if
                                        card.uniq_id != e_act.action_data.monster_card.uniq_id]
@@ -577,15 +580,15 @@ class State(IState):
     def execute_activity(self, player_1: Player, player_2: Player):
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
-                player_1.monster_move(p1_act, player_1.zone)
+                player_1.monster_move(p1_act)
             if p2_act and p2_act.action_type == ActionType.MONSTER_MOVE:
-                player_2.monster_move(p2_act, player_2.zone)
+                player_2.monster_move(p2_act)
             if p1_act and p1_act.action_type == ActionType.MONSTER_ATTACK:
                 player_2.monster_attacked(p1_act, player_1.zone)
             if p2_act and p2_act.action_type == ActionType.MONSTER_ATTACK:
                 player_1.monster_attacked(p2_act, player_2.zone)
             self.delete_monster(player_1, player_2)
-            ##ゲームエンドなら即終了する(先にゼロにしたらそこで終わりにすべきなため)
+            # ゲームエンドなら即終了する(先にゼロにしたらそこで終わりにすべきなため)
             if self.is_game_end():
                 break
 
