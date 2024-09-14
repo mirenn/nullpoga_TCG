@@ -402,7 +402,7 @@ class State(IState):
         if player_1.phase == PhaseKind.END_PHASE:
             if player_2.phase == PhaseKind.END_PHASE:
                 # 実際に処理する必要がある
-                self.do_endphase(player_1, player_2)  # ?あっているかどうか全然わからん
+                self.execute_endphase(player_1, player_2)
             else:
                 pass
             return State(player_2, player_1)  # nagai順番を変更する
@@ -531,7 +531,7 @@ class State(IState):
         """後手が負けているかを判定"""
         return self.game_finished and self.first_player_win
 
-    def do_endphase(self, player_1: Player, player_2: Player):
+    def execute_endphase(self, player_1: Player, player_2: Player):
         """
         planの内容を実際に実行する。
         :param player_1:
@@ -548,34 +548,33 @@ class State(IState):
         self.execute_activity(player_1, player_2)
 
     @staticmethod
-    def execute_summon(pieces: Player, e_pieces: Player):
+    def execute_summon(player_1: Player, player_2: Player):
         """
         召喚実行
-        :param pieces:
-        :param e_pieces:
+        :param player_1: 召喚フェーズのプレイヤー
+        :param player_2: 敵プレイヤー
         :return:
         """
-        for my_act, e_act in zip_longest(pieces.summon_phase_actions, e_pieces.summon_phase_actions):
-            # 出そうとしているフィールドが空いている、マナが十分にある、該当のモンスターカードが手札にある
-            if (my_act and not pieces.zone.standby_field[my_act.action_data.summon_index] and
-                    my_act.action_data.monster_card.mana_cost <= pieces.mana and any(
-                        card.uniq_id == my_act.action_data.monster_card.uniq_id for card in pieces.hand_cards)):
-                pieces.mana -= my_act.action_data.monster_card.mana_cost
-                pieces.zone.standby_field[my_act.action_data.summon_index] = my_act.action_data.monster_card
+
+        def summon_action(player: Player, action: Action):
+            """個々のプレイヤーの召喚処理を行う"""
+            if (action and not player.zone.standby_field[action.action_data.summon_index] and
+                    action.action_data.monster_card.mana_cost <= player.mana and
+                    any(card.uniq_id == action.action_data.monster_card.uniq_id for card in player.hand_cards)):
+                player.mana -= action.action_data.monster_card.mana_cost
+                player.zone.standby_field[action.action_data.summon_index] = action.action_data.monster_card
                 # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
-                pieces.hand_cards = [card for card in pieces.hand_cards if
-                                     card.uniq_id != my_act.action_data.monster_card.uniq_id]
-            if (e_act and not e_pieces.zone.standby_field[
-                e_act.action_data.summon_index] and e_act.action_data.monster_card.mana_cost <= e_pieces.mana) and any(
-                card.uniq_id == e_act.action_data.monster_card.uniq_id for card in e_pieces.hand_cards):
-                e_pieces.mana -= e_act.action_data.monster_card.mana_cost
-                e_pieces.zone.standby_field[e_act.action_data.summon_index] = e_act.action_data.monster_card
-                # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
-                e_pieces.hand_cards = [card for card in e_pieces.hand_cards if
-                                       card.uniq_id != e_act.action_data.monster_card.uniq_id]
-            # メモ召喚時効果未実装
-        pieces.summon_phase_actions = []
-        e_pieces.summon_phase_actions = []
+                player.hand_cards = [card for card in player.hand_cards if
+                                     card.uniq_id != action.action_data.monster_card.uniq_id]
+
+        # 両プレイヤーの召喚処理を行う
+        for my_act, e_act in zip_longest(player_1.summon_phase_actions, player_2.summon_phase_actions):
+            summon_action(player_1, my_act)
+            summon_action(player_2, e_act)
+
+        # アクションのリセット
+        player_1.summon_phase_actions = []
+        player_2.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
@@ -639,24 +638,26 @@ if __name__ == "__main__":
     if True:
         # デバッグ用手動実行
         # 召喚（先手プレイヤー）
-        action = Action(ActionType.SUMMON_MONSTER, action_data=ActionData(summon_card_no=2, summon_standby_field_idx=4))
-        state = state.next(action)
+        tes_action = Action(ActionType.SUMMON_MONSTER,
+                            action_data=ActionData(summon_card_no=2, summon_standby_field_idx=4))
+        state = state.next(tes_action)
         state.print()
 
         # 召喚（先手プレイヤー）
-        action = Action(ActionType.SUMMON_MONSTER, action_data=ActionData(summon_card_no=6, summon_standby_field_idx=1))
-        state = state.next(action)
+        tes_action = Action(ActionType.SUMMON_MONSTER,
+                            action_data=ActionData(summon_card_no=6, summon_standby_field_idx=1))
+        state = state.next(tes_action)
         state.print()
 
         # 先手プレイヤーのターンを終了する
-        action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
-        state = state.next(action)
+        tes_action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
+        state = state.next(tes_action)
         state = state.change_player()  # ここでプレイヤーが入れ替わるのに注意
         state.print()
 
         # 後手プレイヤーは何もしないでターンを終了
-        action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
-        state = state.next(action)
+        tes_action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
+        state = state.next(tes_action)
         state = state.change_player()  # ここでプレイヤーが入れ替わるのに注意
         state.print()
 
@@ -666,22 +667,22 @@ if __name__ == "__main__":
         state.print()
 
         # 行動フェーズ（移動アクションの処理）
-        action = Action(
+        tes_action = Action(
             ActionType.MONSTER_MOVE,
             action_data=ActionData(
                 move_battle_field_idx=4,
                 move_direction="left",
             ),
         )
-        state = state.next(action)
+        state = state.next(tes_action)
         state.print()
 
         # 行動フェーズ（攻撃宣言の処理）
-        action = Action(
+        tes_action = Action(
             ActionType.MONSTER_ATTACK,
             action_data=ActionData(attack_declaration_idx=1),
         )
-        state = state.next(action)
+        state = state.next(tes_action)
         state.print()
 
         # 本当は５回やる

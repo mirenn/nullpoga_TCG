@@ -4,7 +4,6 @@ from typing import List, Optional
 from nullpoga_cui.state import State
 from npg_monte_carlo_tree_search.util.ucb1 import ucb1
 from npg_monte_carlo_tree_search.util.argmax import argmax
-from gameutils.utils import log_debug_message
 
 DEBUG = True
 

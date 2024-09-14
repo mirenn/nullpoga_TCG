@@ -180,56 +180,52 @@ class Player:
         self.is_first_player: Optional[bool] = None
 
     def legal_actions(self) -> List[Action]:
-        """nagai 現在の盤面を見て合法手を返す
-        plan_manaで可能なマナを考慮する。"""
+        """現在のフェイズに応じて、合法的な行動を返す"""
         print("legal_actions 現在のphase:", self.phase)
         if self.phase == PhaseKind.SPELL_PHASE:
-            spell_phase_actions: List[Union[Action]] = [
-                Action(action_type=ActionType.CAST_SPELL, action_data=ActionData(spell_card=card)) for card in
-                self.plan_hand_cards if
-                isinstance(card, SpellCard) and card.mana_cost <= self.mana]
-            spell_phase_actions.append(Action(action_type=ActionType.SPELL_PHASE_END))
-            # メモ：スペルの取れる選択肢の数だけactionsは増えるのでspell実装し始めたらそうする
-            return spell_phase_actions
+            return self._legal_spell_actions()
         elif self.phase == PhaseKind.SUMMON_PHASE:
-            # プレイ可能なモンスターカードをフィルタリング
-            possible_monster_cards = [
-                card for card in self.plan_hand_cards
-                if isinstance(card, MonsterCard) and card.mana_cost <= self.plan_mana
-            ]
-            # カードを配置可能なフィールドの位置を見つける
-            empty_field_positions = [
-                i for i, sd in enumerate(self.plan_zone.standby_field)
-                if sd is None
-            ]
-            # 可能な組み合わせを生成
-            combinations = []
-            for card in possible_monster_cards:
-                for position in empty_field_positions:
-                    action = Action(action_type=ActionType.SUMMON_MONSTER,
-                                    action_data=ActionData(card, summon_standby_field_idx=position))
-                    combinations.append(action)
-            combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
-            return combinations
+            return self._legal_summon_actions()
         elif self.phase == PhaseKind.ACTIVITY_PHASE:
-            combinations = []
-            for i in range(len(self.zone.battle_field)):
-                if self.zone.battle_field[i] and self.zone.battle_field[i].card.can_act:
-                    card = self.zone.battle_field[i].card
-                    combinations.append(
-                        Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(card)))
-                    if not self.zone.battle_field[i - 1]:
-                        combinations.append(
-                            Action(action_type=ActionType.MONSTER_MOVE,
-                                   action_data=ActionData(card, move_direction="LEFT")))
-                    if not self.zone.battle_field[i + 1]:
-                        combinations.append(
-                            Action(action_type=ActionType.MONSTER_MOVE,
-                                   action_data=ActionData(monster_card=card, move_direction="RIGHT")))
-                    # あえて何もしない場合のパターンもここに追加する予定、一旦ここにはなしにしておく一応用意しておくが
+            return self._legal_activity_actions()
 
-            combinations.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
-            return combinations
+    def _legal_spell_actions(self) -> List[Action]:
+        """スペルフェイズにおける合法行動を返す"""
+        actions = [Action(action_type=ActionType.CAST_SPELL, action_data=ActionData(spell_card=card))
+                   for card in self.plan_hand_cards
+                   if isinstance(card, SpellCard) and card.mana_cost <= self.plan_mana]
+        actions.append(Action(action_type=ActionType.SPELL_PHASE_END))
+        return actions
+
+    def _legal_summon_actions(self) -> List[Action]:
+        """召喚フェイズにおける合法行動を返す"""
+        possible_monster_cards = [card for card in self.plan_hand_cards
+                                  if isinstance(card, MonsterCard) and card.mana_cost <= self.plan_mana]
+        empty_field_positions = [i for i, slot in enumerate(self.plan_zone.standby_field) if slot is None]
+
+        combinations = [Action(action_type=ActionType.SUMMON_MONSTER,
+                               action_data=ActionData(monster_card=card, summon_standby_field_idx=pos))
+                        for card in possible_monster_cards for pos in empty_field_positions]
+        combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
+        return combinations
+
+    def _legal_activity_actions(self) -> List[Action]:
+        """アクティビティフェイズにおける合法行動を返す
+        移動、もしくは攻撃"""
+        actions = []
+        for i, slot in enumerate(self.zone.battle_field):
+            if slot.card and slot.card.plan_can_act:
+                actions.append(
+                    Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(attack_declaration_idx=i)))
+                if i > 0 and self.zone.battle_field[i - 1].card is None:
+                    actions.append(Action(action_type=ActionType.MONSTER_MOVE,
+                                          action_data=ActionData(move_battle_field_idx=i, move_direction="LEFT")))
+                if i < len(self.zone.battle_field) - 1 and self.zone.battle_field[i + 1].card is None:
+                    actions.append(Action(action_type=ActionType.MONSTER_MOVE,
+                                          action_data=ActionData(move_battle_field_idx=i, move_direction="RIGHT")))
+
+        actions.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
+        return actions
 
     def select_plan_action(self, action: Action):
         """PlanのActionの配列があり、randomの場合次にするActionの
@@ -245,26 +241,30 @@ class Player:
             self.move_forward_mock(self.plan_zone)
 
         elif action.action_type == ActionType.SUMMON_MONSTER:
-            self.summon_phase_actions.append(action)
-            self.plan_mana -= action.action_data.monster_card.mana_cost
-            self.plan_zone.standby_field[action.action_data.summon_standby_field_idx] = action.action_data.monster_card
-            # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
-            self.plan_hand_cards = [card for card in self.plan_hand_cards if
-                                    card.uniq_id != action.action_data.monster_card.uniq_id]
-
+            self._plan_do_summon_monster(action)
         elif action.action_type == ActionType.SUMMON_PHASE_END:
             self.phase = PhaseKind.ACTIVITY_PHASE
         elif action.action_type == ActionType.MONSTER_ATTACK:
             self.activity_phase_actions.append(action)
             for i, slt in enumerate(self.plan_zone.battle_field):
                 if slt.card.uniq_id == action.action_data.monster_card.uniq_id:
-                    slt.card.can_act = False
+                    slt.card.plan_can_act = False
                     break
         elif action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
             self.monster_move(action)
         elif action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
+
+    def _plan_do_summon_monster(self, action: Action):
+        """モンスター召喚処理"""
+        target_card = next(
+            (card for card in self.plan_hand_cards if card.uniq_id == action.action_data.monster_card.uniq_id), None)
+        if target_card and self.plan_zone.standby_field[action.action_data.summon_standby_field_idx] is None:
+            self.plan_zone.set_standby_field_card(action.action_data.summon_standby_field_idx, target_card)
+            self.plan_hand_cards.remove(target_card)
+            self.plan_mana -= target_card.mana_cost
+            self.summon_phase_actions.append(action)
 
     def monster_move(self, action: Action) -> None:
         zone = self.zone
