@@ -71,8 +71,10 @@ class Node:
         """決着がつくまでランダムにプレイする."""
         if state.is_game_end():
             return state.evaluate_result()
-
-        n_state = state.next(state.random_action())
+        if state.is_both_end_phase():
+            state.refresh_turn()
+        act = state.random_action()  # nagaiデバッグ確認用に一旦変数に入れている
+        n_state = state.next(act)
         if state.player_1.is_first_player != n_state.player_1.is_first_player:
             return -Node.playout(n_state)
         else:

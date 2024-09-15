@@ -58,6 +58,8 @@ def instance_card(card_no: int):
             return MonsterCard(card_no, 3, "イノシシ", 3, 2)
         case 11:
             return MonsterCard(card_no, 7, "炎のドラゴン", 5, 6)
+        case 12:
+            return MonsterCard(card_no, 8, "ウルヴァン", 8, 8)
 
         case 100:
             def cast_spell():

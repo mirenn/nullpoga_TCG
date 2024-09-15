@@ -12,6 +12,7 @@ from state import State
 from player import Player, ActionType, Action, ActionData, FieldStatus
 from gameutils.nullpoga_system import instance_card
 from itertools import zip_longest
+from npg_monte_carlo_tree_search.node import Node
 
 
 @pytest.fixture
@@ -21,7 +22,9 @@ def few_cds_state():
     player2_cards = [1, 11, 11, 11, 11, 11, 3]
     player1 = Player(player1_cards, 1)
     player2 = Player(player2_cards, 1)
-    return State(player1, player2)
+    state = State(player1, player2)
+    state.init_game()
+    return state
 
 
 def assert_summon_action(action, expected_idx, expected_card_no):
@@ -78,8 +81,8 @@ def test_monster_attacked(few_cds_state):
     player2.zone.battle_field[0].card = instance_card(1)  # ネズミ
 
     initial_life_p1 = player1.life
-    state.player_1.monster_attacked(Action(ActionType.MONSTER_MOVE, ActionData(
-        monster_card=player2.zone.battle_field[4].card)), player2.zone)
+    state.player_1.monster_attacked(Action(ActionType.MONSTER_MOVE, ActionData(player2.zone.battle_field[4].card)),
+                                    player2.zone)
 
     # 攻撃後、ネズミのライフが0に
     assert player1.zone.battle_field[0].card.life == 0
@@ -113,7 +116,7 @@ def test_fcds_monster_move(few_cds_state):
     assert player1.zone.battle_field[2].card is not None
 
 
-def test_execute_summon(few_cds_state):
+def test_fcds_execute_summon(few_cds_state):
     """
     召喚処理のテスト
     """
@@ -123,13 +126,13 @@ def test_execute_summon(few_cds_state):
 
     player1_action = Action(
         action_type=ActionType.SUMMON_MONSTER,
-        action_data=ActionData(summon_index=0, monster_card=player1.hand_cards[0])
+        action_data=ActionData(summon_standby_field_idx=0, monster_card=player1.hand_cards[0])
     )
     player1_mana_cost = player1.hand_cards[0].mana_cost
 
     player2_action = Action(
         action_type=ActionType.SUMMON_MONSTER,
-        action_data=ActionData(summon_index=1, monster_card=player2.hand_cards[0])
+        action_data=ActionData(summon_standby_field_idx=1, monster_card=player2.hand_cards[0])
     )
     player2_mana_cost = player2.hand_cards[0].mana_cost
 
@@ -152,15 +155,70 @@ def test_execute_summon(few_cds_state):
     assert player2.mana == initial_mana_player2 - player2_mana_cost
 
 
-def test_fcds_execute_activity():
-    """
-    activity:移動と行動のテスト
-    """
-    pass
+def test_initial_game_state(few_cds_state):
+    """初期ゲーム状態が正しく設定されているかを確認するテスト"""
+    state = few_cds_state
+
+    assert state.player_1.life > 0
+    assert state.player_2.life > 0
+    assert len(state.player_1.deck_cards) > 0
+    assert len(state.player_2.deck_cards) > 0
+    assert state.game_finished is False
+    assert state.first_player_win is False
+    assert state.second_player_win is False
 
 
-def test_fcds_next(few_cds_state):
-    """
-    ターンの次への進行を確認するテスト
-    """
-    pass
+@pytest.fixture
+def high_cost_cds_state():
+    """デッキをすべてハイコストのカードで構成してStateを返す"""
+    player1_cards = [11, 11, 11, 11, 11, 11, 11]
+    player2_cards = [12, 12, 12, 12, 12, 12, 12]
+    player1 = Player(player1_cards, 3)  # マナを3に設定、11は召喚不可
+    player2 = Player(player2_cards, 3)  # 同じくマナを3に設定
+    state = State(player1, player2)
+    state.init_game()
+    return state
+
+
+def test_next_no_action_switches_turn(high_cost_cds_state):
+    """アクションが実行できない場合、手番が交代することを確認する"""
+    state = high_cost_cds_state
+    initial_first_player = state.is_first_player()  # 現在の先手番プレイヤーを記録
+
+    # プレイヤー1がアクションを実行
+    action_end_phase = Action(
+        action_type=ActionType.ACTIVITY_PHASE_END,
+        action_data=ActionData()
+    )
+    state = state.next(action_end_phase)  # フェイズ終了のアクションを渡して手番交代
+
+    # プレイヤー1がフェイズを終了し、プレイヤー2に手番が交代することを確認
+    assert state.is_first_player() is False  # 手番が交代しているか確認
+
+    # プレイヤー2がアクションを実行
+    state = state.next(action_end_phase)  # プレイヤー2もフェイズ終了
+
+    # プレイヤー1に再び手番が戻っていることを確認
+    assert state.is_first_player() is True
+
+
+# 攻撃が成功することを確認する
+
+
+@pytest.fixture
+def player1_will_win_state():
+    """プレイヤー1がすぐに勝利できるState"""
+    player1_cards = [1, 11, 11, 11, 11, 11, 11, 11, 11]
+    player2_cards = [1, 11, 11, 11, 11, 11, 11, 11, 11]
+    player1 = Player(player1_cards, 1)
+    player2 = Player(player2_cards, 0)
+    player2.life = 1
+    state = State(player1, player2)
+    state.init_game()
+    return state
+
+
+def test_playout(player1_will_win_state):
+    """playoutのテスト"""
+    root_node = Node(player1_will_win_state, expand_base=10)
+    root_node.playout(root_node.state)

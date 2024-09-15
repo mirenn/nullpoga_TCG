@@ -1,9 +1,9 @@
 from __future__ import annotations
 import hashlib
-import json
+# import json
 import random
 from random import choice
-from istate import IState
+# from istate import IState
 from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
 
@@ -64,7 +64,7 @@ class State(IState):
         self.second_player_win = False
 
     def init_game(self, debug=False):
-        """初期状態からゲームを始める"""
+        """初期状態からゲームを始める nagai:使わないかも"""
         # デバッグ用
         global DEBUG
         DEBUG = debug
@@ -76,8 +76,8 @@ class State(IState):
         self.player_2.is_first_player = False
 
         # デッキをシャッフル
-        random.shuffle(self.player_1.deck_cards)
-        random.shuffle(self.player_2.deck_cards)
+        # random.shuffle(self.player_1.deck_cards)
+        # random.shuffle(self.player_2.deck_cards)
 
         # ５枚ドロー
         # for _ in range(5):
@@ -124,82 +124,6 @@ class State(IState):
         """お試し。等価判定。ハッシュが衝突したとき用だけどほぼ無意味"""
         return json.dumps(self.to_json(), sort_keys=True) == json.dumps(other.to_json(), sort_keys=True)
 
-    def next_turn(self) -> State:
-        """各プレイヤーの入力が終わっている前提で、１ターン文の処理を行う。
-        お互いのプレイヤーの予約されたアクションを処理する"""
-        # すでにゲームが終了している場合はエラー
-        if self.game_finished:
-            raise Exception("# すでにゲームが終了しています。")
-        # 一旦nextで実装だが、まとめてもよさそう
-        player_1 = copy.deepcopy(self.player_1)
-        player_2 = copy.deepcopy(self.player_2)
-        temp_state = State(player_1, player_2)
-        # ★スペルフェイズを処理
-        # スペル処理（プレイヤー入力）
-        for action in player_1.spell_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-        for action in player_2.spell_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-
-        # ★召喚フェイズを処理
-        # 進軍処理（自動）
-        temp_state.player_1.move_forward()
-        temp_state.player_2.move_forward()
-        # 召喚処理（プレイヤー入力）
-        for action in player_1.summon_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-        for action in player_2.summon_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-
-        # ★行動フェイズを処理
-        # 行動、攻撃宣言処理（プレイヤー入力）
-        # メモ：攻撃宣言はインデックスで宣言。個劇処理時に宣言箇所にカードがなければ不発（スキップ）
-        for action in player_1.activity_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-        for action in player_2.activity_phase_actions:
-            temp_state = temp_state.next(action)
-        temp_state = temp_state.change_player()
-        # 攻撃処理（自動）
-        for i in range(5):
-            temp_state = temp_state.resolve_attack_phase_1step()
-            if DEBUG:
-                input(f"攻撃処理 [{i}/5]step")
-                temp_state.print()
-                input("デバッグモード・・・適当なキーを押してください")
-            if temp_state.game_finished:
-                break
-
-        # ターン終了
-        # 移動済みモンスターが攻撃できないようにする場合はここで行動済みフラグをリセットする
-        for idx, slot in enumerate(player_1.zone.battle_field):
-            if slot.card is not None and slot.card.attack_declaration:
-                slot.card.done_activity = False
-        for idx, slot in enumerate(player_2.zone.battle_field):
-            if slot.card is not None:
-                slot.card.done_activity = False
-
-        # デッキ切れ判定（とりあえず引き分け）
-        if len(temp_state.player_1.deck_cards) == 0 or len(temp_state.player_2.deck_cards) == 0:
-            temp_state.game_finished = True
-            logging.debug("# デッキ切れのためゲーム終了です")
-            return temp_state
-
-        if temp_state.game_finished:
-            logging.debug("# ゲーム終了です")
-
-        # 次のターン開始して再度プレイヤーの入力を受け付ける
-        temp_state.player_1.draw_card()
-        temp_state.player_2.draw_card()
-        temp_state.player_1.mana += 1
-        temp_state.player_2.mana += 1
-
-        return temp_state
-
     def is_game_end(self):
         """"
         - どちらかのライフがゼロ
@@ -213,6 +137,7 @@ class State(IState):
                 player_1_wilderness_all = False
                 break
         if player_1_wilderness_all:
+            print("ゲームエンド:フィールドが全て荒野")
             return True
 
         player_2_wilderness_all = True
@@ -221,10 +146,25 @@ class State(IState):
                 player_2_wilderness_all = False
                 break
         if player_2_wilderness_all:
+            print("ゲームエンド:フィールドが全て荒野")
             return True
-
-        return (self.player_1.life <= 0) or (self.player_2.life <= 0) or (len(self.player_1.deck_cards) < 1) and (
+        retFlag = (self.player_1.life <= 0) or (self.player_2.life <= 0) or (len(self.player_1.deck_cards) < 1) and (
                 len(self.player_2.deck_cards) < 1)
+        # デバッグのため確認
+        if (self.player_1.life <= 0) or (self.player_2.life <= 0):
+            print("プレイヤーのライフがゼロ以下になったため終了")
+        elif (len(self.player_1.deck_cards) < 1) and (
+                len(self.player_2.deck_cards) < 1):
+            print("デッキ切れのため終了")
+
+        return retFlag
+
+    def is_both_end_phase(self):
+        return self.player_1.phase == self.player_2.phase == PhaseKind.END_PHASE
+
+    def refresh_turn(self):
+        self.player_1.next_turn_refresh()
+        self.player_2.next_turn_refresh()
 
     def evaluate_result(self):
         """
@@ -273,115 +213,6 @@ class State(IState):
         else:
             return 0
 
-    def player_2_win(self):
-        return self.is_game_end() and self.player_1.life < self.player_2.life
-
-    def resolve_attack_phase_1step(self) -> State:
-        """1回分の攻撃処理。新しいゲームの状態を返す"""
-        player_1 = copy.deepcopy(self.player_1)
-        player_2 = copy.deepcopy(self.player_2)
-        new_state = State(player_1, player_2)
-
-        def attack(player: Player, enemy_player: Player, battle_field_idx: int):
-            # 攻撃対象のモンスターがいない場合はなにもしない
-            if battle_field_idx is None:
-                return
-            card = player.zone.battle_field[battle_field_idx].card
-            # 攻撃対象にカードがない場合
-            target_slot = enemy_player.zone.battle_field[4 - battle_field_idx]
-            if target_slot.card is None and target_slot.status == FieldStatus.WILDERNESS:
-                logging.debug(f"# 直接攻撃（荒野済み）-> {card.attack}ダメージ")
-                enemy_player.life -= card.attack
-            elif target_slot.card is None:
-                logging.debug(f"# 直接攻撃＆荒野化-> {card.attack}ダメージ")
-                enemy_player.life -= card.attack
-                target_slot.set_wild()
-            elif target_slot.status == FieldStatus.WILDERNESS:
-                logging.debug(f"# カードに攻撃（荒野済み）-> {card.attack}ダメージ")
-                target_slot.card.life -= card.attack
-            else:
-                logging.debug(f"# カードに攻撃-> {card.attack}ダメージ")
-                target_slot.card.life -= card.attack
-            card.attack_declaration = False
-
-        # 攻撃可能モンスターの判定
-        player_1_idx = None
-        player_2_idx = None
-        for idx, slot in enumerate(player_1.zone.battle_field):
-            if slot.card is not None and slot.card.attack_declaration:
-                player_1_idx = idx
-                break
-        for idx, slot in enumerate(player_2.zone.battle_field):
-            if slot.card is not None and slot.card.attack_declaration:
-                player_2_idx = idx
-                break
-
-        attack(player_1, player_2, player_1_idx)
-        attack(player_2, player_1, player_2_idx)
-
-        # モンスターカードの破壊処理
-        for idx, slot in enumerate(player_1.zone.battle_field):
-            if slot.card is not None and slot.card.life <= 0:
-                slot.remove_card()
-        for idx, slot in enumerate(player_2.zone.battle_field):
-            if slot.card is not None and slot.card.life <= 0:
-                slot.remove_card()
-
-        # 各種勝敗判定
-        # 先手のプレイヤーが勝ち
-        if new_state.second_player().life <= 0 and new_state.second_player().life < new_state.first_player().life:
-            new_state = State(player_1, player_2)
-            new_state.game_finished = True
-            new_state.first_player_win = True
-            return new_state
-        # 後手のプレイヤーが勝ち
-        if new_state.first_player().life <= 0 and new_state.first_player().life < new_state.second_player().life:
-            new_state = State(player_1, player_2)
-            new_state.game_finished = True
-            new_state.second_player_win = True
-            return new_state
-        # 引き分け
-        if new_state.first_player().life <= 0 and new_state.second_player().life <= 0:
-            new_state = State(player_1, player_2)
-            new_state.game_finished = True
-            if new_state.first_player().life > new_state.second_player().life:
-                new_state.first_player_win = True
-            elif new_state.second_player().life > new_state.second_player().life:
-                new_state.second_player_win = True
-            return new_state
-
-        # 先手フィールドの荒野判定
-        first_player_wilderness_all = True
-        for idx, slot in enumerate(new_state.first_player().zone.battle_field):
-            if slot.status != FieldStatus.WILDERNESS:
-                first_player_wilderness_all = False
-
-        # 後手フィールドの荒野判定
-        second_player_wilderness_all = True
-        for idx, slot in enumerate(new_state.second_player().zone.battle_field):
-            if slot.status != FieldStatus.WILDERNESS:
-                second_player_wilderness_all = False
-
-        # 先手勝ちの場合
-        if not first_player_wilderness_all and second_player_wilderness_all:
-            new_state.game_finished = True
-            new_state.first_player_win = True
-            return new_state
-        if first_player_wilderness_all and not second_player_wilderness_all:
-            new_state.game_finished = True
-            new_state.second_player_win = True
-            return new_state
-        if first_player_wilderness_all and second_player_wilderness_all:
-            # 両方荒野の場合はライフで判断
-            new_state.game_finished = True
-            if new_state.first_player().life > new_state.second_player().life:
-                new_state.first_player_win = True
-            elif new_state.second_player().life > new_state.second_player().life:
-                new_state.second_player_win = True
-            return new_state
-
-        return State(player_1, player_2)
-
     def change_player(self) -> State:
         """手番を変更して新しい状態を返す"""
         player_1 = copy.deepcopy(self.player_1)
@@ -398,7 +229,7 @@ class State(IState):
         player_1 = copy.deepcopy(self.player_1)
         player_2 = copy.deepcopy(self.player_2)
 
-        player_1.select_plan_action(action_)  # nagaiまずここから直すよさそう?
+        player_1.select_plan_action(action_)
         if player_1.phase == PhaseKind.END_PHASE:
             if player_2.phase == PhaseKind.END_PHASE:
                 # 実際に処理する必要がある
@@ -409,40 +240,6 @@ class State(IState):
         else:
             return State(player_1, player_2)
 
-    # def next(self, action: Action) -> State:
-    #     """アクションを受け付け、状態を更新して次の状態を返す。
-    #     めっちゃ細かい。実質デバッグ用。
-    #
-    #     Parameters
-    #     ----------
-    #     action : Action
-    #         アクション
-    #
-    #     Returns
-    #     -------
-    #     State
-    #         新しいゲームの状態
-    #     """
-    #     # 古い状態を変にいじらないようにコピーする
-    #     player_1 = copy.deepcopy(self.player_1)
-    #     player_2 = copy.deepcopy(self.player_2)
-    #
-    #     if action.action_type == ActionType.SUMMON_MONSTER:
-    #         logging.debug(f"ActionType.SUMMON_MONSTER {str(action)}")
-    #         player_1.do_summon_monster(action)
-    #     if action.action_type == ActionType.MONSTER_MOVE:
-    #         logging.debug(f"ActionType.MONSTER_MOVE {str(action)}")
-    #         player_1.do_move_monster(action)
-    #     if action.action_type == ActionType.MONSTER_ATTACK:
-    #         logging.debug(f"ActionType.MONSTER_ATTACK {str(action)}")
-    #         player_1.do_monster_attack_declaration(action)
-    #
-    #     new_state = State(player_1, player_2)
-    #     if DEBUG:
-    #         new_state.print()
-    #         input("デバッグモード・・・適当なキーを押してください")
-    #     return new_state
-
     def legal_actions(self) -> List[Action]:
         """手番のプレイヤーの現在の状態での合法手を列挙する。
 
@@ -452,18 +249,6 @@ class State(IState):
             合法手のリスト
         """
         return self.player_1.legal_actions()
-
-    # def random_action(self) -> None:
-    #     """手番のプレイヤーのアクションを設定する"""
-    #     summon_actions = self.player_1.legal_summon_actions()
-    #     random.shuffle(summon_actions)
-    #     self.player_1.summon_phase_actions = summon_actions
-    #
-    #     move_actions = self.player_1.legal_move_actions()
-    #     attack_actions = self.player_1.legal_attack_actions()
-    #     activity_actions = move_actions + attack_actions
-    #     random.shuffle(activity_actions)
-    #     self.player_1.activity_phase_actions = activity_actions
 
     def random_action(self) -> Action:
         """"player1の可能な手を返す
@@ -484,9 +269,6 @@ class State(IState):
 
     def first_player(self) -> Player:
         return self.player_1 if self.player_1.is_first_player else self.player_2
-
-    def second_player(self) -> Player:
-        return self.player_2 if self.player_1.is_first_player else self.player_1
 
     def is_first_player(self) -> bool:
         """現在の手番が先手番の場合True"""
@@ -558,19 +340,21 @@ class State(IState):
 
         def summon_action(player: Player, action: Action):
             """個々のプレイヤーの召喚処理を行う"""
-            if (action and not player.zone.standby_field[action.action_data.summon_index] and
+            if (action and not player.zone.standby_field[action.action_data.summon_standby_field_idx] and
                     action.action_data.monster_card.mana_cost <= player.mana and
                     any(card.uniq_id == action.action_data.monster_card.uniq_id for card in player.hand_cards)):
                 player.mana -= action.action_data.monster_card.mana_cost
-                player.zone.standby_field[action.action_data.summon_index] = action.action_data.monster_card
+                player.zone.standby_field[action.action_data.summon_standby_field_idx] = action.action_data.monster_card
                 # 手札から召喚したモンスターを削除(削除したい要素以外を残す)
                 player.hand_cards = [card for card in player.hand_cards if
                                      card.uniq_id != action.action_data.monster_card.uniq_id]
 
         # 両プレイヤーの召喚処理を行う
         for my_act, e_act in zip_longest(player_1.summon_phase_actions, player_2.summon_phase_actions):
-            summon_action(player_1, my_act)
-            summon_action(player_2, e_act)
+            if my_act:
+                summon_action(player_1, my_act)
+            if e_act:
+                summon_action(player_2, e_act)
 
         # アクションのリセット
         player_1.summon_phase_actions = []
@@ -604,87 +388,8 @@ class State(IState):
                 slt.remove_card()
         for i, slt in enumerate(e_pieces.zone.battle_field):
             if slt.card is not None and slt.card.life <= 0:
-                # slt.card = None
                 slt.card = None
 
     @staticmethod
     def pieces_count(pieces: List[int]) -> int:
         return pieces.count(1)
-
-
-if __name__ == "__main__":
-    # デバッグ用
-
-    # 準備
-    state = State()
-    state.print()
-
-    # ゲーム開始（５枚ドロー）
-    state.init_game()
-    state.print()
-
-    for _ in range(10):
-        state.random_action()
-        state = state.change_player()
-        state.random_action()
-        state = state.change_player()
-        state = state.next_turn()
-        state.print()
-
-        if state.is_done():
-            break
-
-    # デバッグ用
-    if True:
-        # デバッグ用手動実行
-        # 召喚（先手プレイヤー）
-        tes_action = Action(ActionType.SUMMON_MONSTER,
-                            action_data=ActionData(summon_card_no=2, summon_standby_field_idx=4))
-        state = state.next(tes_action)
-        state.print()
-
-        # 召喚（先手プレイヤー）
-        tes_action = Action(ActionType.SUMMON_MONSTER,
-                            action_data=ActionData(summon_card_no=6, summon_standby_field_idx=1))
-        state = state.next(tes_action)
-        state.print()
-
-        # 先手プレイヤーのターンを終了する
-        tes_action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
-        state = state.next(tes_action)
-        state = state.change_player()  # ここでプレイヤーが入れ替わるのに注意
-        state.print()
-
-        # 後手プレイヤーは何もしないでターンを終了
-        tes_action = Action(ActionType.ACTIVITY_PHASE_END, action_data=ActionData())
-        state = state.next(tes_action)
-        state = state.change_player()  # ここでプレイヤーが入れ替わるのに注意
-        state.print()
-
-        # 進軍フェーズ（強制）
-        state.player_1.move_forward()
-        state.player_2.move_forward()
-        state.print()
-
-        # 行動フェーズ（移動アクションの処理）
-        tes_action = Action(
-            ActionType.MONSTER_MOVE,
-            action_data=ActionData(
-                move_battle_field_idx=4,
-                move_direction="left",
-            ),
-        )
-        state = state.next(tes_action)
-        state.print()
-
-        # 行動フェーズ（攻撃宣言の処理）
-        tes_action = Action(
-            ActionType.MONSTER_ATTACK,
-            action_data=ActionData(attack_declaration_idx=1),
-        )
-        state = state.next(tes_action)
-        state.print()
-
-        # 本当は５回やる
-        state = state.resolve_attack_phase_1step()
-        state.print()

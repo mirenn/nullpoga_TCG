@@ -108,8 +108,6 @@ class ActionData:
     # MONSTER_ATTACK用
     attack_declaration_idx: Optional[int] = field(default=None)  # 不使用になるかも：攻撃宣言するバトルフィールドのインデックス
 
-    # SUMMON_MONSTER用
-    summon_index: Optional[int] = field(default=None)  # index:召喚するときに使用
     # 以下現状不使用
     spell_card: Optional[SpellCard] = field(default=None)
 
@@ -145,11 +143,10 @@ class Player:
 
     summon_phase_actions: list[Action]
 
-    def __init__(self, deck_cards: List[int], mana=3):
+    def __init__(self, deck_cards: List[int], init_mana=1):
         """
-
         :param deck_cards:デッキのカードの順番になる。シャッフルしてから渡す
-        :param mana:
+        :param init_mana:
         """
         self.turn_count = 0
         self.player_id: UUID = uuid.uuid4()
@@ -169,7 +166,8 @@ class Player:
         # self.phase = PhaseKind.SPELL_PHASE
         self.phase = PhaseKind.SUMMON_PHASE
 
-        self.mana = mana  # 相手のマナに干渉するカードを考えるためにplanと分けた
+        self.base_mana = init_mana  # マナブーストなどはこのマナを変動させておけばターン開始時に反映される
+        self.mana = init_mana  # 相手のマナに干渉するカードを考えるためにplanと分けた
         self.plan_mana = copy.copy(self.mana)
         self.life = 15
 
@@ -179,9 +177,22 @@ class Player:
 
         self.is_first_player: Optional[bool] = None
 
+    def next_turn_refresh(self):
+        """
+        初回を除く、ターン開始時に行う処理
+        :return:
+        """
+        self.turn_count += 1
+        self.plan_mana = self.mana = self.turn_count + self.base_mana
+        self.draw_card()
+        self.plan_hand_cards = copy.deepcopy(self.hand_cards)
+        self.phase = PhaseKind.SUMMON_PHASE
+        self.plan_zone = copy.deepcopy(self.zone)
+
     def legal_actions(self) -> List[Action]:
         """現在のフェイズに応じて、合法的な行動を返す"""
-        print("legal_actions 現在のphase:", self.phase)
+        print("legal_actions 現在のphase:", self.phase, "first_player:", self.is_first_player, "turn count",
+              self.turn_count)
         if self.phase == PhaseKind.SPELL_PHASE:
             return self._legal_spell_actions()
         elif self.phase == PhaseKind.SUMMON_PHASE:
@@ -216,13 +227,16 @@ class Player:
         for i, slot in enumerate(self.zone.battle_field):
             if slot.card and slot.card.plan_can_act:
                 actions.append(
-                    Action(action_type=ActionType.MONSTER_ATTACK, action_data=ActionData(attack_declaration_idx=i)))
+                    Action(action_type=ActionType.MONSTER_ATTACK,
+                           action_data=ActionData(slot.card)))
                 if i > 0 and self.zone.battle_field[i - 1].card is None:
                     actions.append(Action(action_type=ActionType.MONSTER_MOVE,
-                                          action_data=ActionData(move_battle_field_idx=i, move_direction="LEFT")))
+                                          action_data=ActionData(slot.card, move_battle_field_idx=i,
+                                                                 move_direction="LEFT")))
                 if i < len(self.zone.battle_field) - 1 and self.zone.battle_field[i + 1].card is None:
                     actions.append(Action(action_type=ActionType.MONSTER_MOVE,
-                                          action_data=ActionData(move_battle_field_idx=i, move_direction="RIGHT")))
+                                          action_data=ActionData(slot.card, move_battle_field_idx=i,
+                                                                 move_direction="RIGHT")))
 
         actions.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
         return actions
@@ -247,7 +261,7 @@ class Player:
         elif action.action_type == ActionType.MONSTER_ATTACK:
             self.activity_phase_actions.append(action)
             for i, slt in enumerate(self.plan_zone.battle_field):
-                if slt.card.uniq_id == action.action_data.monster_card.uniq_id:
+                if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                     slt.card.plan_can_act = False
                     break
         elif action.action_type == ActionType.MONSTER_MOVE:
