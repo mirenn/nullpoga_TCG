@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import List, Optional
 # from npg_monte_carlo_tree_search.istate import IState
-from nullpoga_cui.state import State
+from state import State
 from npg_monte_carlo_tree_search.util.ucb1 import ucb1
 from npg_monte_carlo_tree_search.util.argmax import argmax
 
