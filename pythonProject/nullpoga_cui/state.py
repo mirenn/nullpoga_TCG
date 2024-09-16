@@ -228,7 +228,6 @@ class State(IState):
         """
         player_1 = copy.deepcopy(self.player_1)
         player_2 = copy.deepcopy(self.player_2)
-
         player_1.select_plan_action(action_)
         if player_1.phase == PhaseKind.END_PHASE:
             if player_2.phase == PhaseKind.END_PHASE:
@@ -322,8 +321,8 @@ class State(IState):
         """
         # スペルフェイズ未実装
         # 進軍フェイズ
-        player_1.move_forward()
-        player_2.move_forward()
+        player_1.move_forward(player_1.zone)
+        player_2.move_forward(player_2.zone)
         # summonフェイズ
         self.execute_summon(player_1, player_2)
         # activityフェイズ
@@ -361,11 +360,17 @@ class State(IState):
         player_2.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
+        print("turn count:", player_1.turn_count)
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
+            print("exe_activity", "first_player" if player_1.is_first_player else "second_player",
+                  p1_act.to_json() if p1_act else None)
+            print("exe_activity", "first_player" if player_2.is_first_player else "second_player",
+                  p2_act.to_json() if p2_act else None)
+
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
-                player_1.monster_move(p1_act)
+                player_1.monster_move(p1_act, player_1.zone)
             if p2_act and p2_act.action_type == ActionType.MONSTER_MOVE:
-                player_2.monster_move(p2_act)
+                player_2.monster_move(p2_act, player_2.zone)
             if p1_act and p1_act.action_type == ActionType.MONSTER_ATTACK:
                 player_2.monster_attacked(p1_act, player_1.zone)
             if p2_act and p2_act.action_type == ActionType.MONSTER_ATTACK:
@@ -375,7 +380,8 @@ class State(IState):
             if self.is_game_end():
                 break
 
-    def delete_monster(self, my_pieces: Player, e_pieces: Player):
+    @staticmethod
+    def delete_monster(my_pieces: Player, e_pieces: Player):
         """
         ライフがゼロ以下になったモンスターを削除する
         :param my_pieces:

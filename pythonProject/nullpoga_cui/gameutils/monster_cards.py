@@ -24,7 +24,7 @@ class MonsterCard:
         self.attack = attack
         self.life = life
         self.stun_count = 0
-        self.plan_can_act = True
+        #self.plan_can_act = True
         self.can_act = True  # 行動（攻撃）可能か
         self.attack_declaration = False  # 攻撃宣言済みか
         self.done_activity = False  # 行動済みかどうか
@@ -33,7 +33,10 @@ class MonsterCard:
         return f"{self.card_name}"
 
     def to_json(self):
-        return self.__str__()
+        return {
+            "card_name": self.card_name,
+            "life": self.life
+        }
 
     def turn_start_effect(self):
         """

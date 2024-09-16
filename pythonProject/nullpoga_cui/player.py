@@ -95,6 +95,12 @@ class Action:
         #     idx = self.action_data.attack_declaration_idx
         #     return f"攻撃宣言アクション 列{idx}のカードで攻撃"
 
+    def to_json(self):
+        return {
+            "action_type": self.action_type.name,
+            "action_data": self.action_data.to_json() if self.action_data else None
+        }
+
 
 @dataclass
 class ActionData:
@@ -113,9 +119,16 @@ class ActionData:
 
     def __str__(self):
         return json.dumps({
-            "monster_card": str(self.monster_card),
+            "monster_card": self.monster_card.to_json() if self.monster_card else None,
             "summon_standby_field_idx": self.summon_standby_field_idx
         })
+
+    def to_json(self):
+        return {
+            "monster_card": self.monster_card.to_json() if self.monster_card else None,
+            "summon_standby_field_idx": self.summon_standby_field_idx,
+            "move_direction": self.move_direction
+        }
 
 
 class PhaseKind(Enum):
@@ -162,9 +175,9 @@ class Player:
         self.zone = Zone()
         self.plan_zone = Zone()
 
-        # フェイズも管理。（現在不使用）
-        # self.phase = PhaseKind.SPELL_PHASE
-        self.phase = PhaseKind.SUMMON_PHASE
+        # フェイズも管理
+        self.phase = PhaseKind.SPELL_PHASE
+        # self.phase = PhaseKind.SUMMON_PHASE
 
         self.base_mana = init_mana  # マナブーストなどはこのマナを変動させておけばターン開始時に反映される
         self.mana = init_mana  # 相手のマナに干渉するカードを考えるためにplanと分けた
@@ -177,6 +190,14 @@ class Player:
 
         self.is_first_player: Optional[bool] = None
 
+        # ------以下デバッグ用-------
+        # monster_moveを選ぶフラグ。Falseの場合モンスターを移動させる選択肢を取らない
+        # self.select_monster_move = True
+        # 可能なら全て召喚する
+        self.summon_all = True
+        # 全て攻撃する(移動しない):移動のplanなし。攻撃のplanがある限りそれを選ぶ
+        self.attack_all = True
+
     def next_turn_refresh(self):
         """
         初回を除く、ターン開始時に行う処理
@@ -186,7 +207,10 @@ class Player:
         self.plan_mana = self.mana = self.turn_count + self.base_mana
         self.draw_card()
         self.plan_hand_cards = copy.deepcopy(self.hand_cards)
-        self.phase = PhaseKind.SUMMON_PHASE
+        self.phase = PhaseKind.SPELL_PHASE  # PhaseKind.SUMMON_PHASE
+        for bf in self.zone.battle_field:
+            if bf.card is not None:
+                bf.card.can_act = True
         self.plan_zone = copy.deepcopy(self.zone)
 
     def legal_actions(self) -> List[Action]:
@@ -214,37 +238,47 @@ class Player:
                                   if isinstance(card, MonsterCard) and card.mana_cost <= self.plan_mana]
         empty_field_positions = [i for i, slot in enumerate(self.plan_zone.standby_field) if slot is None]
 
-        combinations = [Action(action_type=ActionType.SUMMON_MONSTER,
-                               action_data=ActionData(monster_card=card, summon_standby_field_idx=pos))
-                        for card in possible_monster_cards for pos in empty_field_positions]
-        combinations.append(Action(action_type=ActionType.SUMMON_PHASE_END))
-        return combinations
+        actions = [Action(action_type=ActionType.SUMMON_MONSTER,
+                          action_data=ActionData(monster_card=card, summon_standby_field_idx=pos))
+                   for card in possible_monster_cards for pos in empty_field_positions]
+        if self.summon_all is True and len(actions) > 0:
+            # summon_allなら召喚できる限り召喚する
+            pass
+        else:
+            actions.append(Action(action_type=ActionType.SUMMON_PHASE_END))
+        return actions
 
     def _legal_activity_actions(self) -> List[Action]:
         """アクティビティフェイズにおける合法行動を返す
         移動、もしくは攻撃"""
         actions = []
-        for i, slot in enumerate(self.zone.battle_field):
-            if slot.card and slot.card.plan_can_act:
+        for i, slot in enumerate(self.plan_zone.battle_field):
+            if slot.card and slot.card.can_act:
                 actions.append(
                     Action(action_type=ActionType.MONSTER_ATTACK,
                            action_data=ActionData(slot.card)))
-                if i > 0 and self.zone.battle_field[i - 1].card is None:
+                if self.attack_all is False and i > 0 and self.zone.battle_field[i - 1].card is None:
                     actions.append(Action(action_type=ActionType.MONSTER_MOVE,
                                           action_data=ActionData(slot.card, move_battle_field_idx=i,
                                                                  move_direction="LEFT")))
-                if i < len(self.zone.battle_field) - 1 and self.zone.battle_field[i + 1].card is None:
+                if (self.attack_all is False and i < len(self.zone.battle_field) - 1
+                        and self.zone.battle_field[i + 1].card is None):
                     actions.append(Action(action_type=ActionType.MONSTER_MOVE,
                                           action_data=ActionData(slot.card, move_battle_field_idx=i,
                                                                  move_direction="RIGHT")))
-
-        actions.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
+        if self.attack_all is True and len(actions) > 0:
+            # activity_phase_endは、最後まで返さない
+            pass
+        else:
+            actions.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
         return actions
 
     def select_plan_action(self, action: Action):
         """PlanのActionの配列があり、randomの場合次にするActionの
         一つが適当に選ばれる。選ばれたアクションをここに入れて処理する
         """
+        player = 'first_player' if self.is_first_player else 'second_player'
+        print(' splan:', player, action.to_json())
         if action.action_type == ActionType.CAST_SPELL:
             # 未実装
             pass
@@ -252,8 +286,7 @@ class Player:
             self.phase = PhaseKind.SUMMON_PHASE
             # スペル使用未実装
             # 進軍フェイズはスペルフェイズ終了時に処理してしまう
-            self.move_forward_mock(self.plan_zone)
-
+            self.move_forward(self.plan_zone)
         elif action.action_type == ActionType.SUMMON_MONSTER:
             self._plan_do_summon_monster(action)
         elif action.action_type == ActionType.SUMMON_PHASE_END:
@@ -262,11 +295,11 @@ class Player:
             self.activity_phase_actions.append(action)
             for i, slt in enumerate(self.plan_zone.battle_field):
                 if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
-                    slt.card.plan_can_act = False
+                    slt.card.can_act = False
                     break
         elif action.action_type == ActionType.MONSTER_MOVE:
             self.activity_phase_actions.append(action)
-            self.monster_move(action)
+            self.monster_move(action, self.plan_zone)
         elif action.action_type == ActionType.ACTIVITY_PHASE_END:
             self.phase = PhaseKind.END_PHASE
 
@@ -280,8 +313,8 @@ class Player:
             self.plan_mana -= target_card.mana_cost
             self.summon_phase_actions.append(action)
 
-    def monster_move(self, action: Action) -> None:
-        zone = self.zone
+    @staticmethod
+    def monster_move(action: Action, zone: Zone) -> None:
         for i, slt in enumerate(zone.battle_field):
             if slt.card and slt.card.uniq_id == action.action_data.monster_card.uniq_id:
                 slt.card.can_act = False
@@ -405,19 +438,11 @@ class Player:
         target_slot.card.attack_declaration = True
         logging.debug("# アクション完了")
 
-    def move_forward(self):
-        """Zoneのモンスターカードを全て進軍させる（強制）"""
-        for i, standby_card in enumerate(self.zone.standby_field):
-            if standby_card and not self.zone.battle_field[i].card:
-                standby_card.can_act = False
-                self.zone.battle_field[i].card = standby_card
-                self.zone.standby_field[i] = None
-
     @staticmethod
-    def move_forward_mock(zone: Zone):
+    def move_forward(zone: Zone):
         for i, sb in enumerate(zone.standby_field):
             if sb and not zone.battle_field[i].card:
-                sb.can_act = False
+                # sb.can_act = False
                 zone.battle_field[i].card = sb
                 zone.standby_field[i] = None
 

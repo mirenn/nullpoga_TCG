@@ -9,7 +9,7 @@ pytest
 import copy
 import pytest
 from state import State
-from player import Player, ActionType, Action, ActionData, FieldStatus
+from player import Player, ActionType, Action, ActionData, FieldStatus, PhaseKind
 from gameutils.nullpoga_system import instance_card
 from itertools import zip_longest
 from npg_monte_carlo_tree_search.node import Node
@@ -34,10 +34,13 @@ def assert_summon_action(action, expected_idx, expected_card_no):
     assert action.action_data.monster_card.card_no == expected_card_no
 
 
-def test_fcds_legal_actions(few_cds_state):
+def test_fcds_legal_summon_actions(few_cds_state):
     """
+    SUMMON_PHASE時のlegal_action確認
     ネズミを場に出す(5) + エンドフェイズ(1)のActionのみ入っていることを確認
     """
+    few_cds_state.player_1.phase = PhaseKind.SUMMON_PHASE
+    few_cds_state.player_1.summon_all = False
     actions = few_cds_state.legal_actions()
     assert len(actions) == 6  # 5つの召喚アクション + 1つのエンドフェイズアクション
 
@@ -53,6 +56,8 @@ def test_fcds_select_plan_action_summon_monster(few_cds_state):
     """
     player1が召喚アクションを選択した際の確認
     """
+    few_cds_state.player_1.phase = PhaseKind.SUMMON_PHASE
+    few_cds_state.player_1.summon_all = False
     ret_action = few_cds_state.legal_actions()[0]
     original_player_1 = copy.deepcopy(few_cds_state.player_1)
 
@@ -109,7 +114,7 @@ def test_fcds_monster_move(few_cds_state):
 
     monster_move_act = Action(ActionType.MONSTER_MOVE, ActionData(
         monster_card=player1.zone.battle_field[1].card, move_direction="RIGHT"))
-    player1.monster_move(monster_move_act)
+    player1.monster_move(monster_move_act, player1.zone)
 
     # 移動後、元の場所にカードがなく、新しい場所にカードがあることを確認
     assert player1.zone.battle_field[1].card is None
@@ -208,8 +213,8 @@ def test_next_no_action_switches_turn(high_cost_cds_state):
 @pytest.fixture
 def player1_will_win_state():
     """プレイヤー1がすぐに勝利できるState"""
-    player1_cards = [1, 11, 11, 11, 11, 11, 11, 11, 11]
-    player2_cards = [1, 11, 11, 11, 11, 11, 11, 11, 11]
+    player1_cards = [1, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
+    player2_cards = [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
     player1 = Player(player1_cards, 1)
     player2 = Player(player2_cards, 0)
     player2.life = 1
@@ -219,6 +224,8 @@ def player1_will_win_state():
 
 
 def test_playout(player1_will_win_state):
-    """playoutのテスト"""
+    """playoutのテスト
+    player_1が勝利することを確認"""
     root_node = Node(player1_will_win_state, expand_base=10)
-    root_node.playout(root_node.state)
+    # player_1が勝利(ターン数は返り値にないが2ターン目に勝利する)
+    assert root_node.playout(root_node.state) == 1
