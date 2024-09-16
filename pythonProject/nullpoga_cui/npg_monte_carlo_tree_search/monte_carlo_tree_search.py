@@ -1,6 +1,8 @@
-from .node import Node
-from .util.argmax import argmax
-from nullpoga_cui.player import Action
+from npg_monte_carlo_tree_search.node import Node
+from npg_monte_carlo_tree_search.util.argmax import argmax
+from player import Action
+
+DEBUG = False
 
 
 class MonteCarloTreeSearch:
@@ -14,8 +16,8 @@ class MonteCarloTreeSearch:
     @classmethod
     def select_action(cls, root_node: Node) -> Action:
         legal_actions = root_node.state.legal_actions()
-        # nagai action一覧をここで出力する
-        print('legal_actions', legal_actions)
+        if DEBUG:
+            print('legal_actions', legal_actions)
         visit_list = [child.n for child in root_node.children]
         # 選択するアクションは
 

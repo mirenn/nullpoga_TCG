@@ -168,9 +168,6 @@ def test_initial_game_state(few_cds_state):
     assert state.player_2.life > 0
     assert len(state.player_1.deck_cards) > 0
     assert len(state.player_2.deck_cards) > 0
-    assert state.game_finished is False
-    assert state.first_player_win is False
-    assert state.second_player_win is False
 
 
 @pytest.fixture

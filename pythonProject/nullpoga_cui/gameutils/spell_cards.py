@@ -25,6 +25,11 @@ class SpellCard:
     def __str__(self):
         return f"{self.card_name}"
 
+    def to_json(self):
+        return {
+            "card_name": self.card_name,
+        }
+
     def cast_spell(self):
         """
         スペル開始時効果

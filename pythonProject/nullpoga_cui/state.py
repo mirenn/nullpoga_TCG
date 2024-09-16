@@ -58,11 +58,6 @@ class State(IState):
         self.player_1: Player = player_1 if player_1 is not None else Player(DECK_1)
         self.player_2: Player = player_2 if player_2 is not None else Player(DECK_2)
 
-        # ゲーム終了判定フラグ
-        self.game_finished = False
-        self.first_player_win = False
-        self.second_player_win = False
-
     def init_game(self, debug=False):
         """初期状態からゲームを始める nagai:使わないかも"""
         # デバッグ用
@@ -91,28 +86,8 @@ class State(IState):
     def to_json(self):
         """お試し。ゲーム情報のインポート、エクスポート用"""
         state_json = {
-            "palyer1": {
-                "life": self.player_1.life,
-                "phase": str(self.player_1.phase),
-                "hands": [card.card_no for card in self.player_1.hand_cards],
-                "deck": [card.card_no for card in self.player_1.deck_cards],
-                "zone": {
-                    "battle_field": [get_view(slot) for slot in self.player_1.zone.battle_field],
-                    "standby": [get_view(card) if card is not None else None for card in
-                                self.player_1.zone.standby_field],
-                },
-            },
-            "palyer2": {
-                "life": self.player_2.life,
-                "phase": str(self.player_2.phase),
-                "hands": [get_view(card) for card in self.player_2.hand_cards],
-                "deck": [get_view(card) for card in self.player_2.deck_cards],
-                "zone": {
-                    "battle_field": [get_view(slot) for slot in self.player_2.zone.battle_field],
-                    "standby": [get_view(card) if card is not None else None for card in
-                                self.player_2.zone.standby_field],
-                },
-            },
+            "player1": self.player_1.to_json(),
+            "player2": self.player_2.to_json(),
         }
         return state_json
 
@@ -137,7 +112,8 @@ class State(IState):
                 player_1_wilderness_all = False
                 break
         if player_1_wilderness_all:
-            print("ゲームエンド:フィールドが全て荒野")
+            if DEBUG:
+                print("ゲームエンド:フィールドが全て荒野")
             return True
 
         player_2_wilderness_all = True
@@ -146,25 +122,40 @@ class State(IState):
                 player_2_wilderness_all = False
                 break
         if player_2_wilderness_all:
-            print("ゲームエンド:フィールドが全て荒野")
+            if DEBUG:
+                print("ゲームエンド:フィールドが全て荒野")
             return True
-        retFlag = (self.player_1.life <= 0) or (self.player_2.life <= 0) or (len(self.player_1.deck_cards) < 1) and (
-                len(self.player_2.deck_cards) < 1)
+        # ret_flag = (self.player_1.life <= 0) or (self.player_2.life <= 0) or (len(self.player_1.deck_cards) < 1) and (
+        #         len(self.player_2.deck_cards) < 1)
         # デバッグのため確認
         if (self.player_1.life <= 0) or (self.player_2.life <= 0):
-            print("プレイヤーのライフがゼロ以下になったため終了")
+            if DEBUG:
+                print("プレイヤーのライフがゼロ以下になったため終了")
+            return True
         elif (len(self.player_1.deck_cards) < 1) and (
                 len(self.player_2.deck_cards) < 1):
-            print("デッキ切れのため終了")
+            if DEBUG:
+                print("デッキ切れのため終了")
+            return True
 
-        return retFlag
+        return False
+
+    def is_done(self):
+        return self.is_game_end()
+
+    def is_lose(self):
+        return self.evaluate_result() == -1
+
+    def is_draw(self):
+        return self.evaluate_result() == 0
 
     def is_both_end_phase(self):
         return self.player_1.phase == self.player_2.phase == PhaseKind.END_PHASE
 
-    def refresh_turn(self):
-        self.player_1.next_turn_refresh()
-        self.player_2.next_turn_refresh()
+    @staticmethod
+    def refresh_turn(player_1: Player, player_2: Player):
+        player_1.next_turn_refresh()
+        player_2.next_turn_refresh()
 
     def evaluate_result(self):
         """
@@ -233,6 +224,7 @@ class State(IState):
             if player_2.phase == PhaseKind.END_PHASE:
                 # 実際に処理する必要がある
                 self.execute_endphase(player_1, player_2)
+                self.refresh_turn(player_1, player_2)
             else:
                 pass
             return State(player_2, player_1)  # nagai順番を変更する
@@ -254,27 +246,12 @@ class State(IState):
         """
         return choice(self.legal_actions())
 
-    def is_lose_first_player(self) -> bool:
-        """先手が負けているかを判定"""
-        return self.game_finished and self.second_player_win
-
-    def is_draw(self) -> bool:
-        """引き分けを判定"""
-        return self.game_finished and not self.first_player_win and not self.second_player_win
-
-    def is_done(self) -> bool:
-        """ゲーム終了条件を判定"""
-        return self.game_finished
-
     def first_player(self) -> Player:
         return self.player_1 if self.player_1.is_first_player else self.player_2
 
     def is_first_player(self) -> bool:
         """現在の手番が先手番の場合True"""
         return self.player_1.is_first_player
-
-    def is_lose(self) -> bool:
-        return self.is_lose_first_player()
 
     def __str__(self) -> str:
         return json.dumps(self.__dict__)  # nagaiすべて出力してみる
@@ -304,13 +281,6 @@ class State(IState):
         # else:
         #     s += f"(後手番視点)\n"
         # return s
-
-    def print(self):
-        print(str(self))
-
-    def is_lose_second_player(self) -> bool:
-        """後手が負けているかを判定"""
-        return self.game_finished and self.first_player_win
 
     def execute_endphase(self, player_1: Player, player_2: Player):
         """
@@ -360,12 +330,14 @@ class State(IState):
         player_2.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
-        print("turn count:", player_1.turn_count)
+        if DEBUG:
+            print("turn count:", player_1.turn_count)
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
-            print("exe_activity", "first_player" if player_1.is_first_player else "second_player",
-                  p1_act.to_json() if p1_act else None)
-            print("exe_activity", "first_player" if player_2.is_first_player else "second_player",
-                  p2_act.to_json() if p2_act else None)
+            if DEBUG:
+                print("exe_activity", "first_player" if player_1.is_first_player else "second_player",
+                      p1_act.to_json() if p1_act else None)
+                print("exe_activity", "first_player" if player_2.is_first_player else "second_player",
+                      p2_act.to_json() if p2_act else None)
 
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
                 player_1.monster_move(p1_act, player_1.zone)

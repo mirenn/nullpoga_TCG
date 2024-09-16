@@ -12,6 +12,8 @@ from uuid import UUID
 import logging
 import json
 
+DEBUG = False
+
 
 class Zone:
     """バトルフィールド、スタンバイフィールドをまとめてZoneとする"""
@@ -20,6 +22,13 @@ class Zone:
         # 自分から見ての5列の場をフィールドとして初期化
         self.battle_field = [Slot() for _ in range(5)]
         self.standby_field: List[Optional[MonsterCard]] = [None for _ in range(5)]
+
+    def to_json(self):
+        return {
+            "battle_field": [slt.to_json() for slt in self.battle_field],
+            "standby_field": [sf.to_json() if sf else None for sf in self.standby_field]
+        }
+        pass
 
     def set_battle_field_card(self, index: int, card: MonsterCard):
         if 0 <= index < len(self.battle_field):
@@ -57,6 +66,10 @@ class Slot:
     def __init__(self):
         self.status: FieldStatus = FieldStatus.NORMAL
         self.card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
+
+    def to_json(self):
+        return {"status": str(self.status),
+                "card": self.card.to_json() if self.card else None}
 
     def set_card(self, card: MonsterCard):
         """Slotにモンスターカードを設定する"""
@@ -198,6 +211,15 @@ class Player:
         # 全て攻撃する(移動しない):移動のplanなし。攻撃のplanがある限りそれを選ぶ
         self.attack_all = True
 
+    def to_json(self):
+        return {
+            "life": self.life,
+            "phase": str(self.phase),
+            "hands": [card.to_json() for card in self.hand_cards],
+            "deck": [card.to_json() for card in self.deck_cards],
+            "zone": self.zone.to_json()
+        }
+
     def next_turn_refresh(self):
         """
         初回を除く、ターン開始時に行う処理
@@ -215,8 +237,9 @@ class Player:
 
     def legal_actions(self) -> List[Action]:
         """現在のフェイズに応じて、合法的な行動を返す"""
-        print("legal_actions 現在のphase:", self.phase, "first_player:", self.is_first_player, "turn count",
-              self.turn_count)
+        if DEBUG:
+            print("legal_actions 現在のphase:", self.phase, "first_player:", self.is_first_player, "turn count",
+                  self.turn_count)
         if self.phase == PhaseKind.SPELL_PHASE:
             return self._legal_spell_actions()
         elif self.phase == PhaseKind.SUMMON_PHASE:
@@ -278,7 +301,8 @@ class Player:
         一つが適当に選ばれる。選ばれたアクションをここに入れて処理する
         """
         player = 'first_player' if self.is_first_player else 'second_player'
-        print(' splan:', player, action.to_json())
+        if DEBUG:
+            print(' splan:', player, action.to_json())
         if action.action_type == ActionType.CAST_SPELL:
             # 未実装
             pass

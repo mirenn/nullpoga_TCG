@@ -1,15 +1,24 @@
 from __future__ import annotations
+
+import copy
 from typing import List, Optional
 # from npg_monte_carlo_tree_search.istate import IState
 from state import State
 from npg_monte_carlo_tree_search.util.ucb1 import ucb1
 from npg_monte_carlo_tree_search.util.argmax import argmax
+# from player import PhaseKind, Action, ActionData, ActionType
+from player import Player, ActionType, Action, ActionData, FieldStatus, PhaseKind
 
 DEBUG = True
 
 
 class Node:
     def __init__(self, state: State, expand_base: int = 10) -> None:
+        """
+
+        :param state:
+        :param expand_base: 十分に self (current Node) がプレイされたら展開(1ノード掘り進める)する
+        """
         self.state: State = state
         self.w: int = 0  # 報酬
         self.n: int = 0  # 訪問回数
@@ -41,15 +50,39 @@ class Node:
             return v
 
     def expand(self) -> None:
-        """self (current Node) を展開する."""
+        """self (current Node) を展開する.
+        メモ:ここはもっとシンプルにできたかもしれない……"""
         if DEBUG:
             print("expand 可能なactionの数だけchildrenを生やす。")
             # print("可能なaction", self.state.legal_actions())
 
         # self.children = [Node(self.state.next(action), self.expand_base) for action in self.state.legal_actions()]
         self.children = []
-        for action in self.state.legal_actions():
-            next_state = self.state.next(action)  # nagai がおかしい。
+
+        # nagai:legal_actions()がEND_PHASE(次のプレイヤーに回す)時に空になってしまうように作ってしまったので……。
+        # メモ:ここはもっとカンタンにできたかもしれない
+        # if self.state.player_1.phase == PhaseKind.END_PHASE:
+        #     # = copy.deepcopy(self.state)
+        #     next_state = self.state.next(
+        #         Action(ActionType.ACTIVITY_PHASE_END))  # State(self.state.player_2, self.state.player_1)
+        # else:
+        #     next_state = self.state
+        next_state = copy.deepcopy(self.state)
+        # if self.state.player_1.phase == PhaseKind.END_PHASE:
+        #     if self.state.player_2.phase == PhaseKind.END_PHASE:
+        #         # 実際に処理する必要がある
+        #         next_state.execute_endphase(next_state.player_1, next_state.player_2)
+        #         next_state.refresh_turn(next_state.player_1, next_state.player_2)
+        #     else:
+        #         pass
+        #     next_state = State(next_state.player_2, next_state.player_1)  # nagai順番を変更する
+        # else:
+        #     next_state = State(next_state.player_1, next_state.player_2)
+
+        nl = next_state.legal_actions()  # デバッグのため変数に
+
+        for action in nl:
+            next_state = next_state.next(action)
             child_node = Node(next_state, self.expand_base)
             self.children.append(child_node)
 
@@ -71,8 +104,8 @@ class Node:
         """決着がつくまでランダムにプレイする."""
         if state.is_game_end():
             return state.evaluate_result()
-        if state.is_both_end_phase():
-            state.refresh_turn()
+        # if state.is_both_end_phase():
+        #     state.refresh_turn()
         act = state.random_action()  # nagaiデバッグ確認用に一旦変数に入れている
         n_state = state.next(act)
         if state.player_1.is_first_player != n_state.player_1.is_first_player:
