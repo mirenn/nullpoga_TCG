@@ -54,8 +54,8 @@ def test_play_monte_carlo():
             # 先手プレイヤーの行動（モンテカルロ木探索を使用）
             if state.is_first_player():
                 # ルートノードを初期化し、探索を行う
-                root_node: Node = Node(state, expand_base=2)  # ルートノードを展開、パラメータ5は探索の拡大範囲
-                MonteCarloTreeSearch.train(root_node=root_node, simulation=3)  # シミュレーションを5回実行
+                root_node: Node = Node(state, expand_base=3)  # ルートノードを展開、パラメータ5は探索の拡大範囲
+                MonteCarloTreeSearch.train(root_node=root_node, simulation=1)  # シミュレーションを5回実行
                 action = MonteCarloTreeSearch.select_action(root_node)  # 最適な行動を選択
                 state = state.next(action)  # 選択された行動をもとに次の状態へ進む
             else:
