@@ -1,5 +1,6 @@
 # requirements-dev.txt
 fastapi
 uvicorn
-pytest
+httpx
 jinja2
+pytest
