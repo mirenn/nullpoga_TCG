@@ -1,8 +1,7 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Card Game</title>
     <style>
         body {
@@ -26,7 +25,6 @@
         }
 
         .card-slot {
-            background-color: #fff;
             border: 2px solid #ccc;
             border-radius: 10px;
             display: flex;
@@ -70,48 +68,63 @@
         .card:hover {
             transform: scale(1.1);
         }
+
+        /* フィールドの色分け */
+        .battle-field {
+            background-color: #ffe6cc; /* ライトブルー */
+
+        }
+
+        .standby-field {
+            background-color: #d1e7ff; /* ライトオレンジ */
+        }
+
     </style>
 </head>
 <body>
 
-<h1>Card Game</h1>
+<h1>nullpogaTCG client仮実装</h1>
 
-<!-- Game board: 5 columns x 4 rows -->
+<!-- ゲームボード：5列 x 4行 -->
 <div class="game-board">
-    <!-- Opponent's zone (first 2 rows) -->
-    <div class="card-slot" id="opponent-zone-1"></div>
-    <div class="card-slot" id="opponent-zone-2"></div>
-    <div class="card-slot" id="opponent-zone-3"></div>
-    <div class="card-slot" id="opponent-zone-4"></div>
-    <div class="card-slot" id="opponent-zone-5"></div>
+    <!-- 相手のゾーン（最初の1行目） -->
+    <!-- スタンバイフィールド -->
+    <div class="card-slot standby-field" id="opponent-zone-1"></div>
+    <div class="card-slot standby-field" id="opponent-zone-2"></div>
+    <div class="card-slot standby-field" id="opponent-zone-3"></div>
+    <div class="card-slot standby-field" id="opponent-zone-4"></div>
+    <div class="card-slot standby-field" id="opponent-zone-5"></div>
 
-    <div class="card-slot" id="opponent-zone-6"></div>
-    <div class="card-slot" id="opponent-zone-7"></div>
-    <div class="card-slot" id="opponent-zone-8"></div>
-    <div class="card-slot" id="opponent-zone-9"></div>
-    <div class="card-slot" id="opponent-zone-10"></div>
+    <!-- バトルフィールド -->
+    <div class="card-slot battle-field" id="opponent-zone-6"></div>
+    <div class="card-slot battle-field" id="opponent-zone-7"></div>
+    <div class="card-slot battle-field" id="opponent-zone-8"></div>
+    <div class="card-slot battle-field" id="opponent-zone-9"></div>
+    <div class="card-slot battle-field" id="opponent-zone-10"></div>
 
-    <!-- Player's zone (next 2 rows) -->
-    <div class="card-slot" id="player-zone-1"></div>
-    <div class="card-slot" id="player-zone-2"></div>
-    <div class="card-slot" id="player-zone-3"></div>
-    <div class="card-slot" id="player-zone-4"></div>
-    <div class="card-slot" id="player-zone-5"></div>
+    <!-- バトルフィールド -->
+    <div class="card-slot battle-field" id="player-zone-1"></div>
+    <div class="card-slot battle-field" id="player-zone-2"></div>
+    <div class="card-slot battle-field" id="player-zone-3"></div>
+    <div class="card-slot battle-field" id="player-zone-4"></div>
+    <div class="card-slot battle-field" id="player-zone-5"></div>
 
-    <div class="card-slot" id="player-zone-6"></div>
-    <div class="card-slot" id="player-zone-7"></div>
-    <div class="card-slot" id="player-zone-8"></div>
-    <div class="card-slot" id="player-zone-9"></div>
-    <div class="card-slot" id="player-zone-10"></div>
+    <!-- プレイヤーのゾーン（最後の1行目） -->
+    <!-- スタンバイフィールド -->
+    <div class="card-slot standby-field" id="player-zone-6"></div>
+    <div class="card-slot standby-field" id="player-zone-7"></div>
+    <div class="card-slot standby-field" id="player-zone-8"></div>
+    <div class="card-slot standby-field" id="player-zone-9"></div>
+    <div class="card-slot standby-field" id="player-zone-10"></div>
 </div>
 
-<!-- Hand (bottom section) -->
+<!-- 手札（下部セクション） -->
 <div class="hand" id="player-hand">
-    <!-- Example card in hand -->
+    <!-- 手札の例 -->
     <div class="card">Card 1</div>
     <div class="card">Card 2</div>
     <div class="card">Card 3</div>
-    <!-- Additional cards can be dynamically added here -->
+    <!-- 追加のカードはここに動的に追加可能 -->
 </div>
 
 </body>
