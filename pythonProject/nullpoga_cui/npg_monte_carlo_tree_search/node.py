@@ -7,7 +7,8 @@ from state import State
 from npg_monte_carlo_tree_search.util.ucb1 import ucb1
 from npg_monte_carlo_tree_search.util.argmax import argmax
 # from player import PhaseKind, Action, ActionData, ActionType
-from player import Player, ActionType, Action, ActionData, FieldStatus, PhaseKind
+from player import Player, FieldStatus, PhaseKind
+from gameutils.action import ActionType, ActionData, Action
 
 DEBUG = True
 

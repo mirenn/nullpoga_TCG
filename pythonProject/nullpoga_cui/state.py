@@ -11,7 +11,8 @@ from npg_monte_carlo_tree_search.istate import IState
 from gameutils.monster_cards import MonsterCard
 from gameutils.spell_cards import SpellCard
 from itertools import zip_longest
-from player import Player, Action, ActionData, ActionType, Slot, FieldStatus, PhaseKind
+from player import Player, Slot, FieldStatus, PhaseKind
+from gameutils.action import ActionType, ActionData, Action
 import logging
 import json
 
@@ -53,10 +54,31 @@ def get_view(target: Slot | int | MonsterCard | SpellCard | None):
 
 class State(IState):
 
-    def __init__(self, player_1: Optional[Player] = None, player_2: Optional[Player] = None):
+    def __init__(self, player_1: Optional[Player] = None, player_2: Optional[Player] = None, history=None):
         # player_1を「手番のプレイヤー」と呼ぶ
         self.player_1: Player = player_1 if player_1 is not None else Player(DECK_1)
         self.player_2: Player = player_2 if player_2 is not None else Player(DECK_2)
+        if history is None:
+            self.history = []  # {"user_id":string,"Action": Action,"ActionResult":{"user_id1" :  { "battle_zone": { 0 => { uniq_id :"hoge", life : 2} }, },"user_id2": }}
+        # {"user_id":"string","Action":"Action","ActionResult":{"user_id1":{"battle_zone":{"0":{"uniq_id":"hoge","life":2}}},"user_id2":{}}}
+        # {
+        #     "user_id": "string", // アクションを行うユーザーのID
+        # "Action": "Action", // 実行するアクションの種類や内容
+        # "ActionResult": {
+        #     "user_id1": {
+        #         "battle_zone": {
+        #             "0": { // バトルゾーンの位置（インデックス）
+        # "uniq_id": "hoge", // モンスターやカードのユニークID
+        # "life": 2 // そのモンスターやカードの現在の体力
+        # }
+        # }
+        # },
+        # "user_id2": {
+        #             // user_id2
+        # に対応するアクション結果（空または未定義）
+        # }
+        # }
+        # }
 
     def init_game(self, debug=False):
         """初期状態からゲームを始める nagai:使わないかも"""
@@ -86,8 +108,8 @@ class State(IState):
     def to_json(self):
         """お試し。ゲーム情報のインポート、エクスポート用"""
         state_json = {
-            "player1": self.player_1.to_json(),
-            "player2": self.player_2.to_json(),
+            "player1": self.player_1.to_dict(),
+            "player2": self.player_2.to_dict(),
         }
         return state_json
 
@@ -335,9 +357,9 @@ class State(IState):
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
             if DEBUG:
                 print("exe_activity", "first_player" if player_1.is_first_player else "second_player",
-                      p1_act.to_json() if p1_act else None)
+                      p1_act.to_dict() if p1_act else None)
                 print("exe_activity", "first_player" if player_2.is_first_player else "second_player",
-                      p2_act.to_json() if p2_act else None)
+                      p2_act.to_dict() if p2_act else None)
 
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
                 player_1.monster_move(p1_act, player_1.zone)

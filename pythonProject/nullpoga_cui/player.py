@@ -1,20 +1,22 @@
 from __future__ import annotations
 
 import copy
-from typing import List, Optional, Union, Literal
+from typing import List, Optional, Union
 from enum import Enum
+
+from gameutils.action import ActionType, ActionData, Action
 from gameutils.monster_cards import MonsterCard
 from gameutils.spell_cards import SpellCard
 from gameutils.nullpoga_system import instance_card
-from dataclasses import dataclass, field
+from dataclasses import dataclass, asdict
 import uuid
 from uuid import UUID
 import logging
-import json
 
 DEBUG = False
 
 
+@dataclass
 class Zone:
     """バトルフィールド、スタンバイフィールドをまとめてZoneとする"""
 
@@ -23,12 +25,12 @@ class Zone:
         self.battle_field = [Slot() for _ in range(5)]
         self.standby_field: List[Optional[MonsterCard]] = [None for _ in range(5)]
 
-    def to_json(self):
-        return {
-            "battle_field": [slt.to_json() for slt in self.battle_field],
-            "standby_field": [sf.to_json() if sf else None for sf in self.standby_field]
-        }
-        pass
+    def to_dict(self):
+        # return {
+        #     "battle_field": [slt.to_dict() for slt in self.battle_field],
+        #     "standby_field": [sf.to_dict() if sf else None for sf in self.standby_field]
+        # }
+        return asdict(self)
 
     def set_battle_field_card(self, index: int, card: MonsterCard):
         if 0 <= index < len(self.battle_field):
@@ -58,6 +60,7 @@ class FieldStatus(Enum):
     WILDERNESS = "Wilderness"  # 荒野状態などの他の状態
 
 
+@dataclass
 class Slot:
     """バトルフィールドのそれぞれのマスをSlotとする"""
 
@@ -67,9 +70,10 @@ class Slot:
         self.status: FieldStatus = FieldStatus.NORMAL
         self.card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
 
-    def to_json(self):
-        return {"status": str(self.status),
-                "card": self.card.to_json() if self.card else None}
+    def to_dict(self):
+        # return {"status": str(self.status),
+        #         "card": self.card.to_dict() if self.card else None}
+        return asdict(self)
 
     def set_card(self, card: MonsterCard):
         """Slotにモンスターカードを設定する"""
@@ -84,82 +88,11 @@ class Slot:
         self.status = FieldStatus.WILDERNESS
 
 
-@dataclass
-class Action:
-    action_type: ActionType
-    action_data: Optional[ActionData] = None
-
-    def __str__(self):
-        # data = self.__dict__
-        data = {
-            "action_type": self.action_type.name,
-            "action_data": str(self.action_data)
-        }
-        return json.dumps(data)
-        # if self.action_type == ActionType.SUMMON_MONSTER:
-        #     card_name = self.action_data.monster_card.card_name
-        #     cost = self.action_data.monster_card.mana_cost
-        #     return f"召喚アクション {cost}コス{card_name}を{self.action_data.summon_standby_field_idx}に召喚"
-        # if self.action_type == ActionType.MONSTER_MOVE:
-        #     idx = self.action_data.move_battle_field_idx
-        #     direction = self.action_data.move_direction
-        #     return f"移動アクション 列{idx}のカードを{direction}に移動"
-        # if self.action_type == ActionType.MONSTER_ATTACK:
-        #     idx = self.action_data.attack_declaration_idx
-        #     return f"攻撃宣言アクション 列{idx}のカードで攻撃"
-
-    def to_json(self):
-        return {
-            "action_type": self.action_type.name,
-            "action_data": self.action_data.to_json() if self.action_data else None
-        }
-
-
-@dataclass
-class ActionData:
-    # SUMMON_MONSTER用
-    # summon_card_no: Optional[int] = field(default=None)  # モンスターカードの番号
-    monster_card: Optional[MonsterCard] = field(default=None)  # モンスターカード
-    summon_standby_field_idx: Optional[int] = field(default=None)  # 左から何番目か
-    # MONSTER_MOVE用
-    move_battle_field_idx: Optional[int] = field(default=None)  # 左から何番目か
-    move_direction: Optional[Literal["RIGHT", "LEFT"]] = field(default=None)  # 移動方向
-    # MONSTER_ATTACK用
-    attack_declaration_idx: Optional[int] = field(default=None)  # 不使用になるかも：攻撃宣言するバトルフィールドのインデックス
-
-    # 以下現状不使用
-    spell_card: Optional[SpellCard] = field(default=None)
-
-    def __str__(self):
-        return json.dumps({
-            "monster_card": self.monster_card.to_json() if self.monster_card else None,
-            "summon_standby_field_idx": self.summon_standby_field_idx
-        })
-
-    def to_json(self):
-        return {
-            "monster_card": self.monster_card.to_json() if self.monster_card else None,
-            "summon_standby_field_idx": self.summon_standby_field_idx,
-            "move_direction": self.move_direction
-        }
-
-
 class PhaseKind(Enum):
     SPELL_PHASE = "SPELL_PHASE"  # スペルフェイズ。未実装
     SUMMON_PHASE = "SUMMON_PHASE"  # 召喚行動フェイズ
     ACTIVITY_PHASE = "ACTIVITY_PHASE"  # 攻撃フェイズ
     END_PHASE = "END_PHASE"  # エンドフェイズ（というかターン終了の宣言）
-
-
-class ActionType(Enum):
-    CAST_SPELL = "CAST_SPELL"  # スペル。未実装
-    SUMMON_MONSTER = "SUMMON_MONSTER"  # 召喚
-    MONSTER_MOVE = "MONSTER_MOVE"  # 移動
-    DISABLE_ACTION = "DISABLE_ACTION"  # 何もしないを選んだ場合
-    MONSTER_ATTACK = "MONSTER_ATTACK"  # 攻撃宣言
-    SPELL_PHASE_END = "SPELL_PHASE_END"  # スペルフェイズ終了宣言。未実装というか不要？
-    SUMMON_PHASE_END = "SUMMON_PHASE_END"  # 召喚フェイズ終了宣言。未実装というか不要？
-    ACTIVITY_PHASE_END = "ACTIVITY_PHASE_END"  # ターン終了宣言に流用。
 
 
 class Player:
@@ -169,7 +102,7 @@ class Player:
 
     summon_phase_actions: list[Action]
 
-    def __init__(self, deck_cards: List[int], init_mana=1):
+    def __init__(self, deck_cards: List[int], init_mana=1, user_id=''):
         """
         :param deck_cards:デッキのカードの順番になる。シャッフルしてから渡す
         :param init_mana:
@@ -202,6 +135,7 @@ class Player:
         self.activity_phase_actions: List[Action] = []
 
         self.is_first_player: Optional[bool] = None
+        self.user_id = user_id
 
         # ------以下デバッグ用-------
         # monster_moveを選ぶフラグ。Falseの場合モンスターを移動させる選択肢を取らない
@@ -211,13 +145,13 @@ class Player:
         # 全て攻撃する(移動しない):移動のplanなし。攻撃のplanがある限りそれを選ぶ
         self.attack_all = True
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "life": self.life,
             "phase": str(self.phase),
-            "hands": [card.to_json() for card in self.hand_cards],
-            "deck": [card.to_json() for card in self.deck_cards],
-            "zone": self.zone.to_json()
+            "hands": [card.to_dict() for card in self.hand_cards],
+            "deck": [card.to_dict() for card in self.deck_cards],
+            "zone": self.zone.to_dict()
         }
 
     def next_turn_refresh(self):
@@ -302,7 +236,7 @@ class Player:
         """
         player = 'first_player' if self.is_first_player else 'second_player'
         if DEBUG:
-            print(' splan:', player, action.to_json())
+            print(' select plan:', player, action.to_dict())
         if action.action_type == ActionType.CAST_SPELL:
             # 未実装
             pass
