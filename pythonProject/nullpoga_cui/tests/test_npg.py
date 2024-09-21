@@ -9,7 +9,8 @@ pytest
 import copy
 import pytest
 from state import State
-from player import Player, ActionType, Action, ActionData, FieldStatus, PhaseKind
+from player import Player, FieldStatus, PhaseKind
+from gameutils.action import ActionType, ActionData, Action
 from gameutils.nullpoga_system import instance_card
 from itertools import zip_longest
 from npg_monte_carlo_tree_search.node import Node
