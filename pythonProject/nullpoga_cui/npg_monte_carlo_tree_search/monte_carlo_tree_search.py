@@ -1,6 +1,6 @@
-from npg_monte_carlo_tree_search.node import Node
-from npg_monte_carlo_tree_search.util.argmax import argmax
-from gameutils.action import Action
+from nullpoga_cui.npg_monte_carlo_tree_search.node import Node
+from nullpoga_cui.npg_monte_carlo_tree_search.util.argmax import argmax
+from nullpoga_cui.gameutils.action import Action
 
 DEBUG = False
 

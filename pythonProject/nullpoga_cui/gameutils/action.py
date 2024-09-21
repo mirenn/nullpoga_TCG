@@ -6,11 +6,11 @@ from dataclasses import dataclass, field, asdict
 from enum import Enum
 from typing import Optional, Literal
 
-from gameutils.monster_cards import MonsterCard
-from gameutils.spell_cards import SpellCard
+from nullpoga_cui.gameutils.monster_cards import MonsterCard
+from nullpoga_cui.gameutils.spell_cards import SpellCard
 
 
-class ActionType(Enum):
+class ActionType(str, Enum):
     CAST_SPELL = "CAST_SPELL"  # スペル。未実装
     SUMMON_MONSTER = "SUMMON_MONSTER"  # 召喚
     MONSTER_MOVE = "MONSTER_MOVE"  # 移動

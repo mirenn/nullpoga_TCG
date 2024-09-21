@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field, asdict
 from typing import List
 from uuid import UUID, uuid4
-from .card_type import CardType
+from nullpoga_cui.gameutils.card_type import CardType
 
 
 @dataclass

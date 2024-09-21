@@ -3,12 +3,14 @@ from __future__ import annotations
 import copy
 from typing import List, Optional
 # from npg_monte_carlo_tree_search.istate import IState
-from state import State
-from npg_monte_carlo_tree_search.util.ucb1 import ucb1
-from npg_monte_carlo_tree_search.util.argmax import argmax
+from nullpoga_cui.state import State
+from nullpoga_cui.npg_monte_carlo_tree_search.util.ucb1 import ucb1
+from nullpoga_cui.npg_monte_carlo_tree_search.util.argmax import argmax
+
 # from player import PhaseKind, Action, ActionData, ActionType
-from player import Player, FieldStatus, PhaseKind
-from gameutils.action import ActionType, ActionData, Action
+# from nullpoga_cui.player import Player, PhaseKind
+# from nullpoga_cui.gameutils.zone import FieldStatus
+# from nullpoga_cui.gameutils.action import ActionType, ActionData, Action
 
 DEBUG = True
 

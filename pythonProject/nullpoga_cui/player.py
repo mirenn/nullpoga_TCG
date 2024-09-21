@@ -4,11 +4,11 @@ import copy
 from typing import List, Optional, Union
 from enum import Enum
 
-from gameutils.action import ActionType, ActionData, Action
-from gameutils.monster_cards import MonsterCard
-from gameutils.spell_cards import SpellCard
-from gameutils.nullpoga_system import instance_card
-from dataclasses import dataclass, asdict
+from nullpoga_cui.gameutils.action import ActionType, ActionData, Action
+from nullpoga_cui.gameutils.monster_cards import MonsterCard
+from nullpoga_cui.gameutils.spell_cards import SpellCard
+from nullpoga_cui.gameutils.nullpoga_system import instance_card
+from nullpoga_cui.gameutils.zone import Zone
 import uuid
 from uuid import UUID
 import logging
@@ -16,79 +16,7 @@ import logging
 DEBUG = False
 
 
-@dataclass
-class Zone:
-    """バトルフィールド、スタンバイフィールドをまとめてZoneとする"""
-
-    def __init__(self):
-        # 自分から見ての5列の場をフィールドとして初期化
-        self.battle_field = [Slot() for _ in range(5)]
-        self.standby_field: List[Optional[MonsterCard]] = [None for _ in range(5)]
-
-    def to_dict(self):
-        # return {
-        #     "battle_field": [slt.to_dict() for slt in self.battle_field],
-        #     "standby_field": [sf.to_dict() if sf else None for sf in self.standby_field]
-        # }
-        return asdict(self)
-
-    def set_battle_field_card(self, index: int, card: MonsterCard):
-        if 0 <= index < len(self.battle_field):
-            self.battle_field[index].set_card(card)
-
-    def set_standby_field_card(self, index: int, card: MonsterCard):
-        if 0 <= index < len(self.standby_field):
-            self.standby_field[index] = card
-
-    def get_battle_field_slot(self, index: int) -> Slot:
-        return self.battle_field[index]
-
-    def get_standby_field_card(self, index: int) -> MonsterCard | None:
-        return self.standby_field[index]
-
-    def remove_battle_field_card(self, index: int):
-        if 0 <= index < len(self.battle_field):
-            self.battle_field[index].remove_card()
-
-    def remove_standby_field_card(self, index: int):
-        if 0 <= index < len(self.standby_field):
-            self.standby_field[index] = None
-
-
-class FieldStatus(Enum):
-    NORMAL = "Normal"
-    WILDERNESS = "Wilderness"  # 荒野状態などの他の状態
-
-
-@dataclass
-class Slot:
-    """バトルフィールドのそれぞれのマスをSlotとする"""
-
-    __slots__ = ["status", "card"]
-
-    def __init__(self):
-        self.status: FieldStatus = FieldStatus.NORMAL
-        self.card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
-
-    def to_dict(self):
-        # return {"status": str(self.status),
-        #         "card": self.card.to_dict() if self.card else None}
-        return asdict(self)
-
-    def set_card(self, card: MonsterCard):
-        """Slotにモンスターカードを設定する"""
-        self.card = card
-
-    def remove_card(self):
-        """Slotのカードを除外する"""
-        self.card = None
-
-    def set_wild(self):
-        """Slotの状態を荒野状態にする"""
-        self.status = FieldStatus.WILDERNESS
-
-
-class PhaseKind(Enum):
+class PhaseKind(str, Enum):
     SPELL_PHASE = "SPELL_PHASE"  # スペルフェイズ。未実装
     SUMMON_PHASE = "SUMMON_PHASE"  # 召喚行動フェイズ
     ACTIVITY_PHASE = "ACTIVITY_PHASE"  # 攻撃フェイズ
@@ -101,14 +29,15 @@ class Player:
     """
 
     summon_phase_actions: list[Action]
+    user_id: str
 
-    def __init__(self, deck_cards: List[int], init_mana=1, user_id=''):
+    def __init__(self, deck_cards: List[int], init_mana=1):
         """
         :param deck_cards:デッキのカードの順番になる。シャッフルしてから渡す
         :param init_mana:
         """
         self.turn_count = 0
-        self.player_id: UUID = uuid.uuid4()
+        self.player_id: UUID = uuid.uuid4()  # 使わないかも
         dk_cards = [instance_card(card_no) for card_no in deck_cards]
         # デッキの状態
         self.deck_cards: List[Union[MonsterCard, SpellCard]] = dk_cards[5:]
@@ -135,7 +64,6 @@ class Player:
         self.activity_phase_actions: List[Action] = []
 
         self.is_first_player: Optional[bool] = None
-        self.user_id = user_id
 
         # ------以下デバッグ用-------
         # monster_moveを選ぶフラグ。Falseの場合モンスターを移動させる選択肢を取らない

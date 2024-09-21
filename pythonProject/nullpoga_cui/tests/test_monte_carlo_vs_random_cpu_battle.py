@@ -1,8 +1,7 @@
-import pytest
-from state import State
-from npg_monte_carlo_tree_search.node import Node
-from npg_monte_carlo_tree_search.monte_carlo_tree_search import MonteCarloTreeSearch
-from player import Player
+from nullpoga_cui.state import State
+from nullpoga_cui.npg_monte_carlo_tree_search.node import Node
+from nullpoga_cui.npg_monte_carlo_tree_search.monte_carlo_tree_search import MonteCarloTreeSearch
+from nullpoga_cui.player import Player
 
 GAMES = 1  # 実行するゲームの回数
 

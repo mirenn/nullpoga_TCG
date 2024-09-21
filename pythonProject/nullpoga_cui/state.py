@@ -7,13 +7,13 @@ from random import choice
 from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
 
-from npg_monte_carlo_tree_search.istate import IState
-from gameutils.monster_cards import MonsterCard
-from gameutils.spell_cards import SpellCard
+from nullpoga_cui.npg_monte_carlo_tree_search.istate import IState
+from nullpoga_cui.gameutils.monster_cards import MonsterCard
+from nullpoga_cui.gameutils.spell_cards import SpellCard
 from itertools import zip_longest
-from player import Player, Slot, FieldStatus, PhaseKind
-from gameutils.action import ActionType, ActionData, Action
-import logging
+from nullpoga_cui.player import Player, PhaseKind
+from nullpoga_cui.gameutils.zone import FieldStatus, Slot
+from nullpoga_cui.gameutils.action import ActionType, ActionData, Action
 import json
 
 DECK_1: Final = [7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2]
