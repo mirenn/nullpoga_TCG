@@ -1,131 +1,171 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ja">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Card Game</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f0;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
 
-        .game-board {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            grid-template-rows: repeat(4, 100px);
-            gap: 10px;
-            width: 80%;
-            max-width: 1200px;
-            margin: 20px 0;
-        }
+      .game-board {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        grid-template-rows: repeat(4, 100px);
+        gap: 10px;
+        width: 80%;
+        max-width: 1200px;
+        margin: 20px 0;
+      }
 
-        .card-slot {
-            border: 2px solid #ccc;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
+      .card-slot {
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
 
-        .card-slot:hover {
-            transform: scale(1.05);
-        }
+      .card-slot:hover {
+        transform: scale(1.05);
+      }
 
-        .card-slot.occupied {
-            background-color: #e0e0e0;
-        }
+      .card-slot.occupied {
+        background-color: #e0e0e0;
+      }
 
-        .hand {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            margin-top: 20px;
-        }
+      .hand {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+        margin-top: 20px;
+      }
 
-        .card {
-            width: 80px;
-            height: 120px;
-            background-color: #fff;
-            border: 2px solid #ccc;
-            border-radius: 10px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            cursor: pointer;
-            transition: transform 0.2s ease;
-        }
+      .card {
+        width: 80px;
+        height: 120px;
+        background-color: #fff;
+        border: 2px solid #ccc;
+        border-radius: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        cursor: pointer;
+        transition: transform 0.2s ease;
+      }
 
-        .card:hover {
-            transform: scale(1.1);
-        }
+      .card:hover {
+        transform: scale(1.1);
+      }
 
-        /* フィールドの色分け */
-        .battle-field {
-            background-color: #ffe6cc; /* ライトブルー */
+      /* フィールドの色分け */
+      .battle-field {
+        background-color: #ffe6cc; /* ライトブルー */
+      }
 
-        }
+      .standby-field {
+        background-color: #d1e7ff; /* ライトオレンジ */
+      }
 
-        .standby-field {
-            background-color: #d1e7ff; /* ライトオレンジ */
-        }
+      .button-container {
+        margin-top: 20px;
+      }
 
+      .fetch-button {
+        padding: 10px 20px;
+        font-size: 16px;
+        cursor: pointer;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        transition: background-color 0.2s ease;
+      }
+
+      .fetch-button:hover {
+        background-color: #0056b3;
+      }
+
+      .result-container {
+        margin-top: 20px;
+        padding: 10px;
+        border: 1px solid #ccc;
+        background-color: #fff;
+        border-radius: 5px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        width: 80%;
+        max-width: 1200px;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
+    <h1>nullpogaTCG client仮実装</h1>
 
-<h1>nullpogaTCG client仮実装</h1>
+    <!-- ゲームボード：5列 x 4行 -->
+    <div class="game-board">
+      <!-- 相手のゾーン（最初の1行目） -->
+      <!-- スタンバイフィールド -->
+      <div class="card-slot standby-field" id="opponent-zone-1"></div>
+      <div class="card-slot standby-field" id="opponent-zone-2"></div>
+      <div class="card-slot standby-field" id="opponent-zone-3"></div>
+      <div class="card-slot standby-field" id="opponent-zone-4"></div>
+      <div class="card-slot standby-field" id="opponent-zone-5"></div>
 
-<!-- ゲームボード：5列 x 4行 -->
-<div class="game-board">
-    <!-- 相手のゾーン（最初の1行目） -->
-    <!-- スタンバイフィールド -->
-    <div class="card-slot standby-field" id="opponent-zone-1"></div>
-    <div class="card-slot standby-field" id="opponent-zone-2"></div>
-    <div class="card-slot standby-field" id="opponent-zone-3"></div>
-    <div class="card-slot standby-field" id="opponent-zone-4"></div>
-    <div class="card-slot standby-field" id="opponent-zone-5"></div>
+      <!-- バトルフィールド -->
+      <div class="card-slot battle-field" id="opponent-zone-6"></div>
+      <div class="card-slot battle-field" id="opponent-zone-7"></div>
+      <div class="card-slot battle-field" id="opponent-zone-8"></div>
+      <div class="card-slot battle-field" id="opponent-zone-9"></div>
+      <div class="card-slot battle-field" id="opponent-zone-10"></div>
 
-    <!-- バトルフィールド -->
-    <div class="card-slot battle-field" id="opponent-zone-6"></div>
-    <div class="card-slot battle-field" id="opponent-zone-7"></div>
-    <div class="card-slot battle-field" id="opponent-zone-8"></div>
-    <div class="card-slot battle-field" id="opponent-zone-9"></div>
-    <div class="card-slot battle-field" id="opponent-zone-10"></div>
+      <!-- バトルフィールド -->
+      <div class="card-slot battle-field" id="player-zone-1"></div>
+      <div class="card-slot battle-field" id="player-zone-2"></div>
+      <div class="card-slot battle-field" id="player-zone-3"></div>
+      <div class="card-slot battle-field" id="player-zone-4"></div>
+      <div class="card-slot battle-field" id="player-zone-5"></div>
 
-    <!-- バトルフィールド -->
-    <div class="card-slot battle-field" id="player-zone-1"></div>
-    <div class="card-slot battle-field" id="player-zone-2"></div>
-    <div class="card-slot battle-field" id="player-zone-3"></div>
-    <div class="card-slot battle-field" id="player-zone-4"></div>
-    <div class="card-slot battle-field" id="player-zone-5"></div>
+      <!-- プレイヤーのゾーン（最後の1行目） -->
+      <!-- スタンバイフィールド -->
+      <div class="card-slot standby-field" id="player-zone-6"></div>
+      <div class="card-slot standby-field" id="player-zone-7"></div>
+      <div class="card-slot standby-field" id="player-zone-8"></div>
+      <div class="card-slot standby-field" id="player-zone-9"></div>
+      <div class="card-slot standby-field" id="player-zone-10"></div>
+    </div>
 
-    <!-- プレイヤーのゾーン（最後の1行目） -->
-    <!-- スタンバイフィールド -->
-    <div class="card-slot standby-field" id="player-zone-6"></div>
-    <div class="card-slot standby-field" id="player-zone-7"></div>
-    <div class="card-slot standby-field" id="player-zone-8"></div>
-    <div class="card-slot standby-field" id="player-zone-9"></div>
-    <div class="card-slot standby-field" id="player-zone-10"></div>
-</div>
+    <!-- 手札（下部セクション） -->
+    <div class="hand" id="player-hand">
+      <!-- 手札の例 -->
+      <div class="card">Card 1</div>
+      <div class="card">Card 2</div>
+      <div class="card">Card 3</div>
+      <!-- 追加のカードはここに動的に追加可能 -->
+    </div>
 
-<!-- 手札（下部セクション） -->
-<div class="hand" id="player-hand">
-    <!-- 手札の例 -->
-    <div class="card">Card 1</div>
-    <div class="card">Card 2</div>
-    <div class="card">Card 3</div>
-    <!-- 追加のカードはここに動的に追加可能 -->
-</div>
+    <!-- ボタンを追加 -->
+    <div class="button-container">
+      <button class="fetch-button" onclick="getGameState('user_id_1')">
+        Get Game State
+      </button>
+    </div>
 
-</body>
+    <!-- 結果表示用の要素 -->
+    <div class="result-container" id="result"></div>
+
+    <!-- JavaScriptの読み込み -->
+    <script src="/static/js/script.js"></script>
+  </body>
 </html>

@@ -1,5 +1,5 @@
 from typing import List, Optional, Union
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID, uuid4
 from nullpoga_cui.gameutils.action import ActionType
 from nullpoga_cui.player import PhaseKind
@@ -84,8 +84,7 @@ class State(BaseModel):
     player_2: Player
     history: List[dict] = Field(default_factory=list)
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def to_json(self):
         """お試し。ゲーム情報のインポート、エクスポート用"""
@@ -95,4 +94,8 @@ class State(BaseModel):
         }
         return state_json
 
-# これにより、StateクラスのPydanticモデルを定義し、FastAPIを使ってエンドポイントで利用することができます。
+
+# 新しいレスポンスモデルを定義する
+class RoomStateResponse(BaseModel):
+    room_id: str
+    state: State

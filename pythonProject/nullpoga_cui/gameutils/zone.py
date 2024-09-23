@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from enum import Enum
 from typing import List, Optional
 
@@ -16,10 +16,9 @@ class FieldStatus(str, Enum):
 class Zone:
     """バトルフィールド、スタンバイフィールドをまとめてZoneとする"""
 
-    def __init__(self):
-        # 自分から見ての5列の場をフィールドとして初期化
-        self.battle_field = [Slot() for _ in range(5)]
-        self.standby_field: List[Optional[MonsterCard]] = [None for _ in range(5)]
+    """バトルフィールド、スタンバイフィールドをまとめてZoneとする"""
+    battle_field: List[Slot] = field(default_factory=lambda: [Slot() for _ in range(5)])
+    standby_field: List[Optional[MonsterCard]] = field(default_factory=lambda: [None for _ in range(5)])
 
     def to_dict(self):
         # return {
@@ -55,11 +54,8 @@ class Zone:
 class Slot:
     """バトルフィールドのそれぞれのマスをSlotとする"""
 
-    __slots__ = ["status", "card"]
-
-    def __init__(self):
-        self.status: FieldStatus = FieldStatus.NORMAL
-        self.card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
+    status: FieldStatus = FieldStatus.NORMAL
+    card: Optional[MonsterCard] = None  # このフィールドに置かれているカード
 
     def to_dict(self):
         # return {"status": str(self.status),

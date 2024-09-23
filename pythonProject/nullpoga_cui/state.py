@@ -1,9 +1,7 @@
 from __future__ import annotations
 import hashlib
-# import json
 import random
 from random import choice
-# from istate import IState
 from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
 
@@ -80,6 +78,13 @@ class State(IState):
         # }
         # }
 
+    def to_dict(self):
+        return {
+            "player_1": self.player_1.to_dict(),
+            "player_2": self.player_2.to_dict(),
+            "history": self.history
+        }
+
     def init_game(self, debug=False):
         """初期状態からゲームを始める nagai:使わないかも"""
         # デバッグ用
@@ -113,9 +118,9 @@ class State(IState):
         }
         return state_json
 
-    def __hash__(self) -> int:
+    def __hash__(self) -> str:
         """お試し。盤面管理の効率化のためにハッシュ化できるようにしておく"""
-        return hashlib.md5(json.dumps(self.to_json(), sort_keys=True)).hexdigest()
+        return hashlib.md5(json.dumps(self.to_json(), sort_keys=True).encode('utf-8')).hexdigest()
 
     def __eq__(self, other: State):
         """お試し。等価判定。ハッシュが衝突したとき用だけどほぼ無意味"""

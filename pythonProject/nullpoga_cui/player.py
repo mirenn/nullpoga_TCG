@@ -31,12 +31,13 @@ class Player:
     summon_phase_actions: list[Action]
     user_id: str
 
-    def __init__(self, deck_cards: List[int], init_mana=1):
+    def __init__(self, deck_cards: List[int], init_mana=1, user_id=''):
         """
         :param deck_cards:デッキのカードの順番になる。シャッフルしてから渡す
         :param init_mana:
         """
         self.turn_count = 0
+        self.user_id = user_id
         self.player_id: UUID = uuid.uuid4()  # 使わないかも
         dk_cards = [instance_card(card_no) for card_no in deck_cards]
         # デッキの状態
@@ -75,11 +76,18 @@ class Player:
 
     def to_dict(self):
         return {
+            "user_id": self.user_id,
+            "base_mana": self.base_mana,
             "life": self.life,
-            "phase": str(self.phase),
-            "hands": [card.to_dict() for card in self.hand_cards],
-            "deck": [card.to_dict() for card in self.deck_cards],
-            "zone": self.zone.to_dict()
+            "phase": str(self.phase.value),
+            "hand_cards": [card.to_dict() for card in self.hand_cards],
+            "plan_hand_cards": [card.to_dict() for card in self.plan_hand_cards],
+            "deck_cards": [card.to_dict() for card in self.deck_cards],
+            "plan_deck_cards": [card.to_dict() for card in self.deck_cards],
+            "zone": self.zone.to_dict(),
+            "summon_phase_actions": self.summon_phase_actions,
+            "activity_phase_actions": self.activity_phase_actions,
+            "spell_phase_actions": self.spell_phase_actions
         }
 
     def next_turn_refresh(self):

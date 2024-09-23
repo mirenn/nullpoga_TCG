@@ -3,5 +3,6 @@ fastapi
 uvicorn
 httpx
 jinja2
+pydantic
+authlib
 pytest
-setuptools

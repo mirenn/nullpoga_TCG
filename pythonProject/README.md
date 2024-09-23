@@ -39,23 +39,23 @@ pythonProject/
 
 1. プロジェクトルート（`requirements.txt` が存在するディレクトリ）に移動します。(`/path/to/pythonProject`は、pythonProjectのある場所のパスに置き換えてください)
 
-    ```bash
-    cd /path/to/pythonProject
-    ```
+   ```bash
+   cd /path/to/pythonProject
+   ```
 
 2. プロジェクトの実行に必要な基本的な依存パッケージをインストールします。
 
-    ```bash
-    pip install -r requirements.txt
-    ```
+   ```bash
+   pip install -r requirements.txt
+   ```
 
    `requirements.txt` には、プロジェクトが正しく動作するために必要なパッケージの一覧が記載されています。
 
 3. 開発環境用の追加パッケージ（主に `pytest` 用）をインストールします。
 
-    ```bash
-    pip install -r requirements-dev.txt
-    ```
+   ```bash
+   pip install -r requirements-dev.txt
+   ```
 
    `requirements-dev.txt` には、テスト環境必要なパッケージが記載されています。特に `pytest` のテストツールが含まれています。
 
@@ -68,7 +68,15 @@ pytest
 ```
 
 ### サーバー実行
+
 pythonProjectディレクトリで以下コマンド
+
 ```bash
 uvicorn nullpoga_server.main:app --reload
+```
+
+あるいは、
+
+```bash
+python -m nullpoga_server.main
 ```

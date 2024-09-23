@@ -1,5 +1,7 @@
+# requirements.txt
 fastapi
 uvicorn
 httpx
 jinja2
-setuptools
+pydantic
+authlib
