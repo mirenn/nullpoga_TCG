@@ -13,7 +13,7 @@ def instance_card(card_no: int):
     """0未採番だが0~99モンスターカード、100~199スペルカード"""
     match card_no:
         case 1:
-            return MonsterCard(card_no, 1, "ネズミ", 1, 1)
+            return MonsterCard(card_no, 1, "ネズミ", 1, 1, '/static/images/1.png')
         case 2:
             card = MonsterCard(card_no, 2, "柴犬ラン丸", 2, 1)
 

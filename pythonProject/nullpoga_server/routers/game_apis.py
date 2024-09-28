@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 from nullpoga_server.core.config import room_dict, room_locks, user_to_room
-from nullpoga_server.models.schemas import RoomStateResponse
+from nullpoga_server.models.schemas import RoomStateResponse, Action
 from nullpoga_cui.state import State
 from nullpoga_cui.gameutils.nullpoga_system import instance_card
 
@@ -47,7 +47,8 @@ async def get_game_state(user_id: str):
 
 
 @router.put("/submit_action/{user_id}")
-async def submit_action(user_id: str, action):
+async def submit_action(user_id: str, spell_phase_actions: list[Action], summon_phase_actions: list[Action],
+                        activity_phase_actions: list[Action]):
     """
     ユーザーIDからそのルームのゲーム状態を更新するエンドポイント
     """
@@ -55,6 +56,11 @@ async def submit_action(user_id: str, action):
 
     async with room_lock:
         game_state = await get_game_state_by_room(room_id)
+
+        if game_state.player_1.user_id == user_id:
+            pass
+        elif game_state.player_2.user_id == user_id:
+            pass
 
         # ゲーム状態を更新するロジックをここに追加
         # game_state["game_state"].player1.hp = update.player1_hp
