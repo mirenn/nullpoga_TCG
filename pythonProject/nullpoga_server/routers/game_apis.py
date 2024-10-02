@@ -1,8 +1,11 @@
+import copy
+
 from fastapi import APIRouter, HTTPException
 from nullpoga_server.core.config import room_dict, room_locks, user_to_room
 from nullpoga_server.models.schemas import RoomStateResponse, Action
 from nullpoga_cui.state import State
 from nullpoga_cui.gameutils.nullpoga_system import instance_card
+from nullpoga_cui.player import PhaseKind
 
 router = APIRouter()
 
@@ -46,33 +49,75 @@ async def get_game_state(user_id: str):
         return {"room_id": room_id, "state": game_state.to_dict()}
 
 
-@router.put("/submit_action/{user_id}")
-async def submit_action(user_id: str, spell_phase_actions: list[Action], summon_phase_actions: list[Action],
-                        activity_phase_actions: list[Action]):
+@router.put("/submit_action_with_random_cpu/{user_id}")
+async def submit_action_with_random_cpu(user_id: str, spell_phase_actions: list[Action],
+                                        summon_phase_actions: list[Action],
+                                        activity_phase_actions: list[Action]):
     """
     ユーザーIDからそのルームのゲーム状態を更新するエンドポイント
+    ・randomに手を選ぶCPUと戦うときに使用する。
+    ・プレイヤーがアクションを提出したときに、CPUの手を計算し始める
     """
     room_id, room_lock = await get_room_and_lock(user_id)
 
     async with room_lock:
         game_state = await get_game_state_by_room(room_id)
 
-        if game_state.player_1.user_id == user_id:
-            pass
-        elif game_state.player_2.user_id == user_id:
-            pass
+        # プレイヤーのアクションを設定
+        current_player, opponent = get_current_and_opponent(game_state, user_id)
+        if not current_player or current_player.phase == PhaseKind.END_PHASE:
+            raise HTTPException(status_code=400, detail="Invalid player phase or actions.")
 
-        # ゲーム状態を更新するロジックをここに追加
-        # game_state["game_state"].player1.hp = update.player1_hp
-        # game_state["game_state"].player2.hp = update.player2_hp
-        # その他のゲーム状態の更新処理
+        set_player_actions(current_player, spell_phase_actions, summon_phase_actions, activity_phase_actions)
+        current_player.phase = PhaseKind.END_PHASE
+
+        # プレイヤーの状態をスワップしてCPUの手を進める
+        swap_players(game_state)
+        process_cpu_turn(game_state)
 
         return {"room_id": room_id, "game_state": game_state.to_dict()}
 
 
-# テスト用のエンドポイント
+def get_current_and_opponent(game_state: State, user_id: str):
+    """現在のプレイヤーと相手プレイヤーを取得するヘルパー関数"""
+    if game_state.player_1.user_id == user_id:
+        return game_state.player_1, game_state.player_2
+    elif game_state.player_2.user_id == user_id:
+        return game_state.player_2, game_state.player_1
+    return None, None
+
+
+def set_player_actions(player, spell_phase_actions, summon_phase_actions, activity_phase_actions):
+    """プレイヤーのアクションを設定するヘルパー関数"""
+    player.spell_phase_actions = spell_phase_actions
+    player.summon_phase_actions = summon_phase_actions
+    player.activity_phase_actions = activity_phase_actions
+
+
+def swap_players(game_state: State):
+    """プレイヤーの状態をスワップするヘルパー関数"""
+    old_game_state = copy.deepcopy(game_state)
+    game_state.player_1 = old_game_state.player_2
+    game_state.player_2 = old_game_state.player_1
+
+
+def process_cpu_turn(game_state: State):
+    """CPUのターン処理を進めるヘルパー関数"""
+    while True:
+        if game_state.player_1.phase == PhaseKind.SPELL_PHASE and game_state.player_2.phase == PhaseKind.SPELL_PHASE:
+            break  # ターン終了までの処理が完了している
+
+        action = game_state.random_action()  # ランダムな行動を選択
+        game_state = game_state.next(action)  # 選択された行動をもとに次の状態へ進む
+
+
 @router.get("/test_game_state/{user_id}")
 async def get_test_bt_zone_game_state(user_id: str):
+    """
+    テスト用のエンドポイント。状態取得関数仮
+    :param user_id:
+    :return:
+    """
     room_id, room_lock = await get_room_and_lock(user_id)
 
     async with room_lock:

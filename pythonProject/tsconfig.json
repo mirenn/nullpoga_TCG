@@ -3,11 +3,11 @@
     "target": "es6", // そのままでOK
     "module": "ESNext", // ここを "commonjs" から "ESNext" に変更
     "strict": true,
-    "outDir": "./nullpoga_server/static/js",
-    "rootDir": "./ts_src",
+    "outDir": "./nullpoga_server/static/js", // 出力先
+    "rootDir": "./ts_src", // ソースのディレクトリ
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["ts_src/*.ts"]
+  "include": ["ts_src/**/*.ts"] // サブディレクトリも含めたすべての TypeScript ファイル
 }

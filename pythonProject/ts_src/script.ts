@@ -1,11 +1,10 @@
-import * as GameModels from './gameModels';
+import * as GameModels from './gameModels.js';
 
-type GameStateResponse = {
-  room_id: string;
-  game_state: GameModels.State; // 実際の `state` の型に応じて定義を変更してください
-};
+let gameState: GameModels.GameStateResponse | null = null; // グローバル変数として宣言
 
-async function getGameState(userId: string): Promise<GameStateResponse | null> {
+async function getGameState(
+  userId: string,
+): Promise<GameModels.GameStateResponse | null> {
   const url = `http://127.0.0.1:8000/test_game_state/${userId}`;
 
   try {
@@ -20,8 +19,10 @@ async function getGameState(userId: string): Promise<GameStateResponse | null> {
       throw new Error(`Error: ${response.status}`);
     }
 
-    const data: GameStateResponse = await response.json();
+    const data: GameModels.GameStateResponse = await response.json();
     console.log('Game State:', data);
+    // 取得したデータをグローバル変数に保存
+    gameState = data;
     renderMonsterCard(
       'player-bzone-1',
       data.game_state.player_1.zone.battle_field[0].card,
@@ -56,6 +57,41 @@ function renderMonsterCard(
     console.error(`Slot with ID ${slotId} not found.`);
   }
 }
+
+// 手札のカードを描画する関数
+function renderHand(
+  playerHand: (GameModels.MonsterCard | GameModels.SpellCard)[],
+) {
+  const handContainer = document.getElementById('player-hand');
+  if (!handContainer) {
+    console.error('Hand container element not found');
+    return; // 要素が見つからない場合は処理を中断
+  }
+  handContainer.innerHTML = ''; // 手札のフィールドを一旦クリア
+
+  // 手札のカードを一つずつ描画
+  playerHand.forEach((card, index) => {
+    const cardElement = document.createElement('div');
+    if (card.card_type === GameModels.CardType.MONSTER) {
+      cardElement.className = 'monster-card';
+      cardElement.innerHTML = `
+        <img src="${card.image_url}" alt="${card.card_name}" class="monster-image" />
+        <h3>${card.card_name}</h3>
+        <p>Attack: ${card.attack}</p>
+        <p>Life: ${card.life}</p>
+      `;
+    }
+    handContainer.appendChild(cardElement);
+  });
+}
+
+document.getElementById('render-hand')?.addEventListener('click', () => {
+  if (gameState) {
+    renderHand(gameState.game_state.player_1.hand_cards); // gameState から手札データを渡す
+  } else {
+    console.error('Game state is not loaded yet');
+  }
+});
 
 // // テスト用のモンスターカードデータ
 // const exampleMonster: GameModels.MonsterCard = {
