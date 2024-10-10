@@ -118,3 +118,13 @@ export type GameStateResponse = {
   room_id: string;
   game_state: State;
 };
+
+//#region debug用のWindow
+export {};
+
+declare global {
+  interface Window {
+    debugValues: { [key: string]: any };
+  }
+}
+//#endregion

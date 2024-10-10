@@ -78,6 +78,8 @@ class Player:
         return {
             "user_id": self.user_id,
             "base_mana": self.base_mana,
+            "plan_mana": self.plan_mana,
+            "mana": self.mana,
             "life": self.life,
             "phase": str(self.phase.value),
             "hand_cards": [card.to_dict() for card in self.hand_cards],
@@ -85,6 +87,7 @@ class Player:
             "deck_cards": [card.to_dict() for card in self.deck_cards],
             "plan_deck_cards": [card.to_dict() for card in self.deck_cards],
             "zone": self.zone.to_dict(),
+            "plan_zone": self.plan_zone.to_dict(),
             "summon_phase_actions": self.summon_phase_actions,
             "activity_phase_actions": self.activity_phase_actions,
             "spell_phase_actions": self.spell_phase_actions

@@ -12,8 +12,8 @@ class MonsterCard:
     attack: int
     life: int
     image_url: str = None  # memo:本来クライアント側で自由に画像を持てる
-    card_type: CardType = field(default=CardType.MONSTER)
-    uniq_id: UUID = field(default_factory=uuid4)  # UUIDをデフォルトで生成
+    card_type: CardType = field(default=CardType.MONSTER, init=False)
+    uniq_id: UUID = field(default_factory=uuid4, init=False)  # UUIDをデフォルトで生成
     stun_count: int = 0
     can_act: bool = True
     attack_declaration: bool = False

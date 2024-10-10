@@ -1,31 +1,23 @@
-import types
-from abc import ABC, abstractmethod
-from typing import List
-from .card_type import CardType
+from dataclasses import dataclass, field
 import uuid
 from uuid import UUID
 from typing import Callable
+from .card_type import CardType
 
 
+@dataclass
 class SpellCard:
-    uniq_id: UUID
     card_no: int
     mana_cost: int
     card_name: str
-    card_type: CardType
-
-    def __init__(self, card_no: int, mana_cost: int, card_name: str, cast_spell: Callable):
-        self.uniq_id = uuid.uuid4()
-        self.card_no = card_no
-        self.card_type = CardType.SPELL
-        self.mana_cost = mana_cost
-        self.card_name = card_name
-        self.cast_spell = cast_spell
+    cast_spell: Callable
+    uniq_id: UUID = field(default_factory=uuid.uuid4, init=False)
+    card_type: CardType = field(default=CardType.SPELL, init=False)
 
     def __str__(self):
         return f"{self.card_name}"
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "card_name": self.card_name,
         }

@@ -11,48 +11,53 @@
     <div class="game-board">
       <!-- 相手のゾーン（最初の1行目） -->
       <!-- スタンバイフィールド -->
+      <div class="card-slot standby-field" id="opponent-szone-0"></div>
       <div class="card-slot standby-field" id="opponent-szone-1"></div>
       <div class="card-slot standby-field" id="opponent-szone-2"></div>
       <div class="card-slot standby-field" id="opponent-szone-3"></div>
       <div class="card-slot standby-field" id="opponent-szone-4"></div>
-      <div class="card-slot standby-field" id="opponent-szone-5"></div>
 
       <!-- バトルフィールド -->
+      <div class="card-slot battle-field" id="opponent-szone-0"></div>
       <div class="card-slot battle-field" id="opponent-szone-1"></div>
       <div class="card-slot battle-field" id="opponent-szone-2"></div>
       <div class="card-slot battle-field" id="opponent-szone-3"></div>
       <div class="card-slot battle-field" id="opponent-szone-4"></div>
-      <div class="card-slot battle-field" id="opponent-szone-5"></div>
 
       <!-- バトルフィールド -->
+      <div class="card-slot battle-field" id="player-bzone-0"></div>
       <div class="card-slot battle-field" id="player-bzone-1"></div>
       <div class="card-slot battle-field" id="player-bzone-2"></div>
       <div class="card-slot battle-field" id="player-bzone-3"></div>
       <div class="card-slot battle-field" id="player-bzone-4"></div>
-      <div class="card-slot battle-field" id="player-bzone-5"></div>
 
       <!-- プレイヤーのゾーン（最後の1行目） -->
       <!-- スタンバイフィールド -->
+      <div class="card-slot standby-field" id="player-szone-0"></div>
       <div class="card-slot standby-field" id="player-szone-1"></div>
       <div class="card-slot standby-field" id="player-szone-2"></div>
       <div class="card-slot standby-field" id="player-szone-3"></div>
       <div class="card-slot standby-field" id="player-szone-4"></div>
-      <div class="card-slot standby-field" id="player-szone-5"></div>
     </div>
 
     <!-- 手札（下部セクション） -->
     <div class="hand" id="player-hand">
       <!-- 手札の例 -->
-      <div class="card">Card 1</div>
-      <div class="card">Card 2</div>
-      <div class="card">Card 3</div>
+      <!--div class="card">Card 1</div-->
       <!-- 追加のカードはここに動的に追加可能 -->
+    </div>
+    <!-- プレイヤーのマナ・ライフ表示エリア -->
+    <div class="player-stats">
+      <p>ライフ: <span id="player-life"></span></p>
+      <p>マナ: <span id="player-mana"></span></p>
+      <p>プランマナ: <span id="player-plan-mana"></span></p>
     </div>
 
     <!-- ボタンを追加 -->
     <div class="button-container">
       <button class="fetch-button">Get Game State</button>
       <button id="render-hand" class="blue-button">render hand</button>
+      <button id="render-hand" class="blue-button">submit</button>
     </div>
 
     <!-- 結果表示用の要素 -->

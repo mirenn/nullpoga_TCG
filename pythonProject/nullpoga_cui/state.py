@@ -4,6 +4,9 @@ import random
 from random import choice
 from typing import List, Optional, Final, Union, Any, Tuple, Literal
 import copy
+# from dataclasses import dataclass, field, asdict
+from pydantic import BaseModel
+from typing import Dict, Any
 
 from nullpoga_cui.npg_monte_carlo_tree_search.istate import IState
 from nullpoga_cui.gameutils.monster_cards import MonsterCard
@@ -57,26 +60,9 @@ class State(IState):
         self.player_1: Player = player_1 if player_1 is not None else Player(DECK_1)
         self.player_2: Player = player_2 if player_2 is not None else Player(DECK_2)
         if history is None:
-            self.history = []  # {"user_id":string,"Action": Action,"ActionResult":{"user_id1" :  { "battle_zone": { 0 => { uniq_id :"hoge", life : 2} }, },"user_id2": }}
-        # {"user_id":"string","Action":"Action","ActionResult":{"user_id1":{"battle_zone":{"0":{"uniq_id":"hoge","life":2}}},"user_id2":{}}}
-        # {
-        #     "user_id": "string", // アクションを行うユーザーのID
-        # "Action": "Action", // 実行するアクションの種類や内容
-        # "ActionResult": {
-        #     "user_id1": {
-        #         "battle_zone": {
-        #             "0": { // バトルゾーンの位置（インデックス）
-        # "uniq_id": "hoge", // モンスターやカードのユニークID
-        # "life": 2 // そのモンスターやカードの現在の体力
-        # }
-        # }
-        # },
-        # "user_id2": {
-        #             // user_id2
-        # に対応するアクション結果（空または未定義）
-        # }
-        # }
-        # }
+            self.history: List[List[StepHistory]] = []
+
+            # {"user_id":string,"Action": Action,"ActionResult":{"user_id1" :  { "battle_zone": { 0 => { uniq_id :"hoge", life : 2} }, },"user_id2": }}
 
     def to_dict(self):
         return {
@@ -398,3 +384,63 @@ class State(IState):
     @staticmethod
     def pieces_count(pieces: List[int]) -> int:
         return pieces.count(1)
+
+
+class BattleZone(BaseModel):
+    uniq_id: str
+    life: int
+
+
+class UserActionResult(BaseModel):
+    battle_zone: Dict[str, BattleZone] = {}
+
+
+class ActionResult(BaseModel):
+    user_id1: UserActionResult
+    user_id2: UserActionResult
+
+
+class UserAction(BaseModel):
+    Action: str
+    ActionResult: ActionResult
+
+
+class StepHistory(BaseModel):
+    history: Dict[str, UserAction]
+
+# {
+#   "history": {
+#     "user_id_1": {
+#       "Action": "Action",
+#       "ActionResult": {
+#         "user_id1": {
+#           "battle_zone": {
+#             "0": {
+#               "uniq_id": "hoge",
+#               "life": 2
+#             }
+#           }
+#         },
+#         "user_id2": {
+#           "battle_zone": {}
+#         }
+#       }
+#     },
+#     "user_id_2": {
+#       "Action": "AnotherAction",
+#       "ActionResult": {
+#         "user_id1": {
+#           "battle_zone": {}
+#         },
+#         "user_id2": {
+#           "battle_zone": {
+#             "1": {
+#               "uniq_id": "fuga",
+#               "life": 3
+#             }
+#           }
+#         }
+#       }
+#     }
+#   }
+# }

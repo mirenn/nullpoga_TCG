@@ -29,3 +29,4 @@ export var CardType;
     CardType["SPELL"] = "SPELL";
     CardType["MONSTER"] = "MONSTER";
 })(CardType || (CardType = {}));
+//#endregion
