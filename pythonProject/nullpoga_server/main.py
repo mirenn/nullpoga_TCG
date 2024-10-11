@@ -5,6 +5,7 @@ from nullpoga_server.core.config import app, templates  # 設定のインポー�
 from nullpoga_server.routers import game_apis, pages  # ルーターのインポート
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import FileResponse
 
 # 各種ルーターをアプリケーションに追加
 app.include_router(game_apis.router)
@@ -13,6 +14,13 @@ app.include_router(pages.router)
 # 静的ファイルのマウント
 static_directory = os.path.join(os.path.dirname(__file__), "static")
 app.mount("/static", StaticFiles(directory=static_directory), name="static")
+
+
+# favicon.icoのパスを明示的に指定
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse("static/favicon.ico")
+
 
 app.add_middleware(
     CORSMiddleware,

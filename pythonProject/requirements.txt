@@ -5,3 +5,4 @@ httpx
 jinja2
 pydantic
 authlib
+starlette
