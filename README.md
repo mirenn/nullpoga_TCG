@@ -47,6 +47,7 @@
 - 初期ドローは 5 枚。毎ターン 1 枚ドロー
   - 実装未定：手札のスペルカードは相手に見えているようにしたい
 - 以下カードリストは chatgpt で生成したものも含んでいます
+- [スプレッドシートで管理している分](https://docs.google.com/spreadsheets/d/e/2PACX-1vThBi5yGqPFNrDPT00hie3CD4JGQ6Qx71EwTzj8FgZzrGZuejdW0tBbDFIx67aUr9NlhRa1gYO8xvAu/pubhtml)
 
 ## スペルカード
 

@@ -7,7 +7,7 @@ from enum import Enum
 from nullpoga_cui.gameutils.action import ActionType, ActionData, Action
 from nullpoga_cui.gameutils.monster_cards import MonsterCard
 from nullpoga_cui.gameutils.spell_cards import SpellCard
-from nullpoga_cui.gameutils.nullpoga_system import instance_card
+from nullpoga_cui.gameutils.instance_card import instance_card
 from nullpoga_cui.gameutils.zone import Zone
 import uuid
 from uuid import UUID

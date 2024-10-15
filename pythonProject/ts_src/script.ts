@@ -9,7 +9,7 @@ window.debugValues = window.debugValues || {};
 let extractedGameResponse: GameModels.GameStateResponse | null = null;
 let gameResponse: GameModels.GameStateResponse | null = null; // グローバル変数として宣言
 let myUserId = 'user_id_1';
-let spell_phase_actions = [];
+let spell_phase_actions : GameModels.Action[] = [];
 let summon_phase_actions: GameModels.Action[] = [];
 let activity_phase_actions: GameModels.Action[] = [];
 
@@ -35,46 +35,6 @@ const dropAreas = [
   document.getElementById('player-szone-4') as HTMLElement,
 ];
 
-async function getgameResponse(
-  userId: string,
-): Promise<GameModels.GameStateResponse | null> {
-  const url = `http://127.0.0.1:8000/test_game_state/${userId}`;
-
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
-    }
-
-    const data: GameModels.GameStateResponse = await response.json();
-    console.log('Game State:', data);
-    // 取得したデータをグローバル変数に保存
-    gameResponse = data;
-    if (extractedGameResponse === null) {
-      extractedGameResponse = gameResponse;
-      GameUtils.renderPlayerStatus(
-        GameUtils.getPlayerByUserId(
-          extractedGameResponse?.game_state,
-          myUserId,
-        ),
-      );
-    }
-    GameUtils.renderBtFieldMonsterCard(
-      'player-bzone-1',
-      data.game_state.player_1.zone.battle_field[0].card,
-    );
-    return data;
-  } catch (error) {
-    console.error('Failed to fetch game state:', error);
-    return null;
-  }
-}
 
 // #region 召喚ドラッグアンドドロップハイライト/////////////////////
 // 各スロットに対してドロップイベントを設定
@@ -130,8 +90,10 @@ dropAreas.forEach((area) => {
 
 document.getElementById('render-hand')?.addEventListener('click', () => {
   if (extractedGameResponse) {
+        // 型アサーションを使用して game_state が存在することを保証
+        const gameState = (extractedGameResponse as GameModels.GameStateResponse).game_state;
     const myHandCds = GameUtils.getPlayerByUserId(
-      extractedGameResponse.game_state,
+      gameState,
       myUserId,
     )?.hand_cards;
     if (myHandCds) {
@@ -142,8 +104,15 @@ document.getElementById('render-hand')?.addEventListener('click', () => {
   }
 });
 
-document.querySelector('.fetch-button')?.addEventListener('click', () => {
-  getgameResponse('user_id_1');
+document.getElementById("get-game-state")?.addEventListener('click', async () => {
+  const res = await GameUtils.getgameResponse(myUserId, extractedGameResponse, gameResponse);
+  if(res){
+    [extractedGameResponse, gameResponse] = res;
+  }
+});
+
+document.getElementById('action-submit')?.addEventListener('click', ()=>{
+  GameUtils.actionSubmit(myUserId,spell_phase_actions,summon_phase_actions,activity_phase_actions);
 });
 
 // // テスト用のモンスターカードデータ

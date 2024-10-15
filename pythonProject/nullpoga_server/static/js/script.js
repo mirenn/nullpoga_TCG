@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var _a, _b;
+var _a, _b, _c;
 import * as GameUtils from './gameUtils.js';
 window.debugValues = window.debugValues || {};
 /**
@@ -39,36 +39,6 @@ const dropAreas = [
     document.getElementById('player-szone-3'),
     document.getElementById('player-szone-4'),
 ];
-function getgameResponse(userId) {
-    return __awaiter(this, void 0, void 0, function* () {
-        const url = `http://127.0.0.1:8000/test_game_state/${userId}`;
-        try {
-            const response = yield fetch(url, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-            });
-            if (!response.ok) {
-                throw new Error(`Error: ${response.status}`);
-            }
-            const data = yield response.json();
-            console.log('Game State:', data);
-            // 取得したデータをグローバル変数に保存
-            gameResponse = data;
-            if (extractedGameResponse === null) {
-                extractedGameResponse = gameResponse;
-                GameUtils.renderPlayerStatus(GameUtils.getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId));
-            }
-            GameUtils.renderBtFieldMonsterCard('player-bzone-1', data.game_state.player_1.zone.battle_field[0].card);
-            return data;
-        }
-        catch (error) {
-            console.error('Failed to fetch game state:', error);
-            return null;
-        }
-    });
-}
 // #region 召喚ドラッグアンドドロップハイライト/////////////////////
 // 各スロットに対してドロップイベントを設定
 dropAreas.forEach((area) => {
@@ -105,7 +75,9 @@ dropAreas.forEach((area) => {
 (_a = document.getElementById('render-hand')) === null || _a === void 0 ? void 0 : _a.addEventListener('click', () => {
     var _a;
     if (extractedGameResponse) {
-        const myHandCds = (_a = GameUtils.getPlayerByUserId(extractedGameResponse.game_state, myUserId)) === null || _a === void 0 ? void 0 : _a.hand_cards;
+        // 型アサーションを使用して game_state が存在することを保証
+        const gameState = extractedGameResponse.game_state;
+        const myHandCds = (_a = GameUtils.getPlayerByUserId(gameState, myUserId)) === null || _a === void 0 ? void 0 : _a.hand_cards;
         if (myHandCds) {
             GameUtils.renderHand(myHandCds, dropAreas); // gameResponse から手札データを渡す
         }
@@ -114,8 +86,14 @@ dropAreas.forEach((area) => {
         console.error('Game state is not loaded yet');
     }
 });
-(_b = document.querySelector('.fetch-button')) === null || _b === void 0 ? void 0 : _b.addEventListener('click', () => {
-    getgameResponse('user_id_1');
+(_b = document.getElementById("get-game-state")) === null || _b === void 0 ? void 0 : _b.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
+    const res = yield GameUtils.getgameResponse(myUserId, extractedGameResponse, gameResponse);
+    if (res) {
+        [extractedGameResponse, gameResponse] = res;
+    }
+}));
+(_c = document.getElementById('action-submit')) === null || _c === void 0 ? void 0 : _c.addEventListener('click', () => {
+    GameUtils.actionSubmit(myUserId, spell_phase_actions, summon_phase_actions, activity_phase_actions);
 });
 // // テスト用のモンスターカードデータ
 // const exampleMonster: GameModels.MonsterCard = {

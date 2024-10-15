@@ -55,20 +55,31 @@ def get_view(target: Slot | int | MonsterCard | SpellCard | None):
 
 class State(IState):
 
-    def __init__(self, player_1: Optional[Player] = None, player_2: Optional[Player] = None, history=None):
+    def __init__(self, player_1: Optional[Player] = None, player_2: Optional[Player] = None, history=None,
+                 turn_his=None):
         # player_1を「手番のプレイヤー」と呼ぶ
         self.player_1: Player = player_1 if player_1 is not None else Player(DECK_1)
         self.player_2: Player = player_2 if player_2 is not None else Player(DECK_2)
         if history is None:
-            self.history: List[List[StepHistory]] = []
-
-            # {"user_id":string,"Action": Action,"ActionResult":{"user_id1" :  { "battle_zone": { 0 => { uniq_id :"hoge", life : 2} }, },"user_id2": }}
+            self.history: List[List[dict]] = []  # メモ：historyは、基本クライアント用なのでmontecarlosearchの自己対戦には不要。無駄にメモリを食いそう
+        else:
+            self.history = history
+        if turn_his is None:
+            self.turn_his: List[dict] = []  # StepHistory
+        else:
+            self.turn_his = turn_his
 
     def to_dict(self):
         return {
             "player_1": self.player_1.to_dict(),
             "player_2": self.player_2.to_dict(),
             "history": self.history
+        }
+
+    def to_dict_without_his(self):
+        return {
+            "player_1": self.player_1.to_dict(),
+            "player_2": self.player_2.to_dict(),
         }
 
     def init_game(self, debug=False):
@@ -240,9 +251,9 @@ class State(IState):
                 self.refresh_turn(player_1, player_2)
             else:
                 pass
-            return State(player_2, player_1)  # nagai順番を変更する
+            return State(player_2, player_1, history=self.history)  # nagai順番を変更する
         else:
-            return State(player_1, player_2)
+            return State(player_1, player_2, history=self.history)  # nagaihisも引き継ぐ? 注意:turn_hisは配列で参照渡しで上書きされます
 
     def legal_actions(self) -> List[Action]:
         """手番のプレイヤーの現在の状態での合法手を列挙する。
@@ -310,9 +321,12 @@ class State(IState):
         self.execute_summon(player_1, player_2)
         # activityフェイズ
         self.execute_activity(player_1, player_2)
+        # 1ターン文の履歴をhistoryに追加
+        self.history.append(self.turn_his)
+        self.turn_his = []
 
-    @staticmethod
-    def execute_summon(player_1: Player, player_2: Player):
+    # @staticmethod
+    def execute_summon(self, player_1: Player, player_2: Player):
         """
         召喚実行
         :param player_1: 召喚フェーズのプレイヤー
@@ -322,7 +336,8 @@ class State(IState):
 
         def summon_action(player: Player, action: Action):
             """個々のプレイヤーの召喚処理を行う"""
-            if (action and not player.zone.standby_field[action.action_data.summon_standby_field_idx] and
+            if (action and action.action_data and not player.zone.standby_field[
+                action.action_data.summon_standby_field_idx] and
                     action.action_data.monster_card.mana_cost <= player.mana and
                     any(card.uniq_id == action.action_data.monster_card.uniq_id for card in player.hand_cards)):
                 player.mana -= action.action_data.monster_card.mana_cost
@@ -333,16 +348,21 @@ class State(IState):
 
         # 両プレイヤーの召喚処理を行う
         for my_act, e_act in zip_longest(player_1.summon_phase_actions, player_2.summon_phase_actions):
+            his_act = {}
             if my_act:
                 summon_action(player_1, my_act)
+                his_act[player_1.user_id] = my_act
             if e_act:
                 summon_action(player_2, e_act)
+                his_act[player_2.user_id] = e_act
+            self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
 
         # アクションのリセット
         player_1.summon_phase_actions = []
         player_2.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
+        step_history = []
         if DEBUG:
             print("turn count:", player_1.turn_count)
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
@@ -352,15 +372,22 @@ class State(IState):
                 print("exe_activity", "first_player" if player_2.is_first_player else "second_player",
                       p2_act.to_dict() if p2_act else None)
 
+            his_act = {}
+
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
                 player_1.monster_move(p1_act, player_1.zone)
+                his_act[player_1.user_id] = p1_act
             if p2_act and p2_act.action_type == ActionType.MONSTER_MOVE:
                 player_2.monster_move(p2_act, player_2.zone)
+                his_act[player_2.user_id] = p2_act
             if p1_act and p1_act.action_type == ActionType.MONSTER_ATTACK:
-                player_2.monster_attacked(p1_act, player_1.zone)
+                player_2.monster_attacked(p1_act, player_1.zone, player_1.user_id)
+                his_act[player_1.user_id] = p1_act
             if p2_act and p2_act.action_type == ActionType.MONSTER_ATTACK:
                 player_1.monster_attacked(p2_act, player_2.zone)
+                his_act[player_2.user_id] = p2_act
             self.delete_monster(player_1, player_2)
+            self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
             # ゲームエンドなら即終了する(先にゼロにしたらそこで終わりにすべきなため)
             if self.is_game_end():
                 break
@@ -386,61 +413,7 @@ class State(IState):
         return pieces.count(1)
 
 
-class BattleZone(BaseModel):
-    uniq_id: str
-    life: int
-
-
-class UserActionResult(BaseModel):
-    battle_zone: Dict[str, BattleZone] = {}
-
-
-class ActionResult(BaseModel):
-    user_id1: UserActionResult
-    user_id2: UserActionResult
-
-
-class UserAction(BaseModel):
-    Action: str
-    ActionResult: ActionResult
-
-
 class StepHistory(BaseModel):
-    history: Dict[str, UserAction]
-
-# {
-#   "history": {
-#     "user_id_1": {
-#       "Action": "Action",
-#       "ActionResult": {
-#         "user_id1": {
-#           "battle_zone": {
-#             "0": {
-#               "uniq_id": "hoge",
-#               "life": 2
-#             }
-#           }
-#         },
-#         "user_id2": {
-#           "battle_zone": {}
-#         }
-#       }
-#     },
-#     "user_id_2": {
-#       "Action": "AnotherAction",
-#       "ActionResult": {
-#         "user_id1": {
-#           "battle_zone": {}
-#         },
-#         "user_id2": {
-#           "battle_zone": {
-#             "1": {
-#               "uniq_id": "fuga",
-#               "life": 3
-#             }
-#           }
-#         }
-#       }
-#     }
-#   }
-# }
+    """使用していないが、turn_his内のList[dict]のdictはこのStepHistoryの形"""
+    ActionDict: dict[str, Action]  # キーはuser_id
+    State: dict  # stete.to_dict_without_his()の出力

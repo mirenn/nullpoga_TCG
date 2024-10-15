@@ -1,4 +1,14 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 import * as GameModels from './gameModels.js';
+const HOST = 'http://127.0.0.1:8000';
 // 手札のカードを描画する関数
 export function renderHand(playerHand, dropAreas) {
     const handContainer = document.getElementById('player-hand');
@@ -150,4 +160,70 @@ export function getPlayerByUserId(gameState, user_id) {
     // 該当するプレイヤーが見つからなければnullを返す
     console.error(`Player with user_id ${user_id} not found.`);
     return null;
+}
+/**
+ * Actionをサーバーに送信
+ * @param userId
+ * @param spell_phase_actions
+ * @param summon_phase_actions
+ * @param activity_phase_actions
+ * @returns
+ */
+export function actionSubmit(userId, spell_phase_actions, summon_phase_actions, activity_phase_actions) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = HOST + `/submit_action_with_random_cpu/${userId}`;
+        const postData = {
+            spell_phase_actions,
+            summon_phase_actions,
+            activity_phase_actions
+        };
+        try {
+            const response = yield fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(postData)
+            });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            const res = yield response.json();
+            console.log('actionSubmit res', res);
+        }
+        catch (error) {
+            console.error('Failed to actionSubmit:', error);
+            return null;
+        }
+    });
+}
+export function getgameResponse(userId, extractedGameResponse, gameResponse) {
+    return __awaiter(this, void 0, void 0, function* () {
+        const url = HOST + `/test_game_state/${userId}`;
+        try {
+            const response = yield fetch(url, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+            });
+            if (!response.ok) {
+                throw new Error(`Error: ${response.status}`);
+            }
+            const data = yield response.json();
+            console.log('Game State:', data);
+            // 取得したデータをグローバル変数に保存
+            gameResponse = data;
+            if (extractedGameResponse === null) {
+                extractedGameResponse = gameResponse;
+                renderPlayerStatus(getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, userId));
+            }
+            renderBtFieldMonsterCard('player-bzone-1', data.game_state.player_1.zone.battle_field[0].card);
+            return [extractedGameResponse, gameResponse];
+        }
+        catch (error) {
+            console.error('Failed to fetch game state:', error);
+            return null;
+        }
+    });
 }

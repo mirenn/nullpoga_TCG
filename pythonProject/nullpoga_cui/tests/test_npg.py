@@ -12,7 +12,7 @@ from nullpoga_cui.state import State
 from nullpoga_cui.player import Player, PhaseKind
 from nullpoga_cui.gameutils.zone import FieldStatus
 from nullpoga_cui.gameutils.action import ActionType, ActionData, Action
-from nullpoga_cui.gameutils.nullpoga_system import instance_card
+from nullpoga_cui.gameutils.instance_card import instance_card
 from nullpoga_cui.npg_monte_carlo_tree_search.node import Node
 
 

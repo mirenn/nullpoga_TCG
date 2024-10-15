@@ -1,7 +1,9 @@
 from typing import List, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID, uuid4
-from nullpoga_cui.gameutils.action import ActionType
+from nullpoga_cui.gameutils.action import Action as npgAction, ActionData as npgActionData, ActionType
+from nullpoga_cui.gameutils.monster_cards import MonsterCard as npgMonsterCard
+from nullpoga_cui.gameutils.spell_cards import SpellCard as npgSpellCard
 from nullpoga_cui.player import PhaseKind
 from nullpoga_cui.gameutils.zone import FieldStatus
 
@@ -9,9 +11,15 @@ from nullpoga_cui.gameutils.zone import FieldStatus
 class MonsterCard(BaseModel):
     card_no: int
     mana_cost: int
+    card_name: str
     attack: int
     life: int
     uniq_id: UUID = Field(default_factory=uuid4)
+    image_url: str = None  # memo:本来クライアント側で自由に画像を持てる
+    stun_count: int
+    can_act: bool
+    attack_declaration: bool
+    done_activity: bool
 
     def to_dict(self):
         return self.dict()
@@ -39,6 +47,30 @@ class ActionData(BaseModel):
 class Action(BaseModel):
     action_type: ActionType
     action_data: ActionData
+
+    def to_dataclass(self) -> npgAction:
+        """
+        Pydantic Actionインスタンスをdataclass Actionに変換するメソッド
+        """
+        pydantic_data = self.action_data
+        if pydantic_data:
+            dataclass_data = npgActionData(
+                monster_card=npgMonsterCard(
+                    **pydantic_data.monster_card.dict()) if pydantic_data.monster_card else None,
+                summon_standby_field_idx=pydantic_data.summon_standby_field_idx,
+                move_battle_field_idx=pydantic_data.move_battle_field_idx,
+                move_direction=pydantic_data.move_direction,
+                attack_declaration_idx=pydantic_data.attack_declaration_idx,
+                spell_card=npgSpellCard(**pydantic_data.spell_card.dict()) if pydantic_data.spell_card else None
+            )
+        else:
+            dataclass_data = None
+
+        # Pydantic Action から dataclass Action への変換
+        return npgAction(
+            action_type=self.action_type,
+            action_data=dataclass_data
+        )
 
 
 class Slot(BaseModel):
