@@ -78,6 +78,7 @@ export function renderBtFieldMonsterCard(
         <h3>${monster.card_name}</h3>
         <p>Attack: ${monster.attack}</p>
         <p>Life: ${monster.life}</p>
+        <button class="attack-button" disabled>攻撃宣言</button>
       `;
 
     slot.appendChild(cardElement);

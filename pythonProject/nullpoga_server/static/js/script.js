@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var _a, _b, _c;
+var _a, _b, _c, _d;
 import * as GameUtils from './gameUtils.js';
 window.debugValues = window.debugValues || {};
 /**
@@ -94,6 +94,31 @@ dropAreas.forEach((area) => {
 }));
 (_c = document.getElementById('action-submit')) === null || _c === void 0 ? void 0 : _c.addEventListener('click', () => {
     GameUtils.actionSubmit(myUserId, spell_phase_actions, summon_phase_actions, activity_phase_actions);
+});
+(_d = document.getElementById("summon-phase-end")) === null || _d === void 0 ? void 0 : _d.addEventListener("click", () => {
+    const monsterCards = document.querySelectorAll(".card-slot.battle-field .monster-card");
+    // モンスターカードごとに処理
+    monsterCards.forEach(function (card) {
+        // 攻撃ボタンを取得
+        const attackButton = card.querySelector(".attack-button");
+        if (attackButton) {
+            // 条件に応じてボタンの有効/無効を切り替える
+            //const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
+            const canAttack = true;
+            if (canAttack) {
+                attackButton.removeAttribute("disabled");
+            }
+            else {
+                attackButton.setAttribute("disabled", "true"); // 攻撃できない場合はボタンを無効化
+            }
+            // ボタンクリック時の処理
+            attackButton.addEventListener("click", function () {
+                const monsterId = card.getAttribute("id");
+                console.log(monsterId + " が攻撃を宣言しました");
+                // ここで攻撃処理を追加（例：API呼び出しやゲームロジック処理）
+            });
+        }
+    });
 });
 // // テスト用のモンスターカードデータ
 // const exampleMonster: GameModels.MonsterCard = {

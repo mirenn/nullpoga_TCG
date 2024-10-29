@@ -16,12 +16,12 @@ async def get_room_and_lock(user_id: str):
     """メモ未実装：認証を必要とする"""
     room_id = user_to_room.get(user_id)
     if not room_id:
-        print("User is not in any room.")
+        print(f"User:{room_id} is not in any room.")
         raise HTTPException(status_code=404, detail="User is not in any room.")
 
     room_lock = room_locks.get(room_id)
     if not room_lock:
-        print("Room not found.")
+        print(f"Room:{room_id} not found.")
         raise HTTPException(status_code=404, detail="Room not found.")
 
     return room_id, room_lock
@@ -41,6 +41,13 @@ async def get_game_state(user_id: str):
     ユーザーIDからそのルームのゲーム状態を返すエンドポイント
 
     メモ未実装：相手のデッキの情報を含んでいるので、相手の情報は加工して返す
+    """
+    return await get_game_state_fn(user_id)
+
+
+async def get_game_state_fn(user_id: str):
+    """
+    テスト関数では外から呼ぶ
     """
     print("nagai game_state")
     room_id, room_lock = await get_room_and_lock(user_id)

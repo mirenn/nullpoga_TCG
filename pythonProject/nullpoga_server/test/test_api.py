@@ -1,5 +1,7 @@
 from fastapi.testclient import TestClient
 from nullpoga_server.main import app
+from nullpoga_server.routers.game_apis import get_game_state_fn
+import pytest
 
 client = TestClient(app)
 
@@ -10,12 +12,13 @@ def test_read_root():
     assert response.json() == {"message": "Welcome to nullpoga server!"}
 
 
-def test_submit_action_with_random_cpu():
+@pytest.mark.asyncio
+async def test_submit_action_with_random_cpu():
     """
     メモ：作りかけ！！！
     :return:
     """
-    user_id = "usr_id_1"
+    user_id = "user_id_1"
     spell_phase_actions = []
     activity_phase_actions = []
     summon_phase_actions = [[
@@ -46,7 +49,7 @@ def test_submit_action_with_random_cpu():
         "summon_phase_actions": summon_phase_actions
     }
     client.post("/submit_action_with_random_cpu/" + user_id, json=payload)
-
+    state = await get_game_state_fn(user_id)
     pass
 # def test_play_turn():
 #     response = client.post("/play", json={"player_action": "move"})

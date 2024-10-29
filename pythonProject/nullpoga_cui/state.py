@@ -349,20 +349,20 @@ class State(IState):
         # 両プレイヤーの召喚処理を行う
         for my_act, e_act in zip_longest(player_1.summon_phase_actions, player_2.summon_phase_actions):
             his_act = {}
-            if my_act:
+            if my_act and my_act.action_data:
                 summon_action(player_1, my_act)
                 his_act[player_1.user_id] = my_act
-            if e_act:
+            if e_act and e_act.action_data:
                 summon_action(player_2, e_act)
                 his_act[player_2.user_id] = e_act
-            self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
+            if his_act:
+                self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
 
         # アクションのリセット
         player_1.summon_phase_actions = []
         player_2.summon_phase_actions = []
 
     def execute_activity(self, player_1: Player, player_2: Player):
-        step_history = []
         if DEBUG:
             print("turn count:", player_1.turn_count)
         for p1_act, p2_act in zip_longest(player_1.activity_phase_actions, player_2.activity_phase_actions):
@@ -376,18 +376,24 @@ class State(IState):
 
             if p1_act and p1_act.action_type == ActionType.MONSTER_MOVE:
                 player_1.monster_move(p1_act, player_1.zone)
-                his_act[player_1.user_id] = p1_act
+                if p1_act.action_data:
+                    his_act[player_1.user_id] = p1_act
             if p2_act and p2_act.action_type == ActionType.MONSTER_MOVE:
                 player_2.monster_move(p2_act, player_2.zone)
-                his_act[player_2.user_id] = p2_act
+                if p2_act.action_data:
+                    his_act[player_2.user_id] = p2_act
             if p1_act and p1_act.action_type == ActionType.MONSTER_ATTACK:
-                player_2.monster_attacked(p1_act, player_1.zone, player_1.user_id)
-                his_act[player_1.user_id] = p1_act
+                player_2.monster_attacked(p1_act, player_1.zone)
+                if p1_act.action_data:
+                    his_act[player_1.user_id] = p1_act
             if p2_act and p2_act.action_type == ActionType.MONSTER_ATTACK:
                 player_1.monster_attacked(p2_act, player_2.zone)
-                his_act[player_2.user_id] = p2_act
+                if p2_act.action_data:
+                    his_act[player_2.user_id] = p2_act
             self.delete_monster(player_1, player_2)
-            self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
+
+            if his_act:
+                self.turn_his.append({"State": self.to_dict_without_his(), "ActionDict": his_act})
             # ゲームエンドなら即終了する(先にゼロにしたらそこで終わりにすべきなため)
             if self.is_game_end():
                 break
