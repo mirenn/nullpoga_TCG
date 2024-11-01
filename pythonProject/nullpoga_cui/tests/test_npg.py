@@ -227,3 +227,42 @@ def test_playout(player1_will_win_state):
     root_node = Node(player1_will_win_state, expand_base=10)
     # player_1が勝利(ターン数は返り値にないが2ターン目に勝利する)
     assert root_node.playout(root_node.state) == 1
+
+
+@pytest.fixture
+def test_cpu_state():
+    # プレイヤーとゲームの初期状態を設定
+    player1_cards = [1, 1, 2, 2, 3, 4, 5, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
+    player2_cards = [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
+    player1 = Player(player1_cards, 1, 'user_id_1')
+    player2 = Player(player2_cards, 1)
+    state = State(player1, player2)
+    state.init_game()
+    return state
+
+
+def test_process_cpu_turn(test_cpu_state):
+    """
+    CPUターン処理のテスト
+    """
+    state = test_cpu_state
+    initial_turn_count = state.player_1.turn_count
+    player1 = state.player_1
+    player1_action = Action(
+        action_type=ActionType.SUMMON_MONSTER,
+        action_data=ActionData(summon_standby_field_idx=0, monster_card=player1.hand_cards[0])
+    )
+    player1.summon_phase_actions = [player1_action]
+    player1.phase = PhaseKind.END_PHASE
+
+    state.swap_players()
+
+    # CPUターンを処理
+    p_state = state.process_cpu_turn()
+
+    # ターン数が増加していることを確認 TODO
+    assert p_state.player_1.turn_count == initial_turn_count + 1
+
+    # ゲームの状態が更新されていることを確認
+    assert p_state.player_1.phase == PhaseKind.SPELL_PHASE
+    assert p_state.player_1.zone.standby_field[0] is not None

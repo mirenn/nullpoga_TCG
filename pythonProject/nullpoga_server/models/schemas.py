@@ -118,14 +118,6 @@ class State(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def to_json(self):
-        """お試し。ゲーム情報のインポート、エクスポート用"""
-        state_json = {
-            "player1": self.player_1.dict(),
-            "player2": self.player_2.dict(),
-        }
-        return state_json
-
 
 # 新しいレスポンスモデルを定義する
 class RoomStateResponse(BaseModel):

@@ -89,8 +89,8 @@ async def submit_action_with_random_cpu(user_id: str, spell_phase_actions: list[
         current_player.phase = PhaseKind.END_PHASE
 
         # プレイヤーの状態をスワップしてCPUの手を進める?
-        swap_players(game_state)
-        room_dict[room_id]['game_state'] = process_cpu_turn(game_state)  # メモ：returnしたstateでroomのを更新する必要があるかも
+        game_state.swap_players()
+        room_dict[room_id]['game_state'] = game_state.process_cpu_turn()  # メモ：returnしたstateでroomのを更新する必要があるかも
 
         return {"history": game_state.history}
 
@@ -109,25 +109,6 @@ def set_player_actions(player, spell_phase_actions, summon_phase_actions, activi
     player.spell_phase_actions = spell_phase_actions
     player.summon_phase_actions = summon_phase_actions
     player.activity_phase_actions = activity_phase_actions
-
-
-def swap_players(game_state: State):
-    """プレイヤーの状態をスワップするヘルパー関数"""
-    old_game_state = copy.deepcopy(game_state)
-    game_state.player_1 = old_game_state.player_2
-    game_state.player_2 = old_game_state.player_1
-
-
-def process_cpu_turn(game_state: State) -> State:
-    # pass_activity_phase_f = False
-    """CPUのターン処理を進めるヘルパー関数"""
-    while True:
-        if game_state.player_1.phase == PhaseKind.SPELL_PHASE and game_state.player_2.phase == PhaseKind.SPELL_PHASE:
-            # pass_activity_phase_f = True  # ターン終了までの処理が完了している
-            return game_state
-
-        action = game_state.random_action()  # ランダムな行動を選択
-        game_state = game_state.next(action)  # 選択された行動をもとに次の状態へ進む
 
 
 @router.get("/test_game_state/{user_id}")

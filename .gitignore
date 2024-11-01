@@ -1,0 +1,8 @@
+node_modules
+.idea
+.pytest_cache
+.venv
+.vscode
+/pythonProject/pythonProject_project_summary.txt
+/pythonProject/pythonProject.code-workspace
+/pythonProject/generate_project_summary.py

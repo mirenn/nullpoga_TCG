@@ -13,45 +13,44 @@ def test_read_root():
 
 
 @pytest.mark.asyncio
-async def test_submit_action_with_random_cpu():
+async def test_submit_summon_action_with_random_cpu():
     """
-    メモ：作りかけ！！！
-    :return:
+    テスト関数: ランダムCPUで召喚アクションを送信する
+
+    このテストは、特定のユーザーIDに対して召喚アクションを送信し、
+    その結果としてゲーム状態が正しく更新されることを確認します。
     """
     user_id = "user_id_1"
     spell_phase_actions = []
     activity_phase_actions = []
-    summon_phase_actions = [[
+
+    # ゲーム状態を取得
+    game_state = await get_game_state_fn(user_id)
+    hand_card = game_state["state"]["player_1"]["hand_cards"][0]
+    hand_card["uniq_id"] = str(hand_card["uniq_id"])
+    hand_card["card_type"] = hand_card["card_type"].value
+
+    # 召喚アクションを定義
+    summon_phase_actions = [
         {
             "action_type": "SUMMON_MONSTER",
             "action_data": {
-                "monster_card": {
-                    "card_no": 1,
-                    "mana_cost": 1,
-                    "card_name": "ネズミ",
-                    "attack": 1,
-                    "life": 1,
-                    "image_url": "/static/images/1.png",
-                    "card_type": "MONSTER",
-                    "uniq_id": "61ccbf8d-bd60-498d-8f97-020103eabb03",
-                    "stun_count": 0,
-                    "can_act": True,
-                    "attack_declaration": False,
-                    "done_activity": False
-                },
+                "monster_card": hand_card,
                 "summon_standby_field_idx": 2
             }
         }
-    ]]
+    ]
+
+    # ペイロードを作成
     payload = {
         "spell_phase_actions": spell_phase_actions,
         "activity_phase_actions": activity_phase_actions,
         "summon_phase_actions": summon_phase_actions
     }
-    client.post("/submit_action_with_random_cpu/" + user_id, json=payload)
-    state = await get_game_state_fn(user_id)
-    pass
-# def test_play_turn():
-#     response = client.post("/play", json={"player_action": "move"})
-#     assert response.status_code == 200
-#     assert response.json()["result"] == expected_result
+
+    # アクションを送信
+    client.post(f"/submit_action_with_random_cpu/{user_id}", json=payload)
+
+    # ゲーム状態を再取得し、アサーションを行う
+    game_state = await get_game_state_fn(user_id)
+    assert game_state["state"]["player_1"]["zone"]["standby_field"][2]["card_name"] == "ネズミ"

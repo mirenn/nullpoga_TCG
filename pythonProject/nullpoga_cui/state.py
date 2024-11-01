@@ -181,6 +181,12 @@ class State(IState):
         player_1.next_turn_refresh()
         player_2.next_turn_refresh()
 
+    def swap_players(self):
+        """プレイヤーの状態をスワップするヘルパー関数 TODO:この処理削除予定"""
+        old_game_state = copy.deepcopy(self)
+        self.player_1 = old_game_state.player_2
+        self.player_2 = old_game_state.player_1
+
     def evaluate_result(self):
         """
         game_endが確定しているときに、ゲームの結果値を返す
@@ -254,6 +260,20 @@ class State(IState):
             return State(player_2, player_1, history=self.history)  # nagai順番を変更する
         else:
             return State(player_1, player_2, history=self.history)  # nagaihisも引き継ぐ? 注意:turn_hisは配列で参照渡しで上書きされます
+
+    def process_cpu_turn(self) -> State:
+        """CPUのターン処理を進めるヘルパー関数
+        Nodeで進めるのが面倒なので、Stateで進めて1ターンの処理が終わった最後の状態を返す
+        この前に
+        ・人間側がsummon_phase_actionsを埋めておく必要がある
+        ・人間側がphaseをEND_PHASEにしておく必要がある
+        ・その後、swap_playersを呼び出すをして、CPUを先手にする必要がある"""
+        if self.player_1.phase == PhaseKind.SPELL_PHASE and self.player_2.phase == PhaseKind.SPELL_PHASE:
+            return self
+
+        action = self.random_action()  # ランダムな行動を選択
+        n_state = self.next(action)  # 選択された行動をもとに次の状態へ進む
+        return n_state.process_cpu_turn()  # 再帰的にCPUのターン処理を進める
 
     def legal_actions(self) -> List[Action]:
         """手番のプレイヤーの現在の状態での合法手を列挙する。
