@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-var _a, _b, _c, _d;
+var _a, _b, _c, _d, _e;
 import * as GameUtils from './gameUtils.js';
 window.debugValues = window.debugValues || {};
 /**
@@ -76,7 +76,8 @@ dropAreas.forEach((area) => {
     var _a;
     if (extractedGameResponse) {
         // 型アサーションを使用して game_state が存在することを保証
-        const gameState = extractedGameResponse.game_state;
+        const gameState = extractedGameResponse
+            .game_state;
         const myHandCds = (_a = GameUtils.getPlayerByUserId(gameState, myUserId)) === null || _a === void 0 ? void 0 : _a.hand_cards;
         if (myHandCds) {
             GameUtils.renderHand(myHandCds, dropAreas); // gameResponse から手札データを渡す
@@ -86,7 +87,8 @@ dropAreas.forEach((area) => {
         console.error('Game state is not loaded yet');
     }
 });
-(_b = document.getElementById("get-game-state")) === null || _b === void 0 ? void 0 : _b.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
+(_b = document
+    .getElementById('get-game-state')) === null || _b === void 0 ? void 0 : _b.addEventListener('click', () => __awaiter(void 0, void 0, void 0, function* () {
     const res = yield GameUtils.getgameResponse(myUserId, extractedGameResponse, gameResponse);
     if (res) {
         [extractedGameResponse, gameResponse] = res;
@@ -95,32 +97,37 @@ dropAreas.forEach((area) => {
 (_c = document.getElementById('action-submit')) === null || _c === void 0 ? void 0 : _c.addEventListener('click', () => {
     GameUtils.actionSubmit(myUserId, spell_phase_actions, summon_phase_actions, activity_phase_actions);
 });
-(_d = document.getElementById("summon-phase-end")) === null || _d === void 0 ? void 0 : _d.addEventListener("click", () => {
-    const monsterCards = document.querySelectorAll(".card-slot.battle-field .monster-card");
+(_d = document.getElementById('summon-phase-end')) === null || _d === void 0 ? void 0 : _d.addEventListener('click', () => {
+    //TODO: summon-phase-endを押して攻撃を有効化するのわかりにくい
+    const monsterCards = document.querySelectorAll('.card-slot.battle-field .monster-card');
     // モンスターカードごとに処理
     monsterCards.forEach(function (card) {
         // 攻撃ボタンを取得
-        const attackButton = card.querySelector(".attack-button");
+        const attackButton = card.querySelector('.attack-button');
         if (attackButton) {
             // 条件に応じてボタンの有効/無効を切り替える
             const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
             if (canAttack) {
-                attackButton.removeAttribute("disabled");
+                attackButton.removeAttribute('disabled');
             }
             else {
-                attackButton.setAttribute("disabled", "true"); // 攻撃できない場合はボタンを無効化
+                attackButton.setAttribute('disabled', 'true'); // 攻撃できない場合はボタンを無効化
             }
             // ボタンクリック時の処理
-            attackButton.addEventListener("click", function () {
-                const monsterId = card.getAttribute("id");
-                console.log(monsterId + " が攻撃を宣言しました");
+            attackButton.addEventListener('click', function () {
+                const monsterId = card.getAttribute('id');
+                console.log(monsterId + ' が攻撃を宣言しました');
                 // ここで攻撃処理を追加（例：API呼び出しやゲームロジック処理）
                 GameUtils.planAttackMonster(monsterId, GameUtils.getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId), activity_phase_actions);
                 // 攻撃後はボタンを無効化
-                attackButton.setAttribute("disabled", "true");
+                attackButton.setAttribute('disabled', 'true');
             });
         }
     });
+});
+(_e = document.getElementById('spell-phase-end')) === null || _e === void 0 ? void 0 : _e.addEventListener('click', () => {
+    //TODO: 未確認
+    GameUtils.moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserId);
 });
 // // テスト用のモンスターカードデータ
 // const exampleMonster: GameModels.MonsterCard = {

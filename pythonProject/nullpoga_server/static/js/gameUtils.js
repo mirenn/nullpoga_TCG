@@ -236,6 +236,28 @@ export function getPlayerByUserId(gameState, user_id) {
     return null;
 }
 /**
+ * 指定したuser_idを除外したプレイヤーをgameStateから取得する関数
+ * @param gameState - ゲームの状態（State）
+ * @param user_id - 除外するユーザーID
+ * @returns - user_idに一致しないPlayerオブジェクト
+ */
+export function getPlayerExcludingUserId(gameState, user_id) {
+    if (gameState === undefined) {
+        return null;
+    }
+    // player_1のuser_idが一致しないか確認
+    if (gameState.player_1.user_id !== user_id) {
+        return gameState.player_1;
+    }
+    // player_2のuser_idが一致しないか確認
+    if (gameState.player_2.user_id !== user_id) {
+        return gameState.player_2;
+    }
+    // 該当するプレイヤーが見つからなければnullを返す
+    console.error(`Opponent with user_id ${user_id} not found.`);
+    return null;
+}
+/**
  * Actionをサーバーに送信
  * @param userId
  * @param spell_phase_actions
@@ -306,4 +328,42 @@ export function getgameResponse(userId, extractedGameResponse, gameResponse) {
             return null;
         }
     });
+}
+export function moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserId) {
+    let playerCardUniqId;
+    let opponentCardUniqId;
+    for (let i = 0; i < 5; i++) {
+        const playerSzoneId = `player-szone-${i}`;
+        const playerSzone = document.getElementById(playerSzoneId);
+        const playerSzoneInnerElement = playerSzone === null || playerSzone === void 0 ? void 0 : playerSzone.firstElementChild;
+        const playerBzoneId = `player-bzone-${i}`;
+        const playerBzone = document.getElementById(playerBzoneId);
+        const playerBzoneInnerElement = playerBzone === null || playerBzone === void 0 ? void 0 : playerBzone.firstElementChild;
+        if (playerSzoneInnerElement && playerBzoneInnerElement) {
+            playerCardUniqId = playerSzoneInnerElement.getAttribute('id');
+            playerBzoneInnerElement.innerHTML = playerSzoneInnerElement.innerHTML;
+            playerSzoneInnerElement.innerHTML = '';
+            const player = getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId);
+            if (player) {
+                player.plan_zone.battle_field[i].card =
+                    player.plan_zone.standby_field[i];
+            }
+        }
+        const opponentSzoneId = `opponent-szone-${i}`;
+        const opponentSzone = document.getElementById(opponentSzoneId);
+        const opponentSzoneInnerElement = opponentSzone === null || opponentSzone === void 0 ? void 0 : opponentSzone.firstElementChild;
+        const opponentBzoneId = `opponent-bzone-${i}`;
+        const opponentBzone = document.getElementById(opponentBzoneId);
+        const opponentBzoneInnerElement = opponentBzone === null || opponentBzone === void 0 ? void 0 : opponentBzone.firstElementChild;
+        if (opponentSzoneInnerElement && opponentBzoneInnerElement) {
+            opponentCardUniqId = opponentSzoneInnerElement.getAttribute('id');
+            opponentBzoneInnerElement.innerHTML = opponentSzoneInnerElement.innerHTML;
+            opponentSzoneInnerElement.innerHTML = '';
+            const opponent = getPlayerExcludingUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId);
+            if (opponent) {
+                opponent.plan_zone.battle_field[i].card =
+                    opponent.plan_zone.standby_field[i];
+            }
+        }
+    }
 }

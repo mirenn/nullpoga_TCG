@@ -9,7 +9,7 @@ window.debugValues = window.debugValues || {};
 let extractedGameResponse: GameModels.GameStateResponse | null = null;
 let gameResponse: GameModels.GameStateResponse | null = null; // グローバル変数として宣言
 let myUserId = 'user_id_1';
-let spell_phase_actions : GameModels.Action[] = [];
+let spell_phase_actions: GameModels.Action[] = [];
 let summon_phase_actions: GameModels.Action[] = [];
 let activity_phase_actions: GameModels.Action[] = [];
 
@@ -34,7 +34,6 @@ const dropAreas = [
   document.getElementById('player-szone-3') as HTMLElement,
   document.getElementById('player-szone-4') as HTMLElement,
 ];
-
 
 // #region 召喚ドラッグアンドドロップハイライト/////////////////////
 // 各スロットに対してドロップイベントを設定
@@ -90,8 +89,9 @@ dropAreas.forEach((area) => {
 
 document.getElementById('render-hand')?.addEventListener('click', () => {
   if (extractedGameResponse) {
-        // 型アサーションを使用して game_state が存在することを保証
-        const gameState = (extractedGameResponse as GameModels.GameStateResponse).game_state;
+    // 型アサーションを使用して game_state が存在することを保証
+    const gameState = (extractedGameResponse as GameModels.GameStateResponse)
+      .game_state;
     const myHandCds = GameUtils.getPlayerByUserId(
       gameState,
       myUserId,
@@ -104,49 +104,71 @@ document.getElementById('render-hand')?.addEventListener('click', () => {
   }
 });
 
-document.getElementById("get-game-state")?.addEventListener('click', async () => {
-  const res = await GameUtils.getgameResponse(myUserId, extractedGameResponse, gameResponse);
-  if(res){
-    [extractedGameResponse, gameResponse] = res;
-  }
+document
+  .getElementById('get-game-state')
+  ?.addEventListener('click', async () => {
+    const res = await GameUtils.getgameResponse(
+      myUserId,
+      extractedGameResponse,
+      gameResponse,
+    );
+    if (res) {
+      [extractedGameResponse, gameResponse] = res;
+    }
+  });
+
+document.getElementById('action-submit')?.addEventListener('click', () => {
+  GameUtils.actionSubmit(
+    myUserId,
+    spell_phase_actions,
+    summon_phase_actions,
+    activity_phase_actions,
+  );
 });
 
-document.getElementById('action-submit')?.addEventListener('click', ()=>{
-  GameUtils.actionSubmit(myUserId,spell_phase_actions,summon_phase_actions,activity_phase_actions);
-});
-
-document.getElementById("summon-phase-end")?.addEventListener("click", ()=>{
-  const monsterCards = document.querySelectorAll(".card-slot.battle-field .monster-card");
+document.getElementById('summon-phase-end')?.addEventListener('click', () => {
+  //TODO: summon-phase-endを押して攻撃を有効化するのわかりにくい
+  const monsterCards = document.querySelectorAll(
+    '.card-slot.battle-field .monster-card',
+  );
   // モンスターカードごとに処理
-  monsterCards.forEach(function(card) {
+  monsterCards.forEach(function (card) {
     // 攻撃ボタンを取得
-    const attackButton = card.querySelector(".attack-button");
+    const attackButton = card.querySelector('.attack-button');
 
     if (attackButton) {
       // 条件に応じてボタンの有効/無効を切り替える
       const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
 
       if (canAttack) {
-        attackButton.removeAttribute("disabled");
+        attackButton.removeAttribute('disabled');
       } else {
-        attackButton.setAttribute("disabled", "true");// 攻撃できない場合はボタンを無効化
+        attackButton.setAttribute('disabled', 'true'); // 攻撃できない場合はボタンを無効化
       }
 
       // ボタンクリック時の処理
-      attackButton.addEventListener("click", function() {
-        const monsterId = card.getAttribute("id");
-        console.log(monsterId + " が攻撃を宣言しました");
+      attackButton.addEventListener('click', function () {
+        const monsterId = card.getAttribute('id');
+        console.log(monsterId + ' が攻撃を宣言しました');
         // ここで攻撃処理を追加（例：API呼び出しやゲームロジック処理）
-        GameUtils.planAttackMonster(monsterId,
+        GameUtils.planAttackMonster(
+          monsterId,
           GameUtils.getPlayerByUserId(
-          extractedGameResponse?.game_state,
-          myUserId,
-        ), activity_phase_actions);
+            extractedGameResponse?.game_state,
+            myUserId,
+          ),
+          activity_phase_actions,
+        );
         // 攻撃後はボタンを無効化
-        attackButton.setAttribute("disabled", "true");
+        attackButton.setAttribute('disabled', 'true');
       });
     }
   });
+});
+
+document.getElementById('spell-phase-end')?.addEventListener('click', () => {
+  //TODO: 未確認
+  GameUtils.moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserId);
 });
 
 // // テスト用のモンスターカードデータ
@@ -160,10 +182,15 @@ document.getElementById("summon-phase-end")?.addEventListener("click", ()=>{
 
 //renderBtFieldMonsterCard('slot-1', exampleMonster);
 
-function checkIfCanAttack(card: Element){
+function checkIfCanAttack(card: Element) {
   const uniq_id = card.getAttribute('id');
-  const player = GameUtils.getPlayerByUserId(extractedGameResponse?.game_state, myUserId);
-  const slot = player?.plan_zone.battle_field.find((slot) => slot.card?.uniq_id === uniq_id);
+  const player = GameUtils.getPlayerByUserId(
+    extractedGameResponse?.game_state,
+    myUserId,
+  );
+  const slot = player?.plan_zone.battle_field.find(
+    (slot) => slot.card?.uniq_id === uniq_id,
+  );
   if (slot) {
     return slot.card?.can_act;
   }
