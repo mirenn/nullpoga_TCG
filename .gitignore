@@ -6,3 +6,5 @@ node_modules
 /pythonProject/pythonProject_project_summary.txt
 /pythonProject/pythonProject.code-workspace
 /pythonProject/generate_project_summary.py
+# .bakファイルを無視
+*.bak
