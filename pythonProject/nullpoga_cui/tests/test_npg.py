@@ -241,7 +241,7 @@ def test_cpu_state():
     return state
 
 
-def test_process_cpu_turn(test_cpu_state):
+def test_process_cpu_turn_summon(test_cpu_state):
     """
     CPUターン処理のテスト
     """
@@ -260,9 +260,33 @@ def test_process_cpu_turn(test_cpu_state):
     # CPUターンを処理
     p_state = state.process_cpu_turn()
 
-    # ターン数が増加していることを確認 TODO
+    # ターン数が増加していることを確認
     assert p_state.player_1.turn_count == initial_turn_count + 1
 
     # ゲームの状態が更新されていることを確認
     assert p_state.player_1.phase == PhaseKind.SPELL_PHASE
     assert p_state.player_1.zone.standby_field[0] is not None
+
+
+def test_process_cpu_turn_monster_attacked(test_cpu_state):
+    """
+    CPUターン処理のテスト: モンスター攻撃
+    """
+    state = test_cpu_state
+    player1 = state.player_1
+    player2 = state.player_2
+    before_p2_life = player2.life
+
+    # プレイヤー1のモンスターを配置
+    player1.zone.battle_field[0].card = instance_card(1)  # ネズミ
+    player1_action = Action(
+        action_type=ActionType.MONSTER_ATTACK,
+        action_data=ActionData(monster_card=player1.zone.battle_field[0].card)
+    )
+    state.set_player_all_actions(player1, [], [], [player1_action])
+
+    # CPUターンを処理
+    state.swap_players()
+    p_state = state.process_cpu_turn()
+    # 攻撃後の状態を確認
+    assert p_state.player_2.life == before_p2_life - 1  # ライフが減少していることを確認

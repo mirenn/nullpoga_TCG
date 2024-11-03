@@ -80,13 +80,8 @@ async def submit_action_with_random_cpu(user_id: str, spell_phase_actions: list[
         npg_summon_phase_actions = [action.to_dataclass() for action in summon_phase_actions]
         npg_activity_phase_actions = [action.to_dataclass() for action in activity_phase_actions]
 
-        npg_spell_phase_actions.append(npgAction(action_type=ActionType.SPELL_PHASE_END))
-        npg_summon_phase_actions.append(npgAction(action_type=ActionType.SUMMON_PHASE_END))
-        npg_activity_phase_actions.append(npgAction(action_type=ActionType.ACTIVITY_PHASE_END))
-
-        set_player_actions(current_player, npg_spell_phase_actions, npg_summon_phase_actions,
-                           npg_activity_phase_actions)
-        current_player.phase = PhaseKind.END_PHASE
+        game_state.set_player_all_actions(current_player, npg_spell_phase_actions, npg_summon_phase_actions,
+                                          npg_activity_phase_actions)
 
         # プレイヤーの状態をスワップしてCPUの手を進める?
         game_state.swap_players()
@@ -102,13 +97,6 @@ def get_current_and_opponent(game_state: State, user_id: str):
     elif game_state.player_2.user_id == user_id:
         return game_state.player_2, game_state.player_1
     return None, None
-
-
-def set_player_actions(player, spell_phase_actions, summon_phase_actions, activity_phase_actions):
-    """プレイヤーのアクションを設定するヘルパー関数"""
-    player.spell_phase_actions = spell_phase_actions
-    player.summon_phase_actions = summon_phase_actions
-    player.activity_phase_actions = activity_phase_actions
 
 
 @router.get("/test_game_state/{user_id}")

@@ -435,6 +435,25 @@ class State(IState):
                 slt.card = None
 
     @staticmethod
+    def set_player_all_actions(player, spell_phase_actions=None, summon_phase_actions=None,
+                               activity_phase_actions=None):
+        """プレイヤーのアクションを設定するヘルパー関数"""
+        player.spell_phase_actions = spell_phase_actions or []
+        player.summon_phase_actions = summon_phase_actions or []
+        player.activity_phase_actions = activity_phase_actions or []
+
+        player.phase = PhaseKind.END_PHASE
+        
+        if not player.spell_phase_actions or player.spell_phase_actions[-1].action_type != ActionType.SPELL_PHASE_END:
+            player.spell_phase_actions.append(Action(action_type=ActionType.SPELL_PHASE_END))
+        if not player.summon_phase_actions or player.summon_phase_actions[
+            -1].action_type != ActionType.SUMMON_PHASE_END:
+            player.summon_phase_actions.append(Action(action_type=ActionType.SUMMON_PHASE_END))
+        if not player.activity_phase_actions or player.activity_phase_actions[
+            -1].action_type != ActionType.ACTIVITY_PHASE_END:
+            player.activity_phase_actions.append(Action(action_type=ActionType.ACTIVITY_PHASE_END))
+
+    @staticmethod
     def pieces_count(pieces: List[int]) -> int:
         return pieces.count(1)
 
