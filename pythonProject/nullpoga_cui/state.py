@@ -30,7 +30,7 @@ def get_view(target: Slot | int | MonsterCard | SpellCard | None):
     L = 15
     if target is None:
         return " " * L
-    if type(target) == Slot:
+    if isinstance(target, Slot):
         if target.card is None:
             if target.status == FieldStatus.WILDERNESS:
                 return "x" * L
@@ -44,12 +44,12 @@ def get_view(target: Slot | int | MonsterCard | SpellCard | None):
                 return f"xx {card.card_no:02}({str(card.life):>2},{status}) xx"
             else:
                 return f"   {card.card_no:02}({str(card.life):>2},{status})   "
-    if type(target) == MonsterCard or SpellCard:
+    if isinstance(target, (MonsterCard, SpellCard)):
         card = target
         attack_declaration = "ad" if card.attack_declaration else "--"
         status = f"{attack_declaration}"
         return f"   {card.card_no:02}({str(card.life):>2},{status})   "
-    if type(target) == int:
+    if isinstance(target, int):
         return f"{target:02}"
 
 
@@ -443,7 +443,7 @@ class State(IState):
         player.activity_phase_actions = activity_phase_actions or []
 
         player.phase = PhaseKind.END_PHASE
-        
+
         if not player.spell_phase_actions or player.spell_phase_actions[-1].action_type != ActionType.SPELL_PHASE_END:
             player.spell_phase_actions.append(Action(action_type=ActionType.SPELL_PHASE_END))
         if not player.summon_phase_actions or player.summon_phase_actions[

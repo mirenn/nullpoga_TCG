@@ -110,7 +110,7 @@ async def get_test_bt_zone_game_state(user_id: str):
 
     async with room_lock:
         game_state = get_game_state_by_room(room_id)
-        game_state.player_1.zone.battle_field[0].card = instance_card(1)  # ネズミ
+        # game_state.player_1.zone.battle_field[0].card = instance_card(1)  # ネズミ
     return {"room_id": room_id, "game_state": game_state.to_dict()}
 
 

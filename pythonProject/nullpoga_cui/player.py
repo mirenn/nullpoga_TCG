@@ -273,68 +273,6 @@ class Player:
         self.mana -= target_card.mana_cost
         logging.debug("# アクション完了")
 
-    def do_move_monster(self, action: Action):
-        """移動処理を行う。
-        - プレイヤーの宣言順に処理（スペルも考慮すると意味あり。戦略的に同じ箇所に移動宣言するのもあり）
-        - 移動対象のカードが存在しなければ不発
-        - 本当に移動できるかは確定していないので、移動できない場合もある
-          - 先に破壊される可能や移動先にモンスターが存在する場合など
-        - 逆に宣言時に移動先が埋まっていても、移動処理時に空いていれば移動可能
-        """
-        assert action.action_type == ActionType.MONSTER_MOVE
-
-        idx = action.action_data.move_battle_field_idx
-        target_slot = self.zone.get_battle_field_slot(idx)
-        if target_slot.card is None:
-            logging.debug("# 移動対象の列にモンスターカードが存在しない不発")
-            return
-        if target_slot.card.done_activity:
-            logging.debug("# 移動対象のモンスターカードが行動済みのため不発")
-            return
-
-        if action.action_data.move_direction == "LEFT":
-            assert idx > 0
-            slot = self.zone.get_battle_field_slot(idx - 1)
-            if slot.card is not None:
-                logging.debug("# 移動先にモンスターカードが存在するため不発")
-                return
-            target_slot.card.done_activity = True
-            self.zone.set_battle_field_card(idx - 1, target_slot.card)
-
-        if action.action_data.move_direction == "RIGHT":
-            assert idx < 4
-            slot = self.zone.get_battle_field_slot(idx + 1)
-            if slot.card is not None:
-                logging.debug("# 移動先にモンスターカードが存在するため不発")
-                return
-            target_slot.card.done_activity = True
-            self.zone.set_battle_field_card(idx + 1, target_slot.card)
-
-        self.zone.remove_battle_field_card(idx)
-
-        logging.debug("# アクション完了")
-
-    def do_monster_attack_declaration(self, action: Action):
-        """攻撃宣言をする
-        - プレイヤーの宣言順に処理（意味ない）
-        - この後にモンスターが破壊される可能性もあり、攻撃できるかは確定していない
-        - 宣言した場所にモンスターカードがない場合は不発（スペルで除外された場合など）
-        """
-        # NOTE: そのターンに移動済みのモンスターは攻撃できない？（カードにフラグもたせる？）
-        assert action.action_type == ActionType.MONSTER_ATTACK
-
-        idx = action.action_data.attack_declaration_idx
-        target_slot = self.zone.get_battle_field_slot(idx)
-        if target_slot.card is None:
-            logging.debug("# 攻撃宣言箇所にモンスターカードが存在しないため不発")
-            return
-        if target_slot.card.done_activity:
-            logging.debug("# 攻撃宣言対象のモンスターカードが行動済みのため不発")
-            return
-        target_slot.card.done_activity = True
-        target_slot.card.attack_declaration = True
-        logging.debug("# アクション完了")
-
     @staticmethod
     def move_forward(zone: Zone):
         for i, sb in enumerate(zone.standby_field):

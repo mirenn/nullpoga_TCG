@@ -103,8 +103,7 @@ dropAreas.forEach((area) => {
         const attackButton = card.querySelector(".attack-button");
         if (attackButton) {
             // 条件に応じてボタンの有効/無効を切り替える
-            //const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
-            const canAttack = true;
+            const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
             if (canAttack) {
                 attackButton.removeAttribute("disabled");
             }
@@ -116,6 +115,9 @@ dropAreas.forEach((area) => {
                 const monsterId = card.getAttribute("id");
                 console.log(monsterId + " が攻撃を宣言しました");
                 // ここで攻撃処理を追加（例：API呼び出しやゲームロジック処理）
+                GameUtils.planAttackMonster(monsterId, GameUtils.getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId), activity_phase_actions);
+                // 攻撃後はボタンを無効化
+                attackButton.setAttribute("disabled", "true");
             });
         }
     });
@@ -129,3 +131,12 @@ dropAreas.forEach((area) => {
 //   image_url: 'path/to/monster-image.png', // 画像のパスを指定
 // };
 //renderBtFieldMonsterCard('slot-1', exampleMonster);
+function checkIfCanAttack(card) {
+    var _a;
+    const uniq_id = card.getAttribute('id');
+    const player = GameUtils.getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId);
+    const slot = player === null || player === void 0 ? void 0 : player.plan_zone.battle_field.find((slot) => { var _a; return ((_a = slot.card) === null || _a === void 0 ? void 0 : _a.uniq_id) === uniq_id; });
+    if (slot) {
+        return (_a = slot.card) === null || _a === void 0 ? void 0 : _a.can_act;
+    }
+}

@@ -11,18 +11,18 @@
     <div class="game-board">
       <!-- 相手のゾーン（最初の1行目） -->
       <!-- スタンバイフィールド -->
-      <div class="card-slot standby-field" id="opponent-szone-0"></div>
-      <div class="card-slot standby-field" id="opponent-szone-1"></div>
-      <div class="card-slot standby-field" id="opponent-szone-2"></div>
-      <div class="card-slot standby-field" id="opponent-szone-3"></div>
       <div class="card-slot standby-field" id="opponent-szone-4"></div>
+      <div class="card-slot standby-field" id="opponent-szone-3"></div>
+      <div class="card-slot standby-field" id="opponent-szone-2"></div>
+      <div class="card-slot standby-field" id="opponent-szone-1"></div>
+      <div class="card-slot standby-field" id="opponent-szone-0"></div>
 
       <!-- バトルフィールド -->
-      <div class="card-slot battle-field" id="opponent-szone-0"></div>
-      <div class="card-slot battle-field" id="opponent-szone-1"></div>
-      <div class="card-slot battle-field" id="opponent-szone-2"></div>
-      <div class="card-slot battle-field" id="opponent-szone-3"></div>
-      <div class="card-slot battle-field" id="opponent-szone-4"></div>
+      <div class="card-slot battle-field" id="opponent-bzone-4"></div>
+      <div class="card-slot battle-field" id="opponent-bzone-3"></div>
+      <div class="card-slot battle-field" id="opponent-bzone-2"></div>
+      <div class="card-slot battle-field" id="opponent-bzone-1"></div>
+      <div class="card-slot battle-field" id="opponent-bzone-0"></div>
 
       <!-- バトルフィールド -->
       <div class="card-slot battle-field" id="player-bzone-0"></div>
@@ -57,9 +57,11 @@
     <div class="button-container">
       <button id="get-game-state" class="fetch-button">Get Game State</button>
       <button id="render-hand" class="blue-button">render hand</button>
-      <button id="summon-phase-end" class="blue-button">summon phase end</button>
+      <button id="summon-phase-end" class="blue-button">
+        summon phase end
+      </button>
       <button id="action-submit" class="blue-button">submit</button>
-      <button id="result-next" class="blue-button">result next</button>
+      <!--button id="result-next" class="blue-button">result next</button-->
     </div>
 
     <!-- 結果表示用の要素 -->

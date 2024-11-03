@@ -1,7 +1,6 @@
 import * as GameModels from './gameModels.js';
 const HOST = 'http://127.0.0.1:8000';
 
-
 // 手札のカードを描画する関数
 export function renderHand(
   playerHand: (GameModels.MonsterCard | GameModels.SpellCard)[],
@@ -55,36 +54,78 @@ export function highLightPlayerZone(dropAreas: HTMLElement[]) {
   });
 }
 
+export function renderStandbyField(
+  isPlayer: boolean,
+  standbyField: (GameModels.MonsterCard | null)[],
+) {
+  standbyField.forEach((card, index) => {
+    let slotId;
+    if (isPlayer) {
+      slotId = `player-szone-${index}`;
+    } else {
+      slotId = `opponent-szone-${index}`;
+    }
+    const slotElement = document.getElementById(slotId);
+    if (slotElement) {
+      slotElement.innerHTML = ''; // スロットのフィールドを一旦クリア
+    }
+
+    if (card && slotElement) {
+      const cardElement = document.createElement('div');
+      cardElement.classList.add('card', 'monster-card');
+      cardElement.id = `${card.uniq_id}`;
+      cardElement.innerHTML = `
+        <img src="${card.image_url}" alt="${card.card_name}" class="monster-image" />
+        <h3>${card.card_name}</h3>
+        <p>Attack: ${card.attack}</p>
+        <p>Life: ${card.life}</p>
+      `;
+      slotElement.appendChild(cardElement);
+    }
+  });
+}
+
 /**
  *
- * @param slotId 使うかどうか微妙
- * @param monster
+ * @param isPlayer プレイヤーかどうか
+ * @param battleField バトルフィールドのスロット配列
  */
-export function renderBtFieldMonsterCard(
-  slotId: string,
-  monster: GameModels.MonsterCard | null | undefined,
+export function renderBtField(
+  isPlayer: boolean,
+  battleField: GameModels.Slot[],
 ) {
-  const slot = document.getElementById(slotId);
+  battleField.forEach((slot, index) => {
+    let slotId;
+    if (isPlayer) {
+      slotId = `player-bzone-${index}`;
+    } else {
+      slotId = `opponent-bzone-${index}`;
+    }
 
-  if (slot && monster) {
-    slot.innerHTML = '';
+    const slotElm = document.getElementById(slotId);
+    if (slotElm) {
+      slotElm.innerHTML = ''; // スロットのフィールドを一旦クリア
+    }
 
-    const cardElement = document.createElement('div');
-    cardElement.classList.add('card', 'monster-card');
-    cardElement.id = `${monster.uniq_id}`;
-    cardElement.innerHTML = `
-        <div class="mana-cost">${monster.mana_cost}</div>
-        <img src="${monster.image_url}" alt="${monster.card_name}" class="monster-image" />
-        <h3>${monster.card_name}</h3>
-        <p>Attack: ${monster.attack}</p>
-        <p>Life: ${monster.life}</p>
-        <button class="attack-button" disabled>攻撃宣言</button>
-      `;
+    if (slot && slotElm) {
+      const monster = slot.card;
+      if (monster) {
+        const cardElement = document.createElement('div');
+        cardElement.classList.add('card', 'monster-card');
+        cardElement.id = `${monster.uniq_id}`;
+        cardElement.innerHTML = `
+          <div class="mana-cost">${monster.mana_cost}</div>
+          <img src="${monster.image_url}" alt="${monster.card_name}" class="monster-image" />
+          <h3>${monster.card_name}</h3>
+          <p>Attack: ${monster.attack}</p>
+          <p>Life: ${monster.life}</p>
+          <button class="attack-button" ${isPlayer ? '' : 'disabled'}>攻撃宣言</button>
+        `;
 
-    slot.appendChild(cardElement);
-  } else {
-    console.error(`Slot with ID ${slotId} not found.`);
-  }
+        slotElm.appendChild(cardElement);
+      }
+    }
+  });
 }
 
 export function renderPlayerStatus(player: GameModels.Player | null) {
@@ -107,7 +148,7 @@ export function renderPlayerStatus(player: GameModels.Player | null) {
 }
 
 /**
- * 召喚操作に合わせてオブジェクト操作
+ * 召喚操作に合わせたオブジェクト側の操作
  * モンスターカードを手札の配列から消して、フィールドの配列に追加する。
  * マナを減らす。summon_monster
  *
@@ -125,7 +166,7 @@ export function planSummonMonster(
   if (myPlayer === null) {
     return null;
   }
-  const playerHand = myPlayer.hand_cards;
+  const playerHand = myPlayer.plan_hand_cards;
   const standbyField = myPlayer.plan_zone.standby_field;
 
   // 手札からuniq_idに一致するモンスターを探す
@@ -154,6 +195,53 @@ export function planSummonMonster(
     }
   } else {
     console.error('Monster card not found in hand.');
+  }
+}
+
+/**
+ * 攻撃操作に合わせたオブジェクト側の操作
+ * モンスターカードをフィールドの配列から消して、攻撃宣言をtrueにする。
+ * @param uniq_id
+ * @param myPlayer
+ * @param activity_phase_actions
+ * @returns
+ */
+export function planAttackMonster(
+  uniq_id: string | null,
+  myPlayer: GameModels.Player | null,
+  activity_phase_actions: GameModels.Action[],
+) {
+  if (myPlayer === null) {
+    console.error('Player not found.');
+    return;
+  }
+
+  if (uniq_id === null) {
+    console.error('uniq_id not found.');
+    return;
+  }
+
+  const monster = myPlayer.plan_zone.standby_field.find(
+    (card) => card?.uniq_id === uniq_id,
+  );
+  if (monster) {
+    monster.can_act = false;
+    monster.attack_declaration = true; //使用していないが攻撃宣言
+  }
+
+  if (monster && monster.card_type === GameModels.CardType.MONSTER) {
+    activity_phase_actions.push({
+      action_type: GameModels.ActionType.MONSTER_ATTACK,
+      action_data: {
+        monster_card: monster,
+      },
+    });
+
+    console.log(`Monster ${monster.card_name} is planning an attack!`);
+  } else {
+    console.error(
+      'Monster card not found in standby field or card is not a monster.',
+    );
   }
 }
 
@@ -188,48 +276,55 @@ export function getPlayerByUserId(
 
 /**
  * Actionをサーバーに送信
- * @param userId 
- * @param spell_phase_actions 
- * @param summon_phase_actions 
- * @param activity_phase_actions 
- * @returns 
+ * @param userId
+ * @param spell_phase_actions
+ * @param summon_phase_actions
+ * @param activity_phase_actions
+ * @returns
  */
-export async function actionSubmit(userId:string, spell_phase_actions : GameModels.Action[], summon_phase_actions : GameModels.Action[],activity_phase_actions: GameModels.Action[]) {
+export async function actionSubmit(
+  userId: string,
+  spell_phase_actions: GameModels.Action[],
+  summon_phase_actions: GameModels.Action[],
+  activity_phase_actions: GameModels.Action[],
+) {
   const url = HOST + `/submit_action_with_random_cpu/${userId}`;
 
   const postData = {
     spell_phase_actions,
     summon_phase_actions,
-    activity_phase_actions
+    activity_phase_actions,
   };
 
-  try{
-    const response = await fetch(url,{
+  try {
+    const response = await fetch(url, {
       method: 'POST',
-      headers:{
+      headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(postData)
+      body: JSON.stringify(postData),
     });
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }
     const res = await response.json();
     console.log('actionSubmit res', res);
-
-
-  }catch (error) {
+  } catch (error) {
     console.error('Failed to actionSubmit:', error);
     return null;
+  } finally {
+    spell_phase_actions.length = 0;
+    summon_phase_actions.length = 0;
+    activity_phase_actions.length = 0;
   }
 }
 
 export async function getgameResponse(
   userId: string,
-  extractedGameResponse:GameModels.GameStateResponse | null,
-  gameResponse: GameModels.GameStateResponse | null
+  extractedGameResponse: GameModels.GameStateResponse | null,
+  gameResponse: GameModels.GameStateResponse | null,
 ): Promise<GameModels.GameStateResponse[] | null> {
-  const url =  HOST + `/test_game_state/${userId}`;
+  const url = HOST + `/test_game_state/${userId}`;
 
   try {
     const response = await fetch(url, {
@@ -250,16 +345,11 @@ export async function getgameResponse(
     if (extractedGameResponse === null) {
       extractedGameResponse = gameResponse;
       renderPlayerStatus(
-        getPlayerByUserId(
-          extractedGameResponse?.game_state,
-          userId,
-        ),
+        getPlayerByUserId(extractedGameResponse?.game_state, userId),
       );
     }
-    renderBtFieldMonsterCard(
-      'player-bzone-1',
-      data.game_state.player_1.zone.battle_field[0].card,
-    );
+    renderBtField(true, data.game_state.player_1.plan_zone.battle_field);
+    renderStandbyField(true, data.game_state.player_1.plan_zone.standby_field);
     return [extractedGameResponse, gameResponse];
   } catch (error) {
     console.error('Failed to fetch game state:', error);

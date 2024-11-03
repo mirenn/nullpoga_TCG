@@ -124,8 +124,7 @@ document.getElementById("summon-phase-end")?.addEventListener("click", ()=>{
 
     if (attackButton) {
       // 条件に応じてボタンの有効/無効を切り替える
-      //const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
-      const canAttack = true;
+      const canAttack = checkIfCanAttack(card); // 攻撃可能かどうかを判断する関数
 
       if (canAttack) {
         attackButton.removeAttribute("disabled");
@@ -138,6 +137,13 @@ document.getElementById("summon-phase-end")?.addEventListener("click", ()=>{
         const monsterId = card.getAttribute("id");
         console.log(monsterId + " が攻撃を宣言しました");
         // ここで攻撃処理を追加（例：API呼び出しやゲームロジック処理）
+        GameUtils.planAttackMonster(monsterId,
+          GameUtils.getPlayerByUserId(
+          extractedGameResponse?.game_state,
+          myUserId,
+        ), activity_phase_actions);
+        // 攻撃後はボタンを無効化
+        attackButton.setAttribute("disabled", "true");
       });
     }
   });
@@ -153,3 +159,12 @@ document.getElementById("summon-phase-end")?.addEventListener("click", ()=>{
 // };
 
 //renderBtFieldMonsterCard('slot-1', exampleMonster);
+
+function checkIfCanAttack(card: Element){
+  const uniq_id = card.getAttribute('id');
+  const player = GameUtils.getPlayerByUserId(extractedGameResponse?.game_state, myUserId);
+  const slot = player?.plan_zone.battle_field.find((slot) => slot.card?.uniq_id === uniq_id);
+  if (slot) {
+    return slot.card?.can_act;
+  }
+}

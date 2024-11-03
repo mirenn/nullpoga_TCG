@@ -45,7 +45,6 @@ export interface MonsterCard {
   stun_count: number;
   can_act: boolean;
   attack_declaration: boolean;
-  done_activity: boolean;
 }
 
 export interface SpellCard {

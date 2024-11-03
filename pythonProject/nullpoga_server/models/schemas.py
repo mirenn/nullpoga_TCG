@@ -19,7 +19,6 @@ class MonsterCard(BaseModel):
     stun_count: int
     can_act: bool
     attack_declaration: bool
-    done_activity: bool
 
     def to_dict(self):
         return self.dict()

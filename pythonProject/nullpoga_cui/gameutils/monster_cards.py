@@ -17,7 +17,6 @@ class MonsterCard:
     stun_count: int = 0
     can_act: bool = True
     attack_declaration: bool = False
-    done_activity: bool = False
 
     def __str__(self):
         return f"{self.card_name}"
