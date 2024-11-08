@@ -15,6 +15,7 @@ class MonsterCard:
     card_type: CardType = field(default=CardType.MONSTER, init=False)
     uniq_id: UUID = field(default_factory=uuid4)  # UUIDをデフォルトで生成
     stun_count: int = 0
+    just_summoned: bool = True  # 召喚酔い。画面側の実装のために追加。召喚後に進軍できないことを明示する。使用しないかもしれない
     can_act: bool = True
     attack_declaration: bool = False
 

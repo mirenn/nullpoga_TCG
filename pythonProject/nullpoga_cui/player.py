@@ -106,6 +106,9 @@ class Player:
         for bf in self.zone.battle_field:
             if bf.card is not None:
                 bf.card.can_act = True
+        for sb in self.zone.standby_field:
+            if sb is not None:
+                sb.just_summoned = False
         self.plan_zone = copy.deepcopy(self.zone)
 
     def legal_actions(self) -> List[Action]:

@@ -126,15 +126,19 @@ export function renderPlayerStatus(player) {
     //document.getElementById('player-plan-mana')?.textContent = ;
     const playerManaElement = document.getElementById('player-mana');
     if (playerManaElement) {
-        playerManaElement.textContent = String(player.mana); // マナを10に設定
+        playerManaElement.textContent = String(player.mana);
     }
     const playerPlanManaElement = document.getElementById('player-plan-mana');
     if (playerPlanManaElement) {
-        playerPlanManaElement.textContent = String(player.plan_mana); // マナを10に設定
+        playerPlanManaElement.textContent = String(player.plan_mana);
     }
     const playerLifeElement = document.getElementById('player-life');
     if (playerLifeElement) {
-        playerLifeElement.textContent = String(player.life); // マナを10に設定
+        playerLifeElement.textContent = String(player.life);
+    }
+    const playerPhaseElement = document.getElementById('player-phase');
+    if (playerPhaseElement) {
+        playerPhaseElement.textContent = player.phase;
     }
 }
 /**
@@ -315,12 +319,24 @@ export function getgameResponse(userId, extractedGameResponse, gameResponse) {
             console.log('Game State:', data);
             // 取得したデータをグローバル変数に保存
             gameResponse = data;
-            if (extractedGameResponse === null) {
-                extractedGameResponse = gameResponse;
-                renderPlayerStatus(getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, userId));
+            //if (extractedGameResponse === null) {
+            extractedGameResponse = gameResponse;
+            const player = getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, userId);
+            const opponent = getPlayerExcludingUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, userId);
+            renderPlayerStatus(player);
+            //}
+            if (player) {
+                renderBtField(true, player.plan_zone.battle_field);
+                renderStandbyField(true, player.plan_zone.standby_field);
             }
-            renderBtField(true, data.game_state.player_1.plan_zone.battle_field);
-            renderStandbyField(true, data.game_state.player_1.plan_zone.standby_field);
+            if (opponent) {
+                renderBtField(false, opponent.plan_zone.battle_field);
+                renderStandbyField(false, opponent.plan_zone.standby_field);
+            }
+            const playerPhaseElement = document.getElementById('player-phase');
+            if (playerPhaseElement) {
+                playerPhaseElement.textContent = GameModels.PhaseKind.SUMMON_PHASE;
+            }
             return [extractedGameResponse, gameResponse];
         }
         catch (error) {
@@ -329,9 +345,12 @@ export function getgameResponse(userId, extractedGameResponse, gameResponse) {
         }
     });
 }
+/**
+ * スペルフェイズ終了＋スタンバイフィールドからバトルフィールドにカードを移動する関数
+ * @param extractedGameResponse
+ * @param myUserId
+ */
 export function moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserId) {
-    let playerCardUniqId;
-    let opponentCardUniqId;
     for (let i = 0; i < 5; i++) {
         const playerSzoneId = `player-szone-${i}`;
         const playerSzone = document.getElementById(playerSzoneId);
@@ -339,14 +358,17 @@ export function moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserI
         const playerBzoneId = `player-bzone-${i}`;
         const playerBzone = document.getElementById(playerBzoneId);
         const playerBzoneInnerElement = playerBzone === null || playerBzone === void 0 ? void 0 : playerBzone.firstElementChild;
-        if (playerSzoneInnerElement && playerBzoneInnerElement) {
-            playerCardUniqId = playerSzoneInnerElement.getAttribute('id');
-            playerBzoneInnerElement.innerHTML = playerSzoneInnerElement.innerHTML;
-            playerSzoneInnerElement.innerHTML = '';
+        if (playerSzoneInnerElement && playerBzone && !playerBzoneInnerElement) {
+            playerBzone.appendChild(playerSzoneInnerElement);
             const player = getPlayerByUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId);
             if (player) {
                 player.plan_zone.battle_field[i].card =
                     player.plan_zone.standby_field[i];
+                player.phase = GameModels.PhaseKind.SUMMON_PHASE;
+                const playerPhaseElement = document.getElementById('player-phase');
+                if (playerPhaseElement) {
+                    playerPhaseElement.textContent = GameModels.PhaseKind.SUMMON_PHASE;
+                }
             }
         }
         const opponentSzoneId = `opponent-szone-${i}`;
@@ -356,9 +378,7 @@ export function moveCardsToBattleFieldFromStandby(extractedGameResponse, myUserI
         const opponentBzone = document.getElementById(opponentBzoneId);
         const opponentBzoneInnerElement = opponentBzone === null || opponentBzone === void 0 ? void 0 : opponentBzone.firstElementChild;
         if (opponentSzoneInnerElement && opponentBzoneInnerElement) {
-            opponentCardUniqId = opponentSzoneInnerElement.getAttribute('id');
-            opponentBzoneInnerElement.innerHTML = opponentSzoneInnerElement.innerHTML;
-            opponentSzoneInnerElement.innerHTML = '';
+            opponentBzoneInnerElement.append(opponentSzoneInnerElement);
             const opponent = getPlayerExcludingUserId(extractedGameResponse === null || extractedGameResponse === void 0 ? void 0 : extractedGameResponse.game_state, myUserId);
             if (opponent) {
                 opponent.plan_zone.battle_field[i].card =

@@ -43,6 +43,7 @@ export interface MonsterCard {
   readonly card_type: CardType.MONSTER;
   uniq_id: UUID;
   stun_count: number;
+  just_summoned: boolean;
   can_act: boolean;
   attack_declaration: boolean;
 }
@@ -91,7 +92,7 @@ export interface Player {
   plan_hand_cards: (MonsterCard | SpellCard)[];
   zone: Zone;
   plan_zone: Zone;
-  phase: PhaseKind;
+  phase: PhaseKind; //phaseはplan_phaseないのでこれを使う
   base_mana: number;
   mana: number;
   plan_mana: number;
