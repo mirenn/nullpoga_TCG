@@ -1,17 +1,25 @@
-
-import React from 'react';
-
-const ButtonContainer: React.FC = () => {
-  return (
-    <div className="button-container">
-      <button id="get-game-state" className="fetch-button">Get Game State</button>
-      <button id="render-hand" className="blue-button">render hand</button>
-      <button id="spell-phase-end" className="blue-button">spell phase end</button>
-      <button id="summon-phase-end" className="blue-button">summon phase end</button>
-      <button id="action-submit" className="blue-button">submit</button>
-      {/* <button id="result-next" className="blue-button">result next</button> */}
-    </div>
-  );
+interface ButtonContainerProps {
+  onGetGameState: () => void;
+  //onRenderHand: () => void;
+  onActionSubmit: () => void;
+  onSummonPhaseEnd: () => void;
+  onSpellPhaseEnd: () => void;
 }
+
+const ButtonContainer = ({
+  onGetGameState,
+  //onRenderHand,
+  onActionSubmit,
+  onSummonPhaseEnd,
+  onSpellPhaseEnd,
+}: ButtonContainerProps) => (
+  <div className="button-container">
+    <button id="get-game-state" className="blue-button" onClick={onGetGameState}>Get Game State</button>
+    {/* <button id="render-hand" className="blue-button" onClick={onRenderHand}>Render Hand</button> */}
+    <button id="action-submit" className="blue-button" onClick={onActionSubmit}>Submit Actions</button>
+    <button id="summon-phase-end" className="blue-button" onClick={onSummonPhaseEnd}>End Summon Phase</button>
+    <button id="spell-phase-end" className="blue-button" onClick={onSpellPhaseEnd}>End Spell Phase</button>
+  </div>
+);
 
 export default ButtonContainer;

@@ -74,9 +74,6 @@ dropAreas.forEach((area) => {
         area.appendChild(draggedElement);
       }
     }
-    GameUtils.renderPlayerStatus(
-      GameUtils.getPlayerByUserId(extractedGameResponse?.game_state, myUserId),
-    );
 
     // 全てのスロットのハイライトを削除
     dropAreas.forEach((area) => {

@@ -13,9 +13,9 @@ def instance_card(card_no: int):
     """0未採番だが0~99モンスターカード、100~199スペルカード"""
     match card_no:
         case 1:
-            return MonsterCard(card_no, 1, "ネズミ", 1, 1, '/static/images/1.png')
+            return MonsterCard(card_no, 1, "ネズミ", 1, 1, '/public/images/1.png')
         case 2:
-            card = MonsterCard(card_no, 2, "柴犬ラン丸", 2, 1, '/static/images/2.png')
+            card = MonsterCard(card_no, 2, "柴犬ラン丸", 2, 1, '/public/images/2.png')
 
             def custom_move_effect(self):
                 self.attack = self.attack + 1
@@ -23,7 +23,7 @@ def instance_card(card_no: int):
             card.move_effect = types.MethodType(custom_move_effect, card)
             return card
         case 3:
-            return MonsterCard(card_no, 2, "ネコ", 1, 2, '/static/images/3.png')
+            return MonsterCard(card_no, 2, "ネコ", 1, 2, '/public/images/3.png')
         case 4:
             card = MonsterCard(card_no, 2, "カエル三等兵", 0, 1)
 
