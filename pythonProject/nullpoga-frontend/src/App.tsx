@@ -93,7 +93,7 @@ function App() {
       const attackButton = card.querySelector('.attack-button');
       if (attackButton) {
         //const canAttack = checkIfCanAttack(card);
-        const canAttack = true; //TODO
+        const canAttack = true; //TODO：checkIfCanAttackの実装
         if (canAttack) {
           attackButton.removeAttribute('disabled');
         } else {
