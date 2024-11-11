@@ -33,7 +33,19 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
           key={`opponent-szone-${i}`}
           className="card-slot standby-field"
           id={`opponent-szone-${i}`}
-        ></div>
+        >
+          {opponentStandbyField && opponentStandbyField[i] ? (
+            <MonsterCard
+              card={opponentStandbyField[i] as GameModels.MonsterCard}
+              onDragStart={() => {}}
+              onDragEnd={() => {}}
+              draggable={false}
+              canAttack={false}
+            />
+          ) : (
+            <div className="empty-slot"></div>
+          )}
+        </div>
       ))}
       {/* バトルフィールド */}
       {[4, 3, 2, 1, 0].map((i) => (
@@ -41,7 +53,19 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
           key={`opponent-bzone-${i}`}
           className="card-slot battle-field"
           id={`opponent-bzone-${i}`}
-        ></div>
+        >
+          {opponentBattleField && opponentBattleField[i]?.card ? (
+            <MonsterCard
+              card={opponentBattleField[i].card as GameModels.MonsterCard}
+              onDragStart={() => {}}
+              onDragEnd={() => {}}
+              draggable={false}
+              canAttack={false}
+            />
+          ) : (
+            <div className="empty-slot"></div>
+          )}
+        </div>
       ))}
       {/* バトルフィールド */}
       {[0, 1, 2, 3, 4].map((i) => (
