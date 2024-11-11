@@ -18,7 +18,7 @@ export function planSummonMonster(
   uniq_id: string,
   myUserId: string,
   extractedGameResponse: GameModels.GameStateResponse | null,
-  set_extractedGameResponse: React.Dispatch<
+  setExtractedGameResponse: React.Dispatch<
     React.SetStateAction<GameModels.GameStateResponse | null>
   >,
   standbyFieldIndex: number,
@@ -27,8 +27,9 @@ export function planSummonMonster(
     React.SetStateAction<GameModels.Action[]>
   >,
 ) {
+  const newExtractedGameResponse = structuredClone(extractedGameResponse);
   const myPlayer = getPlayerByUserId(
-    extractedGameResponse?.game_state,
+    newExtractedGameResponse?.game_state,
     myUserId,
   );
   if (myPlayer === null) {
@@ -63,7 +64,7 @@ export function planSummonMonster(
       console.log(`Monster ${summonedCard.card_name} has been summoned!`);
     }
 
-    set_extractedGameResponse(extractedGameResponse);
+    setExtractedGameResponse(newExtractedGameResponse);
   } else {
     console.error('Monster card not found in hand.');
   }
@@ -242,58 +243,5 @@ export async function getgameResponse(
   } catch (error) {
     console.error('Failed to fetch game state:', error);
     return null;
-  }
-}
-
-/**
- * スペルフェイズ終了＋スタンバイフィールドからバトルフィールドにカードを移動する関数
- * @param extractedGameResponse
- * @param myUserId
- */
-export function moveCardsToBattleFieldFromStandby(
-  extractedGameResponse: GameModels.GameStateResponse | null,
-  myUserId: string,
-) {
-  for (let i = 0; i < 5; i++) {
-    const playerSzoneId = `player-szone-${i}`;
-    const playerSzone = document.getElementById(playerSzoneId);
-    const playerSzoneInnerElement = playerSzone?.firstElementChild;
-    const playerBzoneId = `player-bzone-${i}`;
-    const playerBzone = document.getElementById(playerBzoneId);
-    const playerBzoneInnerElement = playerBzone?.firstElementChild;
-    if (playerSzoneInnerElement && playerBzone && !playerBzoneInnerElement) {
-      playerBzone.appendChild(playerSzoneInnerElement);
-      const player = getPlayerByUserId(
-        extractedGameResponse?.game_state,
-        myUserId,
-      );
-      if (player) {
-        player.plan_zone.battle_field[i].card =
-          player.plan_zone.standby_field[i];
-        player.phase = GameModels.PhaseKind.SUMMON_PHASE;
-        const playerPhaseElement = document.getElementById('player-phase');
-        if (playerPhaseElement) {
-          playerPhaseElement.textContent = GameModels.PhaseKind.SUMMON_PHASE;
-        }
-      }
-    }
-
-    const opponentSzoneId = `opponent-szone-${i}`;
-    const opponentSzone = document.getElementById(opponentSzoneId);
-    const opponentSzoneInnerElement = opponentSzone?.firstElementChild;
-    const opponentBzoneId = `opponent-bzone-${i}`;
-    const opponentBzone = document.getElementById(opponentBzoneId);
-    const opponentBzoneInnerElement = opponentBzone?.firstElementChild;
-    if (opponentSzoneInnerElement && opponentBzoneInnerElement) {
-      opponentBzoneInnerElement.append(opponentSzoneInnerElement);
-      const opponent = getPlayerExcludingUserId(
-        extractedGameResponse?.game_state,
-        myUserId,
-      );
-      if (opponent) {
-        opponent.plan_zone.battle_field[i].card =
-          opponent.plan_zone.standby_field[i];
-      }
-    }
   }
 }

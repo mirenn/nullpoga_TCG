@@ -12,14 +12,10 @@ function App() {
   const {
     extractedGameResponse,
     setExtractedGameResponse,
-    gameResponse, //使わないかも
     setGameResponse,
     spellPhaseActions,
-    setSpellPhaseActions,
     summonPhaseActions,
-    setSummonPhaseActions,
     activityPhaseActions,
-    setActivityPhaseActions,
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -59,23 +55,6 @@ function App() {
     }
   };
 
-  const handleRenderHand = () => {
-    if (extractedGameResponse) {
-      const gameState = extractedGameResponse.game_state;
-      const myHandCds = GameUtils.getPlayerByUserId(
-        gameState,
-        myUserId,
-      )?.hand_cards;
-      if (myHandCds) {
-        //GameUtils.renderHand(myHandCds, dropAreas);
-        //myHandCdsをHandに描画
-        //return <Hand cards={myHandCds} />;
-      }
-    } else {
-      console.error('Game state is not loaded yet');
-    }
-  };
-
   const handleActionSubmit = () => {
     GameUtils.actionSubmit(
       myUserId,
@@ -83,6 +62,26 @@ function App() {
       summonPhaseActions,
       activityPhaseActions,
     );
+  };
+
+  const handleSpellPhaseEnd = () => {
+    console.log('End Spell Phase');
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const state = newExtractedGameResponse?.game_state;
+    const myPlayer = GameUtils.getPlayerByUserId(state, myUserId);
+    if (myPlayer) {
+      for (let i = 0; i < 5; i++) {
+        if (
+          myPlayer.plan_zone.standby_field[i] &&
+          myPlayer.plan_zone.battle_field[i].card === null
+        ) {
+          myPlayer.plan_zone.battle_field[i].card =
+            myPlayer.plan_zone.standby_field[i];
+          myPlayer.plan_zone.standby_field[i] = null;
+        }
+      }
+      setExtractedGameResponse(newExtractedGameResponse);
+    }
   };
 
   const handleSummonPhaseEnd = () => {
@@ -116,13 +115,6 @@ function App() {
     });
   };
 
-  const handleSpellPhaseEnd = () => {
-    GameUtils.moveCardsToBattleFieldFromStandby(
-      extractedGameResponse,
-      myUserId,
-    );
-  };
-
   return (
     <div>
       <h1>nullpogaTCG client仮実装</h1>
@@ -138,7 +130,6 @@ function App() {
       />
       <ButtonContainer
         onGetGameState={handleGetGameState}
-        //onRenderHand={handleRenderHand}
         onActionSubmit={handleActionSubmit}
         onSummonPhaseEnd={handleSummonPhaseEnd}
         onSpellPhaseEnd={handleSpellPhaseEnd}

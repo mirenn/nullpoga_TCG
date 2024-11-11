@@ -49,7 +49,19 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
           key={`player-bzone-${i}`}
           className="card-slot battle-field"
           id={`player-bzone-${i}`}
-        ></div>
+        >
+          {playerBattleField && playerBattleField[i]?.card ? (
+            <MonsterCard
+              card={playerBattleField[i].card as GameModels.MonsterCard}
+              onDragStart={() => {}}
+              onDragEnd={() => {}}
+              draggable={false}
+              canAttack={true}
+            />
+          ) : (
+            <div className="empty-slot"></div>
+          )}
+        </div>
       ))}
       {/* プレイヤーのゾーン（最後の1行目） */}
       {/* スタンバイフィールド */}
@@ -65,7 +77,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
               onDragStart={() => {}}
               onDragEnd={() => {}}
               draggable={false}
-              canAttack={true}
+              canAttack={false}
             />
           ) : (
             <div
