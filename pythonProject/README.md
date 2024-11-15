@@ -11,9 +11,10 @@ pythonProject/
 │   ├── state.py
 │   └── tests/ # テスト
 │         └──　test_monte_carlo_vs_random_cpu_battle.py # CPU同士が対戦している（はずの）テストコード
-└── nullpoga_server/
-    ├── main.py
-    └── tests/ # テスト
+├── nullpoga_server/ 
+│   ├── static/ #htmlなどフロントエンド
+│   └── tests/ # テスト
+└── nullpoga_frontend/ #Reactのフロントエンド開発用
 ```
 
 ### `nullpoga_cui`
@@ -26,6 +27,11 @@ pythonProject/
 ### `nullpoga_server`
 
 - ゲームサーバーのモジュール。
+
+### `nullpoga_frontend`
+
+- Reactで実装しているフロントエンド
+ - 開発用。ビルド先はnullpoga_server直下のstaticディレクトリ
 
 ### プロジェクトルート
 
@@ -59,14 +65,6 @@ pythonProject/
 
    `requirements-dev.txt` には、テスト環境必要なパッケージが記載されています。特に `pytest` のテストツールが含まれています。
 
-### テストの実行
-
-開発環境をセットアップした後、以下のコマンドでテストを実行できます。
-
-```bash
-pytest
-```
-
 ### サーバー実行
 
 pythonProjectディレクトリで以下コマンド
@@ -80,3 +78,12 @@ uvicorn nullpoga_server.main:app --reload
 ```bash
 python -m nullpoga_server.main
 ```
+
+### テストの実行（開発者向け）
+
+開発環境をセットアップした後、以下のコマンドでpythonのソースのテストを実行できます。
+
+```bash
+pytest
+```
+
