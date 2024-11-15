@@ -12,12 +12,14 @@ app.include_router(game_apis.router)
 app.include_router(pages.router)
 
 # 静的ファイルのマウント
-static_directory = os.path.join(os.path.dirname(__file__), "static")
-app.mount("/static", StaticFiles(directory=static_directory), name="static")
+static_assets_directory = os.path.join(os.path.dirname(__file__), "static", "assets")
+app.mount("/assets", StaticFiles(directory=static_assets_directory), name="static")
+static_images_directory = os.path.join(os.path.dirname(__file__), "static", "images")
+app.mount("/images", StaticFiles(directory=static_images_directory), name="images")
 
 
 # favicon.icoのパスを明示的に指定
-@app.get("/favicon.ico", include_in_schema=False)
+@app.get("/assets/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("static/favicon.ico")
 

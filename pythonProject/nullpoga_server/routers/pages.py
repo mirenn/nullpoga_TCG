@@ -7,9 +7,5 @@ router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
 async def get_game_page(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
-
-
-@router.get("/test", response_class=HTMLResponse)
-async def test_api(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+    # return templates.TemplateResponse("index.html", {"request": request})
+    return HTMLResponse(open("static/index.html", encoding="utf-8").read())
