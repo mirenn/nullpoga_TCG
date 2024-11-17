@@ -70,50 +70,48 @@ export function planSummonMonster(
   }
 }
 
-/**
- * 攻撃操作に合わせたオブジェクト側の操作
- * モンスターカードをフィールドの配列から消して、攻撃宣言をtrueにする。
- * @param uniq_id
- * @param myPlayer
- * @param activity_phase_actions
- * @returns
- */
 export function planAttackMonster(
-  uniq_id: string | null,
-  myPlayer: GameModels.Player | null,
+  uniq_id: string,
+  myUserId: string,
+  extractedGameResponse: GameModels.GameStateResponse | null,
+  setExtractedGameResponse: React.Dispatch<
+    React.SetStateAction<GameModels.GameStateResponse | null>
+  >,
   activity_phase_actions: GameModels.Action[],
+  set_activity_phase_actions: React.Dispatch<
+    React.SetStateAction<GameModels.Action[]>
+  >,
 ) {
-  if (myPlayer === null) {
-    console.error('Player not found.');
-    return;
-  }
-
-  if (uniq_id === null) {
-    console.error('uniq_id not found.');
-    return;
-  }
-
-  const monster = myPlayer.plan_zone.standby_field.find(
-    (card) => card?.uniq_id === uniq_id,
+  const newExtractedGameResponse = structuredClone(extractedGameResponse);
+  const newActivityPhaseActions = structuredClone(activity_phase_actions);
+  const myPlayer = getPlayerByUserId(
+    newExtractedGameResponse?.game_state,
+    myUserId,
   );
-  if (monster) {
-    monster.can_act = false;
-    monster.attack_declaration = true; //使用していないが攻撃宣言
+  if (myPlayer === null) {
+    return null;
   }
+  const btField = myPlayer.plan_zone.battle_field;
 
-  if (monster && monster.card_type === GameModels.CardType.MONSTER) {
-    activity_phase_actions.push({
+  // フィールドからuniq_idに一致するモンスターを探す
+  const cardIndex = btField.findIndex((slot) => slot.card?.uniq_id === uniq_id);
+  const attackedCard = btField[cardIndex].card;
+  // 該当するモンスターカードが見つかった場合
+  if (cardIndex !== -1 && attackedCard) {
+    attackedCard.can_act = false;
+    attackedCard.attack_declaration = true;
+    newActivityPhaseActions.push({
       action_type: GameModels.ActionType.MONSTER_ATTACK,
       action_data: {
-        monster_card: monster,
+        monster_card: attackedCard,
       },
     });
+    set_activity_phase_actions(newActivityPhaseActions);
 
-    console.log(`Monster ${monster.card_name} is planning an attack!`);
+    console.log(`Monster ${attackedCard.card_name} is planning an attack!`);
+    setExtractedGameResponse(newExtractedGameResponse);
   } else {
-    console.error(
-      'Monster card not found in standby field or card is not a monster.',
-    );
+    console.error('Monster card not found in standby field.');
   }
 }
 

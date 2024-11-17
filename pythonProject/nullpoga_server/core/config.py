@@ -14,7 +14,7 @@ templates = Jinja2Templates(directory=templates_dir)
 
 # プレイヤーとゲームの初期状態を設定
 player1_cards = [1, 1, 2, 2, 3, 4, 5, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
-player2_cards = [11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
+player2_cards = [1, 1, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11, 11]
 player1 = Player(player1_cards, 1, 'user_id_1')
 player2 = Player(player2_cards, 1)
 state = State(player1, player2)

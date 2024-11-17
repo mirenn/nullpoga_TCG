@@ -1,4 +1,6 @@
 import * as GameModels from '../gameModels';
+import { useContext } from 'react';
+import { GameContext } from '../gameContext';
 
 interface MonsterCardProps {
   card: GameModels.MonsterCard;
@@ -6,6 +8,7 @@ interface MonsterCardProps {
   onDragEnd: () => void;
   draggable: boolean;
   canAttack: boolean;
+  onAttack: (e: React.MouseEvent<HTMLButtonElement>) => void; // 追加
 }
 
 const MonsterCard = ({
@@ -14,7 +17,13 @@ const MonsterCard = ({
   onDragEnd,
   draggable,
   canAttack,
+  onAttack, // 追加
 }: MonsterCardProps) => {
+  const { activityPhaseActions } = useContext(GameContext);
+  const activityIndex = activityPhaseActions.findIndex(
+    (action) => action.action_data.monster_card?.uniq_id === card.uniq_id,
+  );
+
   return (
     <div
       className="card monster-card"
@@ -30,9 +39,18 @@ const MonsterCard = ({
         draggable="false"
       />
       <h3>{card.card_name}</h3>
-      <p>Attack: {card.attack}</p>
-      <p>Life: {card.life}</p>
-      {canAttack && <button className="attack-button">攻撃宣言</button>}
+      <p>
+        ATK: {card.attack} Life: {card.life}
+      </p>
+      {canAttack && (
+        <button
+          className="attack-button"
+          onClick={(e) => onAttack(e)}
+          disabled={!card.can_act}
+        >
+          {card.can_act ? '攻撃宣言' : '攻撃宣言済み' + activityIndex}
+        </button>
+      )}
     </div>
   );
 };

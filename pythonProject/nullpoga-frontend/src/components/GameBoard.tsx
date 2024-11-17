@@ -13,6 +13,8 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
     setExtractedGameResponse,
     summonPhaseActions,
     setSummonPhaseActions,
+    activityPhaseActions,
+    setActivityPhaseActions,
   } = useContext(GameContext);
 
   const gameState = extractedGameResponse?.game_state;
@@ -23,6 +25,20 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
   const opponentStandbyField = opponent?.plan_zone.standby_field || [];
   const playerBattleField = player?.plan_zone.battle_field || [];
   const opponentBattleField = opponent?.plan_zone.battle_field || [];
+
+  const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
+    const target = event.target as HTMLDivElement;
+    const cardElement = target.closest('.card.monster-card') as HTMLDivElement;
+    const uniq_id = cardElement.id;
+    GameUtils.planAttackMonster(
+      uniq_id,
+      myUserId,
+      extractedGameResponse,
+      setExtractedGameResponse,
+      activityPhaseActions,
+      setActivityPhaseActions,
+    );
+  };
 
   return (
     <div className="game-board">
@@ -41,6 +57,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
               onDragEnd={() => {}}
               draggable={false}
               canAttack={false}
+              onAttack={() => {}}
             />
           ) : (
             <div className="empty-slot"></div>
@@ -51,7 +68,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
       {[4, 3, 2, 1, 0].map((i) => (
         <div
           key={`opponent-bzone-${i}`}
-          className="card-slot battle-field"
+          className={`card-slot battle-field ${opponentBattleField[i].status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
           id={`opponent-bzone-${i}`}
         >
           {opponentBattleField && opponentBattleField[i]?.card ? (
@@ -61,17 +78,18 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
               onDragEnd={() => {}}
               draggable={false}
               canAttack={false}
+              onAttack={() => {}}
             />
           ) : (
             <div className="empty-slot"></div>
           )}
         </div>
       ))}
-      {/* バトルフィールド */}
+      {/* プレイヤーのバトルフィールド */}
       {[0, 1, 2, 3, 4].map((i) => (
         <div
           key={`player-bzone-${i}`}
-          className="card-slot battle-field"
+          className={`card-slot battle-field ${playerBattleField[i].status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
           id={`player-bzone-${i}`}
         >
           {playerBattleField && playerBattleField[i]?.card ? (
@@ -81,6 +99,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
               onDragEnd={() => {}}
               draggable={false}
               canAttack={true}
+              onAttack={handleAction}
             />
           ) : (
             <div className="empty-slot"></div>
@@ -102,6 +121,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
               onDragEnd={() => {}}
               draggable={false}
               canAttack={false}
+              onAttack={() => {}}
             />
           ) : (
             <div

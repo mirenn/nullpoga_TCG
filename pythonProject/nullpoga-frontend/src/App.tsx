@@ -7,6 +7,7 @@ import ResultContainer from './components/ResultContainer';
 import * as GameUtils from './gameUtils.js';
 import { GameContext } from './gameContext';
 import './App.css';
+import OpponentStats from './components/OpponentStats.js';
 
 function App() {
   const {
@@ -118,6 +119,10 @@ function App() {
   return (
     <div>
       <h1>nullpogaTCG client仮実装</h1>
+      <OpponentStats
+        gameState={extractedGameResponse?.game_state}
+        myUserId={myUserId}
+      />
       <GameBoard myUserId={myUserId} isDragging={isDragging} />
       <Hand
         myUserId={myUserId}

@@ -97,6 +97,9 @@ body {
 .battle-field {
   background-color: #ffe6cc; /* ライトオレンジ */
 }
+.battle-field.wilderness{
+  background-color: #8B0000; /* ダークレッド */
+}
 
 .standby-field {
   background-color: #d1e7ff; /* ライトブルー */
@@ -166,4 +169,8 @@ body {
   gap: 10px; /* 各要素の間に10pxのスペースを追加 */
   justify-content: space-between; /* 必要に応じて要素間のスペースを調整 */
   align-items: center; /* 要素を垂直方向に中央揃え */
+}
+
+.attack-button{
+  font-size: x-small;
 }

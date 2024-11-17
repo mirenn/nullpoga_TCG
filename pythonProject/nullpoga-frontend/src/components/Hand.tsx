@@ -18,7 +18,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
   const myHandCds = GameUtils.getPlayerByUserId(
     gameState,
     myUserId,
-  )?.hand_cards;
+  )?.plan_hand_cards;
 
   return (
     <div className="hand" id="player-hand">
@@ -32,6 +32,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
               onDragEnd={onDragEnd}
               draggable={true}
               canAttack={false}
+              onAttack={() => {}}
             />
           );
         }
