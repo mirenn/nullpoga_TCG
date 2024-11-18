@@ -106,7 +106,16 @@ export interface Player {
 export interface State {
   player_1: Player;
   player_2: Player;
-  history: Record<string, any>[]; // dictの具体的な構造に基づいて詳細な型を指定できます
+  history: HistoryEntry[];
+  /** エンドフェイズ後の実行後の処理を描画する際に用いるindex。フロントエンド側でのみ用いる値 */
+  renderLastHisIndex: undefined | number;
+}
+export interface HistoryEntry {
+  state: State;
+  actionDict: ActionDict;
+}
+export interface ActionDict {
+  [key: string]: Action;
 }
 
 export interface RoomStateResponse {

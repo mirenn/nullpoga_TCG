@@ -8,6 +8,7 @@ import * as GameUtils from './gameUtils.js';
 import { GameContext } from './gameContext';
 import './App.css';
 import OpponentStats from './components/OpponentStats.js';
+import { render } from 'react-dom';
 
 function App() {
   const {
@@ -85,35 +86,31 @@ function App() {
     }
   };
 
-  const handleSummonPhaseEnd = () => {
-    const monsterCards = document.querySelectorAll(
-      '.card-slot.battle-field .monster-card',
-    );
-    monsterCards.forEach(function (card) {
-      const attackButton = card.querySelector('.attack-button');
-      if (attackButton) {
-        //const canAttack = checkIfCanAttack(card);
-        const canAttack = true; //TODO：checkIfCanAttackの実装
-        if (canAttack) {
-          attackButton.removeAttribute('disabled');
-        } else {
-          attackButton.setAttribute('disabled', 'true');
-        }
-        attackButton.addEventListener('click', function () {
-          const monsterId = card.getAttribute('id');
-          console.log(monsterId + ' が攻撃を宣言しました');
-          GameUtils.planAttackMonster(
-            monsterId,
-            GameUtils.getPlayerByUserId(
-              extractedGameResponse?.game_state,
-              myUserId,
-            ),
-            activityPhaseActions,
-          );
-          attackButton.setAttribute('disabled', 'true');
-        });
+  const handleRenderExecuteEndPhase = () => {
+    console.log('Render Execute End Phase');
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const history = newExtractedGameResponse?.game_state?.history;
+    let renderLastHisIndex =
+      newExtractedGameResponse?.game_state?.renderLastHisIndex;
+    if (!history) {
+      return;
+    }
+
+    if (renderLastHisIndex) {
+      if (history.length > renderLastHisIndex + 1) {
+        renderLastHisIndex += 1;
+      } else {
+        renderLastHisIndex = 0; //メモ：一周したら0に戻る
       }
-    });
+    } else {
+      renderLastHisIndex = 0;
+    }
+    const lasthis = history[history.length - 1];
+    const lastState = lasthis.state;
+    newExtractedGameResponse.game_state.player_1 = lastState.player_1;
+    newExtractedGameResponse.game_state.player_2 = lastState.player_2;
+    //メモ：ActionDictを取ってきて、現在何が起ころうとしているかを表示する
+    GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
   };
 
   return (
@@ -136,8 +133,8 @@ function App() {
       <ButtonContainer
         onGetGameState={handleGetGameState}
         onActionSubmit={handleActionSubmit}
-        onSummonPhaseEnd={handleSummonPhaseEnd}
         onSpellPhaseEnd={handleSpellPhaseEnd}
+        onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
       />
       <ResultContainer />
     </div>

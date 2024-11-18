@@ -68,7 +68,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
       {[4, 3, 2, 1, 0].map((i) => (
         <div
           key={`opponent-bzone-${i}`}
-          className={`card-slot battle-field ${opponentBattleField[i].status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
+          className={`card-slot battle-field ${opponentBattleField[i]?.status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
           id={`opponent-bzone-${i}`}
         >
           {opponentBattleField && opponentBattleField[i]?.card ? (
@@ -89,7 +89,7 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
       {[0, 1, 2, 3, 4].map((i) => (
         <div
           key={`player-bzone-${i}`}
-          className={`card-slot battle-field ${playerBattleField[i].status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
+          className={`card-slot battle-field ${playerBattleField[i]?.status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''}`}
           id={`player-bzone-${i}`}
         >
           {playerBattleField && playerBattleField[i]?.card ? (
