@@ -100,7 +100,7 @@ function App() {
       if (history.length > renderLastHisIndex + 1) {
         renderLastHisIndex += 1;
       } else {
-        renderLastHisIndex = 0; //メモ：一周したら0に戻る
+        renderLastHisIndex = undefined; //メモ：一周したら未定義に戻す
       }
     } else {
       renderLastHisIndex = 0;
@@ -110,6 +110,7 @@ function App() {
     newExtractedGameResponse.game_state.player_1 = lastState.player_1;
     newExtractedGameResponse.game_state.player_2 = lastState.player_2;
     //メモ：ActionDictを取ってきて、現在何が起ころうとしているかを表示する
+    //と思ったが、コンポーネント側で処理するように変更予定
     GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
   };
 

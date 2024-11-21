@@ -281,6 +281,7 @@ export function getActionDictExcludingUserId(
  *
  * @todo
  * 指定された場所に各アクションタイプの処理ロジックを実装します。
+ * TODO:と思っていたが、実際にはこの関数は不要。コンポーネント側で直接処理する。
  */
 export function displayCurrentAction(
   actionDict: GameModels.ActionDict | null,
