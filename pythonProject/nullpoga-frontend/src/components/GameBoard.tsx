@@ -3,6 +3,8 @@ import * as GameUtils from '../gameUtils.js';
 import MonsterCard from './MonsterCard.js';
 import { GameContext } from '../gameContext.js';
 import { useContext } from 'react';
+import { ArcherElement } from 'react-archer';
+
 interface GameBoardProps {
   myUserId: string;
   isDragging: boolean;
@@ -109,53 +111,58 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
       {/* プレイヤーのゾーン（最後の1行目） */}
       {/* スタンバイフィールド */}
       {[0, 1, 2, 3, 4].map((i) => (
-        <div
+        <ArcherElement
+          id={`archer-player-szone-${i}`}
           key={`player-szone-${i}`}
-          className={`card-slot standby-field ${isDragging ? 'highlight' : ''}`}
-          id={`player-szone-${i}`}
         >
-          {playerStandbyField && playerStandbyField[i] ? (
-            <MonsterCard
-              card={playerStandbyField[i] as GameModels.MonsterCard}
-              onDragStart={() => {}}
-              onDragEnd={() => {}}
-              draggable={false}
-              canAttack={false}
-              onAttack={() => {}}
-            />
-          ) : (
-            <div
-              className="empty-slot"
-              onDrop={(event) => {
-                event.preventDefault();
-                const dropAreaId = (event.target as HTMLElement).closest(
-                  '.card-slot',
-                )?.id;
-                const draggedElementId = event.dataTransfer!.getData('text');
-                const draggedElement =
-                  document.getElementById(draggedElementId);
-                if (draggedElement && dropAreaId) {
-                  const match = dropAreaId.match(/\d+$/);
-                  if (match) {
-                    const summonIndex = match[0];
-                    GameUtils.planSummonMonster(
-                      draggedElementId,
-                      myUserId,
-                      extractedGameResponse,
-                      setExtractedGameResponse,
-                      Number(summonIndex),
-                      summonPhaseActions,
-                      setSummonPhaseActions,
-                    );
+          <div
+            key={`player-szone-${i}`}
+            className={`card-slot standby-field ${isDragging ? 'highlight' : ''}`}
+            id={`player-szone-${i}`}
+          >
+            {playerStandbyField && playerStandbyField[i] ? (
+              <MonsterCard
+                card={playerStandbyField[i] as GameModels.MonsterCard}
+                onDragStart={() => {}}
+                onDragEnd={() => {}}
+                draggable={false}
+                canAttack={false}
+                onAttack={() => {}}
+              />
+            ) : (
+              <div
+                className="empty-slot"
+                onDrop={(event) => {
+                  event.preventDefault();
+                  const dropAreaId = (event.target as HTMLElement).closest(
+                    '.card-slot',
+                  )?.id;
+                  const draggedElementId = event.dataTransfer!.getData('text');
+                  const draggedElement =
+                    document.getElementById(draggedElementId);
+                  if (draggedElement && dropAreaId) {
+                    const match = dropAreaId.match(/\d+$/);
+                    if (match) {
+                      const summonIndex = match[0];
+                      GameUtils.planSummonMonster(
+                        draggedElementId,
+                        myUserId,
+                        extractedGameResponse,
+                        setExtractedGameResponse,
+                        Number(summonIndex),
+                        summonPhaseActions,
+                        setSummonPhaseActions,
+                      );
+                    }
                   }
-                }
-              }}
-              onDragOver={(event) => {
-                event.preventDefault();
-              }}
-            ></div>
-          )}
-        </div>
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                }}
+              ></div>
+            )}
+          </div>
+        </ArcherElement>
       ))}
     </div>
   );

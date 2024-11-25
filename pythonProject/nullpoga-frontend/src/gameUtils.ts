@@ -244,64 +244,36 @@ export async function getgameResponse(
   }
 }
 
-export function getActionDictByUserId(
-  actionDict: GameModels.ActionDict | null,
+export function getRenderActionByUserId(
+  game_state: GameModels.State | undefined,
   userId: string,
 ): GameModels.Action | null {
-  if (actionDict === null) {
+  if (game_state === undefined || game_state.renderLastHisIndex === undefined) {
     return null;
   }
-
+  const actionDict =
+    game_state.history[game_state.history.length - 1][
+      game_state.renderLastHisIndex
+    ].ActionDict;
   return actionDict[userId];
 }
 
 export function getActionDictExcludingUserId(
-  actionDict: GameModels.ActionDict | null,
+  game_state: GameModels.State | undefined,
   userId: string,
 ): GameModels.Action | null {
-  if (actionDict === null) {
+  if (game_state === undefined || game_state.renderLastHisIndex === undefined) {
     return null;
   }
+
+  const actionDict =
+    game_state.history[game_state.history.length - 1][
+      game_state.renderLastHisIndex
+    ].ActionDict;
 
   const opponentId = Object.keys(actionDict).find((key) => key !== userId);
   if (!opponentId) {
     return null;
   }
   return actionDict[opponentId];
-}
-
-/**
- * プレイヤーと対戦相手の現在のアクションを提供されたアクション辞書に基づいて表示します。
- *
- * @param actionDict - 全プレイヤーのアクションを含む辞書。nullの場合もあります。
- * @param myUserId - 現在のプレイヤーのユーザーID。
- *
- * @remarks
- * この関数は、ユーザーIDを使用して現在のプレイヤーのアクションを取得し、それをStateに反映します。
- *
- * @todo
- * 指定された場所に各アクションタイプの処理ロジックを実装します。
- * TODO:と思っていたが、実際にはこの関数は不要。コンポーネント側で直接処理する。
- */
-export function displayCurrentAction(
-  actionDict: GameModels.ActionDict | null,
-  myUserId: string,
-) {
-  const playerAction = getActionDictByUserId(actionDict, myUserId);
-  if (playerAction) {
-    console.log('Player Action:', playerAction);
-    // ここでアクションに合わせた処理を書く
-    // 召喚の場合
-    if (playerAction.action_type === GameModels.ActionType.SUMMON_MONSTER) {
-      console.log('Summon Monster:', playerAction.action_data);
-    }
-    //攻撃の場合
-    if (playerAction.action_type === GameModels.ActionType.MONSTER_ATTACK) {
-      console.log('Monster Attack:', playerAction.action_data);
-    }
-  }
-  const opponentAction = getActionDictExcludingUserId(actionDict, myUserId);
-  if (opponentAction) {
-    console.log('Opponent Action:', opponentAction);
-  }
 }

@@ -106,13 +106,13 @@ export interface Player {
 export interface State {
   player_1: Player;
   player_2: Player;
-  history: HistoryEntry[];
+  history: HistoryEntry[][];
   /** エンドフェイズ後の実行後の処理を描画する際に用いるindex。フロントエンド側でのみ用いる値 */
   renderLastHisIndex: undefined | number;
 }
 export interface HistoryEntry {
-  state: State;
-  actionDict: ActionDict;
+  State: State;
+  ActionDict: ActionDict;
 }
 export interface ActionDict {
   [key: string]: Action;

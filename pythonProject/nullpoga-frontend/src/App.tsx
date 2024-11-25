@@ -8,7 +8,7 @@ import * as GameUtils from './gameUtils.js';
 import { GameContext } from './gameContext';
 import './App.css';
 import OpponentStats from './components/OpponentStats.js';
-import { render } from 'react-dom';
+import { ArcherContainer } from 'react-archer';
 
 function App() {
   const {
@@ -106,38 +106,46 @@ function App() {
       renderLastHisIndex = 0;
     }
     const lasthis = history[history.length - 1];
-    const lastState = lasthis.state;
-    newExtractedGameResponse.game_state.player_1 = lastState.player_1;
-    newExtractedGameResponse.game_state.player_2 = lastState.player_2;
+    if (renderLastHisIndex !== undefined) {
+      const lastState = lasthis[renderLastHisIndex].State;
+      newExtractedGameResponse.game_state.player_1 = lastState.player_1;
+      newExtractedGameResponse.game_state.player_2 = lastState.player_2;
+      newExtractedGameResponse.game_state.renderLastHisIndex =
+        renderLastHisIndex;
+      setExtractedGameResponse(newExtractedGameResponse);
+    }
+
     //メモ：ActionDictを取ってきて、現在何が起ころうとしているかを表示する
-    //と思ったが、コンポーネント側で処理するように変更予定
-    GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
+    //と思ったが、コンポーネント側で処理するように変更予定//TODO
+    //GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
   };
 
   return (
     <div>
-      <h1>nullpogaTCG client仮実装</h1>
-      <OpponentStats
-        gameState={extractedGameResponse?.game_state}
-        myUserId={myUserId}
-      />
-      <GameBoard myUserId={myUserId} isDragging={isDragging} />
-      <Hand
-        myUserId={myUserId}
-        onDragStart={handleDragStart}
-        onDragEnd={handleDragEnd}
-      />
-      <PlayerStats
-        gameState={extractedGameResponse?.game_state}
-        myUserId={myUserId}
-      />
-      <ButtonContainer
-        onGetGameState={handleGetGameState}
-        onActionSubmit={handleActionSubmit}
-        onSpellPhaseEnd={handleSpellPhaseEnd}
-        onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
-      />
-      <ResultContainer />
+      <ArcherContainer strokeColor="red">
+        <h1>nullpogaTCG client仮実装</h1>
+        <OpponentStats
+          gameState={extractedGameResponse?.game_state}
+          myUserId={myUserId}
+        />
+        <GameBoard myUserId={myUserId} isDragging={isDragging} />
+        <Hand
+          myUserId={myUserId}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+        />
+        <PlayerStats
+          gameState={extractedGameResponse?.game_state}
+          myUserId={myUserId}
+        />
+        <ButtonContainer
+          onGetGameState={handleGetGameState}
+          onActionSubmit={handleActionSubmit}
+          onSpellPhaseEnd={handleSpellPhaseEnd}
+          onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
+        />
+        <ResultContainer />
+      </ArcherContainer>
     </div>
   );
 }
