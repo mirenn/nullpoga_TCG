@@ -14,6 +14,7 @@ function App() {
   const {
     extractedGameResponse,
     setExtractedGameResponse,
+    gameResponse,
     setGameResponse,
     spellPhaseActions,
     summonPhaseActions,
@@ -87,7 +88,6 @@ function App() {
   };
 
   const handleRenderExecuteEndPhase = () => {
-    console.log('Render Execute End Phase');
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
     const history = newExtractedGameResponse?.game_state?.history;
     let renderLastHisIndex =
@@ -96,15 +96,17 @@ function App() {
       return;
     }
 
-    if (renderLastHisIndex) {
+    if (renderLastHisIndex === undefined) {
+      renderLastHisIndex = 0;
+    } else {
       if (history.length > renderLastHisIndex + 1) {
         renderLastHisIndex += 1;
       } else {
         renderLastHisIndex = undefined; //メモ：一周したら未定義に戻す
       }
-    } else {
-      renderLastHisIndex = 0;
     }
+    console.log('Render Execute End Phase', renderLastHisIndex, history);
+
     const lasthis = history[history.length - 1];
     if (renderLastHisIndex !== undefined) {
       const lastState = lasthis[renderLastHisIndex].State;
@@ -112,9 +114,19 @@ function App() {
       newExtractedGameResponse.game_state.player_2 = lastState.player_2;
       newExtractedGameResponse.game_state.renderLastHisIndex =
         renderLastHisIndex;
-      setExtractedGameResponse(newExtractedGameResponse);
+    } else {
+      if (gameResponse?.game_state?.player_1) {
+        newExtractedGameResponse.game_state.player_1 =
+          gameResponse.game_state.player_1;
+      }
+      if (gameResponse?.game_state?.player_2) {
+        newExtractedGameResponse.game_state.player_2 =
+          gameResponse.game_state.player_2;
+      }
+      newExtractedGameResponse.game_state.renderLastHisIndex =
+        renderLastHisIndex;
     }
-
+    setExtractedGameResponse(newExtractedGameResponse);
     //メモ：ActionDictを取ってきて、現在何が起ころうとしているかを表示する
     //と思ったが、コンポーネント側で処理するように変更予定//TODO
     //GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);

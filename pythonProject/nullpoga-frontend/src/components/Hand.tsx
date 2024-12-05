@@ -47,6 +47,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
                         targetAnchor: 'middle',
                         sourceAnchor: 'top',
                         style: { strokeColor: '#f00', strokeWidth: 1 },
+                        label: 'summon',
                       },
                     ]
                   : []

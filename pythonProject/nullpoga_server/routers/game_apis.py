@@ -65,6 +65,7 @@ async def submit_action_with_random_cpu(user_id: str, spell_phase_actions: list[
     ユーザーIDからそのルームのゲーム状態を更新するエンドポイント
     ・randomに手を選ぶCPUと戦うときに使用する。
     ・プレイヤーがアクションを提出したときに、CPUの手を計算し始める
+    //todo:turn_countもパラメータに追加する（複数回submitして意図せず次のターンの提出を防ぐため）
     """
     room_id, room_lock = await get_room_and_lock(user_id)
 
