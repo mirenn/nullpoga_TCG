@@ -33,23 +33,34 @@ pythonProject/
 - Reactで実装しているフロントエンド
  - 開発用。ビルド先はnullpoga_server直下のstaticディレクトリ
 
-### プロジェクトルート
-
-プロジェクトルートは、`requirements.txt` が存在するディレクトリです。このディレクトリを基準にコマンドを実行することで、モジュールのインポートやパッケージのインストールが正しく行われるようになります。
-
 ## セットアップ手順
 
-プロジェクトをセットアップするには、まず依存パッケージをインストールする必要があります。
+本プロジェクトをgit cloneして落とした後、プロジェクトをセットアップするには、まず依存パッケージをインストールする必要があります。
+以下はUbuntuでのセットアップ手順です。Windowsの場合は適宜読み替えてください。
 
 ### 依存パッケージのインストール
 
-1. プロジェクトルート（`requirements.txt` が存在するディレクトリ）に移動します。(`/path/to/pythonProject`は、pythonProjectのある場所のパスに置き換えてください)
+1. pythonProjectディレクトリに移動します。(以下`/path/to/pythonProject`は、pythonProjectのある場所のパスに置き換えてください)
 
    ```bash
    cd /path/to/pythonProject
    ```
 
-2. プロジェクトの実行に必要な基本的な依存パッケージをインストールします。
+2. 仮想環境を作成
+   プロジェクトディレクトリで以下を実行します：
+
+   ```bash
+   python3 -m venv venv
+   ```
+
+3. 仮想環境を有効化
+   仮想環境をアクティブにします。
+
+   ```bash
+   source venv/bin/activate
+   ```
+
+4. プロジェクトの実行に必要な基本的な依存パッケージをインストールします。
 
    ```bash
    pip install -r requirements.txt
@@ -57,7 +68,7 @@ pythonProject/
 
    `requirements.txt` には、プロジェクトが正しく動作するために必要なパッケージの一覧が記載されています。
 
-3. 開発環境用の追加パッケージ（主に `pytest` 用）をインストールします。
+5. 開発環境用の追加パッケージ（主に `pytest` 用）をインストールします。
 
    ```bash
    pip install -r requirements-dev.txt
@@ -67,16 +78,15 @@ pythonProject/
 
 ### サーバー実行
 
-pythonProjectディレクトリで以下コマンド
+引き続き現在のディレクトリがpythonProjectディレクトリの状態で以下コマンド
 
 ```bash
-uvicorn nullpoga_server.main:app --reload
+PYTHONPATH=/path/to/pythonProject/ python3 main.py 
 ```
 
-あるいは、
-
+以下Ubuntuのターミナルでコマンド打っている例(mirennはユーザー名、mirenn-devはホスト名)
 ```bash
-python -m nullpoga_server.main
+(venv) mirenn@mirenn-dev:~/nullpoga_TCG/pythonProject$ PYTHONPATH=~/nullpoga_TCG/pythonProject/ python3 main.py
 ```
 
 ### テストの実行（開発者向け）
