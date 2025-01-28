@@ -33,6 +33,16 @@ pythonProject/
 - Reactで実装しているフロントエンド
  - 開発用。ビルド先はnullpoga_server直下のstaticディレクトリ
 
+## Dockerとしてデプロイする
+
+Dockerfileを用意しています。
+デプロイするだけなら以下のコマンドでOKです。
+
+```bash
+docker build -t nullpoga_tcg .
+docker run -p 8000:8000 nullpoga_tcg
+```
+
 ## セットアップ手順
 
 本プロジェクトをgit cloneして落とした後、プロジェクトをセットアップするには、まず依存パッケージをインストールする必要があります。
