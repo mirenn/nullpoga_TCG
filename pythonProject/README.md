@@ -78,15 +78,22 @@ pythonProject/
 
 ### サーバー実行
 
-引き続き現在のディレクトリがpythonProjectディレクトリの状態で以下コマンド
+1. nullpoga_serverディレクトリに移動します：
 
 ```bash
+cd nullpoga_server
+```
+
+2. 環境変数PYTHONPATHを設定してサーバーを起動します：
+
+```bash
+# pythonProjectディレクトリへの絶対パスを指定
 PYTHONPATH=/path/to/pythonProject/ python3 main.py 
 ```
 
-以下Ubuntuのターミナルでコマンド打っている例(mirennはユーザー名、mirenn-devはホスト名)
+実行例（Ubuntuの場合）：
 ```bash
-(venv) mirenn@mirenn-dev:~/nullpoga_TCG/pythonProject$ PYTHONPATH=~/nullpoga_TCG/pythonProject/ python3 main.py
+(venv) mirenn@mirenn-dev:~/nullpoga_TCG/pythonProject/nullpoga_server$ PYTHONPATH=~/nullpoga_TCG/pythonProject/ python3 main.py
 ```
 
 ### テストの実行（開発者向け）
