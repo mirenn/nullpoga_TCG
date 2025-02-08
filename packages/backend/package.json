@@ -1,0 +1,25 @@
+{
+  "name": "nullpoga-server-nest",
+  "version": "1.0.0",
+  "description": "NestJS version of Nullpoga TCG server",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:debug": "nest start --debug --watch",
+    "start:prod": "node dist/main"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.2",
+    "@nestjs/core": "^11.0.2",
+    "@nestjs/platform-express": "^11.0.2",
+    "cors": "^2.8.5",
+    "reflect-metadata": "^0.1.13",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/node": "^20.3.1",
+    "typescript": "^5.1.3"
+  }
+}

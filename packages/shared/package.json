@@ -1,0 +1,13 @@
+{
+  "name": "@nullpoga/shared",
+  "version": "0.1.0",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true,
+  "dependencies": {
+    "react": "^18.0.0"
+  },
+  "peerDependencies": {
+    "react": "^18.0.0"
+  }
+}
