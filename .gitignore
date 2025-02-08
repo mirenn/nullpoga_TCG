@@ -1,5 +1,6 @@
 # Turbo
 .turbo
+turbo-build.log
 
 # Dependencies
 node_modules
@@ -51,3 +52,4 @@ cookies.txt
 
 # .bakファイルを無視
 *.bak
+packages/frontend/.turbo/turbo-build.log
