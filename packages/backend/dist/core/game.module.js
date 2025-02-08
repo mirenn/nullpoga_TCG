@@ -6,15 +6,17 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PagesModule = void 0;
+exports.GameModule = void 0;
 const common_1 = require("@nestjs/common");
-const pages_controller_1 = require("./pages.controller");
-let PagesModule = class PagesModule {
+const game_service_1 = require("./game.service");
+let GameModule = class GameModule {
 };
-exports.PagesModule = PagesModule;
-exports.PagesModule = PagesModule = __decorate([
+exports.GameModule = GameModule;
+exports.GameModule = GameModule = __decorate([
+    (0, common_1.Global)(),
     (0, common_1.Module)({
-        controllers: [pages_controller_1.PagesController],
+        providers: [game_service_1.GameService],
+        exports: [game_service_1.GameService],
     })
-], PagesModule);
-//# sourceMappingURL=pages.module.js.map
+], GameModule);
+//# sourceMappingURL=game.module.js.map

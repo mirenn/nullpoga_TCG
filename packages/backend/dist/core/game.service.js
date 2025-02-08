@@ -8,22 +8,34 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var GameService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PagesController = void 0;
+exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
-let PagesController = class PagesController {
-    getRoot() {
-        return { message: 'Welcome to Nullpoga TCG' };
+let GameService = GameService_1 = class GameService {
+    constructor() {
+        this.games = new Map();
+        if (!GameService_1.instance) {
+            GameService_1.instance = this;
+        }
+        return GameService_1.instance;
+    }
+    createGame(gameId) {
+        this.games.set(gameId, {});
+    }
+    getGame(gameId) {
+        return this.games.get(gameId);
+    }
+    executeGameAction(gameId, action, data) {
+        const game = this.games.get(gameId);
+        if (!game) {
+            throw new Error('Game not found');
+        }
     }
 };
-exports.PagesController = PagesController;
-__decorate([
-    (0, common_1.Get)(),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
-    __metadata("design:returntype", void 0)
-], PagesController.prototype, "getRoot", null);
-exports.PagesController = PagesController = __decorate([
-    (0, common_1.Controller)()
-], PagesController);
-//# sourceMappingURL=pages.controller.js.map
+exports.GameService = GameService;
+exports.GameService = GameService = GameService_1 = __decorate([
+    (0, common_1.Injectable)(),
+    __metadata("design:paramtypes", [])
+], GameService);
+//# sourceMappingURL=game.service.js.map

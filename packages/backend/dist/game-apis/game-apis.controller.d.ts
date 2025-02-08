@@ -3,10 +3,7 @@ export declare class GameApisController {
     private readonly gameApisService;
     constructor(gameApisService: GameApisService);
     startGame(): {
-        message: string;
+        gameId: string;
     };
-    playerAction(action: any): {
-        message: string;
-        action: any;
-    };
+    playerAction(action: any): void;
 }

@@ -1,14 +1,17 @@
 import { Injectable } from '@nestjs/common';
+import { GameService } from '../core/game.service';
 
 @Injectable()
 export class GameApisService {
+  constructor(private readonly gameService: GameService) {}
+
   startGame() {
-    // TODO: Implement game initialization logic
-    return { message: 'Game started' };
+    const gameId = Date.now().toString(); // 一時的なゲームID生成
+    this.gameService.createGame(gameId);
+    return { gameId };
   }
 
   handlePlayerAction(action: any) {
-    // TODO: Implement player action handling
-    return { message: 'Action processed', action };
+    return this.gameService.executeGameAction(action.gameId, action.type, action.data);
   }
 }

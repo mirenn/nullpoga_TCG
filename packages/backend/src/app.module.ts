@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common';
 import { GameApisModule } from './game-apis/game-apis.module';
-import { PagesModule } from './pages/pages.module';
+import { GameModule } from './core/game.module';
 
 @Module({
   imports: [
     GameApisModule,
-    PagesModule
+    GameModule
   ],
 })
 export class AppModule {}
