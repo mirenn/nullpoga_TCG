@@ -12,6 +12,6 @@ export class GameApisService {
   }
 
   handlePlayerAction(action: any) {
-    return this.gameService.executeGameAction(action.gameId, action.type, action.data);
+    return this.gameService.executeGameAction(action.gameId, action);
   }
 }

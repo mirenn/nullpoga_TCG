@@ -1,0 +1,6 @@
+export declare enum PhaseKind {
+    SPELL_PHASE = "SPELL_PHASE",
+    SUMMON_PHASE = "SUMMON_PHASE",
+    ACTIVITY_PHASE = "ACTIVITY_PHASE",
+    END_PHASE = "END_PHASE"
+}

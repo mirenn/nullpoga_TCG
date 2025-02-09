@@ -1,8 +1,9 @@
+import { State } from './models/state';
 export declare class GameService {
     private static instance;
-    constructor();
     private games;
+    constructor();
     createGame(gameId: string): void;
-    getGame(gameId: string): any;
-    executeGameAction(gameId: string, action: string, data: any): void;
+    getGame(gameId: string): State | undefined;
+    executeGameAction(gameId: string, action: any): void;
 }

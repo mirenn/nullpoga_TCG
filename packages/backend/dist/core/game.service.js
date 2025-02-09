@@ -12,6 +12,7 @@ var GameService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
+const state_1 = require("./models/state");
 let GameService = GameService_1 = class GameService {
     constructor() {
         this.games = new Map();
@@ -21,16 +22,20 @@ let GameService = GameService_1 = class GameService {
         return GameService_1.instance;
     }
     createGame(gameId) {
-        this.games.set(gameId, {});
+        const state = new state_1.State();
+        state.initGame();
+        this.games.set(gameId, state);
     }
     getGame(gameId) {
         return this.games.get(gameId);
     }
-    executeGameAction(gameId, action, data) {
+    executeGameAction(gameId, action) {
         const game = this.games.get(gameId);
         if (!game) {
             throw new Error('Game not found');
         }
+        const nextState = game.next(action);
+        this.games.set(gameId, nextState);
     }
 };
 exports.GameService = GameService;

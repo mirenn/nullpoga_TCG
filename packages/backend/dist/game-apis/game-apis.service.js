@@ -22,7 +22,7 @@ let GameApisService = class GameApisService {
         return { gameId };
     }
     handlePlayerAction(action) {
-        return this.gameService.executeGameAction(action.gameId, action.type, action.data);
+        return this.gameService.executeGameAction(action.gameId, action);
     }
 };
 exports.GameApisService = GameApisService;
