@@ -24,7 +24,7 @@ class Player {
     drawCard() {
         if (this.deckCards.length > 0) {
             const cardNo = this.deckCards.shift();
-            const card = new card_1.MonsterCard(cardNo, 10, 1);
+            const card = (0, card_1.instanceCard)(cardNo);
             this.handCards.push(card);
         }
     }

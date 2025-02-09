@@ -1,7 +1,7 @@
 import { PhaseKind } from './phase';
 import { Zone } from './zone';
 import { Action, ActionType } from './action';
-import { Card, MonsterCard } from './card';
+import { Card, MonsterCard, instanceCard } from './card';
 
 export class Player {
     public zone: Zone;
@@ -28,8 +28,7 @@ export class Player {
     drawCard(): void {
         if (this.deckCards.length > 0) {
             const cardNo = this.deckCards.shift()!;
-            // Simple card creation logic - can be expanded based on card type
-            const card = new MonsterCard(cardNo, 10, 1);
+            const card = instanceCard(cardNo);
             this.handCards.push(card);
         }
     }
