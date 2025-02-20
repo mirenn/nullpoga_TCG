@@ -4,8 +4,8 @@ import { Action } from './action';
 export declare const DECK_1: number[];
 export declare const DECK_2: number[];
 export declare class State implements IState {
-    private player1?;
-    private player2?;
+    player1?: Player;
+    player2?: Player;
     private history;
     private turnHistory;
     constructor(player1?: Player, player2?: Player);
@@ -25,4 +25,6 @@ export declare class State implements IState {
     private clonePlayer;
     toJson(): Record<string, any>;
     private deleteMonster;
+    legalActions(): Action[];
+    randomAction(): Action;
 }

@@ -1,3 +1,4 @@
+import { GameRoom } from '../core/models/game-room.interface';
 import { GameService } from '../core/game.service';
 export declare class GameApisService {
     private readonly gameService;
@@ -5,5 +6,9 @@ export declare class GameApisService {
     startGame(): {
         gameId: string;
     };
-    handlePlayerAction(action: any): void;
+    getGameState(userId: string): {
+        room_id: string;
+        gameRoom: GameRoom | undefined;
+    };
+    handlePlayerAction(action: any): Promise<void>;
 }

@@ -22,6 +22,9 @@ let GameApisController = class GameApisController {
     startGame() {
         return this.gameApisService.startGame();
     }
+    getGameState(userId) {
+        return this.gameApisService.getGameState(userId);
+    }
     playerAction(action) {
         return this.gameApisService.handlePlayerAction(action);
     }
@@ -33,6 +36,13 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], GameApisController.prototype, "startGame", null);
+__decorate([
+    (0, common_1.Get)('game_state/:userId'),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], GameApisController.prototype, "getGameState", null);
 __decorate([
     (0, common_1.Post)('player_action'),
     __param(0, (0, common_1.Body)()),

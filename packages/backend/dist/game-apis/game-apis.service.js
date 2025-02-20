@@ -18,8 +18,11 @@ let GameApisService = class GameApisService {
     }
     startGame() {
         const gameId = Date.now().toString();
-        this.gameService.createGame(gameId);
+        this.gameService.createGame(gameId, ['player1', 'player2']);
         return { gameId };
+    }
+    getGameState(userId) {
+        return this.gameService.getGameState(userId);
     }
     handlePlayerAction(action) {
         return this.gameService.executeGameAction(action.gameId, action);

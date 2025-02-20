@@ -203,6 +203,13 @@ class State {
             }
         });
     }
+    legalActions() {
+        return this.player1.legalActions();
+    }
+    randomAction() {
+        const legalActions = this.player1.legalActions();
+        return legalActions[Math.floor(Math.random() * legalActions.length)];
+    }
 }
 exports.State = State;
 //# sourceMappingURL=state.js.map

@@ -5,5 +5,9 @@ export declare class GameApisController {
     startGame(): {
         gameId: string;
     };
-    playerAction(action: any): void;
+    getGameState(userId: string): {
+        room_id: string;
+        gameRoom: import("../core/models/game-room.interface").GameRoom | undefined;
+    };
+    playerAction(action: any): Promise<void>;
 }

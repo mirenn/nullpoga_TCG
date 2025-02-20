@@ -220,7 +220,7 @@ export async function actionSubmit(
 export async function getgameResponse(
   userId: string,
 ): Promise<GameModels.GameStateResponse[] | null> {
-  const url = HOST + `/test_game_state/${userId}`;
+  const url = HOST + `/api/game_state/${userId}`;
 
   try {
     const response = await fetch(url, {

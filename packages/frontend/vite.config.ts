@@ -9,6 +9,10 @@ export default defineConfig({
       '@nullpoga/shared': path.resolve(__dirname, '../shared/src')
     }
   },
+  build: {
+    outDir: '../backend/static',
+    emptyOutDir: true
+  },
   server: {
     proxy: {
       '/api': {

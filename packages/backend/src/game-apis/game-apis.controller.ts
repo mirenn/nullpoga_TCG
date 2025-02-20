@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { GameApisService } from './game-apis.service';
 
 @Controller('api')
@@ -8,6 +8,11 @@ export class GameApisController {
   @Get('start_game')
   startGame() {
     return this.gameApisService.startGame();
+  }
+  
+  @Get('game_state/:userId')
+  getGameState(@Param('userId') userId: string) {
+    return this.gameApisService.getGameState(userId);
   }
 
   @Post('player_action')

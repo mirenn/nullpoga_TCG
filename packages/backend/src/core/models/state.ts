@@ -13,8 +13,8 @@ export class State implements IState {
     private turnHistory: Array<Record<string, any>> = [];
 
     constructor(
-        private player1?: Player,
-        private player2?: Player
+        public player1?: Player,
+        public player2?: Player
     ) {
         this.player1 = player1 || new Player(DECK_1);
         this.player2 = player2 || new Player(DECK_2);
@@ -279,5 +279,27 @@ export class State implements IState {
                 slot.removeCard();
             }
         });
+    }
+    /**
+     * 
+     * @returns 
+     * @description
+     * 現在のプレイヤーの合法なアクションを返します
+     * モンテカルロ木探索で使用されます
+     **/
+    public legalActions(): Action[] {
+        return this.player1.legalActions();
+    }
+
+    /**
+     * 
+     * @returns 
+     * @description
+     * ランダムなアクションを返します
+     * モンテカルロ木探索で使用されます
+     */
+    public randomAction(): Action {
+        const legalActions = this.player1.legalActions();
+        return legalActions[Math.floor(Math.random() * legalActions.length)];
     }
 }
