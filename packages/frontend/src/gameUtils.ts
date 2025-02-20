@@ -1,8 +1,10 @@
 import * as GameModels from './gameModels.js';
+import { useAuth } from './authContext';
+
 const HOST =
   process.env.NODE_ENV === 'production'
     ? window.location.origin
-    : 'http://127.0.0.1:8000';
+    : 'http://localhost:3000'; // NestJSのデフォルトポートに変更
 
 /**
  * 召喚操作に合わせたオブジェクト側の操作
@@ -178,6 +180,7 @@ export function getPlayerExcludingUserId(
  * @param spell_phase_actions
  * @param summon_phase_actions
  * @param activity_phase_actions
+ * @param token
  * @returns
  */
 export async function actionSubmit(
@@ -185,8 +188,9 @@ export async function actionSubmit(
   spell_phase_actions: GameModels.Action[],
   summon_phase_actions: GameModels.Action[],
   activity_phase_actions: GameModels.Action[],
+  token: string,
 ) {
-  const url = HOST + `/submit_action_with_random_cpu/${userId}`;
+  const url = HOST + `/api/player_action`;
 
   const postData = {
     spell_phase_actions,
@@ -199,6 +203,7 @@ export async function actionSubmit(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
       body: JSON.stringify(postData),
     });
@@ -219,14 +224,16 @@ export async function actionSubmit(
 
 export async function getgameResponse(
   userId: string,
+  token: string,
 ): Promise<GameModels.GameStateResponse[] | null> {
-  const url = HOST + `/api/game_state/${userId}`;
+  const url = HOST + `/api/game_state`;
 
   try {
     const response = await fetch(url, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
       },
     });
 

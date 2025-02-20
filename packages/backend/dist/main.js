@@ -49,7 +49,7 @@ async function bootstrap() {
     app.useStaticAssets(path.join(__dirname, '..', 'static', 'css'), {
         prefix: '/css',
     });
-    const PORT = process.env.PORT || 8000;
+    const PORT = process.env.PORT || 3000;
     await app.listen(PORT);
     console.log(`Server is running on port ${PORT}`);
 }

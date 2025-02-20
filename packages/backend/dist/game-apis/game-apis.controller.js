@@ -15,39 +15,46 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.GameApisController = void 0;
 const common_1 = require("@nestjs/common");
 const game_apis_service_1 = require("./game-apis.service");
+const jwt_auth_guard_1 = require("../auth/jwt-auth.guard");
 let GameApisController = class GameApisController {
     constructor(gameApisService) {
         this.gameApisService = gameApisService;
     }
-    startGame() {
+    startGame(req) {
         return this.gameApisService.startGame();
     }
-    getGameState(userId) {
-        return this.gameApisService.getGameState(userId);
+    getGameState(req) {
+        return this.gameApisService.getGameState(req.user.userId);
     }
-    playerAction(action) {
-        return this.gameApisService.handlePlayerAction(action);
+    playerAction(action, req) {
+        const actionWithUser = Object.assign(Object.assign({}, action), { userId: req.user.userId });
+        return this.gameApisService.handlePlayerAction(actionWithUser);
     }
 };
 exports.GameApisController = GameApisController;
 __decorate([
     (0, common_1.Get)('start_game'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", []),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], GameApisController.prototype, "startGame", null);
 __decorate([
-    (0, common_1.Get)('game_state/:userId'),
-    __param(0, (0, common_1.Param)('userId')),
+    (0, common_1.Get)('game_state'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String]),
+    __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", void 0)
 ], GameApisController.prototype, "getGameState", null);
 __decorate([
     (0, common_1.Post)('player_action'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object]),
+    __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], GameApisController.prototype, "playerAction", null);
 exports.GameApisController = GameApisController = __decorate([

@@ -4,13 +4,16 @@ import Hand from './components/Hand';
 import PlayerStats from './components/PlayerStats';
 import ButtonContainer from './components/ButtonContainer';
 import ResultContainer from './components/ResultContainer';
+import LoginForm from './components/LoginForm';
 import * as GameUtils from './gameUtils.js';
 import { GameContext } from './gameContext';
+import { useAuth } from './authContext';
 import './App.css';
 import OpponentStats from './components/OpponentStats.js';
 import { ArcherContainer } from 'react-archer';
 
 function App() {
+  const { token } = useAuth();
   const {
     extractedGameResponse,
     setExtractedGameResponse,
@@ -50,7 +53,7 @@ function App() {
   }, [extractedGameResponse, summonPhaseActions, activityPhaseActions]);
 
   const handleGetGameState = async () => {
-    const res = await GameUtils.getgameResponse(myUserId);
+    const res = await GameUtils.getgameResponse(myUserId, token!);
     if (res) {
       setExtractedGameResponse(res[0]);
       console.log(extractedGameResponse, res[0]);
@@ -64,6 +67,7 @@ function App() {
       spellPhaseActions,
       summonPhaseActions,
       activityPhaseActions,
+      token!
     );
   };
 
@@ -132,6 +136,17 @@ function App() {
     //GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
   };
 
+  // もしログインしていない場合は、ログインフォームを表示
+  if (!token) {
+    return (
+      <div className="login-container">
+        <h1>ヌルポガTCG</h1>
+        <LoginForm />
+      </div>
+    );
+  }
+
+  // ログインしている場合は、ゲーム画面を表示
   return (
     <div>
       <ArcherContainer strokeColor="red">
