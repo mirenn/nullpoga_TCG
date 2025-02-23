@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.Zone = exports.Slot = exports.FieldStatus = void 0;
+const card_1 = require("./card");
 var FieldStatus;
 (function (FieldStatus) {
     FieldStatus["NORMAL"] = "NORMAL";
@@ -17,7 +18,7 @@ class Slot {
     clone() {
         const newSlot = new Slot();
         if (this.card) {
-            newSlot.card = this.card instanceof MonsterCard ? this.card.clone() : instanceCard(this.card.cardNo);
+            newSlot.card = this.card instanceof card_1.MonsterCard ? this.card.clone() : (0, card_1.instanceCard)(this.card.cardNo);
         }
         newSlot.status = this.status;
         return newSlot;
@@ -42,7 +43,7 @@ class Zone {
         const newZone = new Zone();
         newZone.battleField = this.battleField.map(slot => slot.clone());
         newZone.standbyField = this.standbyField.map(slot => slot ?
-            (slot instanceof MonsterCard ? slot.clone() : instanceCard(slot.cardNo))
+            (slot instanceof card_1.MonsterCard ? slot.clone() : (0, card_1.instanceCard)(slot.cardNo))
             : null);
         return newZone;
     }

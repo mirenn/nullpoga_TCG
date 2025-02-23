@@ -1,3 +1,5 @@
+import { MonsterCard, instanceCard } from './card';
+
 export enum FieldStatus {
     NORMAL = 'NORMAL',
     WILDERNESS = 'WILDERNESS'
