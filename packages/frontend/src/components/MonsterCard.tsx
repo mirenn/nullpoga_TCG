@@ -21,24 +21,24 @@ const MonsterCard = ({
 }: MonsterCardProps) => {
   const { activityPhaseActions } = useContext(GameContext);
   const activityIndex = activityPhaseActions.findIndex(
-    (action) => action.action_data.monster_card?.uniq_id === card.uniq_id,
+    (action) => action.actionData.monsterCard?.uniqId === card.uniqId,
   );
 
   return (
     <div
       className="card monster-card"
-      id={`${card.uniq_id}`}
+      id={`${card.uniqId}`} 
       draggable={draggable}
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
       <img
-        src={card.image_url}
-        alt={card.card_name}
+        src={card.imageUrl}
+        alt={card.cardName}
         className="monster-image"
         draggable="false"
       />
-      <h3>{card.card_name}</h3>
+      <h3>{card.cardName}</h3>
       <p>
         ATK: {card.attack} Life: {card.life}
       </p>
@@ -46,9 +46,9 @@ const MonsterCard = ({
         <button
           className="attack-button"
           onClick={(e) => onAttack(e)}
-          disabled={!card.can_act}
+          disabled={!card.canAct}
         >
-          {card.can_act ? '攻撃宣言' : '攻撃宣言済み' + activityIndex}
+          {card.canAct ? '攻撃宣言' : '攻撃宣言済み' + activityIndex}
         </button>
       )}
     </div>
