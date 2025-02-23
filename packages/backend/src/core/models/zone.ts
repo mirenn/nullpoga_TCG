@@ -12,6 +12,15 @@ export class Slot {
     removeCard(): void {
         this.card = null;
     }
+
+    public clone(): Slot {
+        const newSlot = new Slot();
+        if (this.card) {
+            newSlot.card = this.card instanceof MonsterCard ? this.card.clone() : instanceCard(this.card.cardNo);
+        }
+        newSlot.status = this.status;
+        return newSlot;
+    }
 }
 
 export class Zone {
@@ -31,5 +40,15 @@ export class Zone {
             })),
             standbyField: this.standbyField
         };
+    }
+
+    public clone(): Zone {
+        const newZone = new Zone();
+        newZone.battleField = this.battleField.map(slot => slot.clone());
+        newZone.standbyField = this.standbyField.map(slot => slot ? 
+            (slot instanceof MonsterCard ? slot.clone() : instanceCard(slot.cardNo)) 
+            : null
+        );
+        return newZone;
     }
 }

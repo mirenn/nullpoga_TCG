@@ -15,25 +15,25 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
   const { extractedGameResponse } = useContext(GameContext);
   console.log('Hand確認 extractedGameResponse:', extractedGameResponse);
 
-  const gameState = extractedGameResponse?.game_state;
+  const gameState = extractedGameResponse?.gameRoom?.gameState;
   const myHandCds = GameUtils.getPlayerByUserId(
     gameState,
     myUserId,
-  )?.plan_hand_cards;
+  )?.planHandCards;
   //const rootStyle = { display: 'flex', justifyContent: 'center' };
 
   return (
     <div className="hand" id="player-hand">
       {myHandCds?.map((card, index) => {
-        if (card.card_type === GameModels.CardType.MONSTER) {
+        if (card.cardType === GameModels.CardType.MONSTER) {
           let summon_standby_field_idx = undefined;
           const action = GameUtils.getRenderActionByUserId(gameState, myUserId);
           if (
-            action?.action_type === GameModels.ActionType.SUMMON_MONSTER &&
-            action.action_data.monster_card?.uniq_id === card.uniq_id
+            action?.actionType === GameModels.ActionType.SUMMON_MONSTER &&
+            action.actionData.monsterCard?.uniqId === card.uniqId
           ) {
             summon_standby_field_idx =
-              action.action_data.summon_standby_field_idx;
+              action.actionData.summonStandbyFieldIdx;
           }
           return (
             <ArcherElement

@@ -2,13 +2,13 @@ import React, { createContext, useState } from 'react';
 import * as GameModels from './gameModels';
 
 interface GameContextType {
-  gameResponse: GameModels.GameStateResponse | null;
+  gameResponse: GameModels.RoomStateResponse | null;
   setGameResponse: React.Dispatch<
-    React.SetStateAction<GameModels.GameStateResponse | null>
+    React.SetStateAction<GameModels.RoomStateResponse | null>
   >;
-  extractedGameResponse: GameModels.GameStateResponse | null;
+  extractedGameResponse: GameModels.RoomStateResponse | null;
   setExtractedGameResponse: React.Dispatch<
-    React.SetStateAction<GameModels.GameStateResponse | null>
+    React.SetStateAction<GameModels.RoomStateResponse | null>
   >;
   spellPhaseActions: GameModels.Action[];
   setSpellPhaseActions: React.Dispatch<
@@ -46,9 +46,9 @@ interface GameProviderProps {
 
 export const GameProvider = ({ children }: GameProviderProps) => {
   const [gameResponse, setGameResponse] =
-    useState<GameModels.GameStateResponse | null>(null);
+    useState<GameModels.RoomStateResponse | null>(null);
   const [extractedGameResponse, setExtractedGameResponse] =
-    useState<GameModels.GameStateResponse | null>(null);
+    useState<GameModels.RoomStateResponse | null>(null);
   const [spellPhaseActions, setSpellPhaseActions] = useState<
     GameModels.Action[]
   >([]);

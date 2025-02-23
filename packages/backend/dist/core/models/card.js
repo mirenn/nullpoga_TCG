@@ -124,6 +124,16 @@ class MonsterCard extends Card {
             }
         };
     }
+    clone() {
+        const cloned = instanceCard(this.cardNo);
+        cloned.life = this.life;
+        cloned.attack = this.attack;
+        cloned.stunCount = this.stunCount;
+        cloned.attackDeclaration = this.attackDeclaration;
+        cloned.justSummoned = this.justSummoned;
+        cloned.canAct = this.canAct;
+        return cloned;
+    }
     toDict() {
         return Object.assign(Object.assign({}, super.toDict()), { life: this.life, attack: this.attack, imageUrl: this.imageUrl, stunCount: this.stunCount, justSummoned: this.justSummoned, canAct: this.canAct });
     }

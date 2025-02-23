@@ -9,12 +9,13 @@ import { AuthController } from './auth.controller';
   imports: [
     PassportModule,
     JwtModule.register({
-      secret: 'your-secret-key', // 本番環境では環境変数から取得すべき
-      signOptions: { expiresIn: '60m' },
+      secret: process.env.JWT_SECRET || 'your-secret-key', // 環境変数から取得可能
+      signOptions: { expiresIn: '999y' }, // 999年に変更
     }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
   exports: [AuthService],
 })
+//TODO: リフレッシュトークンの実装
 export class AuthModule {}

@@ -1,21 +1,26 @@
 interface ButtonContainerProps {
   onGetGameState: () => void;
-  //onRenderHand: () => void;
+  onStartGame: () => void;  // 追加
   onActionSubmit: () => void;
-  //onSummonPhaseEnd: () => void;
   onSpellPhaseEnd: () => void;
   onRenderExecuteEndPhase: () => void;
 }
 
 const ButtonContainer = ({
   onGetGameState,
-  //onRenderHand,
+  onStartGame,  // 追加
   onActionSubmit,
-  //onSummonPhaseEnd,
   onSpellPhaseEnd,
   onRenderExecuteEndPhase,
 }: ButtonContainerProps) => (
   <div className="button-container">
+    <button
+      id="start-game"
+      className="blue-button"
+      onClick={onStartGame}
+    >
+      Start Game
+    </button>
     <button
       id="get-game-state"
       className="blue-button"
@@ -30,14 +35,6 @@ const ButtonContainer = ({
     >
       End Spell Phase
     </button>
-    {/* <button id="render-hand" className="blue-button" onClick={onRenderHand}>Render Hand</button> */}
-    {/* <button
-      id="summon-phase-end"
-      className="blue-button"
-      onClick={onSummonPhaseEnd}
-    >
-      End Summon Phase
-    </button> */}
     <button id="action-submit" className="blue-button" onClick={onActionSubmit}>
       Submit Actions
     </button>

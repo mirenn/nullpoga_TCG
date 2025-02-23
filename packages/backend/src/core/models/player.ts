@@ -1,41 +1,61 @@
 import { PhaseKind } from './phase';
-import { Zone } from './zone';
+import { Zone, Slot } from './zone';
 import { Action, ActionType } from './action';
 import { Card, MonsterCard, instanceCard } from './card';
 
 export class Player {
     public zone: Zone;
+    public planZone: Zone;
     public life: number = 20;
     public mana: number = 0;
+    public planMana: number = 0;
     public isFirstPlayer: boolean = false;
     public turnCount: number = 0;
     public phase: PhaseKind = PhaseKind.SPELL_PHASE;
     public userId: string;
-
     public handCards: Card[] = [];
-    public deckCards: number[] = [];
+    public planHandCards: Card[] = [];
+    public deckCards: Card[] = [];
     
     public spellPhaseActions: Action[] = [];
     public summonPhaseActions: Action[] = [];
     public activityPhaseActions: Action[] = [];
 
-    constructor(deck: number[], userId: string = 'default') {
+    constructor(deckNumbers: number[], userId: string = 'default') {
         this.zone = new Zone();
-        this.deckCards = [...deck];
+        this.deckCards = [...deckNumbers.map(instanceCard)];
         this.userId = userId;
     }
 
-    drawCard(): void {
+    public init(): void {
+        for (let i = 0; i < 5; i++) {
+            this.drawCard();
+        }
+        this.currentToPlan();
+    }
+
+    private drawCard(): void {
         if (this.deckCards.length > 0) {
-            const cardNo = this.deckCards.shift()!;
-            const card = instanceCard(cardNo);
+            const card = this.deckCards.shift()!;
             this.handCards.push(card);
         }
+    }
+    private currentToPlan(): void {
+        // Clone hand cards
+        this.planHandCards = this.handCards.map(card => 
+            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+        );
+        
+        // Clone zone
+        this.planZone = this.zone.clone();
+        
+        this.planMana = this.mana;
     }
 
     nextTurnRefresh(): void {
         this.turnCount++;
         this.mana += 1;
+        this.planMana = this.mana;
         this.drawCard();
         
         // Reset phase actions
@@ -51,6 +71,7 @@ export class Player {
         });
         
         this.phase = PhaseKind.SPELL_PHASE;
+        this.currentToPlan();
     }
 
     monsterMove(action: Action, zone: Zone): void {
@@ -110,10 +131,10 @@ export class Player {
         const actions: Action[] = [];
 
         // 手札のモンスターカードを召喚可能な場所に配置するアクション
-        this.handCards.forEach(card => {
-            if (card instanceof MonsterCard && card.manaCost <= this.mana) {
+        this.planHandCards.forEach(card => {
+            if (card instanceof MonsterCard && card.manaCost <= this.planMana) {
                 // 空いている待機フィールドに配置可能
-                this.zone.standbyField.forEach((slot, idx) => {
+                this.planZone.standbyField.forEach((slot, idx) => {
                     if (!slot) {
                         actions.push(new Action(ActionType.SUMMON_PHASE_END, {
                             summonStandbyFieldIdx: idx,
@@ -134,9 +155,9 @@ export class Player {
         const actions: Action[] = [];
 
         // モンスターの移動アクション
-        this.zone.battleField.forEach((fromSlot, fromIdx) => {
+        this.planZone.battleField.forEach((fromSlot, fromIdx) => {
             if (fromSlot.card) {
-                this.zone.battleField.forEach((toSlot, toIdx) => {
+                this.planZone.battleField.forEach((toSlot, toIdx) => {
                     if (!toSlot.card && fromIdx !== toIdx) {
                         actions.push(new Action(ActionType.MONSTER_MOVE, {
                             fromIdx,
@@ -148,10 +169,10 @@ export class Player {
         });
 
         // モンスターの攻撃アクション
-        this.zone.battleField.forEach((attackerSlot, attackerIdx) => {
+        this.planZone.battleField.forEach((attackerSlot, attackerIdx) => {
             if (attackerSlot.card && !attackerSlot.card.attackDeclaration) {
                 // 敵フィールドの各スロットを攻撃可能
-                this.zone.battleField.forEach((_, targetIdx) => {
+                this.planZone.battleField.forEach((_, targetIdx) => {
                     actions.push(new Action(ActionType.MONSTER_ATTACK, {
                         attackerIdx,
                         targetIdx

@@ -25,21 +25,6 @@ describe('Player', () => {
         });
     });
 
-    describe('drawCard', () => {
-        it('デッキからカードを1枚引けること', () => {
-            const initialDeckSize = player.deckCards.length;
-            player.drawCard();
-            expect(player.handCards).toHaveLength(1);
-            expect(player.deckCards).toHaveLength(initialDeckSize - 1);
-        });
-
-        it('デッキが空の場合、何も起こらないこと', () => {
-            player.deckCards = [];
-            player.drawCard();
-            expect(player.handCards).toHaveLength(0);
-        });
-    });
-
     describe('nextTurnRefresh', () => {
         it('ターン開始時の処理が正しく行われること', () => {
             player.nextTurnRefresh();

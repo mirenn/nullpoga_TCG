@@ -27,6 +27,7 @@ export declare class MonsterCard extends Card {
     private _initShibaInuRanmaru;
     private _initFrogPrivate;
     private _initElectricJellyfish;
+    clone(): MonsterCard;
     toDict(): Record<string, any>;
     turnStartEffect(): void;
     summonEffect(): void;

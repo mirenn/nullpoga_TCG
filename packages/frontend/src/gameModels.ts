@@ -34,42 +34,42 @@ export enum CardType {
 
 // MonsterCardインターフェース
 export interface MonsterCard {
-  card_no: number;
-  mana_cost: number;
-  card_name: string;
+  cardNo: number;
+  manaCost: number;
+  cardName: string;
   attack: number;
   life: number;
-  image_url: string;
-  readonly card_type: CardType.MONSTER;
-  uniq_id: UUID;
-  stun_count: number;
-  just_summoned: boolean;
-  can_act: boolean;
-  attack_declaration: boolean;
+  imageUrl: string;
+  readonly cardType: CardType.MONSTER;
+  uniqId: UUID;
+  stunCount: number;
+  justSummoned: boolean;
+  canAct: boolean;
+  attackDeclaration: boolean;
 }
 
 export interface SpellCard {
-  card_no: number;
-  card_name: string;
-  mana_cost: number;
-  readonly card_type: CardType.SPELL;
+  cardNo: number;
+  cardName: string;
+  manaCost: number;
+  readonly cardType: CardType.SPELL;
   effect: string;
-  uniq_id: UUID;
-  image_url: string;
+  uniqId: UUID;
+  imageUrl: string;
 }
 
 export interface ActionData {
-  spell_card?: SpellCard | null;
-  monster_card?: MonsterCard | null;
-  summon_standby_field_idx?: number | null;
-  move_battle_field_idx?: number | null;
-  move_direction?: string | null;
-  attack_declaration_idx?: number | null;
+  spellCard?: SpellCard | null;
+  monsterCard?: MonsterCard | null;
+  summonStandbyFieldIdx?: number | null;
+  moveBattleFieldIdx?: number | null;
+  moveDirection?: string | null;
+  attackDeclarationIdx?: number | null;
 }
 
 export interface Action {
-  action_type: ActionType;
-  action_data: ActionData;
+  actionType: ActionType;
+  actionData: ActionData;
 }
 
 export interface Slot {
@@ -78,34 +78,33 @@ export interface Slot {
 }
 
 export interface Zone {
-  battle_field: Slot[];
-  standby_field: (MonsterCard | null)[];
+  battleField: Slot[];
+  standbyField: (MonsterCard | null)[];
 }
 
 export interface Player {
-  user_id: string;
-  player_id: UUID;
-  turn_count: number;
-  deck_cards: (MonsterCard | SpellCard)[];
-  plan_deck_cards: (MonsterCard | SpellCard)[];
-  hand_cards: (MonsterCard | SpellCard)[];
-  plan_hand_cards: (MonsterCard | SpellCard)[];
+  userId: string;
+  turnCount: number;
+  deckCards: (MonsterCard | SpellCard)[];
+  planDeckCards: (MonsterCard | SpellCard)[];
+  handCards: (MonsterCard | SpellCard)[];
+  planHandCards: (MonsterCard | SpellCard)[];
   zone: Zone;
-  plan_zone: Zone;
+  planZone: Zone;
   phase: PhaseKind; //phaseはplan_phaseないのでこれを使う
   base_mana: number;
   mana: number;
   plan_mana: number;
   life: number;
-  spell_phase_actions: Action[];
-  summon_phase_actions: Action[];
-  activity_phase_actions: Action[];
-  is_first_player?: boolean | null;
+  spellPhaseActions: Action[];
+  summonPhaseActions: Action[];
+  activityPhaseActions: Action[];
+  isFirstPlayer?: boolean | null;
 }
 
 export interface State {
-  player_1: Player;
-  player_2: Player;
+  player1: Player;
+  player2: Player;
   history: HistoryEntry[][];
   /** エンドフェイズ後の実行後の処理を描画する際に用いるindex。フロントエンド側でのみ用いる値 */
   renderLastHisIndex: undefined | number;
@@ -120,13 +119,13 @@ export interface ActionDict {
 
 export interface RoomStateResponse {
   room_id: string;
-  state: State;
+  gameRoom: GameRoom;
 }
 
-export type GameStateResponse = {
-  room_id: string;
-  game_state: State;
-};
+export interface GameRoom {
+  players: string[];
+  gameState: State;
+}
 
 //#region debug用のWindow
 export {};

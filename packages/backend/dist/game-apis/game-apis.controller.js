@@ -20,33 +20,41 @@ let GameApisController = class GameApisController {
     constructor(gameApisService) {
         this.gameApisService = gameApisService;
     }
-    startGame(req) {
-        return this.gameApisService.startGame();
+    async startGame(req) {
+        const userId = req.user.userId;
+        return await this.gameApisService.startMatchmaking(userId);
     }
-    getGameState(req) {
-        return this.gameApisService.getGameState(req.user.userId);
+    async getGameState(req) {
+        const userId = req.user.userId;
+        return await this.gameApisService.getGameState(userId);
     }
     playerAction(action, req) {
         const actionWithUser = Object.assign(Object.assign({}, action), { userId: req.user.userId });
         return this.gameApisService.handlePlayerAction(actionWithUser);
     }
+    isWaiting(userId) {
+        return this.gameApisService.isWaiting(userId);
+    }
+    cancelMatching(userId) {
+        return this.gameApisService.cancelMatching(userId);
+    }
 };
 exports.GameApisController = GameApisController;
 __decorate([
-    (0, common_1.Get)('start_game'),
+    (0, common_1.Post)('start-game'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], GameApisController.prototype, "startGame", null);
 __decorate([
-    (0, common_1.Get)('game_state'),
+    (0, common_1.Get)('game-state'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object]),
-    __metadata("design:returntype", void 0)
+    __metadata("design:returntype", Promise)
 ], GameApisController.prototype, "getGameState", null);
 __decorate([
     (0, common_1.Post)('player_action'),
@@ -57,6 +65,20 @@ __decorate([
     __metadata("design:paramtypes", [Object, Object]),
     __metadata("design:returntype", void 0)
 ], GameApisController.prototype, "playerAction", null);
+__decorate([
+    (0, common_1.Get)('is-waiting/:userId'),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], GameApisController.prototype, "isWaiting", null);
+__decorate([
+    (0, common_1.Post)('cancel-matching/:userId'),
+    __param(0, (0, common_1.Param)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], GameApisController.prototype, "cancelMatching", null);
 exports.GameApisController = GameApisController = __decorate([
     (0, common_1.Controller)('api'),
     __metadata("design:paramtypes", [game_apis_service_1.GameApisService])

@@ -3,15 +3,22 @@ export declare class GameService {
     private static instance;
     private games;
     private userToRoom;
+    private waitingPlayers;
     private lock;
     constructor();
-    createGame(roomId: string, players: string[]): void;
-    getGameState(roomId: string): {
-        room_id: string;
+    private createGame;
+    startMatching(userId: string): Promise<{
+        status: 'waiting' | 'matched';
+        roomId?: string;
+    }>;
+    getGameState(userId: string): {
+        roomId: string;
         gameRoom: GameRoom | undefined;
     };
-    joinRoom(userId: string, roomId: string): void;
+    private joinRoom;
     getUserRoom(userId: string): string | undefined;
+    isWaiting(userId: string): boolean;
+    cancelMatching(userId: string): void;
     executeGameAction(roomId: string, action: any): Promise<void>;
     withLock<T>(roomId: string, operation: () => Promise<T>): Promise<T>;
 }

@@ -136,6 +136,17 @@ export class MonsterCard extends Card {
         };
     }
 
+    public clone(): MonsterCard {
+        const cloned = instanceCard(this.cardNo) as MonsterCard;
+        cloned.life = this.life;
+        cloned.attack = this.attack;
+        cloned.stunCount = this.stunCount;
+        cloned.attackDeclaration = this.attackDeclaration;
+        cloned.justSummoned = this.justSummoned;
+        cloned.canAct = this.canAct;
+        return cloned;
+    }
+
     override toDict(): Record<string, any> {
         return {
             ...super.toDict(),

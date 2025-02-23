@@ -19,10 +19,8 @@ class State {
     initGame() {
         this.player1.isFirstPlayer = true;
         this.player2.isFirstPlayer = false;
-        for (let i = 0; i < 5; i++) {
-            this.player1.drawCard();
-            this.player2.drawCard();
-        }
+        this.player1.init();
+        this.player2.init();
         this.player1.mana = 10;
         this.player2.mana = 10;
     }

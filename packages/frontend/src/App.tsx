@@ -13,17 +13,28 @@ import OpponentStats from './components/OpponentStats.js';
 import { ArcherContainer } from 'react-archer';
 
 function App() {
-  const { token } = useAuth();
+  const { token, userId } = useAuth();
   const {
-    extractedGameResponse,
+    extractedGameResponse,//盤面に展開される情報。gameResponse => extractedGameResponseに反映して盤面に反映される順
+    //TODO:↑おそらく簡単に戻したり進めたりするための実装が必要。少し難しいため後回し
     setExtractedGameResponse,
-    gameResponse,
+    gameResponse,//サーバーから最後に帰ってきたgameResponseを保持//画面の反映には現状使わない//やり直すときよう?
     setGameResponse,
     spellPhaseActions,
     summonPhaseActions,
     activityPhaseActions,
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
+
+  // もしログインしていない場合は、ログインフォームを表示
+  if (!token || !userId) {
+    return (
+      <div className="login-container">
+        <h1>ヌルポガTCG</h1>
+        <LoginForm />
+      </div>
+    );
+  }
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     const target = event.target as HTMLDivElement;
@@ -34,8 +45,6 @@ function App() {
   const handleDragEnd = () => {
     setIsDragging(false);
   };
-
-  const myUserId = 'user_id_1';
 
   useEffect(() => {
     console.log('extractedGameResponse updated:', extractedGameResponse);
@@ -53,7 +62,7 @@ function App() {
   }, [extractedGameResponse, summonPhaseActions, activityPhaseActions]);
 
   const handleGetGameState = async () => {
-    const res = await GameUtils.getgameResponse(myUserId, token!);
+    const res = await GameUtils.getgameResponse(token!);
     if (res) {
       setExtractedGameResponse(res[0]);
       console.log(extractedGameResponse, res[0]);
@@ -63,7 +72,6 @@ function App() {
 
   const handleActionSubmit = () => {
     GameUtils.actionSubmit(
-      myUserId,
       spellPhaseActions,
       summonPhaseActions,
       activityPhaseActions,
@@ -74,17 +82,17 @@ function App() {
   const handleSpellPhaseEnd = () => {
     console.log('End Spell Phase');
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
-    const state = newExtractedGameResponse?.game_state;
-    const myPlayer = GameUtils.getPlayerByUserId(state, myUserId);
+    const state = newExtractedGameResponse?.gameRoom?.gameState;
+    const myPlayer = GameUtils.getPlayerByUserId(state, userId);
     if (myPlayer) {
       for (let i = 0; i < 5; i++) {
         if (
-          myPlayer.plan_zone.standby_field[i] &&
-          myPlayer.plan_zone.battle_field[i].card === null
+          myPlayer.planZone.standbyField[i] &&
+          myPlayer.planZone.battleField[i].card === null
         ) {
-          myPlayer.plan_zone.battle_field[i].card =
-            myPlayer.plan_zone.standby_field[i];
-          myPlayer.plan_zone.standby_field[i] = null;
+          myPlayer.planZone.battleField[i].card =
+            myPlayer.planZone.standbyField[i];
+          myPlayer.planZone.standbyField[i] = null;
         }
       }
       setExtractedGameResponse(newExtractedGameResponse);
@@ -93,9 +101,9 @@ function App() {
 
   const handleRenderExecuteEndPhase = () => {
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
-    const history = newExtractedGameResponse?.game_state?.history;
+    const history = newExtractedGameResponse?.gameRoom?.gameState?.history;
     let renderLastHisIndex =
-      newExtractedGameResponse?.game_state?.renderLastHisIndex;
+      newExtractedGameResponse?.gameRoom?.gameState?.renderLastHisIndex;
     if (!history) {
       return;
     }
@@ -114,20 +122,20 @@ function App() {
     const lasthis = history[history.length - 1];
     if (renderLastHisIndex !== undefined) {
       const lastState = lasthis[renderLastHisIndex].State;
-      newExtractedGameResponse.game_state.player_1 = lastState.player_1;
-      newExtractedGameResponse.game_state.player_2 = lastState.player_2;
-      newExtractedGameResponse.game_state.renderLastHisIndex =
+      newExtractedGameResponse.gameRoom.gameState.player1 = lastState.player1;
+      newExtractedGameResponse.gameRoom.gameState.player2 = lastState.player2;
+      newExtractedGameResponse.gameRoom.gameState.renderLastHisIndex =
         renderLastHisIndex;
     } else {
-      if (gameResponse?.game_state?.player_1) {
-        newExtractedGameResponse.game_state.player_1 =
-          gameResponse.game_state.player_1;
+      if (gameResponse?.gameRoom?.gameState?.player1) {
+        newExtractedGameResponse.gameRoom.gameState.player1 =
+          gameResponse.gameRoom.gameState.player1;
       }
-      if (gameResponse?.game_state?.player_2) {
-        newExtractedGameResponse.game_state.player_2 =
-          gameResponse.game_state.player_2;
+      if (gameResponse?.gameRoom?.gameState?.player2) {
+        newExtractedGameResponse.gameRoom.gameState.player2 =
+          gameResponse.gameRoom.gameState.player2;
       }
-      newExtractedGameResponse.game_state.renderLastHisIndex =
+      newExtractedGameResponse.gameRoom.gameState.renderLastHisIndex =
         renderLastHisIndex;
     }
     setExtractedGameResponse(newExtractedGameResponse);
@@ -136,15 +144,13 @@ function App() {
     //GameUtils.displayCurrentAction(lasthis.actionDict, myUserId);
   };
 
-  // もしログインしていない場合は、ログインフォームを表示
-  if (!token) {
-    return (
-      <div className="login-container">
-        <h1>ヌルポガTCG</h1>
-        <LoginForm />
-      </div>
-    );
-  }
+  const handleStartGame = async () => {
+    if (token) {
+      await GameUtils.startGame(token);
+      // ゲーム開始後に最新の状態を取得
+      handleGetGameState();
+    }
+  };
 
   // ログインしている場合は、ゲーム画面を表示
   return (
@@ -152,20 +158,21 @@ function App() {
       <ArcherContainer strokeColor="red">
         <h1>nullpogaTCG client仮実装</h1>
         <OpponentStats
-          gameState={extractedGameResponse?.game_state}
-          myUserId={myUserId}
+          gameState={extractedGameResponse?.gameRoom?.gameState}
+          myUserId={userId}
         />
-        <GameBoard myUserId={myUserId} isDragging={isDragging} />
+        <GameBoard myUserId={userId} isDragging={isDragging} />
         <Hand
-          myUserId={myUserId}
+          myUserId={userId}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         />
         <PlayerStats
-          gameState={extractedGameResponse?.game_state}
-          myUserId={myUserId}
+          gameState={extractedGameResponse?.gameRoom?.gameState}
+          myUserId={userId}
         />
         <ButtonContainer
+          onStartGame={handleStartGame}
           onGetGameState={handleGetGameState}
           onActionSubmit={handleActionSubmit}
           onSpellPhaseEnd={handleSpellPhaseEnd}

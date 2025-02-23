@@ -7,10 +7,12 @@ export declare class Slot {
     status: FieldStatus;
     constructor(card?: any, status?: FieldStatus);
     removeCard(): void;
+    clone(): Slot;
 }
 export declare class Zone {
     battleField: Slot[];
     standbyField: (any | null)[];
     constructor();
     toDict(): Record<string, any>;
+    clone(): Zone;
 }

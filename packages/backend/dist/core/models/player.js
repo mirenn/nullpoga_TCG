@@ -6,31 +6,44 @@ const zone_1 = require("./zone");
 const action_1 = require("./action");
 const card_1 = require("./card");
 class Player {
-    constructor(deck, userId = 'default') {
+    constructor(deckNumbers, userId = 'default') {
         this.life = 20;
         this.mana = 0;
+        this.planMana = 0;
         this.isFirstPlayer = false;
         this.turnCount = 0;
         this.phase = phase_1.PhaseKind.SPELL_PHASE;
         this.handCards = [];
+        this.planHandCards = [];
         this.deckCards = [];
         this.spellPhaseActions = [];
         this.summonPhaseActions = [];
         this.activityPhaseActions = [];
         this.zone = new zone_1.Zone();
-        this.deckCards = [...deck];
+        this.deckCards = [...deckNumbers.map(card_1.instanceCard)];
         this.userId = userId;
+    }
+    init() {
+        for (let i = 0; i < 5; i++) {
+            this.drawCard();
+        }
+        this.currentToPlan();
     }
     drawCard() {
         if (this.deckCards.length > 0) {
-            const cardNo = this.deckCards.shift();
-            const card = (0, card_1.instanceCard)(cardNo);
+            const card = this.deckCards.shift();
             this.handCards.push(card);
         }
+    }
+    currentToPlan() {
+        this.planHandCards = this.handCards.map(card => card instanceof card_1.MonsterCard ? card.clone() : (0, card_1.instanceCard)(card.cardNo));
+        this.planZone = this.zone.clone();
+        this.planMana = this.mana;
     }
     nextTurnRefresh() {
         this.turnCount++;
         this.mana += 1;
+        this.planMana = this.mana;
         this.drawCard();
         this.spellPhaseActions = [];
         this.summonPhaseActions = [];
@@ -41,6 +54,7 @@ class Player {
             }
         });
         this.phase = phase_1.PhaseKind.SPELL_PHASE;
+        this.currentToPlan();
     }
     monsterMove(action, zone) {
         if (!action.actionData || action.actionData.fromIdx === undefined || action.actionData.toIdx === undefined) {
@@ -89,9 +103,9 @@ class Player {
     }
     getSummonPhaseActions() {
         const actions = [];
-        this.handCards.forEach(card => {
-            if (card instanceof card_1.MonsterCard && card.manaCost <= this.mana) {
-                this.zone.standbyField.forEach((slot, idx) => {
+        this.planHandCards.forEach(card => {
+            if (card instanceof card_1.MonsterCard && card.manaCost <= this.planMana) {
+                this.planZone.standbyField.forEach((slot, idx) => {
                     if (!slot) {
                         actions.push(new action_1.Action(action_1.ActionType.SUMMON_PHASE_END, {
                             summonStandbyFieldIdx: idx,
@@ -106,9 +120,9 @@ class Player {
     }
     getActivityPhaseActions() {
         const actions = [];
-        this.zone.battleField.forEach((fromSlot, fromIdx) => {
+        this.planZone.battleField.forEach((fromSlot, fromIdx) => {
             if (fromSlot.card) {
-                this.zone.battleField.forEach((toSlot, toIdx) => {
+                this.planZone.battleField.forEach((toSlot, toIdx) => {
                     if (!toSlot.card && fromIdx !== toIdx) {
                         actions.push(new action_1.Action(action_1.ActionType.MONSTER_MOVE, {
                             fromIdx,
@@ -118,9 +132,9 @@ class Player {
                 });
             }
         });
-        this.zone.battleField.forEach((attackerSlot, attackerIdx) => {
+        this.planZone.battleField.forEach((attackerSlot, attackerIdx) => {
             if (attackerSlot.card && !attackerSlot.card.attackDeclaration) {
-                this.zone.battleField.forEach((_, targetIdx) => {
+                this.planZone.battleField.forEach((_, targetIdx) => {
                     actions.push(new action_1.Action(action_1.ActionType.MONSTER_ATTACK, {
                         attackerIdx,
                         targetIdx

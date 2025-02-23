@@ -26,10 +26,8 @@ export class State implements IState {
         this.player2.isFirstPlayer = false;
 
         // Initial draw
-        for (let i = 0; i < 5; i++) {
-            this.player1.drawCard();
-            this.player2.drawCard();
-        }
+        this.player1.init();
+        this.player2.init();
 
         // Initial mana
         this.player1.mana = 10;

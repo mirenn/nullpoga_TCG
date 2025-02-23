@@ -17,26 +17,49 @@ exports.GameService = void 0;
 const common_1 = require("@nestjs/common");
 const state_1 = require("./models/state");
 const async_lock_1 = __importDefault(require("async-lock"));
+const player_1 = require("./models/player");
 let GameService = GameService_1 = class GameService {
     constructor() {
         this.games = new Map();
         this.userToRoom = new Map();
+        this.waitingPlayers = ['player2'];
         if (!GameService_1.instance) {
             GameService_1.instance = this;
             this.lock = new async_lock_1.default();
         }
         return GameService_1.instance;
     }
-    createGame(roomId, players) {
-        const state = new state_1.State();
+    createGame(userIds) {
+        const roomId = Date.now().toString();
+        const player1 = new player_1.Player([7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2], userIds[0]);
+        const player2 = new player_1.Player([4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2], userIds[1]);
+        const state = new state_1.State(player1, player2);
         state.initGame();
         this.games.set(roomId, {
-            players: players,
-            game_state: state
+            userIds: userIds,
+            gameState: state
         });
+        userIds.forEach(userId => this.joinRoom(userId, roomId));
+        return roomId;
     }
-    getGameState(roomId) {
-        return { "room_id": roomId, "gameRoom": this.games.get(roomId) };
+    async startMatching(userId) {
+        if (this.getUserRoom(userId)) {
+            throw new Error('User is already in a room');
+        }
+        if (this.waitingPlayers.length > 0) {
+            const opponent = this.waitingPlayers.shift();
+            const roomId = this.createGame([userId, opponent]);
+            return { status: 'matched', roomId };
+        }
+        this.waitingPlayers.push(userId);
+        return { status: 'waiting' };
+    }
+    getGameState(userId) {
+        const roomId = this.getUserRoom(userId);
+        if (!roomId) {
+            throw new Error('User is not in a room');
+        }
+        return { roomId, gameRoom: this.games.get(roomId) };
     }
     joinRoom(userId, roomId) {
         this.userToRoom.set(userId, roomId);
@@ -44,14 +67,23 @@ let GameService = GameService_1 = class GameService {
     getUserRoom(userId) {
         return this.userToRoom.get(userId);
     }
+    isWaiting(userId) {
+        return this.waitingPlayers.includes(userId);
+    }
+    cancelMatching(userId) {
+        const index = this.waitingPlayers.indexOf(userId);
+        if (index !== -1) {
+            this.waitingPlayers.splice(index, 1);
+        }
+    }
     async executeGameAction(roomId, action) {
         await this.withLock(roomId, async () => {
             const gameRoom = this.games.get(roomId);
             if (!gameRoom) {
                 throw new Error('Game not found');
             }
-            const nextState = gameRoom.game_state.next(action);
-            gameRoom.game_state = nextState;
+            const nextState = gameRoom.gameState.next(action);
+            gameRoom.gameState = nextState;
             this.games.set(roomId, gameRoom);
         });
     }

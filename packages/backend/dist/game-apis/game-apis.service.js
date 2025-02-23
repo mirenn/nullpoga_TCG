@@ -16,16 +16,28 @@ let GameApisService = class GameApisService {
     constructor(gameService) {
         this.gameService = gameService;
     }
-    startGame() {
-        const gameId = Date.now().toString();
-        this.gameService.createGame(gameId, ['player1', 'player2']);
-        return { gameId };
+    async startMatchmaking(userId) {
+        const matchResult = await this.gameService.startMatching(userId);
+        return matchResult;
     }
-    getGameState(userId) {
-        return this.gameService.getGameState(userId);
+    async getGameState(userId) {
+        const roomId = this.gameService.getUserRoom(userId);
+        if (!roomId) {
+            throw new Error(`User with ID ${userId} is not in a room`);
+        }
+        return await this.gameService.withLock(roomId, async () => {
+            const gameRoom = this.gameService.getGameState(userId);
+            return gameRoom;
+        });
     }
     handlePlayerAction(action) {
-        return this.gameService.executeGameAction(action.gameId, action);
+        return this.gameService.executeGameAction(action.roomId, action);
+    }
+    isWaiting(userId) {
+        return this.gameService.isWaiting(userId);
+    }
+    cancelMatching(userId) {
+        return this.gameService.cancelMatching(userId);
     }
 };
 exports.GameApisService = GameApisService;
