@@ -30,8 +30,16 @@ let GameApisService = class GameApisService {
             return gameRoom;
         });
     }
-    handlePlayerAction(action) {
-        return this.gameService.executeGameAction(action.roomId, action);
+    async handlePlayerAction(action) {
+        if (!action.roomId) {
+            throw new common_1.BadRequestException('roomId is required and cannot be empty');
+        }
+        await this.gameService.executeGameAction(action.roomId, action);
+        const gameRoom = await this.gameService.getGameState(action.userId);
+        return {
+            success: true,
+            gameState: gameRoom
+        };
     }
     isWaiting(userId) {
         return this.gameService.isWaiting(userId);

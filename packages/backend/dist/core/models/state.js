@@ -5,6 +5,7 @@ const player_1 = require("./player");
 const action_1 = require("./action");
 const phase_1 = require("./phase");
 const zone_1 = require("./zone");
+const card_1 = require("./card");
 exports.DECK_1 = [7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2];
 exports.DECK_2 = [4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2];
 class State {
@@ -178,7 +179,22 @@ class State {
         player2.nextTurnRefresh();
     }
     clonePlayer(player) {
-        return JSON.parse(JSON.stringify(player));
+        const newPlayer = new player_1.Player([], player.userId);
+        newPlayer.life = player.life;
+        newPlayer.mana = player.mana;
+        newPlayer.planMana = player.planMana;
+        newPlayer.isFirstPlayer = player.isFirstPlayer;
+        newPlayer.turnCount = player.turnCount;
+        newPlayer.phase = player.phase;
+        newPlayer.spellPhaseActions = [...player.spellPhaseActions];
+        newPlayer.summonPhaseActions = [...player.summonPhaseActions];
+        newPlayer.activityPhaseActions = [...player.activityPhaseActions];
+        newPlayer.zone = player.zone.clone();
+        newPlayer.planZone = player.planZone ? player.planZone.clone() : newPlayer.zone.clone();
+        newPlayer.handCards = player.handCards.map(card => card instanceof card_1.MonsterCard ? card.clone() : (0, card_1.instanceCard)(card.cardNo));
+        newPlayer.planHandCards = player.planHandCards ? player.planHandCards.map(card => card instanceof card_1.MonsterCard ? card.clone() : (0, card_1.instanceCard)(card.cardNo)) : [];
+        newPlayer.deckCards = [...player.deckCards];
+        return newPlayer;
     }
     toJson() {
         return {

@@ -11,7 +11,13 @@ export declare class GameApisService {
         roomId: string;
         gameRoom: GameRoom | undefined;
     }>;
-    handlePlayerAction(action: any): Promise<void>;
+    handlePlayerAction(action: any): Promise<{
+        success: boolean;
+        gameState: {
+            roomId: string;
+            gameRoom: GameRoom | undefined;
+        };
+    }>;
     isWaiting(userId: string): boolean;
     cancelMatching(userId: string): void;
 }

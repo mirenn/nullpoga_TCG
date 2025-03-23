@@ -34,15 +34,20 @@ export function planSummonMonster(
       newExtractedGameResponse?.gameRoom.gameState,
       myUserId,
     );
+    if(myPlayer === null) {
+      console.error('Player not found');
+      return;
+    }
     
-    const playerHand = myPlayer.planHandCards;
-    const standbyField = myPlayer.planZone.standbyField;
+    const playerHand = myPlayer?.planHandCards;
+    const standbyField = myPlayer?.planZone.standbyField;
 
     // 手札からuniq_idに一致するモンスターを探す
-    const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id);
+    const cardIndex = playerHand?.findIndex((card) => card.uniqId === uniq_id) ?? -1;
 
     // 該当するモンスターカードが見つかった場合
-    if (cardIndex !== -1) {
+    if (cardIndex !== -1 && playerHand && cardIndex < playerHand.length) {
+      // モンスターカードを取得
       const summonedCard = playerHand[cardIndex];
 
       // 手札からカードを削除
@@ -238,7 +243,6 @@ export function getPlayerExcludingUserId(
 
 /**
  * Actionをサーバーに送信
- * @param userId
  * @param spell_phase_actions
  * @param summon_phase_actions
  * @param activity_phase_actions
@@ -252,11 +256,18 @@ export async function actionSubmit(
   token: string,
 ) {
   const url = HOST + `/api/player_action`;
+  const roomId = localStorage.getItem('gameRoomId');
+  
+  if (!roomId) {
+    console.error('No roomId found in localStorage');
+    return null;
+  }
 
   const postData = {
     spell_phase_actions,
     summon_phase_actions,
     activity_phase_actions,
+    roomId
   };
 
   try {
@@ -268,14 +279,25 @@ export async function actionSubmit(
       },
       body: JSON.stringify(postData),
     });
+
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      const errorText = await response.text();
+      console.error('Response not OK:', response.status, errorText);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-    const res = await response.json();
+
+    const responseText = await response.text();
+    if (!responseText) {
+      console.warn('Empty response received');
+      return null;
+    }
+
+    const res = JSON.parse(responseText);
     console.log('actionSubmit res', res);
+    return res;
   } catch (error) {
     console.error('Failed to actionSubmit:', error);
-    return null;
+    throw error;
   } finally {
     spell_phase_actions.length = 0;
     summon_phase_actions.length = 0;
@@ -303,6 +325,12 @@ export async function getgameResponse(
 
     const data: GameModels.RoomStateResponse = await response.json();
     console.log('Game State:', data);
+    
+    // レスポンスからroomIdを取得して保存
+    if (data && data.room_id) {
+      localStorage.setItem('gameRoomId', data.room_id);
+      console.log('Room ID saved:', data.room_id);
+    }
 
     return [data, data];
   } catch (error) {
@@ -347,7 +375,6 @@ export function getActionDictExcludingUserId(
 
 export async function startGame(token: string): Promise<void> {
   const url = HOST + `/api/start-game`;
-
   try {
     const response = await fetch(url, {
       method: 'POST',
@@ -356,13 +383,17 @@ export async function startGame(token: string): Promise<void> {
         'Authorization': `Bearer ${token}`
       },
     });
-
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }
-
     const data = await response.json();
     console.log('Start game response:', data);
+    
+    // マッチングが成功した場合、roomIdをlocalStorageに保存
+    if (data && data.status === 'matched' && data.roomId) {
+      localStorage.setItem('gameRoomId', data.roomId);
+      console.log('Room ID saved from startGame:', data.roomId);
+    }
   } catch (error) {
     console.error('Failed to start game:', error);
   }

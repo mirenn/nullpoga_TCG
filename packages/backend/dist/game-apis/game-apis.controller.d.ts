@@ -10,7 +10,13 @@ export declare class GameApisController {
         roomId: string;
         gameRoom: import("../core/models/game-room.interface").GameRoom | undefined;
     }>;
-    playerAction(action: any, req: any): Promise<void>;
+    playerAction(action: any, req: any): Promise<{
+        success: boolean;
+        gameState: {
+            roomId: string;
+            gameRoom: import("../core/models/game-room.interface").GameRoom | undefined;
+        };
+    }>;
     isWaiting(userId: string): boolean;
     cancelMatching(userId: string): void;
 }

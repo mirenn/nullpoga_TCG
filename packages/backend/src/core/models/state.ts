@@ -3,6 +3,7 @@ import { Player } from './player';
 import { Action, ActionType } from './action';
 import { PhaseKind } from './phase';
 import { FieldStatus } from './zone';
+import { MonsterCard, instanceCard } from './card';
 
 // Initial deck configurations
 export const DECK_1 = [7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2];
@@ -253,8 +254,38 @@ export class State implements IState {
     }
 
     private clonePlayer(player: Player): Player {
-        // Implement deep clone of player
-        return JSON.parse(JSON.stringify(player));
+        // 新しいPlayerオブジェクトを作成
+        const newPlayer = new Player([], player.userId);
+        
+        // 基本的なプロパティをコピー
+        newPlayer.life = player.life;
+        newPlayer.mana = player.mana;
+        newPlayer.planMana = player.planMana;
+        newPlayer.isFirstPlayer = player.isFirstPlayer;
+        newPlayer.turnCount = player.turnCount;
+        newPlayer.phase = player.phase;
+        
+        // アクションをコピー
+        newPlayer.spellPhaseActions = [...player.spellPhaseActions];
+        newPlayer.summonPhaseActions = [...player.summonPhaseActions];
+        newPlayer.activityPhaseActions = [...player.activityPhaseActions];
+        
+        // ゾーンとカードのコピー
+        newPlayer.zone = player.zone.clone();
+        newPlayer.planZone = player.planZone ? player.planZone.clone() : newPlayer.zone.clone();
+        
+        // カードコレクションのコピー
+        newPlayer.handCards = player.handCards.map(card => 
+            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+        );
+        
+        newPlayer.planHandCards = player.planHandCards ? player.planHandCards.map(card => 
+            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+        ) : [];
+        
+        newPlayer.deckCards = [...player.deckCards];
+        
+        return newPlayer;
     }
 
     toJson(): Record<string, any> {

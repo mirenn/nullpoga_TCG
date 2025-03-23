@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { GameRoom } from '../core/models/game-room.interface';
 import { GameService } from '../core/game.service';
 
@@ -30,8 +30,18 @@ export class GameApisService {
     });
   }
 
-  handlePlayerAction(action: any) {
-    return this.gameService.executeGameAction(action.roomId, action);
+  async handlePlayerAction(action: any) {
+    if (!action.roomId) {
+      throw new BadRequestException('roomId is required and cannot be empty');
+    }
+    await this.gameService.executeGameAction(action.roomId, action);
+    
+    // ゲームの最新状態を取得して返す
+    const gameRoom = await this.gameService.getGameState(action.userId);
+    return {
+      success: true,
+      gameState: gameRoom
+    };
   }
 
   // マッチング待機状態を確認
