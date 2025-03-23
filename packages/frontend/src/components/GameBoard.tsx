@@ -19,14 +19,14 @@ const GameBoard = ({ myUserId, isDragging }: GameBoardProps) => {
     setActivityPhaseActions,
   } = useContext(GameContext);
 
-  const gameState = extractedGameResponse?.game_state;
+  const gameState = extractedGameResponse?.gameRoom?.gameState;
   const player = GameUtils.getPlayerByUserId(gameState, myUserId);
   const opponent = GameUtils.getPlayerExcludingUserId(gameState, myUserId);
 
-  const playerStandbyField = player?.plan_zone.standby_field || [];
-  const opponentStandbyField = opponent?.plan_zone.standby_field || [];
-  const playerBattleField = player?.plan_zone.battle_field || [];
-  const opponentBattleField = opponent?.plan_zone.battle_field || [];
+  const playerStandbyField = player?.planZone?.standbyField || [];
+  const opponentStandbyField = opponent?.planZone?.standbyField || [];
+  const playerBattleField = player?.planZone?.battleField || [];
+  const opponentBattleField = opponent?.planZone?.battleField || [];
 
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     const target = event.target as HTMLDivElement;

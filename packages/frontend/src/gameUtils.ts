@@ -28,46 +28,48 @@ export function planSummonMonster(
     React.SetStateAction<GameModels.Action[]>
   >,
 ) {
-  const newExtractedGameResponse = structuredClone(extractedGameResponse);
-  const myPlayer = getPlayerByUserId(
-    newExtractedGameResponse?.gameRoom.gameState,
-    myUserId,
-  );
-  if (myPlayer === null) {
-    return null;
-  }
-  const playerHand = myPlayer.planHandCards;
-  const standbyField = myPlayer.planZone.standbyField;
+  try {
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const myPlayer = getPlayerByUserId(
+      newExtractedGameResponse?.gameRoom.gameState,
+      myUserId,
+    );
+    
+    const playerHand = myPlayer.planHandCards;
+    const standbyField = myPlayer.planZone.standbyField;
 
-  // 手札からuniq_idに一致するモンスターを探す
-  const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id);
+    // 手札からuniq_idに一致するモンスターを探す
+    const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id);
 
-  // 該当するモンスターカードが見つかった場合
-  if (cardIndex !== -1) {
-    const summonedCard = playerHand[cardIndex];
+    // 該当するモンスターカードが見つかった場合
+    if (cardIndex !== -1) {
+      const summonedCard = playerHand[cardIndex];
 
-    // 手札からカードを削除
-    playerHand.splice(cardIndex, 1);
-    myPlayer.plan_mana -= summonedCard.manaCost;
+      // 手札からカードを削除
+      playerHand.splice(cardIndex, 1);
+      myPlayer.planMana -= summonedCard.manaCost;
 
-    if (summonedCard.cardType === GameModels.CardType.MONSTER) {
-      // フィールドにカードを追加
-      standbyField[standbyFieldIndex] = summonedCard;
-      summon_phase_actions.push({
-        actionType: GameModels.ActionType.SUMMON_MONSTER,
-        actionData: {
-          monsterCard: summonedCard,
-          summonStandbyFieldIdx: standbyFieldIndex,
-        },
-      });
-      set_summon_phase_actions(summon_phase_actions);
+      if (summonedCard.cardType === GameModels.CardType.MONSTER) {
+        // フィールドにカードを追加
+        standbyField[standbyFieldIndex] = summonedCard;
+        summon_phase_actions.push({
+          actionType: GameModels.ActionType.SUMMON_MONSTER,
+          actionData: {
+            monsterCard: summonedCard,
+            summonStandbyFieldIdx: standbyFieldIndex,
+          },
+        });
+        set_summon_phase_actions(summon_phase_actions);
 
-      console.log(`Monster ${summonedCard.cardName} has been summoned!`);
+        console.log(`Monster ${summonedCard.cardName} has been summoned!`);
+      }
+
+      setExtractedGameResponse(newExtractedGameResponse);
+    } else {
+      console.error('Monster card not found in hand.');
     }
-
-    setExtractedGameResponse(newExtractedGameResponse);
-  } else {
-    console.error('Monster card not found in hand.');
+  } catch (error) {
+    console.error('Failed to summon monster:', error);
   }
 }
 
@@ -83,36 +85,39 @@ export function planAttackMonster(
     React.SetStateAction<GameModels.Action[]>
   >,
 ) {
-  const newExtractedGameResponse = structuredClone(extractedGameResponse);
-  const newActivityPhaseActions = structuredClone(activity_phase_actions);
-  const myPlayer = getPlayerByUserId(
-    newExtractedGameResponse?.gameRoom.gameState,
-    myUserId,
-  );
-  if (myPlayer === null) {
-    return null;
-  }
-  const btField = myPlayer.planZone.battleField;
+  try {
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const newActivityPhaseActions = structuredClone(activity_phase_actions);
+    const myPlayer = getPlayerByUserId(
+      newExtractedGameResponse?.gameRoom.gameState,
+      myUserId,
+    );
+    
+    const btField = myPlayer.planZone.battleField;
 
-  // フィールドからuniq_idに一致するモンスターを探す
-  const cardIndex = btField.findIndex((slot) => slot.card?.uniqId === uniq_id);
-  const attackedCard = btField[cardIndex].card;
-  // 該当するモンスターカードが見つかった場合
-  if (cardIndex !== -1 && attackedCard) {
-    attackedCard.canAct = false;
-    attackedCard.attackDeclaration = true;
-    newActivityPhaseActions.push({
-      actionType: GameModels.ActionType.MONSTER_ATTACK,
-      actionData: {
-        monsterCard: attackedCard,
-      },
-    });
-    set_activity_phase_actions(newActivityPhaseActions);
+    // フィールドからuniq_idに一致するモンスターを探す
+    const cardIndex = btField.findIndex((slot) => slot.card?.uniqId === uniq_id);
+    const attackedCard = btField[cardIndex]?.card;
+    
+    // 該当するモンスターカードが見つかった場合
+    if (cardIndex !== -1 && attackedCard) {
+      attackedCard.canAct = false;
+      attackedCard.attackDeclaration = true;
+      newActivityPhaseActions.push({
+        actionType: GameModels.ActionType.MONSTER_ATTACK,
+        actionData: {
+          monsterCard: attackedCard,
+        },
+      });
+      set_activity_phase_actions(newActivityPhaseActions);
 
-    console.log(`Monster ${attackedCard.cardName} is planning an attack!`);
-    setExtractedGameResponse(newExtractedGameResponse);
-  } else {
-    console.error('Monster card not found in standby field.');
+      console.log(`Monster ${attackedCard.cardName} is planning an attack!`);
+      setExtractedGameResponse(newExtractedGameResponse);
+    } else {
+      console.error('Monster card not found in battle field.');
+    }
+  } catch (error) {
+    console.error('Failed to plan attack:', error);
   }
 }
 
@@ -129,21 +134,27 @@ export function getPlayerByUserId(
   if (gameState === undefined) {
     return null;
   }
-
+  
   // player1のuserIdが一致するか確認
   if (gameState.player1.userId === userId) {
+    if (!gameState.player1.life) gameState.player1.life = 0;
+    if (!gameState.player1.mana) gameState.player1.mana = 0;
+    if (!gameState.player1.planMana) gameState.player1.planMana = 0;
     return gameState.player1;
   }
-
+  
   // player2のuserIdが一致するか確認
   if (gameState.player2.userId === userId) {
+    if (!gameState.player2.life) gameState.player2.life = 0;
+    if (!gameState.player2.mana) gameState.player2.mana = 0;
+    if (!gameState.player2.planMana) gameState.player2.planMana = 0;
     return gameState.player2;
   }
-
-  // 該当するプレイヤーが見つからなければnullを返す
-  console.error(`Player with userId ${userId} not found.`);
-  return null;
+  
+  // プレイヤーIDが見つからない場合はエラーをスロー
+  throw new Error(`Player with userId ${userId} not found.`);
 }
+
 /**
  * 指定したuser_idを除外したプレイヤーをgameStateから取得する関数
  * @param gameState - ゲームの状態（State）
@@ -153,24 +164,76 @@ export function getPlayerByUserId(
 export function getPlayerExcludingUserId(
   gameState: GameModels.State | undefined,
   userId: string,
-): GameModels.Player | null {
+): GameModels.Player {
   if (gameState === undefined) {
-    return null;
+    // ゲーム状態がない場合はデフォルト値を持つプレイヤーオブジェクトを返す
+    return {
+      userId: 'opponent',
+      turnCount: 0,
+      deckCards: [],
+      planDeckCards: [],
+      handCards: [],
+      planHandCards: [],
+      life: 0,
+      mana: 0,
+      planMana: 0,
+      base_mana: 0,
+      zone: {
+        standbyField: [],
+        battleField: []
+      },
+      planZone: {
+        standbyField: [],
+        battleField: []
+      },
+      phase: GameModels.PhaseKind.NONE,
+      spellPhaseActions: [],
+      summonPhaseActions: [],
+      activityPhaseActions: [],
+    } as GameModels.Player;
   }
 
   // player1のuserIdが一致しないか確認
   if (gameState.player1.userId !== userId) {
+    if (!gameState.player1.life) gameState.player1.life = 0;
+    if (!gameState.player1.mana) gameState.player1.mana = 0;
+    if (!gameState.player1.planMana) gameState.player1.planMana = 0;
     return gameState.player1;
   }
 
   // player2のuserIdが一致しないか確認
   if (gameState.player2.userId !== userId) {
+    if (!gameState.player2.life) gameState.player2.life = 0;
+    if (!gameState.player2.mana) gameState.player2.mana = 0;
+    if (!gameState.player2.planMana) gameState.player2.planMana = 0;
     return gameState.player2;
   }
 
-  // 該当するプレイヤーが見つからなければnullを返す
-  console.error(`Opponent with userId ${userId} not found.`);
-  return null;
+  // 該当するプレイヤーが見つからない場合はデフォルト値を持つプレイヤーオブジェクトを返す
+  return {
+    userId: 'opponent',
+    turnCount: 0,
+    deckCards: [],
+    planDeckCards: [],
+    handCards: [],
+    planHandCards: [],
+    life: 0,
+    mana: 0,
+    planMana: 0,
+    base_mana: 0,
+    zone: {
+      standbyField: [],
+      battleField: []
+    },
+    planZone: {
+      standbyField: [],
+      battleField: []
+    },
+    phase: GameModels.PhaseKind.NONE,
+    spellPhaseActions: [],
+    summonPhaseActions: [],
+    activityPhaseActions: []
+  };
 }
 
 /**

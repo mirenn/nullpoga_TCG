@@ -19,6 +19,8 @@ export enum PhaseKind {
   SUMMON_PHASE = 'SUMMON_PHASE',
   ACTIVITY_PHASE = 'ACTIVITY_PHASE',
   END_PHASE = 'END_PHASE',
+  
+  NONE = 'NONE',
 }
 
 export enum FieldStatus {
@@ -94,7 +96,7 @@ export interface Player {
   phase: PhaseKind; //phaseはplan_phaseないのでこれを使う
   base_mana: number;
   mana: number;
-  plan_mana: number;
+  planMana: number;
   life: number;
   spellPhaseActions: Action[];
   summonPhaseActions: Action[];
