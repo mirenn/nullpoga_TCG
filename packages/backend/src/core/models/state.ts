@@ -26,13 +26,13 @@ export class State implements IState {
         this.player1.isFirstPlayer = true;
         this.player2.isFirstPlayer = false;
 
+        // Initial mana //テスト用に初回ターンから10にしている
+        this.player1.mana = 10;
+        this.player2.mana = 10;
+
         // Initial draw
         this.player1.init();
         this.player2.init();
-
-        // Initial mana
-        this.player1.mana = 10;
-        this.player2.mana = 10;
     }
 
     isGameEnd(): boolean {
@@ -159,13 +159,13 @@ export class State implements IState {
                 action.actionData.monsterCard &&
                 !player.zone.standbyField[action.actionData.summonStandbyFieldIdx] &&
                 action.actionData.monsterCard.manaCost <= player.mana) {
-                
+
                 // マナコストを支払う
                 player.mana -= action.actionData.monsterCard.manaCost;
-                
+
                 // 待機フィールドにカードを配置
                 player.zone.standbyField[action.actionData.summonStandbyFieldIdx] = action.actionData.monsterCard;
-                
+
                 // 手札からカードを削除
                 player.handCards = player.handCards.filter(
                     card => card.uniqId !== action.actionData.monsterCard.uniqId
@@ -176,12 +176,12 @@ export class State implements IState {
         // 両プレイヤーの召喚アクションを実行
         for (let i = 0; i < Math.max(player1.summonPhaseActions.length, player2.summonPhaseActions.length); i++) {
             const actionHistory: Record<string, Action> = {};
-            
+
             if (player1.summonPhaseActions[i]) {
                 executeSummonForPlayer(player1, player1.summonPhaseActions[i]);
                 actionHistory[player1.userId] = player1.summonPhaseActions[i];
             }
-            
+
             if (player2.summonPhaseActions[i]) {
                 executeSummonForPlayer(player2, player2.summonPhaseActions[i]);
                 actionHistory[player2.userId] = player2.summonPhaseActions[i];
@@ -256,7 +256,7 @@ export class State implements IState {
     private clonePlayer(player: Player): Player {
         // 新しいPlayerオブジェクトを作成
         const newPlayer = new Player([], player.userId);
-        
+
         // 基本的なプロパティをコピー
         newPlayer.life = player.life;
         newPlayer.mana = player.mana;
@@ -264,27 +264,27 @@ export class State implements IState {
         newPlayer.isFirstPlayer = player.isFirstPlayer;
         newPlayer.turnCount = player.turnCount;
         newPlayer.phase = player.phase;
-        
+
         // アクションをコピー
         newPlayer.spellPhaseActions = [...player.spellPhaseActions];
         newPlayer.summonPhaseActions = [...player.summonPhaseActions];
         newPlayer.activityPhaseActions = [...player.activityPhaseActions];
-        
+
         // ゾーンとカードのコピー
         newPlayer.zone = player.zone.clone();
         newPlayer.planZone = player.planZone ? player.planZone.clone() : newPlayer.zone.clone();
-        
+
         // カードコレクションのコピー
-        newPlayer.handCards = player.handCards.map(card => 
+        newPlayer.handCards = player.handCards.map(card =>
             card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
         );
-        
-        newPlayer.planHandCards = player.planHandCards ? player.planHandCards.map(card => 
+
+        newPlayer.planHandCards = player.planHandCards ? player.planHandCards.map(card =>
             card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
         ) : [];
-        
+
         newPlayer.deckCards = [...player.deckCards];
-        
+
         return newPlayer;
     }
 

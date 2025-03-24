@@ -20,10 +20,10 @@ class State {
     initGame() {
         this.player1.isFirstPlayer = true;
         this.player2.isFirstPlayer = false;
-        this.player1.init();
-        this.player2.init();
         this.player1.mana = 10;
         this.player2.mana = 10;
+        this.player1.init();
+        this.player2.init();
     }
     isGameEnd() {
         const player1WildernessAll = this.player1.zone.battleField.every(slot => slot.status === zone_1.FieldStatus.WILDERNESS);
