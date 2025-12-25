@@ -1,0 +1,225 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f0f0f0;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* 追加: 垂直方向に中央揃え */
+  /*min-height: 100vh; /* 追加: ビューポート全体の高さを確保 */
+}
+
+.game-board {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 5列に分割 */
+  grid-template-rows: repeat(4, 120px); /* 各行の高さを100pxに */
+  gap: 10px;
+  width: 90%;
+  max-width: 1200px;
+  margin: 20px auto;
+}
+
+.card-slot {
+  height: 120px;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  overflow: hidden; /* スロットからカードがはみ出ないように */
+  background-color: #fff; /* 背景色を指定 */
+}
+/* empty-slotクラスに同じスタイルを適用 */
+.empty-slot {
+  /*card-slotと同じ大きさ*/
+  height: 100%;
+  width: 100%;
+}
+
+.card-slot:hover {
+  transform: scale(1.05);
+}
+
+.card-slot.occupied {
+  background-color: #e0e0e0;
+}
+
+.hand {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.card {
+  position: relative; /* 相対位置を設定 */
+  width: 80px;
+  height: 120px;
+  background-color: #fff;
+  border: 2px solid #ccc;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.mana-cost {
+  position: absolute; /* 絶対位置で配置 */
+  top: 5px; /* 上から5pxの位置に配置 */
+  left: 5px; /* 左から5pxの位置に配置 */
+  background-color: rgba(0, 0, 0, 0.7); /* 背景色を半透明の黒に設定 */
+  color: white; /* 文字色を白に設定 */
+  padding: 5px; /* テキスト周りに余白を設定 */
+  border-radius: 5px; /* 角を丸くする */
+  font-size: 12px; /* テキストサイズを小さく設定 */
+  z-index: 1; /* 他の要素より前面に表示 */
+}
+.monster-card {
+  overflow: hidden; /* カードから画像がはみ出ないように */
+  border: 1px solid #ccc; /* カードの枠線を少し薄めに */
+  padding: 2px; /* カード内の余白を狭める */
+  box-sizing: border-box; /* ボーダーとパディングを含む */
+  flex-direction: column; /* 縦方向に配置 */
+}
+
+.card:hover {
+  transform: scale(1.1);
+}
+
+/* フィールドの色分け */
+.battle-field {
+  background-color: #ffe6cc; /* ライトオレンジ */
+}
+.battle-field.wilderness{
+  background-color: #8B0000; /* ダークレッド */
+}
+
+.standby-field {
+  background-color: #d1e7ff; /* ライトブルー */
+}
+
+.button-container {
+  margin-top: 20px;
+}
+
+.fetch-button,
+.blue-button {
+  padding: 5px 5px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  transition: background-color 0.2s ease;
+}
+
+.fetch-button:hover,
+.blue-button:hover {
+  background-color: #0056b3;
+}
+
+.result-container {
+  display: flex;
+  justify-content: center; /* 水平方向に中央揃え */
+  align-items: center; /* 垂直方向に中央揃え */
+  width: 100%;
+  height: 10px; /* 必要に応じて高さを設定 */
+  margin: 20px 0; /* 上下のマージンを設定 */
+  background-color: #fff; /* 背景色を指定 */
+  border: 2px solid #ccc; /* 枠線を指定 */
+  border-radius: 10px; /* 角を丸くする */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 影を追加 */
+}
+
+.monster-image {
+  max-width: 100%; /* 親要素の幅に収まるように */
+  max-height: 100%; /* 親要素の高さに収まるように */
+  width: auto; /* アスペクト比を保つ */
+  height: auto; /* アスペクト比を保つ */
+}
+
+.monster-card h3,
+.monster-card p {
+  margin: 0; /* テキスト要素の余白を調整 */
+  font-size: 12px; /* テキストサイズを調整 */
+  text-align: center; /* テキストを中央揃え */
+}
+
+.monster-card img {
+  width: 100%; /* 画像をカードの幅に収める */
+  height: auto; /* 画像のアスペクト比を保つ */
+  max-height: 60px; /* 画像の最大高さを制限 */
+}
+
+.highlight {
+  border: 2px solid yellow;
+}
+
+.player-stats {
+  display: flex; /* フレックスボックスで横並びにする */
+  gap: 10px; /* 各要素の間に10pxのスペースを追加 */
+  justify-content: space-between; /* 必要に応じて要素間のスペースを調整 */
+  align-items: center; /* 要素を垂直方向に中央揃え */
+}
+
+.attack-button{
+  font-size: x-small;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+  background-color: #f5f5f5;
+}
+
+.login-container h1 {
+  margin-bottom: 2rem;
+  color: #333;
+}
+
+.login-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 300px;
+  padding: 2rem;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.login-container input {
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.login-container button {
+  padding: 0.5rem;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-container button:hover {
+  background-color: #0056b3;
+}

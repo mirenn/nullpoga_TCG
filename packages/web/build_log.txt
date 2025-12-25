@@ -1,0 +1,47 @@
+
+> web@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./packages/web/src/components/GameBoard.tsx:3:1
+Module not found: Can't resolve './MonsterCard.js'
+  1 | import * as GameModels from '../types/gameModels';
+  2 | import * as GameUtils from '../utils/gameUtils';
+> 3 | import MonsterCard from './MonsterCard.js';
+    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  4 | import { GameContext } from '../context/gameContext';
+  5 | import { useContext } from 'react';
+  6 | import { ArcherElement } from 'react-archer';
+
+
+
+Import traces:
+  Client Component Browser:
+    ./packages/web/src/components/GameBoard.tsx [Client Component Browser]
+    ./packages/web/src/components/GameClient.tsx [Client Component Browser]
+    ./packages/web/src/app/page.tsx [Client Component Browser]
+    ./packages/web/src/app/page.tsx [Server Component]
+
+  Client Component SSR:
+    ./packages/web/src/components/GameBoard.tsx [Client Component SSR]
+    ./packages/web/src/components/GameClient.tsx [Client Component SSR]
+    ./packages/web/src/app/page.tsx [Client Component SSR]
+    ./packages/web/src/app/page.tsx [Server Component]
+
+https://nextjs.org/docs/messages/module-not-found
+
+
+    at <unknown> (./packages/web/src/components/GameBoard.tsx:3:1)
+    at <unknown> (https://nextjs.org/docs/messages/module-not-found)
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error workspace web@0.1.0
+npm error location C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build

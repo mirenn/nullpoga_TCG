@@ -1,0 +1,29 @@
+
+> web@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+笨・Compiled successfully in 1429.8ms
+  Running TypeScript ...
+Failed to compile.
+
+./src/lib/core/models/card.ts:134:13
+Type error: Object is possibly 'undefined'.
+
+  132 |                 this.life += 1;
+  133 |             }
+> 134 |             this.turnCount++;
+      |             ^
+  135 |         };
+  136 |     }
+  137 |
+Next.js build worker exited with code: 1 and signal: null
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error workspace web@0.1.0
+npm error location C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build

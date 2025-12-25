@@ -1,0 +1,72 @@
+
+> web@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+笨・Compiled successfully in 1453.7ms
+  Running TypeScript ...
+  Collecting page data using 15 workers ...
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+  Generating static pages using 15 workers (0/8) ...
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+  Generating static pages using 15 workers (2/8) 
+  Generating static pages using 15 workers (4/8) 
+Error occurred prerendering page "/". Read more: https://nextjs.org/docs/messages/prerender-error
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+ReferenceError: localStorage is not defined
+    at i (C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web\.next\server\chunks\ssr\_dc980d98._.js:1:26872) {
+  digest: '426379613'
+}
+Export encountered an error on /page: /, exiting the build.
+筧ｯ Next.js build worker exited with code: 1 and signal: null
+npm error Lifecycle script `build` failed with error:
+npm error code 1
+npm error path C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error workspace web@0.1.0
+npm error location C:\Users\ngihy\Documents\nagai\nullpoga_TCG\packages\web
+npm error command failed
+npm error command C:\WINDOWS\system32\cmd.exe /d /s /c next build

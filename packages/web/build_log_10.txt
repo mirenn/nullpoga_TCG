@@ -1,0 +1,78 @@
+
+> web@0.1.0 build
+> next build
+
+笆ｲ Next.js 16.1.1 (Turbopack)
+
+  Creating an optimized production build ...
+笨・Compiled successfully in 1511.3ms
+  Running TypeScript ...
+  Collecting page data using 15 workers ...
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+  Generating static pages using 15 workers (0/8) ...
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+  Generating static pages using 15 workers (2/8) 
+  Generating static pages using 15 workers (4/8) 
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+    at TCPConnectWrap.callbackTrampoline (node:internal/async_hooks:130:17)
+  Generating static pages using 15 workers (6/8) 
+笨・Generating static pages using 15 workers (8/8) in 514.2ms
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+[ioredis] Unhandled error event: AggregateError: 
+    at internalConnectMultiple (node:net:1122:18)
+    at afterConnectMultiple (node:net:1689:7)
+  Finalizing page optimization ...
+
+Route (app)
+笏・笳・/
+笏・笳・/_not-found
+笏・ﾆ・/api/auth/login
+笏・ﾆ・/api/game-state
+笏・ﾆ・/api/player_action
+笏・ﾆ・/api/start-game
+
+
+笳・ (Static)   prerendered as static content
+ﾆ・ (Dynamic)  server-rendered on demand
+
