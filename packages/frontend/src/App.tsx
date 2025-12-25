@@ -26,16 +26,6 @@ function App() {
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
 
-  // もしログインしていない場合は、ログインフォームを表示
-  if (!token || !userId) {
-    return (
-      <div className="login-container">
-        <h1>ヌルポガTCG</h1>
-        <LoginForm />
-      </div>
-    );
-  }
-
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     const target = event.target as HTMLDivElement;
     event.dataTransfer.setData('text', target.id);
@@ -151,6 +141,16 @@ function App() {
       handleGetGameState();
     }
   };
+
+  // もしログインしていない場合は、ログインフォームを表示
+  if (!token || !userId) {
+    return (
+      <div className="login-container">
+        <h1>ヌルポガTCG</h1>
+        <LoginForm />
+      </div>
+    );
+  }
 
   // ログインしている場合は、ゲーム画面を表示
   return (

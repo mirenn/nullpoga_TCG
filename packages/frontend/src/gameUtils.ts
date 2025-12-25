@@ -1,9 +1,6 @@
 import * as GameModels from './gameModels.js';
 
-const HOST =
-  process.env.NODE_ENV === 'production'
-    ? window.location.origin
-    : 'http://localhost:3000'; // NestJSのデフォルトポートに変更
+const HOST = ''; // NestJSのデフォルトポートに変更
 
 /**
  * 召喚操作に合わせたオブジェクト側の操作

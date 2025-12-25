@@ -20,7 +20,8 @@ describe('Player', () => {
             expect(player.phase).toBe(phase_1.PhaseKind.SPELL_PHASE);
             expect(player.userId).toBe(mockUserId);
             expect(player.handCards).toHaveLength(0);
-            expect(player.deckCards).toEqual(initialDeck);
+            expect(player.deckCards).toHaveLength(initialDeck.length);
+            expect(player.deckCards[0].cardNo).toBe(initialDeck[0]);
         });
     });
     describe('nextTurnRefresh', () => {
