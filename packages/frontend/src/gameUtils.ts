@@ -39,11 +39,11 @@ export function planSummonMonster(
       return;
     }
     
-    const playerHand = myPlayer?.planHandCards;
-    const standbyField = myPlayer?.planZone.standbyField;
+    const playerHand = myPlayer.planHandCards;
+    const standbyField = myPlayer.planZone.standbyField;
 
     // 手札からuniq_idに一致するモンスターを探す
-    const cardIndex = playerHand?.findIndex((card) => card.uniqId === uniq_id) ?? -1;
+    const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id) ?? -1;
 
     // 該当するモンスターカードが見つかった場合
     if (cardIndex !== -1 && playerHand && cardIndex < playerHand.length) {
@@ -97,6 +97,10 @@ export function planAttackMonster(
       newExtractedGameResponse?.gameRoom.gameState,
       myUserId,
     );
+    if (!myPlayer) {
+      console.error('Player not found in planAttackMonster');
+      return;
+    }
     
     const btField = myPlayer.planZone.battleField;
 

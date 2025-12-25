@@ -18,6 +18,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
   try {
     const gameState = extractedGameResponse?.gameRoom?.gameState;
     const player = GameUtils.getPlayerByUserId(gameState, myUserId);
+    if (!player) return null;
     const myHandCds = player.planHandCards;
 
     return (

@@ -9,6 +9,7 @@ interface PlayerStatsProps {
 const PlayerStats = ({ gameState, myUserId }: PlayerStatsProps) => {
   try {
     const player = GameUtils.getPlayerByUserId(gameState, myUserId);
+    if (!player) return null;
     
     return (
       <div className="player-stats">
