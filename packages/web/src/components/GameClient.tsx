@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useContext } from 'react';
-import GameBoard from './GameBoard';
+import GameBoard, { ActionEffect } from './GameBoard';
 import Hand from './Hand';
 import PlayerStats from './PlayerStats';
 import ButtonContainer from './ButtonContainer';
@@ -31,6 +31,7 @@ function GameClient() {
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [turnMessage, setTurnMessage] = useState<string>('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+  const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     if (isAnimating) {
@@ -123,34 +124,51 @@ function GameClient() {
             if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
             setExtractedGameResponse(structuredClone(animRoomState));
 
-            // 行動メッセージを作成
-            const messages: string[] = [];
-            for (const actorId of Object.keys(actionDict)) {
-              const act = actionDict[actorId];
-              const isMe = actorId === userId;
-              const actorName = isMe ? 'あなた' : '相手(BOT)';
+            const actorIds = Object.keys(actionDict);
+            if (actorIds.length === 0) {
+              setTurnMessage(`アクション実行中... (${i + 1}/${lastTurnSteps.length})`);
+              await new Promise((r) => setTimeout(r, 600));
+            } else {
+              for (const actorId of actorIds) {
+                const act = actionDict[actorId];
+                const isMe = actorId === userId;
+                const actorName = isMe ? 'あなた' : '相手(BOT)';
 
-              if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
-                const cardName = act.actionData?.monsterCard?.cardName;
-                if (cardName) {
-                  messages.push(`【召喚】${actorName}が「${cardName}」を召喚！`);
+                if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
+                  const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
+                  const slotIdx = act.actionData?.summonStandbyFieldIdx;
+                  const slotId = isMe ? `player-szone-${slotIdx}` : `opponent-szone-${slotIdx}`;
+
+                  setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
+                  setActionEffect({
+                    summonSlotId: slotId,
+                  });
+                  await new Promise((r) => setTimeout(r, 900));
+                  setActionEffect(null);
+                } else if (act.actionType === 'MONSTER_ATTACK') {
+                  const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
+                  const attackerIdx = act.actionData?.attackerIdx;
+                  const targetIdx = act.actionData?.targetIdx;
+                  const damage = act.actionData?.monsterCard?.attack ?? 0;
+
+                  const attackerSlotId = isMe ? `player-bzone-${attackerIdx}` : `opponent-bzone-${attackerIdx}`;
+                  const targetSlotId = isMe ? `opponent-bzone-${targetIdx}` : `player-bzone-${targetIdx}`;
+
+                  setTurnMessage(`【攻撃】${actorName}の「${cardName}」の攻撃！（💥 ${damage} ダメージ）`);
+                  setActionEffect({
+                    attackerSlotId,
+                    targetSlotId,
+                    isPlayerAttack: isMe,
+                    damage,
+                  });
+                  await new Promise((r) => setTimeout(r, 1200));
+                  setActionEffect(null);
+                } else if (act.actionType === 'MONSTER_MOVE') {
+                  setTurnMessage(`【進軍】${actorName}のモンスターが進軍！`);
+                  await new Promise((r) => setTimeout(r, 600));
                 }
-              } else if (act.actionType === 'MONSTER_ATTACK') {
-                const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
-                messages.push(`【攻撃】${actorName}の「${cardName}」の攻撃！`);
-              } else if (act.actionType === 'MONSTER_MOVE') {
-                messages.push(`【移動】${actorName}のモンスターが移動！`);
               }
             }
-
-            if (messages.length > 0) {
-              setTurnMessage(messages.join('　|　'));
-            } else {
-              setTurnMessage(`アクション実行中... (${i + 1}/${lastTurnSteps.length})`);
-            }
-
-            // 1ステップごとに1秒待機
-            await new Promise((r) => setTimeout(r, 1100));
           }
         }
       }
@@ -163,6 +181,7 @@ function GameClient() {
       console.error('Turn animation error:', error);
       setTurnMessage('エラーが発生しました。もう一度お試しください。');
     } finally {
+      setActionEffect(null);
       setIsAnimating(false);
     }
   };
@@ -256,7 +275,7 @@ function GameClient() {
           gameState={extractedGameResponse?.gameRoom?.gameState}
           myUserId={userId}
         />
-        <GameBoard myUserId={userId} isDragging={isDragging} />
+        <GameBoard myUserId={userId} isDragging={isDragging} actionEffect={actionEffect} />
         <Hand
           myUserId={userId}
           onDragStart={handleDragStart}

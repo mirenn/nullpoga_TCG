@@ -21,6 +21,7 @@ body {
 }
 
 .card-slot {
+  position: relative;
   height: 120px;
   border: 2px solid #ccc;
   border-radius: 10px;
@@ -30,7 +31,7 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.2s ease;
-  overflow: hidden; /* スロットからカードがはみ出ないように */
+  overflow: visible; /* バッジや突進アニメーションが隠れないように */
   background-color: #fff; /* 背景色を指定 */
 }
 /* empty-slotクラスに同じスタイルを適用 */
@@ -287,4 +288,105 @@ button:disabled,
   opacity: 0.55;
   cursor: not-allowed !important;
   background-color: #8c959f !important;
+}
+
+/* 攻撃突進モーション（プレイヤー：上方向） */
+.slot-attacking-player {
+  z-index: 50 !important;
+  animation: attackLungeUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate !important;
+  border-color: #ff9800 !important;
+  box-shadow: 0 0 25px rgba(255, 152, 0, 0.9) !important;
+}
+
+@keyframes attackLungeUp {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-30px) scale(1.12); }
+  100% { transform: translateY(-25px) scale(1.1); }
+}
+
+/* 攻撃突進モーション（相手BOT：下方向） */
+.slot-attacking-opponent {
+  z-index: 50 !important;
+  animation: attackLungeDown 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate !important;
+  border-color: #e53935 !important;
+  box-shadow: 0 0 25px rgba(229, 57, 53, 0.9) !important;
+}
+
+@keyframes attackLungeDown {
+  0% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(30px) scale(1.12); }
+  100% { transform: translateY(25px) scale(1.1); }
+}
+
+/* 被弾シェイク（激しい振動） */
+.slot-targeted {
+  z-index: 40 !important;
+  animation: hitShake 0.4s ease-in-out infinite !important;
+  border-color: #d32f2f !important;
+  background-color: #ffebee !important;
+  box-shadow: 0 0 30px rgba(211, 47, 47, 0.9) !important;
+  position: relative;
+}
+
+@keyframes hitShake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-6px, 3px) rotate(-3deg); }
+  40% { transform: translate(6px, -3px) rotate(3deg); }
+  60% { transform: translate(-5px, -2px) rotate(-2deg); }
+  80% { transform: translate(5px, 2px) rotate(2deg); }
+}
+
+/* 召喚パルス */
+.slot-summoning {
+  z-index: 30 !important;
+  animation: summonGlow 0.9s ease-in-out infinite alternate !important;
+  border-color: #00bcd4 !important;
+  box-shadow: 0 0 25px rgba(0, 188, 212, 0.9) !important;
+}
+
+@keyframes summonGlow {
+  0% { transform: scale(0.95); opacity: 0.7; }
+  100% { transform: scale(1.05); opacity: 1; }
+}
+
+/* ダメージポップアップバッジ */
+.damage-popup-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: radial-gradient(circle, #ff1744 0%, #b71c1c 100%);
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+  padding: 6px 14px;
+  border-radius: 50px;
+  border: 3px solid #fff;
+  box-shadow: 0 0 20px rgba(255, 23, 68, 0.9);
+  z-index: 100;
+  pointer-events: none;
+  animation: popupBounce 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) infinite alternate;
+  white-space: nowrap;
+}
+
+@keyframes popupBounce {
+  0% { transform: translate(-50%, -50%) scale(0.9); }
+  100% { transform: translate(-50%, -50%) scale(1.15); }
+}
+
+/* 攻撃アイコンバッジ */
+.attacking-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #ff9800;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  padding: 2px 8px;
+  border-radius: 12px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  z-index: 60;
+  white-space: nowrap;
 }
