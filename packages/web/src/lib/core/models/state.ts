@@ -29,9 +29,9 @@ export class State implements IState {
         this.player1.isFirstPlayer = true;
         this.player2.isFirstPlayer = false;
 
-        // Initial mana //テスト用に初回ターンから10にしている
-        this.player1.mana = 10;
-        this.player2.mana = 10;
+        // Initial mana (開始マナ 1, 最大 10)
+        this.player1.mana = 1;
+        this.player2.mana = 1;
 
         // Initial draw
         this.player1.init();

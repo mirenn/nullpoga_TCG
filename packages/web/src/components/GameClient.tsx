@@ -31,9 +31,12 @@ function GameClient() {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
-    const target = event.target as HTMLDivElement;
-    event.dataTransfer.setData('text', target.id);
-    setIsDragging(true);
+    const target = event.target as HTMLElement;
+    const cardElement = target.closest('.card.monster-card');
+    if (cardElement) {
+      event.dataTransfer.setData('text', cardElement.id);
+      setIsDragging(true);
+    }
   };
 
   const handleDragEnd = () => {

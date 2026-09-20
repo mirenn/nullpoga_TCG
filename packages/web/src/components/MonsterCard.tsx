@@ -32,14 +32,22 @@ const MonsterCard = ({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
+      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '2px 4px' }}>
+        <h3 style={{ margin: 0, fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70px' }}>{card.cardName}</h3>
+        <span className="card-cost" style={{ backgroundColor: '#0969da', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '10px', fontWeight: 'bold', flexShrink: 0 }}>
+          {card.manaCost}マナ
+        </span>
+      </div>
       <img
-        src={card.imageUrl}
+        src={card.imageUrl || ''}
         alt={card.cardName}
         className="monster-image"
         draggable="false"
+        onError={(e) => {
+          (e.target as HTMLElement).style.display = 'none';
+        }}
       />
-      <h3>{card.cardName}</h3>
-      <p>
+      <p style={{ margin: '2px 0', fontSize: '11px', fontWeight: 'bold' }}>
         ATK: {card.attack} Life: {card.life}
       </p>
       {canAttack && (

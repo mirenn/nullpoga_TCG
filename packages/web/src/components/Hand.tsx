@@ -21,10 +21,13 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
     if (!player) return null;
     const myHandCds = player.planHandCards;
 
+    const currentPlanMana = player.planMana !== undefined ? player.planMana : (player.mana ?? 0);
+
     return (
       <div className="hand" id="player-hand">
         {myHandCds.map((card, index) => {
           if (card.cardType === GameModels.CardType.MONSTER) {
+            const canAfford = card.manaCost <= currentPlanMana;
             let summon_standby_field_idx = undefined;
             const action = GameUtils.getRenderActionByUserId(gameState, myUserId);
             if (
@@ -36,7 +39,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
             }
             return (
               <ArcherElement
-                key={index}
+                key={card.uniqId || `hand-card-${index}`}
                 id={`hand-card-${index}`}
                 relations={
                   summon_standby_field_idx !== undefined
@@ -52,12 +55,12 @@ const Hand = ({ myUserId, onDragStart, onDragEnd }: HandProps) => {
                     : []
                 }
               >
-                <div>
+                <div style={{ opacity: canAfford ? 1 : 0.45, cursor: canAfford ? 'grab' : 'not-allowed' }}>
                   <MonsterCard
                     card={card}
-                    onDragStart={onDragStart}
+                    onDragStart={canAfford ? onDragStart : (e) => e.preventDefault()}
                     onDragEnd={onDragEnd}
-                    draggable={true}
+                    draggable={canAfford}
                     canAttack={false}
                     onAttack={() => {}}
                   />

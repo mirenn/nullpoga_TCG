@@ -55,7 +55,7 @@ export class Player {
 
     nextTurnRefresh(): void {
         this.turnCount++;
-        this.mana += 1;
+        this.mana = Math.min(10, this.mana + 1);
         this.planMana = this.mana;
         this.drawCard();
         

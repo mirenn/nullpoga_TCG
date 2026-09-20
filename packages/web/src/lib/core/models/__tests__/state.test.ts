@@ -24,8 +24,8 @@ describe('State', () => {
             expect(state['player2'].handCards.length).toBe(5);
 
             // Test initial mana
-            expect(state['player1'].mana).toBe(10);
-            expect(state['player2'].mana).toBe(10);
+            expect(state['player1'].mana).toBe(1);
+            expect(state['player2'].mana).toBe(1);
         });
     });
 

@@ -39,6 +39,12 @@ export function planSummonMonster(
     const playerHand = myPlayer.planHandCards;
     const standbyField = myPlayer.planZone.standbyField;
 
+    // 既にスロットにモンスターがいる場合は配置不可
+    if (standbyField[standbyFieldIndex]) {
+      console.warn(`スタンバイゾーンのスロット ${standbyFieldIndex} は既に埋まっています。`);
+      return;
+    }
+
     // 手札からuniq_idに一致するモンスターを探す
     const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id) ?? -1;
 
@@ -47,9 +53,16 @@ export function planSummonMonster(
       // モンスターカードを取得
       const summonedCard = playerHand[cardIndex];
 
+      // マナコストのチェック
+      const currentPlanMana = myPlayer.planMana !== undefined ? myPlayer.planMana : (myPlayer.mana ?? 0);
+      if (summonedCard.manaCost > currentPlanMana) {
+        console.warn(`マナが足りません: 必要マナ ${summonedCard.manaCost} > 現在のプランマナ ${currentPlanMana}`);
+        return;
+      }
+
       // 手札からカードを削除
       playerHand.splice(cardIndex, 1);
-      myPlayer.planMana -= summonedCard.manaCost;
+      myPlayer.planMana = currentPlanMana - summonedCard.manaCost;
 
       if (summonedCard.cardType === GameModels.CardType.MONSTER) {
         // フィールドにカードを追加
@@ -63,7 +76,7 @@ export function planSummonMonster(
         });
         set_summon_phase_actions(summon_phase_actions);
 
-        console.log(`Monster ${summonedCard.cardName} has been summoned!`);
+        console.log(`Monster ${summonedCard.cardName} (Cost: ${summonedCard.manaCost}) summoned! Remaining mana: ${myPlayer.planMana}`);
       }
 
       setExtractedGameResponse(newExtractedGameResponse);

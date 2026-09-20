@@ -164,11 +164,27 @@ body {
   border: 2px solid yellow;
 }
 
-.player-stats {
-  display: flex; /* フレックスボックスで横並びにする */
-  gap: 10px; /* 各要素の間に10pxのスペースを追加 */
-  justify-content: space-between; /* 必要に応じて要素間のスペースを調整 */
-  align-items: center; /* 要素を垂直方向に中央揃え */
+.player-stats,
+.opponent-stats {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  align-items: center;
+  color: #111;
+  font-weight: bold;
+  font-size: 14px;
+  background-color: rgba(255, 255, 255, 0.9);
+  padding: 6px 16px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  margin: 6px auto;
+  max-width: 600px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.player-stats p,
+.opponent-stats p {
+  margin: 0;
 }
 
 .attack-button{
