@@ -9,6 +9,7 @@ export interface ActionEffect {
   attackerSlotId?: string;
   targetSlotId?: string;
   summonSlotId?: string;
+  summonCard?: GameModels.MonsterCard | null;
   isPlayerAttack?: boolean;
   damage?: number;
 }
@@ -37,6 +38,31 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
   const playerBattleField = player?.planZone?.battleField || [];
   const opponentBattleField = opponent?.planZone?.battleField || [];
 
+  const playerZone = player?.zone;
+  const opponentZone = opponent?.zone;
+
+  const getOpponentStandbyCard = (i: number, slotId: string) => {
+    if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
+      return actionEffect.summonCard;
+    }
+    return opponentStandbyField[i] || opponentZone?.standbyField?.[i] || null;
+  };
+
+  const getOpponentBattleCard = (i: number) => {
+    return opponentBattleField[i]?.card || opponentZone?.battleField?.[i]?.card || null;
+  };
+
+  const getPlayerBattleCard = (i: number) => {
+    return playerBattleField[i]?.card || playerZone?.battleField?.[i]?.card || null;
+  };
+
+  const getPlayerStandbyCard = (i: number, slotId: string) => {
+    if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
+      return actionEffect.summonCard;
+    }
+    return playerStandbyField[i] || playerZone?.standbyField?.[i] || null;
+  };
+
   const handleAction = (event: React.MouseEvent<HTMLButtonElement>) => {
     const target = event.target as HTMLDivElement;
     const cardElement = target.closest('.card.monster-card') as HTMLDivElement;
@@ -58,15 +84,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
       {[4, 3, 2, 1, 0].map((i) => {
         const slotId = `opponent-szone-${i}`;
         const isSummoning = actionEffect?.summonSlotId === slotId;
+        const card = getOpponentStandbyCard(i, slotId);
         return (
           <div
             key={slotId}
             className={`card-slot standby-field ${isSummoning ? 'slot-summoning' : ''}`}
             id={slotId}
           >
-            {opponentStandbyField && opponentStandbyField[i] ? (
+            {card ? (
               <MonsterCard
-                card={opponentStandbyField[i] as GameModels.MonsterCard}
+                card={card as GameModels.MonsterCard}
                 onDragStart={() => {}}
                 onDragEnd={() => {}}
                 draggable={false}
@@ -85,6 +112,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
         const effectClass = isAttacking ? 'slot-attacking-opponent' : isTargeted ? 'slot-targeted' : '';
+        const card = getOpponentBattleCard(i);
 
         return (
           <div
@@ -96,9 +124,9 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
             {isTargeted && actionEffect?.damage !== undefined && (
               <div className="damage-popup-overlay">💥 -{actionEffect.damage}</div>
             )}
-            {opponentBattleField && opponentBattleField[i]?.card ? (
+            {card ? (
               <MonsterCard
-                card={opponentBattleField[i].card as GameModels.MonsterCard}
+                card={card as GameModels.MonsterCard}
                 onDragStart={() => {}}
                 onDragEnd={() => {}}
                 draggable={false}
@@ -117,6 +145,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
         const effectClass = isAttacking ? 'slot-attacking-player' : isTargeted ? 'slot-targeted' : '';
+        const card = getPlayerBattleCard(i);
 
         return (
           <div
@@ -128,9 +157,9 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
             {isTargeted && actionEffect?.damage !== undefined && (
               <div className="damage-popup-overlay">💥 -{actionEffect.damage}</div>
             )}
-            {playerBattleField && playerBattleField[i]?.card ? (
+            {card ? (
               <MonsterCard
-                card={playerBattleField[i].card as GameModels.MonsterCard}
+                card={card as GameModels.MonsterCard}
                 onDragStart={() => {}}
                 onDragEnd={() => {}}
                 draggable={false}
@@ -148,6 +177,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
       {[0, 1, 2, 3, 4].map((i) => {
         const slotId = `player-szone-${i}`;
         const isSummoning = actionEffect?.summonSlotId === slotId;
+        const card = getPlayerStandbyCard(i, slotId);
 
         return (
           <ArcherElement
@@ -159,9 +189,9 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
               className={`card-slot standby-field ${isDragging ? 'highlight' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
               id={slotId}
             >
-              {playerStandbyField && playerStandbyField[i] ? (
+              {card ? (
                 <MonsterCard
-                  card={playerStandbyField[i] as GameModels.MonsterCard}
+                  card={card as GameModels.MonsterCard}
                   onDragStart={() => {}}
                   onDragEnd={() => {}}
                   draggable={false}

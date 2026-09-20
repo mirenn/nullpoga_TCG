@@ -169,6 +169,9 @@ export class State implements IState {
                 }
             }
         }
+        if (player.planZone) {
+            player.planZone = player.zone.clone();
+        }
     }
 
     private executeSummon(player1: Player, player2: Player): void {
@@ -184,11 +187,19 @@ export class State implements IState {
 
                 // 待機フィールドにカードを配置
                 player.zone.standbyField[data.summonStandbyFieldIdx] = data.monsterCard;
+                if (player.planZone) {
+                    player.planZone.standbyField[data.summonStandbyFieldIdx] = data.monsterCard;
+                }
 
                 // 手札からカードを削除
                 player.handCards = player.handCards.filter(
                     card => card.uniqId !== data.monsterCard.uniqId
                 );
+                if (player.planHandCards) {
+                    player.planHandCards = player.planHandCards.filter(
+                        card => card.uniqId !== data.monsterCard.uniqId
+                    );
+                }
             }
         };
 
@@ -247,6 +258,9 @@ export class State implements IState {
 
             // 各アクション後にライフが0以下になったモンスターを削除
             this.deleteMonster(player1, player2);
+
+            if (player1.planZone) player1.planZone = player1.zone.clone();
+            if (player2.planZone) player2.planZone = player2.zone.clone();
 
             // 行動履歴を記録
             if (Object.keys(actionHistory).length > 0) {

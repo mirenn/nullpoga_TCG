@@ -135,15 +135,17 @@ function GameClient() {
                 const actorName = isMe ? 'あなた' : '相手(BOT)';
 
                 if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
-                  const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
+                  const card = act.actionData?.monsterCard;
+                  const cardName = card?.cardName || 'モンスター';
                   const slotIdx = act.actionData?.summonStandbyFieldIdx;
                   const slotId = isMe ? `player-szone-${slotIdx}` : `opponent-szone-${slotIdx}`;
 
                   setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
                   setActionEffect({
                     summonSlotId: slotId,
+                    summonCard: card,
                   });
-                  await new Promise((r) => setTimeout(r, 900));
+                  await new Promise((r) => setTimeout(r, 1100));
                   setActionEffect(null);
                 } else if (act.actionType === 'MONSTER_ATTACK') {
                   const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
