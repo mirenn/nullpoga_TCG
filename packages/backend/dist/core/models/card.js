@@ -85,7 +85,7 @@ class MonsterCard extends Card {
             case 11:
                 return { life: 7, manaCost: 5, attack: 6, cardName: "炎のドラゴン" };
             case 12:
-                return { life: 8, manaCost: 8, attack: 8, cardName: "ウルヴァン" };
+                return { life: 8, manaCost: 8, attack: 8, cardName: "ウルヴァン", imageUrl: "/images/12.png" };
             default:
                 throw new Error(`Unknown monster card number: ${cardNo}`);
         }

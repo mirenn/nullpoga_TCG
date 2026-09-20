@@ -1,5 +1,5 @@
 import * as GameModels from '../types/gameModels';
-import { useContext } from 'react';
+import { useContext, useState } from 'react';
 import { GameContext } from '../context/gameContext';
 
 interface MonsterCardProps {
@@ -11,6 +11,19 @@ interface MonsterCardProps {
   onAttack: (e: React.MouseEvent<HTMLButtonElement>) => void; // 追加
 }
 
+const getCardFallbackEmoji = (cardName: string): string => {
+  if (cardName.includes('ネズミ')) return '🐭';
+  if (cardName.includes('柴犬') || cardName.includes('犬')) return '🐕';
+  if (cardName.includes('ネコ') || cardName.includes('猫')) return '🐱';
+  if (cardName.includes('カエル')) return '🐸';
+  if (cardName.includes('亀')) return '🐢';
+  if (cardName.includes('クラゲ')) return '🪼';
+  if (cardName.includes('イノシシ')) return '🐗';
+  if (cardName.includes('ドラゴン')) return '🐉';
+  if (cardName.includes('ウルヴァン') || cardName.includes('狼')) return '🐺';
+  return '👾';
+};
+
 const MonsterCard = ({
   card,
   onDragStart,
@@ -20,9 +33,12 @@ const MonsterCard = ({
   onAttack, // 追加
 }: MonsterCardProps) => {
   const { activityPhaseActions } = useContext(GameContext);
+  const [imageError, setImageError] = useState(false);
   const activityIndex = activityPhaseActions.findIndex(
     (action) => action.actionData.monsterCard?.uniqId === card.uniqId,
   );
+
+  const hasValidImage = !!card.imageUrl && !imageError;
 
   return (
     <div
@@ -38,15 +54,19 @@ const MonsterCard = ({
           {card.manaCost}マナ
         </span>
       </div>
-      <img
-        src={card.imageUrl || ''}
-        alt={card.cardName}
-        className="monster-image"
-        draggable="false"
-        onError={(e) => {
-          (e.target as HTMLElement).style.display = 'none';
-        }}
-      />
+      {hasValidImage ? (
+        <img
+          src={card.imageUrl!}
+          alt={card.cardName}
+          className="monster-image"
+          draggable="false"
+          onError={() => setImageError(true)}
+        />
+      ) : (
+        <div className="monster-placeholder-icon">
+          {getCardFallbackEmoji(card.cardName || '')}
+        </div>
+      )}
       <p style={{ margin: '2px 0', fontSize: '11px', fontWeight: 'bold' }}>
         ATK: {card.attack} Life: {card.life}
       </p>

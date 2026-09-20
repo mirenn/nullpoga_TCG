@@ -148,6 +148,20 @@ body {
   height: auto; /* アスペクト比を保つ */
 }
 
+.monster-placeholder-icon {
+  font-size: 30px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 52px;
+  width: 90%;
+  background: radial-gradient(circle, #f8fafc 0%, #e2e8f0 100%);
+  border-radius: 6px;
+  user-select: none;
+  margin: 2px auto;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
 .monster-card h3,
 .monster-card p {
   margin: 0; /* テキスト要素の余白を調整 */
