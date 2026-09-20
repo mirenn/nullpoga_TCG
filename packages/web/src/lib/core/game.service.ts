@@ -1,5 +1,7 @@
 import { State } from './models/state';
 import { Player } from './models/player';
+import { Action, ActionType } from './models/action';
+import { MonsterCard } from './models/card';
 import { redis } from '../redis';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -15,11 +17,6 @@ export const GameService = {
 
     // マッチング待ちのプレイヤーを管理 (Redis List: game:waiting)
     async startMatching(userId: string): Promise<{ status: 'waiting' | 'matched', roomId?: string }> {
-        const currentRoom = await this.getUserRoom(userId);
-        if (currentRoom) {
-            throw new Error('User is already in a room');
-        }
-
         // Check if anyone is waiting
         // Use RPOP to get a waiting player
         const opponent = await redis.rpop('game:waiting');
@@ -32,12 +29,12 @@ export const GameService = {
             }
             // Match found!
             const roomId = await this.createGame([userId, opponent]);
-            // Remove opponent from waiting (already popped)
             return { status: 'matched', roomId };
         } else {
-            // No one waiting, push self
-            await redis.lpush('game:waiting', userId);
-            return { status: 'waiting' };
+            // 一人プレイ（BOT対戦）として即座に対戦ルームを作成
+            const botUserId = 'CPU_BOT';
+            const roomId = await this.createGame([userId, botUserId]);
+            return { status: 'matched', roomId };
         }
     },
 
@@ -101,6 +98,86 @@ export const GameService = {
                 gameState: state
             }
         };
+    },
+
+    // BOTプレイヤーの自動アクション生成
+    generateBotActions(botPlayer: Player, enemyPlayer: Player): { summonActions: Action[], activityActions: Action[] } {
+        const summonActions: Action[] = [];
+        const activityActions: Action[] = [];
+
+        let availableMana = botPlayer.mana;
+        const availableSlots: number[] = [];
+        botPlayer.zone.standbyField.forEach((slot, idx) => {
+            if (!slot) availableSlots.push(idx);
+        });
+
+        // 召喚可能なモンスターを探す
+        for (const card of botPlayer.handCards) {
+            if (availableSlots.length === 0) break;
+            if (card instanceof MonsterCard && card.manaCost <= availableMana) {
+                const targetSlotIdx = availableSlots.shift()!;
+                availableMana -= card.manaCost;
+                summonActions.push(new Action(ActionType.SUMMON_PHASE_END, {
+                    summonStandbyFieldIdx: targetSlotIdx,
+                    monsterCard: card
+                }));
+            }
+        }
+
+        // 行動フェイズ：バトルゾーンのモンスターで攻撃
+        botPlayer.zone.battleField.forEach((slot, idx) => {
+            if (slot.card) {
+                activityActions.push(new Action(ActionType.MONSTER_ATTACK, {
+                    attackerIdx: idx,
+                    targetIdx: idx,
+                    monsterCard: slot.card
+                }));
+            }
+        });
+
+        return { summonActions, activityActions };
+    },
+
+    async executeTurnActions(roomId: string, userId: string, actions: {
+        spell_phase_actions?: any[];
+        summon_phase_actions?: any[];
+        activity_phase_actions?: any[];
+    }): Promise<State> {
+        const dataStr = await redis.get(`game:room:${roomId}`);
+        if (!dataStr) {
+            throw new Error('Game not found');
+        }
+
+        const data = JSON.parse(dataStr);
+        const state = State.fromDict(data.gameState);
+
+        const isPlayer1 = state.player1.userId === userId;
+        const userPlayer = isPlayer1 ? state.player1 : state.player2;
+        const opponentPlayer = isPlayer1 ? state.player2 : state.player1;
+
+        const userSummonActions = (actions.summon_phase_actions || []).map(a => Action.fromDict(a));
+        const userActivityActions = (actions.activity_phase_actions || []).map(a => Action.fromDict(a));
+
+        let opponentSummonActions: Action[] = [];
+        let opponentActivityActions: Action[] = [];
+
+        if (opponentPlayer.userId === 'CPU_BOT') {
+            const botActions = this.generateBotActions(opponentPlayer, userPlayer);
+            opponentSummonActions = botActions.summonActions;
+            opponentActivityActions = botActions.activityActions;
+        }
+
+        const p1Summon = isPlayer1 ? userSummonActions : opponentSummonActions;
+        const p1Activity = isPlayer1 ? userActivityActions : opponentActivityActions;
+        const p2Summon = isPlayer1 ? opponentSummonActions : userSummonActions;
+        const p2Activity = isPlayer1 ? opponentActivityActions : userActivityActions;
+
+        state.executeFullTurn(p1Summon, p1Activity, p2Summon, p2Activity);
+
+        data.gameState = state.toJson();
+        await redis.set(`game:room:${roomId}`, JSON.stringify(data));
+
+        return state;
     },
 
     // ゲームに関する操作を実行

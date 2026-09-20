@@ -113,6 +113,8 @@ export function planAttackMonster(
         actionType: GameModels.ActionType.MONSTER_ATTACK,
         actionData: {
           monsterCard: attackedCard,
+          attackerIdx: cardIndex,
+          targetIdx: cardIndex,
         },
       });
       set_activity_phase_actions(newActivityPhaseActions);

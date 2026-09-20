@@ -71,6 +71,7 @@ function App() {
 
   const handleSpellPhaseEnd = () => {
     console.log('End Spell Phase');
+    if (!userId) return;
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
     const state = newExtractedGameResponse?.gameRoom?.gameState;
     const myPlayer = GameUtils.getPlayerByUserId(state, userId);

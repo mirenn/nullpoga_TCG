@@ -16,16 +16,12 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Room ID required' }, { status: 400 });
         }
 
-        // Flatten actions
-        const actions = [
-            ...(spell_phase_actions || []),
-            ...(summon_phase_actions || []),
-            ...(activity_phase_actions || [])
-        ];
-        
-        if (actions.length > 0) {
-            await GameService.executeGameActions(roomId, actions);
-        }
+        // Execute turn actions (player actions + BOT actions)
+        await GameService.executeTurnActions(roomId, userId, {
+            spell_phase_actions,
+            summon_phase_actions,
+            activity_phase_actions,
+        });
         
         // Return updated game state
         const result = await GameService.getGameState(userId);

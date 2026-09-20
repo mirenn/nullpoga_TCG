@@ -67,6 +67,10 @@ export interface ActionData {
   moveBattleFieldIdx?: number | null;
   moveDirection?: string | null;
   attackDeclarationIdx?: number | null;
+  attackerIdx?: number | null;
+  targetIdx?: number | null;
+  fromIdx?: number | null;
+  toIdx?: number | null;
 }
 
 export interface Action {

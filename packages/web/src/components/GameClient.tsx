@@ -22,8 +22,11 @@ function GameClient() {
     gameResponse,
     setGameResponse,
     spellPhaseActions,
+    setSpellPhaseActions,
     summonPhaseActions,
+    setSummonPhaseActions,
     activityPhaseActions,
+    setActivityPhaseActions,
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -36,6 +39,12 @@ function GameClient() {
   const handleDragEnd = () => {
     setIsDragging(false);
   };
+
+  useEffect(() => {
+    if (token) {
+      handleGetGameState();
+    }
+  }, [token]);
 
   useEffect(() => {
     console.log('extractedGameResponse updated:', extractedGameResponse);
@@ -62,14 +71,18 @@ function GameClient() {
     }
   };
 
-  const handleActionSubmit = () => {
+  const handleActionSubmit = async () => {
     if (!token) return;
-    GameUtils.actionSubmit(
+    await GameUtils.actionSubmit(
       spellPhaseActions,
       summonPhaseActions,
       activityPhaseActions,
       token!
     );
+    setSpellPhaseActions([]);
+    setSummonPhaseActions([]);
+    setActivityPhaseActions([]);
+    await handleGetGameState();
   };
 
   const handleSpellPhaseEnd = () => {
@@ -137,7 +150,7 @@ function GameClient() {
   const handleStartGame = async () => {
     if (token) {
       await GameUtils.startGame(token);
-      handleGetGameState();
+      await handleGetGameState();
     }
   };
 
@@ -175,7 +188,10 @@ function GameClient() {
           onSpellPhaseEnd={handleSpellPhaseEnd}
           onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
         />
-        <ResultContainer />
+        <ResultContainer
+          gameState={extractedGameResponse?.gameRoom?.gameState}
+          myUserId={userId}
+        />
       </ArcherContainer>
     </div>
   );

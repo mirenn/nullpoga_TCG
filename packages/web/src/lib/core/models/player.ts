@@ -1,5 +1,5 @@
 import { PhaseKind } from './phase';
-import { Zone, Slot } from './zone';
+import { Zone, Slot, FieldStatus } from './zone';
 import { Action, ActionType } from './action';
 import { Card, MonsterCard, instanceCard } from './card';
 
@@ -100,11 +100,16 @@ export class Player {
         const targetSlot = this.zone.battleField[targetIdx];
 
         if (attackerSlot?.card && targetSlot?.card) {
-            targetSlot.card.life -= 1;
+            const damage = attackerSlot.card.attack ?? 1;
+            targetSlot.card.life -= damage;
             attackerSlot.card.attackDeclaration = true;
         } else if (attackerSlot?.card && !targetSlot?.card) {
-            this.life -= 1;
+            const damage = attackerSlot.card.attack ?? 1;
+            this.life -= damage;
             attackerSlot.card.attackDeclaration = true;
+            if (targetSlot) {
+                targetSlot.status = FieldStatus.WILDERNESS;
+            }
         }
     }
 
@@ -192,13 +197,18 @@ export class Player {
         return {
             life: this.life,
             mana: this.mana,
+            planMana: this.planMana !== undefined ? this.planMana : this.mana,
             isFirstPlayer: this.isFirstPlayer,
             turnCount: this.turnCount,
             phase: this.phase,
             userId: this.userId,
             handCards: this.handCards.map(card => card.toDict()),
+            planHandCards: (this.planHandCards && this.planHandCards.length > 0)
+                ? this.planHandCards.map(card => card.toDict())
+                : this.handCards.map(card => card.toDict()),
             deckCards: this.deckCards,
             zone: this.zone.toDict(),
+            planZone: this.planZone ? this.planZone.toDict() : this.zone.toDict(),
             spellPhaseActions: this.spellPhaseActions.map(action => action.toDict()),
             summonPhaseActions: this.summonPhaseActions.map(action => action.toDict()),
             activityPhaseActions: this.activityPhaseActions.map(action => action.toDict())

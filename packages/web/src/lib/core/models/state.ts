@@ -124,6 +124,21 @@ export class State implements IState {
         return new State(player1, player2);
     }
 
+    public executeFullTurn(
+        player1SummonActions: Action[],
+        player1ActivityActions: Action[],
+        player2SummonActions: Action[],
+        player2ActivityActions: Action[]
+    ): void {
+        this.player1.summonPhaseActions = player1SummonActions;
+        this.player1.activityPhaseActions = player1ActivityActions;
+        this.player2.summonPhaseActions = player2SummonActions;
+        this.player2.activityPhaseActions = player2ActivityActions;
+
+        this.executeEndphase(this.player1, this.player2);
+        this.refreshTurn(this.player1, this.player2);
+    }
+
     private executeEndphase(player1: Player, player2: Player): void {
         // Execute movement phase
         this.moveForward(player1);
@@ -193,7 +208,7 @@ export class State implements IState {
 
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -236,7 +251,7 @@ export class State implements IState {
             // 行動履歴を記録
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -292,12 +307,15 @@ export class State implements IState {
         return newPlayer;
     }
 
-    toJson(): Record<string, any> {
-        return {
+    toJson(includeHistory: boolean = true): Record<string, any> {
+        const data: Record<string, any> = {
             player1: this.player1.toDict(),
             player2: this.player2.toDict(),
-            history: this.history
         };
+        if (includeHistory) {
+            data.history = this.history;
+        }
+        return data;
     }
 
     private deleteMonster(myPlayer: Player, enemyPlayer: Player): void {
