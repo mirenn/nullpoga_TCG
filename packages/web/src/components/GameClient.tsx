@@ -29,8 +29,14 @@ function GameClient() {
     setActivityPhaseActions,
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [turnMessage, setTurnMessage] = useState<string>('カードを召喚・攻撃指示して「Submit Actions」を押してください');
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
+    if (isAnimating) {
+      event.preventDefault();
+      return;
+    }
     const target = event.target as HTMLElement;
     const cardElement = target.closest('.card.monster-card');
     if (cardElement) {
@@ -75,17 +81,90 @@ function GameClient() {
   };
 
   const handleActionSubmit = async () => {
-    if (!token) return;
-    await GameUtils.actionSubmit(
-      spellPhaseActions,
-      summonPhaseActions,
-      activityPhaseActions,
-      token!
-    );
-    setSpellPhaseActions([]);
-    setSummonPhaseActions([]);
-    setActivityPhaseActions([]);
-    await handleGetGameState();
+    if (!token || isAnimating) return;
+    setIsAnimating(true);
+    setTurnMessage('アクション提出中...');
+
+    try {
+      await GameUtils.actionSubmit(
+        spellPhaseActions,
+        summonPhaseActions,
+        activityPhaseActions,
+        token!
+      );
+      setSpellPhaseActions([]);
+      setSummonPhaseActions([]);
+      setActivityPhaseActions([]);
+
+      // 最新状態（履歴含む）を取得
+      const res = await GameUtils.getgameResponse(token!);
+      if (!res || !res[0]) {
+        setTurnMessage('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+        setIsAnimating(false);
+        return;
+      }
+
+      const finalStateResponse = res[0];
+      const history = finalStateResponse.gameRoom?.gameState?.history;
+
+      // 直近ターンの履歴を順次アニメーション再生
+      if (history && history.length > 0) {
+        const lastTurnSteps = history[history.length - 1];
+        if (lastTurnSteps && lastTurnSteps.length > 0) {
+          const animRoomState = structuredClone(finalStateResponse);
+
+          for (let i = 0; i < lastTurnSteps.length; i++) {
+            const step = lastTurnSteps[i];
+            const stepState = step.State;
+            const actionDict = step.ActionDict || {};
+
+            // 盤面をこのステップ時点の状態に更新
+            if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+            if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+            setExtractedGameResponse(structuredClone(animRoomState));
+
+            // 行動メッセージを作成
+            const messages: string[] = [];
+            for (const actorId of Object.keys(actionDict)) {
+              const act = actionDict[actorId];
+              const isMe = actorId === userId;
+              const actorName = isMe ? 'あなた' : '相手(BOT)';
+
+              if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
+                const cardName = act.actionData?.monsterCard?.cardName;
+                if (cardName) {
+                  messages.push(`【召喚】${actorName}が「${cardName}」を召喚！`);
+                }
+              } else if (act.actionType === 'MONSTER_ATTACK') {
+                const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
+                messages.push(`【攻撃】${actorName}の「${cardName}」の攻撃！`);
+              } else if (act.actionType === 'MONSTER_MOVE') {
+                messages.push(`【移動】${actorName}のモンスターが移動！`);
+              }
+            }
+
+            if (messages.length > 0) {
+              setTurnMessage(messages.join('　|　'));
+            } else {
+              setTurnMessage(`アクション実行中... (${i + 1}/${lastTurnSteps.length})`);
+            }
+
+            // 1ステップごとに1秒待機
+            await new Promise((r) => setTimeout(r, 1100));
+          }
+        }
+      }
+
+      // 最終状態（新ターンのドロー・マナ・進軍反映）をセット
+      setExtractedGameResponse(finalStateResponse);
+      setGameResponse(res[1]);
+      setTurnMessage('ターン終了！次の行動を計画してください。');
+    } catch (error) {
+      console.error('Turn animation error:', error);
+      setTurnMessage('エラーが発生しました。もう一度お試しください。');
+    } finally {
+      setIsAnimating(false);
+    }
   };
 
   const handleSpellPhaseEnd = () => {
@@ -169,7 +248,10 @@ function GameClient() {
   return (
     <div>
       <ArcherContainer strokeColor="red">
-        <h1>nullpogaTCG client (Next.js)</h1>
+        <h1 style={{ textAlign: 'center', margin: '16px 0 8px 0' }}>ヌルポガ TCG</h1>
+        <div className="turn-message-banner" id="turn-banner">
+          {turnMessage}
+        </div>
         <OpponentStats
           gameState={extractedGameResponse?.gameRoom?.gameState}
           myUserId={userId}
@@ -190,6 +272,7 @@ function GameClient() {
           onActionSubmit={handleActionSubmit}
           onSpellPhaseEnd={handleSpellPhaseEnd}
           onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
+          isAnimating={isAnimating}
         />
         <ResultContainer
           gameState={extractedGameResponse?.gameRoom?.gameState}
