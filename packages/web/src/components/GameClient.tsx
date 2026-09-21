@@ -96,6 +96,19 @@ function GameClient() {
     setIsAnimating(true);
     setTurnMessage('アクション提出中...');
 
+    // 計画中の仮配置をクリアし、即座に場を0枚・手札を提出前状態に戻してアニメーション準備
+    setExtractedGameResponse((prev) => {
+      if (!prev?.gameRoom?.gameState) return prev;
+      const next = structuredClone(prev);
+      const myP = GameUtils.getPlayerByUserId(next.gameRoom.gameState, userId!);
+      if (myP) {
+        myP.planZone = structuredClone(myP.zone);
+        myP.planHandCards = structuredClone(myP.handCards);
+        myP.planMana = myP.mana;
+      }
+      return next;
+    });
+
     try {
       await GameUtils.actionSubmit(
         spellPhaseActions,
@@ -212,9 +225,13 @@ function GameClient() {
                     setFlyingCard(null);
                   }
 
-                  // 着地：盤面をこのステップ時点の状態（召喚カードがスタンバイゾーンに追加、手札から消費）に更新
-                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
-                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  // 着地：該当プレイヤーのみ盤面を更新（他プレイヤーのカードが先行出現するのを防ぐ）
+                  const isActorP1 = animRoomState.gameRoom.gameState.player1?.userId === actorId;
+                  if (isActorP1) {
+                    if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  } else {
+                    if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  }
                   setExtractedGameResponse(structuredClone(animRoomState));
 
                   // 着地パルス（シアン色の光彩と衝撃波）

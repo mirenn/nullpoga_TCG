@@ -214,25 +214,21 @@ export class State implements IState {
             }
         };
 
-        // 両プレイヤーの召喚アクションを実行
-        for (let i = 0; i < Math.max(player1.summonPhaseActions.length, player2.summonPhaseActions.length); i++) {
-            const actionHistory: Record<string, Action> = {};
-
-            if (player1.summonPhaseActions[i]) {
-                executeSummonForPlayer(player1, player1.summonPhaseActions[i]);
-                actionHistory[player1.userId] = player1.summonPhaseActions[i];
-            }
-
-            if (player2.summonPhaseActions[i]) {
-                executeSummonForPlayer(player2, player2.summonPhaseActions[i]);
-                actionHistory[player2.userId] = player2.summonPhaseActions[i];
-            }
-
-            if (Object.keys(actionHistory).length > 0) {
-                this.turnHistory.push({
-                    State: this.toJson(false),
-                    ActionDict: actionHistory
-                });
+        // 両プレイヤーの召喚アクションを先攻から順に1アクションずつ実行・記録
+        const summonOrder = player1.isFirstPlayer ? [player1, player2] : [player2, player1];
+        const maxSummonLen = Math.max(player1.summonPhaseActions.length, player2.summonPhaseActions.length);
+        for (let i = 0; i < maxSummonLen; i++) {
+            for (const p of summonOrder) {
+                const action = p.summonPhaseActions[i];
+                if (action) {
+                    executeSummonForPlayer(p, action);
+                    this.turnHistory.push({
+                        State: this.toJson(false),
+                        ActionDict: {
+                            [p.userId]: action
+                        }
+                    });
+                }
             }
         }
 
@@ -242,46 +238,39 @@ export class State implements IState {
     }
 
     private executeActivity(player1: Player, player2: Player): void {
-        for (let i = 0; i < Math.max(player1.activityPhaseActions.length, player2.activityPhaseActions.length); i++) {
-            const actionHistory: Record<string, Action> = {};
-            const p1Action = player1.activityPhaseActions[i];
-            const p2Action = player2.activityPhaseActions[i];
+        const activityOrder = player1.isFirstPlayer ? [player1, player2] : [player2, player1];
+        const maxActivityLen = Math.max(player1.activityPhaseActions.length, player2.activityPhaseActions.length);
 
-            // モンスターの移動処理
-            if (p1Action?.actionType === ActionType.MONSTER_MOVE) {
-                player1.monsterMove(p1Action, player1.zone);
-                actionHistory[player1.userId] = p1Action;
+        for (let i = 0; i < maxActivityLen; i++) {
+            for (const actor of activityOrder) {
+                const target = actor === player1 ? player2 : player1;
+                const act = actor.activityPhaseActions[i];
+                if (!act) continue;
+
+                if (act.actionType === ActionType.MONSTER_MOVE) {
+                    actor.monsterMove(act, actor.zone);
+                    this.deleteMonster(player1, player2);
+                    if (player1.planZone) player1.planZone = player1.zone.clone();
+                    if (player2.planZone) player2.planZone = player2.zone.clone();
+                    this.turnHistory.push({
+                        State: this.toJson(false),
+                        ActionDict: { [actor.userId]: act }
+                    });
+                } else if (act.actionType === ActionType.MONSTER_ATTACK) {
+                    target.monsterAttacked(act, actor.zone);
+                    this.deleteMonster(player1, player2);
+                    if (player1.planZone) player1.planZone = player1.zone.clone();
+                    if (player2.planZone) player2.planZone = player2.zone.clone();
+                    this.turnHistory.push({
+                        State: this.toJson(false),
+                        ActionDict: { [actor.userId]: act }
+                    });
+                }
+
+                if (this.isGameEnd()) {
+                    break;
+                }
             }
-            if (p2Action?.actionType === ActionType.MONSTER_MOVE) {
-                player2.monsterMove(p2Action, player2.zone);
-                actionHistory[player2.userId] = p2Action;
-            }
-
-            // モンスターの攻撃処理
-            if (p1Action?.actionType === ActionType.MONSTER_ATTACK) {
-                player2.monsterAttacked(p1Action, player1.zone);
-                actionHistory[player1.userId] = p1Action;
-            }
-            if (p2Action?.actionType === ActionType.MONSTER_ATTACK) {
-                player1.monsterAttacked(p2Action, player2.zone);
-                actionHistory[player2.userId] = p2Action;
-            }
-
-            // 各アクション後にライフが0以下になったモンスターを削除
-            this.deleteMonster(player1, player2);
-
-            if (player1.planZone) player1.planZone = player1.zone.clone();
-            if (player2.planZone) player2.planZone = player2.zone.clone();
-
-            // 行動履歴を記録
-            if (Object.keys(actionHistory).length > 0) {
-                this.turnHistory.push({
-                    State: this.toJson(false),
-                    ActionDict: actionHistory
-                });
-            }
-
-            // ゲーム終了条件をチェック
             if (this.isGameEnd()) {
                 break;
             }

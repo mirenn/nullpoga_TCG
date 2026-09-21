@@ -209,9 +209,9 @@ export class Player {
             deckCards: this.deckCards,
             zone: this.zone.toDict(),
             planZone: this.planZone ? this.planZone.toDict() : this.zone.toDict(),
-            spellPhaseActions: this.spellPhaseActions.map(action => action.toDict()),
-            summonPhaseActions: this.summonPhaseActions.map(action => action.toDict()),
-            activityPhaseActions: this.activityPhaseActions.map(action => action.toDict())
+            spellPhaseActions: this.spellPhaseActions.map(action => typeof action?.toDict === 'function' ? action.toDict() : action),
+            summonPhaseActions: this.summonPhaseActions.map(action => typeof action?.toDict === 'function' ? action.toDict() : action),
+            activityPhaseActions: this.activityPhaseActions.map(action => typeof action?.toDict === 'function' ? action.toDict() : action)
         };
     }
 

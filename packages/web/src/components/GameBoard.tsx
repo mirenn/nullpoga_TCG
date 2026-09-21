@@ -57,10 +57,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating }: GameBoar
   };
 
   const getOpponentBattleCard = (i: number) => {
+    if (isAnimating) {
+      return opponentZone?.battleField?.[i]?.card || null;
+    }
     return opponentBattleField[i]?.card || opponentZone?.battleField?.[i]?.card || null;
   };
 
   const getPlayerBattleCard = (i: number) => {
+    if (isAnimating) {
+      return playerZone?.battleField?.[i]?.card || null;
+    }
     return playerBattleField[i]?.card || playerZone?.battleField?.[i]?.card || null;
   };
 

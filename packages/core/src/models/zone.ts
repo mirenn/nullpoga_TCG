@@ -60,10 +60,12 @@ export class Zone {
     toDict(): Record<string, any> {
         return {
             battleField: this.battleField.map(slot => ({
-                card: slot.card,
+                card: slot.card ? (typeof slot.card.toDict === 'function' ? slot.card.toDict() : slot.card) : null,
                 status: slot.status
             })),
-            standbyField: this.standbyField
+            standbyField: this.standbyField.map(card => 
+                card ? (typeof card.toDict === 'function' ? card.toDict() : card) : null
+            )
         };
     }
 
