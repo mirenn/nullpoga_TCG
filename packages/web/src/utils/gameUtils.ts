@@ -335,6 +335,11 @@ export async function getgameResponse(
       },
     });
 
+    if (response.status === 404) {
+      console.log('No active game found (user not in a room)');
+      return null;
+    }
+
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }

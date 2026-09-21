@@ -38,7 +38,7 @@ function GameClient() {
   } = useContext(GameContext);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
-  const [turnMessage, setTurnMessage] = useState<string>('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+  const [turnMessage, setTurnMessage] = useState<string>('「Start Game」を押してゲームを開始してください');
   const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null);
 
@@ -87,6 +87,9 @@ function GameClient() {
       setExtractedGameResponse(res[0]);
       console.log(extractedGameResponse, res[0]);
       setGameResponse(res[1]);
+      setTurnMessage('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+    } else {
+      setTurnMessage('「Start Game」を押してゲームを開始してください');
     }
   };
 
