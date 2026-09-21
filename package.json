@@ -11,10 +11,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev --filter=web",
-    "dev:web": "turbo run dev --filter=web",
-    "dev:all": "turbo run dev",
-    "dev:backend": "turbo run dev --filter=nullpoga-server-nest",
-    "dev:frontend": "turbo run dev --filter=@nullpoga/frontend",
+    "typecheck": "turbo run typecheck",
     "test": "turbo run test"
   },
   "devDependencies": {

@@ -1,6 +1,6 @@
 import * as GameModels from '../types/gameModels';
-import { useContext, useState } from 'react';
-import { GameContext } from '../context/gameContext';
+import { useState } from 'react';
+import { useGameStore } from '../store/gameStore';
 
 interface MonsterCardProps {
   card: GameModels.MonsterCard;
@@ -32,10 +32,10 @@ const MonsterCard = ({
   canAttack,
   onAttack, // 追加
 }: MonsterCardProps) => {
-  const { activityPhaseActions } = useContext(GameContext);
+  const activityPhaseActions = useGameStore((s) => s.activityPhaseActions);
   const [imageError, setImageError] = useState(false);
   const activityIndex = activityPhaseActions.findIndex(
-    (action) => action.actionData.monsterCard?.uniqId === card.uniqId,
+    (action) => action.actionData?.monsterCard?.uniqId === card.uniqId,
   );
 
   const hasValidImage = !!card.imageUrl && !imageError;

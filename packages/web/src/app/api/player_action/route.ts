@@ -2,6 +2,15 @@ import { NextResponse } from 'next/server';
 import { GameService } from '@/lib/core/game.service';
 import { getUserIdFromRequest } from '@/lib/auth';
 
+import { z } from 'zod';
+
+const PlayerActionBodySchema = z.object({
+    roomId: z.string().min(1, 'Room ID required'),
+    spell_phase_actions: z.array(z.any()).optional().default([]),
+    summon_phase_actions: z.array(z.any()).optional().default([]),
+    activity_phase_actions: z.array(z.any()).optional().default([]),
+});
+
 export async function POST(request: Request) {
     const userId = getUserIdFromRequest(request);
     if (!userId) {
@@ -9,12 +18,12 @@ export async function POST(request: Request) {
     }
 
     try {
-        const body = await request.json();
-        const { spell_phase_actions, summon_phase_actions, activity_phase_actions, roomId } = body;
-        
-        if (!roomId) {
-            return NextResponse.json({ error: 'Room ID required' }, { status: 400 });
+        const rawBody = await request.json();
+        const parseResult = PlayerActionBodySchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: parseResult.error.flatten() }, { status: 400 });
         }
+        const { spell_phase_actions, summon_phase_actions, activity_phase_actions, roomId } = parseResult.data;
 
         // Execute turn actions (player actions + BOT actions)
         await GameService.executeTurnActions(roomId, userId, {

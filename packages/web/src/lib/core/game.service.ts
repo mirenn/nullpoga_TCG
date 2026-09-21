@@ -1,7 +1,4 @@
-import { State } from './models/state';
-import { Player } from './models/player';
-import { Action, ActionType } from './models/action';
-import { MonsterCard } from './models/card';
+import { State, Player, Action, ActionType, MonsterCard } from '@nullpoga/core';
 import { redis } from '../redis';
 import { v4 as uuidv4 } from 'uuid';
 

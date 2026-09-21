@@ -6,9 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@nullpoga/core": "*",
     "async-lock": "^1.4.1",
     "ioredis": "^5.8.2",
     "jsonwebtoken": "^9.0.3",
@@ -16,7 +18,8 @@
     "react": "19.2.3",
     "react-archer": "^4.4.0",
     "react-dom": "19.2.3",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.10",

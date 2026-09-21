@@ -1,8 +1,8 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import * as GameModels from '../types/gameModels';
 import * as GameUtils from '../utils/gameUtils';
 import MonsterCard from './MonsterCard';
-import { GameContext } from '../context/gameContext';
+import { useGameStore } from '../store/gameStore';
 import { ArcherElement } from 'react-archer';
 
 interface HandProps {
@@ -14,7 +14,7 @@ interface HandProps {
 }
 
 const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, flyingCardUniqId }: HandProps) => {
-  const { extractedGameResponse } = useContext(GameContext);
+  const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   
   try {
     const gameState = extractedGameResponse?.gameRoom?.gameState;
@@ -39,10 +39,10 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, flyingCardUniqId 
             if (
               !isAnimating &&
               action?.actionType === GameModels.ActionType.SUMMON_MONSTER &&
-              action.actionData.monsterCard?.uniqId === card.uniqId
+              action.actionData?.monsterCard?.uniqId === card.uniqId
             ) {
               summon_standby_field_idx =
-                action.actionData.summonStandbyFieldIdx;
+                action.actionData?.summonStandbyFieldIdx;
             }
             return (
               <ArcherElement

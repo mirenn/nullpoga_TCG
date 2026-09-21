@@ -8,7 +8,7 @@ import ButtonContainer from './ButtonContainer';
 import ResultContainer from './ResultContainer';
 import LoginForm from './LoginForm';
 import * as GameUtils from '../utils/gameUtils';
-import { GameContext } from '../context/gameContext';
+import { useGameStore } from '../store/gameStore';
 import { useAuth } from '../context/authContext';
 import '../app/App.css'; // Path to App.css 
 import OpponentStats from './OpponentStats';
@@ -24,18 +24,16 @@ interface FlyingCardState {
 
 function GameClient() {
   const { token, userId } = useAuth();
-  const {
-    extractedGameResponse,
-    setExtractedGameResponse,
-    gameResponse,
-    setGameResponse,
-    spellPhaseActions,
-    setSpellPhaseActions,
-    summonPhaseActions,
-    setSummonPhaseActions,
-    activityPhaseActions,
-    setActivityPhaseActions,
-  } = useContext(GameContext);
+  const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
+  const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
+  const gameResponse = useGameStore((s) => s.gameResponse);
+  const setGameResponse = useGameStore((s) => s.setGameResponse);
+  const spellPhaseActions = useGameStore((s) => s.spellPhaseActions);
+  const setSpellPhaseActions = useGameStore((s) => s.setSpellPhaseActions);
+  const summonPhaseActions = useGameStore((s) => s.summonPhaseActions);
+  const setSummonPhaseActions = useGameStore((s) => s.setSummonPhaseActions);
+  const activityPhaseActions = useGameStore((s) => s.activityPhaseActions);
+  const setActivityPhaseActions = useGameStore((s) => s.setActivityPhaseActions);
   const [isDragging, setIsDragging] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [turnMessage, setTurnMessage] = useState<string>('「Start Game」を押してゲームを開始してください');

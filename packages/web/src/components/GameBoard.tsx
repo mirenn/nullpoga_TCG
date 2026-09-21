@@ -1,8 +1,7 @@
 import * as GameModels from '../types/gameModels';
 import * as GameUtils from '../utils/gameUtils';
 import MonsterCard from './MonsterCard';
-import { GameContext } from '../context/gameContext';
-import { useContext } from 'react';
+import { useGameStore } from '../store/gameStore';
 import { ArcherElement } from 'react-archer';
 
 export interface ActionEffect {
@@ -23,14 +22,12 @@ interface GameBoardProps {
   isAnimating?: boolean;
 }
 const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating }: GameBoardProps) => {
-  const {
-    extractedGameResponse,
-    setExtractedGameResponse,
-    summonPhaseActions,
-    setSummonPhaseActions,
-    activityPhaseActions,
-    setActivityPhaseActions,
-  } = useContext(GameContext);
+  const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
+  const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
+  const summonPhaseActions = useGameStore((s) => s.summonPhaseActions);
+  const setSummonPhaseActions = useGameStore((s) => s.setSummonPhaseActions);
+  const activityPhaseActions = useGameStore((s) => s.activityPhaseActions);
+  const setActivityPhaseActions = useGameStore((s) => s.setActivityPhaseActions);
 
   const gameState = extractedGameResponse?.gameRoom?.gameState;
   const player = GameUtils.getPlayerByUserId(gameState, myUserId);
