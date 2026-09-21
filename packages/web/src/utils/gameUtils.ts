@@ -127,7 +127,7 @@ export function planAttackMonster(
         actionData: {
           monsterCard: attackedCard,
           attackerIdx: cardIndex,
-          targetIdx: cardIndex,
+          targetIdx: 4 - cardIndex,
         },
       });
       set_activity_phase_actions(newActivityPhaseActions);

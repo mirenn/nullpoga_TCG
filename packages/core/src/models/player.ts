@@ -174,16 +174,13 @@ export class Player {
             }
         });
 
-        // モンスターの攻撃アクション
+        // モンスターの攻撃アクション（対面する敵スロットを攻撃）
         this.planZone.battleField.forEach((attackerSlot, attackerIdx) => {
             if (attackerSlot.card && !attackerSlot.card.attackDeclaration) {
-                // 敵フィールドの各スロットを攻撃可能
-                this.planZone.battleField.forEach((_, targetIdx) => {
-                    actions.push(new Action(ActionType.MONSTER_ATTACK, {
-                        attackerIdx,
-                        targetIdx
-                    }));
-                });
+                actions.push(new Action(ActionType.MONSTER_ATTACK, {
+                    attackerIdx,
+                    targetIdx: 4 - attackerIdx
+                }));
             }
         });
 

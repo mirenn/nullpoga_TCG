@@ -121,12 +121,12 @@ export const GameService = {
             }
         }
 
-        // 行動フェイズ：バトルゾーンのモンスターで攻撃
+        // 行動フェイズ：バトルゾーンのモンスターで対面スロットへ攻撃
         botPlayer.zone.battleField.forEach((slot, idx) => {
             if (slot.card) {
                 activityActions.push(new Action(ActionType.MONSTER_ATTACK, {
                     attackerIdx: idx,
-                    targetIdx: idx,
+                    targetIdx: 4 - idx,
                     monsterCard: slot.card
                 }));
             }
