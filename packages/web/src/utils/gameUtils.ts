@@ -1,6 +1,7 @@
 import * as GameModels from '../types/gameModels';
+import { getApiClient } from '../lib/client';
 
-const HOST = ''; // NestJSのデフォルトポートに変更
+const HOST = '';
 
 /**
  * 召喚操作に合わせたオブジェクト側の操作
@@ -271,7 +272,6 @@ export async function actionSubmit(
   activity_phase_actions: GameModels.Action[],
   token: string,
 ) {
-  const url = HOST + `/api/player_action`;
   const roomId = localStorage.getItem('gameRoomId');
   
   if (!roomId) {
@@ -279,21 +279,15 @@ export async function actionSubmit(
     return null;
   }
 
-  const postData = {
-    spell_phase_actions,
-    summon_phase_actions,
-    activity_phase_actions,
-    roomId
-  };
-
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+    const api = getApiClient(token);
+    const response = await api.api.player_action.$post({
+      json: {
+        spell_phase_actions,
+        summon_phase_actions,
+        activity_phase_actions,
+        roomId,
       },
-      body: JSON.stringify(postData),
     });
 
     if (!response.ok) {
@@ -302,13 +296,7 @@ export async function actionSubmit(
       throw new Error(`HTTP error! status: ${response.status}`);
     }
 
-    const responseText = await response.text();
-    if (!responseText) {
-      console.warn('Empty response received');
-      return null;
-    }
-
-    const res = JSON.parse(responseText);
+    const res = await response.json();
     console.log('actionSubmit res', res);
     return res;
   } catch (error) {
@@ -324,16 +312,9 @@ export async function actionSubmit(
 export async function getgameResponse(
   token: string,
 ): Promise<GameModels.RoomStateResponse[] | null> {
-  const url = HOST + `/api/game-state`;
-
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-    });
+    const api = getApiClient(token);
+    const response = await api.api['game-state'].$get();
 
     if (response.status === 404) {
       console.log('No active game found (user not in a room)');
@@ -344,7 +325,7 @@ export async function getgameResponse(
       throw new Error(`Error: ${response.status}`);
     }
 
-    const data: GameModels.RoomStateResponse = await response.json();
+    const data = (await response.json()) as unknown as GameModels.RoomStateResponse;
     console.log('Game State:', data);
     
     // レスポンスからroomIdを取得して保存
@@ -395,15 +376,9 @@ export function getActionDictExcludingUserId(
 }
 
 export async function startGame(token: string): Promise<void> {
-  const url = HOST + `/api/start-game`;
   try {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-    });
+    const api = getApiClient(token);
+    const response = await api.api['start-game'].$post();
     if (!response.ok) {
       throw new Error(`Error: ${response.status}`);
     }
@@ -411,9 +386,9 @@ export async function startGame(token: string): Promise<void> {
     console.log('Start game response:', data);
     
     // マッチングが成功した場合、roomIdをlocalStorageに保存
-    if (data && data.status === 'matched' && data.roomId) {
-      localStorage.setItem('gameRoomId', data.roomId);
-      console.log('Room ID saved from startGame:', data.roomId);
+    if (data && (data as any).status === 'matched' && (data as any).roomId) {
+      localStorage.setItem('gameRoomId', (data as any).roomId);
+      console.log('Room ID saved from startGame:', (data as any).roomId);
     }
   } catch (error) {
     console.error('Failed to start game:', error);

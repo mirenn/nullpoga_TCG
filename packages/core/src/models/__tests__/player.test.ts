@@ -62,12 +62,12 @@ describe('Player', () => {
             expect(attackActions).toHaveLength(2);
 
             // スロット0のモンスターは対面スロット4を攻撃
-            const attackFrom0 = attackActions.find(a => a.actionData.attackerIdx === 0);
-            expect(attackFrom0?.actionData.targetIdx).toBe(4);
+            const attackFrom0 = attackActions.find(a => a.actionData?.attackerIdx === 0);
+            expect(attackFrom0?.actionData?.targetIdx).toBe(4);
 
             // スロット4のモンスターは対面スロット0を攻撃
-            const attackFrom4 = attackActions.find(a => a.actionData.attackerIdx === 4);
-            expect(attackFrom4?.actionData.targetIdx).toBe(0);
+            const attackFrom4 = attackActions.find(a => a.actionData?.attackerIdx === 4);
+            expect(attackFrom4?.actionData?.targetIdx).toBe(0);
         });
     });
 

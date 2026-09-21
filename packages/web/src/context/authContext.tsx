@@ -1,5 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
+import { client } from '../lib/client';
+
 interface AuthContextType {
   token: string | null;
   userId: string | null;
@@ -20,12 +22,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (userId: string) => {
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username: userId }),
+      const response = await client.api.auth.login.$post({
+        json: { username: userId },
       });
 
       if (!response.ok) {
