@@ -1,5 +1,6 @@
 import * as GameModels from '../types/gameModels';
 import { getApiClient } from '../lib/client';
+import { handleUnauthorized } from '../context/authContext';
 
 const HOST = '';
 
@@ -290,18 +291,24 @@ export async function actionSubmit(
       },
     });
 
+    if (response.status === 401) {
+      console.warn('Unauthorized in actionSubmit. Logging out.');
+      handleUnauthorized();
+      return null;
+    }
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Response not OK:', response.status, errorText);
-      throw new Error(`HTTP error! status: ${response.status}`);
+      console.warn('Response not OK:', response.status, errorText);
+      return null;
     }
 
     const res = await response.json();
     console.log('actionSubmit res', res);
     return res;
   } catch (error) {
-    console.error('Failed to actionSubmit:', error);
-    throw error;
+    console.warn('Failed to actionSubmit:', error);
+    return null;
   } finally {
     spell_phase_actions.length = 0;
     summon_phase_actions.length = 0;
@@ -316,13 +323,20 @@ export async function getgameResponse(
     const api = getApiClient(token);
     const response = await api.api['game-state'].$get();
 
+    if (response.status === 401) {
+      console.warn('Unauthorized in getgameResponse. Logging out.');
+      handleUnauthorized();
+      return null;
+    }
+
     if (response.status === 404) {
       console.log('No active game found (user not in a room)');
       return null;
     }
 
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      console.warn(`Failed to fetch game state: HTTP ${response.status}`);
+      return null;
     }
 
     const data = (await response.json()) as unknown as GameModels.RoomStateResponse;
@@ -336,7 +350,7 @@ export async function getgameResponse(
 
     return [data, data];
   } catch (error) {
-    console.error('Failed to fetch game state:', error);
+    console.warn('Failed to fetch game state:', error);
     return null;
   }
 }
@@ -375,12 +389,20 @@ export function getActionDictExcludingUserId(
   return actionDict[opponentId];
 }
 
-export async function startGame(token: string): Promise<void> {
+export async function startGame(token: string): Promise<boolean> {
   try {
     const api = getApiClient(token);
     const response = await api.api['start-game'].$post();
+
+    if (response.status === 401) {
+      console.warn('Unauthorized in startGame. Logging out.');
+      handleUnauthorized();
+      return false;
+    }
+
     if (!response.ok) {
-      throw new Error(`Error: ${response.status}`);
+      console.warn(`Failed to start game: HTTP ${response.status}`);
+      return false;
     }
     const data = await response.json();
     console.log('Start game response:', data);
@@ -390,7 +412,9 @@ export async function startGame(token: string): Promise<void> {
       localStorage.setItem('gameRoomId', (data as any).roomId);
       console.log('Room ID saved from startGame:', (data as any).roomId);
     }
+    return true;
   } catch (error) {
-    console.error('Failed to start game:', error);
+    console.warn('Failed to start game:', error);
+    return false;
   }
 }

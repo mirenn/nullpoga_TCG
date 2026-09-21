@@ -23,7 +23,7 @@ interface FlyingCardState {
 }
 
 function GameClient() {
-  const { token, userId } = useAuth();
+  const { token, userId, logout } = useAuth();
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
   const gameResponse = useGameStore((s) => s.gameResponse);
@@ -110,12 +110,17 @@ function GameClient() {
     });
 
     try {
-      await GameUtils.actionSubmit(
+      const submitRes = await GameUtils.actionSubmit(
         spellPhaseActions,
         summonPhaseActions,
         activityPhaseActions,
         token!
       );
+      if (!submitRes) {
+        setIsAnimating(false);
+        setTurnMessage('アクションの提出に失敗しました');
+        return;
+      }
       setSpellPhaseActions([]);
       setSummonPhaseActions([]);
       setActivityPhaseActions([]);
@@ -370,8 +375,10 @@ function GameClient() {
 
   const handleStartGame = async () => {
     if (token) {
-      await GameUtils.startGame(token);
-      await handleGetGameState();
+      const success = await GameUtils.startGame(token);
+      if (success) {
+        await handleGetGameState();
+      }
     }
   };
 
@@ -387,7 +394,25 @@ function GameClient() {
   return (
     <div>
       <ArcherContainer strokeColor="red">
-        <h1 style={{ textAlign: 'center', margin: '16px 0 8px 0' }}>ヌルポガ TCG</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', maxWidth: '1200px', margin: '0 auto' }}>
+          <span style={{ fontSize: '14px', color: '#555' }}>
+            プレイヤー: <strong>{userId}</strong>
+          </span>
+          <button
+            onClick={logout}
+            style={{
+              padding: '4px 10px',
+              fontSize: '12px',
+              cursor: 'pointer',
+              background: '#fff',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+            }}
+          >
+            ログアウト
+          </button>
+        </div>
+        <h1 style={{ textAlign: 'center', margin: '8px 0' }}>ヌルポガ TCG</h1>
         <div className="turn-message-banner" id="turn-banner">
           {turnMessage}
         </div>

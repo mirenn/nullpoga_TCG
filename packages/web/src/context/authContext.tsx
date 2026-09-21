@@ -1,4 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
 import { client } from '../lib/client';
 
@@ -11,19 +13,47 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+export function handleUnauthorized() {
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('jwtToken');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('gameRoomId');
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [token, setToken] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
 
+  const logout = useCallback(() => {
+    setToken(null);
+    setUserId(null);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('jwtToken');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('gameRoomId');
+    }
+  }, []);
+
   useEffect(() => {
     setToken(localStorage.getItem('jwtToken'));
     setUserId(localStorage.getItem('userId'));
-  }, []);
 
-  const login = async (userId: string) => {
+    const onUnauthorized = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:unauthorized', onUnauthorized);
+    return () => {
+      window.removeEventListener('auth:unauthorized', onUnauthorized);
+    };
+  }, [logout]);
+
+  const login = async (newUserId: string) => {
     try {
       const response = await client.api.auth.login.$post({
-        json: { username: userId },
+        json: { username: newUserId },
       });
 
       if (!response.ok) {
@@ -31,22 +61,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = await response.json();
-      const token = data.access_token;
-      setToken(token);
-      setUserId(userId);
-      localStorage.setItem('jwtToken', token);
-      localStorage.setItem('userId', userId);
+      const newToken = data.access_token;
+      setToken(newToken);
+      setUserId(newUserId);
+      localStorage.setItem('jwtToken', newToken);
+      localStorage.setItem('userId', newUserId);
     } catch (error) {
       console.error('Login error:', error);
       throw error;
     }
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUserId(null);
-    localStorage.removeItem('jwtToken');
-    localStorage.removeItem('userId');
   };
 
   return (
