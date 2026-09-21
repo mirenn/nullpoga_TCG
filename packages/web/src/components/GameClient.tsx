@@ -178,29 +178,41 @@ function GameClient() {
 
                   setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
 
-                  // 始点と終点のDOM座標を取得
+                  // 始点と終点のDOM座標を取得（カード実体サイズ 80x120 の中央配置位置を正確に計算）
+                  const CARD_WIDTH = 80;
+                  const CARD_HEIGHT = 120;
                   let startRect: { top: number; left: number; width: number; height: number } | null = null;
                   if (isMe) {
                     const cardEl = card?.uniqId ? document.getElementById(`player-hand-card-${card.uniqId}`) : null;
-                    const handEl = cardEl || document.getElementById('player-hand');
-                    if (handEl) {
-                      const rect = handEl.getBoundingClientRect();
+                    if (cardEl) {
+                      const rect = cardEl.getBoundingClientRect();
                       startRect = {
                         top: rect.top,
                         left: rect.left,
-                        width: rect.width > 10 ? rect.width : 80,
-                        height: rect.height > 10 ? rect.height : 120,
+                        width: CARD_WIDTH,
+                        height: CARD_HEIGHT,
                       };
+                    } else {
+                      const handEl = document.getElementById('player-hand');
+                      if (handEl) {
+                        const rect = handEl.getBoundingClientRect();
+                        startRect = {
+                          top: rect.top,
+                          left: rect.left + (rect.width - CARD_WIDTH) / 2,
+                          width: CARD_WIDTH,
+                          height: CARD_HEIGHT,
+                        };
+                      }
                     }
                   } else {
                     const oppEl = document.getElementById('opponent-area');
                     if (oppEl) {
                       const rect = oppEl.getBoundingClientRect();
                       startRect = {
-                        top: rect.top + rect.height / 2 - 40,
-                        left: rect.left + rect.width / 2 - 40,
-                        width: 80,
-                        height: 120,
+                        top: rect.top + (rect.height - CARD_HEIGHT) / 2,
+                        left: rect.left + (rect.width - CARD_WIDTH) / 2,
+                        width: CARD_WIDTH,
+                        height: CARD_HEIGHT,
                       };
                     }
                   }
@@ -209,11 +221,13 @@ function GameClient() {
                   let endRect: { top: number; left: number; width: number; height: number } | null = null;
                   if (slotEl) {
                     const rect = slotEl.getBoundingClientRect();
+                    // スロット（幅約200px）の中央にカード（幅80px、高さ120px）が配置されるため、
+                    // スロット中央のカード座標を着地点として正確に設定
                     endRect = {
-                      top: rect.top,
-                      left: rect.left,
-                      width: rect.width,
-                      height: rect.height,
+                      top: rect.top + (rect.height - CARD_HEIGHT) / 2,
+                      left: rect.left + (rect.width - CARD_WIDTH) / 2,
+                      width: CARD_WIDTH,
+                      height: CARD_HEIGHT,
                     };
                   }
 
