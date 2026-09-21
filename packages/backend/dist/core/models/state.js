@@ -92,7 +92,7 @@ class State {
         this.moveForward(player1);
         this.moveForward(player2);
         this.turnHistory.push({
-            State: this.toJson(),
+            State: this.toJson(false),
             ActionDict: {
                 system: {
                     actionType: 'TURN_START_SNAPSHOT',
@@ -140,7 +140,7 @@ class State {
             }
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -172,7 +172,7 @@ class State {
             this.deleteMonster(player1, player2);
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -205,12 +205,15 @@ class State {
         newPlayer.deckCards = [...player.deckCards];
         return newPlayer;
     }
-    toJson() {
-        return {
+    toJson(includeHistory = true) {
+        const data = {
             player1: this.player1.toDict(),
             player2: this.player2.toDict(),
-            history: this.history
         };
+        if (includeHistory) {
+            data.history = this.history;
+        }
+        return data;
     }
     deleteMonster(myPlayer, enemyPlayer) {
         myPlayer.zone.battleField.forEach(slot => {

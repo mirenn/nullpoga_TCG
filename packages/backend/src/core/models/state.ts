@@ -128,7 +128,7 @@ export class State implements IState {
 
         // ターン開始時点（進軍完了・召喚前）のスナップショットを履歴の最初に記録
         this.turnHistory.push({
-            State: this.toJson(),
+            State: this.toJson(false),
             ActionDict: {
                 system: {
                     actionType: 'TURN_START_SNAPSHOT' as any,
@@ -200,7 +200,7 @@ export class State implements IState {
 
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -243,7 +243,7 @@ export class State implements IState {
             // 行動履歴を記録
             if (Object.keys(actionHistory).length > 0) {
                 this.turnHistory.push({
-                    State: this.toJson(),
+                    State: this.toJson(false),
                     ActionDict: actionHistory
                 });
             }
@@ -299,12 +299,15 @@ export class State implements IState {
         return newPlayer;
     }
 
-    toJson(): Record<string, any> {
-        return {
+    toJson(includeHistory: boolean = true): Record<string, any> {
+        const data: Record<string, any> = {
             player1: this.player1.toDict(),
             player2: this.player2.toDict(),
-            history: this.history
         };
+        if (includeHistory) {
+            data.history = this.history;
+        }
+        return data;
     }
 
     private deleteMonster(myPlayer: Player, enemyPlayer: Player): void {

@@ -156,7 +156,7 @@ function GameClient() {
                 const isMe = actorId === userId;
                 const actorName = isMe ? 'あなた' : '相手(BOT)';
 
-                if (act.actionType === 'SUMMON_MONSTER') {
+                if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
                   const card = act.actionData?.monsterCard;
                   const cardName = card?.cardName || 'モンスター';
                   const slotIdx = act.actionData?.summonStandbyFieldIdx;

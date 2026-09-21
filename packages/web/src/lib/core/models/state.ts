@@ -146,7 +146,7 @@ export class State implements IState {
 
         // ターン開始時点（進軍完了・召喚前）のスナップショットを履歴の最初に記録
         this.turnHistory.push({
-            State: this.toJson(),
+            State: this.toJson(false),
             ActionDict: {
                 system: {
                     actionType: 'TURN_START_SNAPSHOT' as any,

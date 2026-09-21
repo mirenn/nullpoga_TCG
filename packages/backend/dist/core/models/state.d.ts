@@ -23,7 +23,7 @@ export declare class State implements IState {
     private executeActivity;
     private refreshTurn;
     private clonePlayer;
-    toJson(): Record<string, any>;
+    toJson(includeHistory?: boolean): Record<string, any>;
     private deleteMonster;
     legalActions(): Action[];
     randomAction(): Action;
