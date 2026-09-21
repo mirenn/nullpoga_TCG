@@ -91,6 +91,15 @@ class State {
     executeEndphase(player1, player2) {
         this.moveForward(player1);
         this.moveForward(player2);
+        this.turnHistory.push({
+            State: this.toJson(),
+            ActionDict: {
+                system: {
+                    actionType: 'TURN_START_SNAPSHOT',
+                    actionData: {}
+                }
+            }
+        });
         this.executeSummon(player1, player2);
         this.executeActivity(player1, player2);
         this.history.push(this.turnHistory);

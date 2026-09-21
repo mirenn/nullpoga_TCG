@@ -144,6 +144,17 @@ export class State implements IState {
         this.moveForward(player1);
         this.moveForward(player2);
 
+        // ターン開始時点（進軍完了・召喚前）のスナップショットを履歴の最初に記録
+        this.turnHistory.push({
+            State: this.toJson(),
+            ActionDict: {
+                system: {
+                    actionType: 'TURN_START_SNAPSHOT' as any,
+                    actionData: {}
+                }
+            }
+        });
+
         // Execute summon phase
         this.executeSummon(player1, player2);
 

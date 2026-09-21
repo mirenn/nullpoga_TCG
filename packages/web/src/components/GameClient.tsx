@@ -13,6 +13,14 @@ import { useAuth } from '../context/authContext';
 import '../app/App.css'; // Path to App.css 
 import OpponentStats from './OpponentStats';
 import { ArcherContainer } from 'react-archer';
+import FlyingCard from './FlyingCard';
+import * as GameModels from '../types/gameModels';
+
+interface FlyingCardState {
+  card: GameModels.MonsterCard;
+  startRect: { top: number; left: number; width: number; height: number };
+  endRect: { top: number; left: number; width: number; height: number };
+}
 
 function GameClient() {
   const { token, userId } = useAuth();
@@ -32,6 +40,7 @@ function GameClient() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [turnMessage, setTurnMessage] = useState<string>('カードを召喚・攻撃指示して「Submit Actions」を押してください');
   const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
+  const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null);
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     if (isAnimating) {
@@ -114,18 +123,31 @@ function GameClient() {
         if (lastTurnSteps && lastTurnSteps.length > 0) {
           const animRoomState = structuredClone(finalStateResponse);
 
+          // ターン開始時点（進軍完了・召喚前）のスナップショット（ステップ0）を初期盤面として設定
+          const initialStep = lastTurnSteps[0];
+          if (initialStep?.State) {
+            if (initialStep.State.player1) animRoomState.gameRoom.gameState.player1 = initialStep.State.player1;
+            if (initialStep.State.player2) animRoomState.gameRoom.gameState.player2 = initialStep.State.player2;
+            setExtractedGameResponse(structuredClone(animRoomState));
+            setTurnMessage('アクション実行開始！');
+            await new Promise((r) => setTimeout(r, 600));
+          }
+
           for (let i = 0; i < lastTurnSteps.length; i++) {
             const step = lastTurnSteps[i];
             const stepState = step.State;
             const actionDict = step.ActionDict || {};
 
-            // 盤面をこのステップ時点の状態に更新
-            if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
-            if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
-            setExtractedGameResponse(structuredClone(animRoomState));
+            // TURN_START_SNAPSHOT の場合は初期スナップショット反映済みなのでスキップ
+            if ((actionDict.system?.actionType as any) === 'TURN_START_SNAPSHOT') {
+              continue;
+            }
 
             const actorIds = Object.keys(actionDict);
             if (actorIds.length === 0) {
+              if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+              if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+              setExtractedGameResponse(structuredClone(animRoomState));
               setTurnMessage(`アクション実行中... (${i + 1}/${lastTurnSteps.length})`);
               await new Promise((r) => setTimeout(r, 600));
             } else {
@@ -134,20 +156,79 @@ function GameClient() {
                 const isMe = actorId === userId;
                 const actorName = isMe ? 'あなた' : '相手(BOT)';
 
-                if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
+                if (act.actionType === 'SUMMON_MONSTER') {
                   const card = act.actionData?.monsterCard;
                   const cardName = card?.cardName || 'モンスター';
                   const slotIdx = act.actionData?.summonStandbyFieldIdx;
                   const slotId = isMe ? `player-szone-${slotIdx}` : `opponent-szone-${slotIdx}`;
 
                   setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
+
+                  // 始点と終点のDOM座標を取得
+                  let startRect: { top: number; left: number; width: number; height: number } | null = null;
+                  if (isMe) {
+                    const cardEl = card?.uniqId ? document.getElementById(`player-hand-card-${card.uniqId}`) : null;
+                    const handEl = cardEl || document.getElementById('player-hand');
+                    if (handEl) {
+                      const rect = handEl.getBoundingClientRect();
+                      startRect = {
+                        top: rect.top,
+                        left: rect.left,
+                        width: rect.width > 10 ? rect.width : 80,
+                        height: rect.height > 10 ? rect.height : 120,
+                      };
+                    }
+                  } else {
+                    const oppEl = document.getElementById('opponent-area');
+                    if (oppEl) {
+                      const rect = oppEl.getBoundingClientRect();
+                      startRect = {
+                        top: rect.top + rect.height / 2 - 40,
+                        left: rect.left + rect.width / 2 - 40,
+                        width: 80,
+                        height: 120,
+                      };
+                    }
+                  }
+
+                  const slotEl = document.getElementById(slotId);
+                  let endRect: { top: number; left: number; width: number; height: number } | null = null;
+                  if (slotEl) {
+                    const rect = slotEl.getBoundingClientRect();
+                    endRect = {
+                      top: rect.top,
+                      left: rect.left,
+                      width: rect.width,
+                      height: rect.height,
+                    };
+                  }
+
+                  // フライト演出の実行（手札からスロットへ飛ぶ）
+                  if (startRect && endRect && card) {
+                    setActionEffect({ flyingSlotId: slotId });
+                    setFlyingCard({ card, startRect, endRect });
+                    await new Promise((r) => setTimeout(r, 600));
+                    setFlyingCard(null);
+                  }
+
+                  // 着地：盤面をこのステップ時点の状態（召喚カードがスタンバイゾーンに追加、手札から消費）に更新
+                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  setExtractedGameResponse(structuredClone(animRoomState));
+
+                  // 着地パルス（シアン色の光彩と衝撃波）
                   setActionEffect({
                     summonSlotId: slotId,
                     summonCard: card,
+                    isLanding: true,
                   });
-                  await new Promise((r) => setTimeout(r, 1100));
+                  await new Promise((r) => setTimeout(r, 650));
                   setActionEffect(null);
                 } else if (act.actionType === 'MONSTER_ATTACK') {
+                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  setExtractedGameResponse(structuredClone(animRoomState));
+
                   const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
                   const attackerIdx = act.actionData?.attackerIdx;
                   const targetIdx = act.actionData?.targetIdx;
@@ -166,8 +247,12 @@ function GameClient() {
                   await new Promise((r) => setTimeout(r, 1200));
                   setActionEffect(null);
                 } else if (act.actionType === 'MONSTER_MOVE') {
+                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  setExtractedGameResponse(structuredClone(animRoomState));
+
                   setTurnMessage(`【進軍】${actorName}のモンスターが進軍！`);
-                  await new Promise((r) => setTimeout(r, 600));
+                  await new Promise((r) => setTimeout(r, 650));
                 }
               }
             }
@@ -175,7 +260,7 @@ function GameClient() {
         }
       }
 
-      // 最終状態（新ターンのドロー・マナ・進軍反映）をセット
+      // 最終状態（新ターンのドロー・マナ回復等）を反映
       setExtractedGameResponse(finalStateResponse);
       setGameResponse(res[1]);
       setTurnMessage('ターン終了！次の行動を計画してください。');
@@ -183,6 +268,7 @@ function GameClient() {
       console.error('Turn animation error:', error);
       setTurnMessage('エラーが発生しました。もう一度お試しください。');
     } finally {
+      setFlyingCard(null);
       setActionEffect(null);
       setIsAnimating(false);
     }
@@ -277,11 +363,18 @@ function GameClient() {
           gameState={extractedGameResponse?.gameRoom?.gameState}
           myUserId={userId}
         />
-        <GameBoard myUserId={userId} isDragging={isDragging} actionEffect={actionEffect} />
+        <GameBoard
+          myUserId={userId}
+          isDragging={isDragging}
+          actionEffect={actionEffect}
+          isAnimating={isAnimating}
+        />
         <Hand
           myUserId={userId}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
+          isAnimating={isAnimating}
+          flyingCardUniqId={flyingCard?.card?.uniqId}
         />
         <PlayerStats
           gameState={extractedGameResponse?.gameRoom?.gameState}
@@ -300,6 +393,14 @@ function GameClient() {
           myUserId={userId}
         />
       </ArcherContainer>
+      {flyingCard && (
+        <FlyingCard
+          card={flyingCard.card}
+          startRect={flyingCard.startRect}
+          endRect={flyingCard.endRect}
+          durationMs={580}
+        />
+      )}
     </div>
   );
 }

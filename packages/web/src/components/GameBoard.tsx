@@ -9,17 +9,20 @@ export interface ActionEffect {
   attackerSlotId?: string;
   targetSlotId?: string;
   summonSlotId?: string;
+  flyingSlotId?: string;
   summonCard?: GameModels.MonsterCard | null;
   isPlayerAttack?: boolean;
   damage?: number;
+  isLanding?: boolean;
 }
 
 interface GameBoardProps {
   myUserId: string;
   isDragging: boolean;
   actionEffect?: ActionEffect | null;
+  isAnimating?: boolean;
 }
-const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
+const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating }: GameBoardProps) => {
   const {
     extractedGameResponse,
     setExtractedGameResponse,
@@ -42,8 +45,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
   const opponentZone = opponent?.zone;
 
   const getOpponentStandbyCard = (i: number, slotId: string) => {
+    // フライト中（着地前）はスロットを空にする
+    if (actionEffect?.flyingSlotId === slotId) {
+      return null;
+    }
     if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
       return actionEffect.summonCard;
+    }
+    // アニメーション再生中はサーバーのゾーンを直接参照
+    if (isAnimating) {
+      return opponentZone?.standbyField?.[i] || null;
     }
     return opponentStandbyField[i] || opponentZone?.standbyField?.[i] || null;
   };
@@ -57,8 +68,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
   };
 
   const getPlayerStandbyCard = (i: number, slotId: string) => {
+    // フライト中（着地前）はスロットを空にする
+    if (actionEffect?.flyingSlotId === slotId) {
+      return null;
+    }
     if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
       return actionEffect.summonCard;
+    }
+    // アニメーション再生中はサーバーのゾーンを直接参照
+    if (isAnimating) {
+      return playerZone?.standbyField?.[i] || null;
     }
     return playerStandbyField[i] || playerZone?.standbyField?.[i] || null;
   };
@@ -84,11 +103,12 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
       {[4, 3, 2, 1, 0].map((i) => {
         const slotId = `opponent-szone-${i}`;
         const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isLanding = isSummoning && actionEffect?.isLanding;
         const card = getOpponentStandbyCard(i, slotId);
         return (
           <div
             key={slotId}
-            className={`card-slot standby-field ${isSummoning ? 'slot-summoning' : ''}`}
+            className={`card-slot standby-field ${isLanding ? 'slot-summon-landing' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
             id={slotId}
           >
             {card ? (
@@ -163,7 +183,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
                 onDragStart={() => {}}
                 onDragEnd={() => {}}
                 draggable={false}
-                canAttack={true}
+                canAttack={!isAnimating}
                 onAttack={handleAction}
               />
             ) : (
@@ -177,6 +197,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
       {[0, 1, 2, 3, 4].map((i) => {
         const slotId = `player-szone-${i}`;
         const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isLanding = isSummoning && actionEffect?.isLanding;
         const card = getPlayerStandbyCard(i, slotId);
 
         return (
@@ -186,7 +207,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect }: GameBoardProps) => {
           >
             <div
               key={slotId}
-              className={`card-slot standby-field ${isDragging ? 'highlight' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
+              className={`card-slot standby-field ${isDragging ? 'highlight' : ''} ${isLanding ? 'slot-summon-landing' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
               id={slotId}
             >
               {card ? (

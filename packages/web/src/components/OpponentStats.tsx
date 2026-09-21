@@ -11,7 +11,7 @@ const OpponentStats = ({ gameState, myUserId }: OpponentStatsProps) => {
     const player = GameUtils.getPlayerExcludingUserId(gameState, myUserId);
     
     return (
-      <div className="player-stats">
+      <div className="player-stats" id="opponent-area">
         <h3>対戦相手</h3>
         <p>
           ライフ: <span id="player-life">{player.life}</span>
