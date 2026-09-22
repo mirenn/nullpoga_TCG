@@ -369,25 +369,30 @@ function GameClient() {
   return (
     <div>
       <ArcherContainer strokeColor="red">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px', maxWidth: '1200px', margin: '0 auto' }}>
-          <span style={{ fontSize: '14px', color: '#555' }}>
-            プレイヤー: <strong>{userId}</strong>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', maxWidth: '1100px', margin: '0 auto', borderBottom: '1px solid #e2e8f0' }}>
+          <span style={{ fontSize: '13px', color: '#475569' }}>
+            ログイン中: <strong style={{ color: '#0f172a' }}>{userId}</strong>
           </span>
           <button
             onClick={logout}
             style={{
-              padding: '4px 10px',
+              padding: '4px 12px',
               fontSize: '12px',
+              fontWeight: 600,
               cursor: 'pointer',
-              background: '#fff',
-              border: '1px solid #ccc',
-              borderRadius: '4px',
+              background: '#ffffff',
+              color: '#475569',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              transition: 'all 0.15s ease',
             }}
           >
             ログアウト
           </button>
         </div>
-        <h1 style={{ textAlign: 'center', margin: '8px 0' }}>ヌルポガ TCG</h1>
+        <h1 style={{ textAlign: 'center', margin: '12px 0 6px 0', fontSize: '24px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
+          ヌルポガ TCG
+        </h1>
         <div
           className="turn-message-banner"
           id="turn-banner"

@@ -13,17 +13,20 @@ const PlayerStats = ({ gameState, myUserId }: PlayerStatsProps) => {
     
     return (
       <div className="player-stats">
-        <p>
-          ライフ: <span id="player-life">{player.life}</span>
+        <p style={{ fontWeight: 800, color: '#334155' }}>
+          <span>👤 あなた</span>
         </p>
         <p>
-          マナ: <span id="player-mana">{player.mana}</span>
+          <span>❤️ ライフ:</span> <span id="player-life" style={{ color: '#dc2626', fontWeight: 800 }}>{player.life}</span>
         </p>
         <p>
-          プランマナ: <span id="player-plan-mana">{player.planMana}</span>
+          <span>💧 マナ:</span> <span id="player-mana" style={{ color: '#2563eb', fontWeight: 800 }}>{player.mana}</span>
         </p>
         <p>
-          phase: <span id="player-phase">{player.phase}</span>
+          <span style={{ opacity: 0.75 }}>プランマナ:</span> <span id="player-plan-mana">{player.planMana}</span>
+        </p>
+        <p>
+          <span>⏳ フェーズ:</span> <span id="player-phase" style={{ backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{player.phase}</span>
         </p>
       </div>
     );

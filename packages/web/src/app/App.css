@@ -1,114 +1,135 @@
 body {
-  font-family: Arial, sans-serif;
-  background-color: #f0f0f0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #f8fafc;
+  color: #0f172a;
   margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* 追加: 垂直方向に中央揃え */
-  /*min-height: 100vh; /* 追加: ビューポート全体の高さを確保 */
+  justify-content: center;
 }
 
 .game-board {
   display: grid;
   grid-template-columns: repeat(5, 1fr); /* 5列に分割 */
-  grid-template-rows: repeat(4, 120px); /* 各行の高さを100pxに */
+  grid-template-rows: repeat(4, 126px); /* 各行の高さを均等に */
   gap: 10px;
-  width: 90%;
-  max-width: 1200px;
-  margin: 20px auto;
+  width: 92%;
+  max-width: 1100px;
+  margin: 16px auto;
+  padding: 16px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
 }
 
 .card-slot {
   position: relative;
-  height: 120px;
-  border: 2px solid #ccc;
-  border-radius: 10px;
+  height: 126px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  background-color: #f8fafc;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: visible; /* バッジや突進アニメーションが隠れないように */
-  background-color: #fff; /* 背景色を指定 */
 }
+
 /* empty-slotクラスに同じスタイルを適用 */
 .empty-slot {
-  /*card-slotと同じ大きさ*/
   height: 100%;
   width: 100%;
 }
 
 .card-slot:hover {
-  transform: scale(1.05);
+  border-color: #cbd5e1;
+  background-color: #f1f5f9;
 }
 
 .card-slot.occupied {
-  background-color: #e0e0e0;
+  background-color: #f1f5f9;
 }
 
 .hand {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 8px;
-  margin: 16px auto;
-  max-width: 1100px;
+  gap: 10px;
+  margin: 14px auto;
+  max-width: 1000px;
   flex-wrap: wrap;
-  padding: 4px;
+  padding: 12px 18px;
+  background-color: rgba(255, 255, 255, 0.85);
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
 }
 
 .card {
-  position: relative; /* 相対位置を設定 */
+  position: relative;
   width: 80px;
   height: 120px;
-  background-color: #fff;
-  border: 2px solid #cbd5e1;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
   border-radius: 10px;
   display: flex;
   justify-content: center;
   align-items: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
   color: #0f172a;
 }
+
 .mana-cost {
-  position: absolute; /* 絶対位置で配置 */
-  top: 5px; /* 上から5pxの位置に配置 */
-  left: 5px; /* 左から5pxの位置に配置 */
-  background-color: rgba(0, 0, 0, 0.7); /* 背景色を半透明の黒に設定 */
-  color: white; /* 文字色を白に設定 */
-  padding: 5px; /* テキスト周りに余白を設定 */
-  border-radius: 5px; /* 角を丸くする */
-  font-size: 12px; /* テキストサイズを小さく設定 */
-  z-index: 1; /* 他の要素より前面に表示 */
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  background-color: #2563eb;
+  color: #ffffff;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 800;
+  z-index: 1;
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
 }
+
 .monster-card {
-  overflow: hidden; /* カードから画像がはみ出ないように */
-  border: 1px solid #cbd5e1; /* カードの枠線を少し薄めに */
-  padding: 2px; /* カード内の余白を狭める */
-  box-sizing: border-box; /* ボーダーとパディングを含む */
-  flex-direction: column; /* 縦方向に配置 */
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  padding: 3px;
+  box-sizing: border-box;
+  flex-direction: column;
   color: #0f172a;
+  background-color: #ffffff;
 }
 
+/* カードホバー時の立体リフトアップ（斜めにならず真上へふわりと浮く） */
 .card:hover {
-  transform: scale(1.1);
+  transform: translateY(-4px) scale(1.02);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.09);
 }
 
-/* フィールドの色分け */
+/* フィールドの色分け（淡く上品なトーンで目に優しく） */
 .battle-field {
-  background-color: #ffe6cc; /* ライトオレンジ */
+  background-color: #fffdf5; /* ごく淡いウォームアイボリー */
+  border-color: #fde68a;     /* 繊細なゴールドイエロー境界 */
 }
-.battle-field.wilderness{
-  background-color: #8B0000; /* ダークレッド */
+
+.battle-field.wilderness {
+  background-color: #fef2f2; /* ごく淡いローズ */
+  border-color: #fca5a5;
 }
 
 .standby-field {
-  background-color: #d1e7ff; /* ライトブルー */
+  background-color: #f1f5f9; /* 落ち着いたスレートグレー（後衛） */
+  border-color: #e2e8f0;
 }
 
 .button-container {
@@ -121,43 +142,55 @@ body {
 }
 
 .game-button {
-  padding: 8px 18px;
-  font-size: 14px;
-  font-weight: bold;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 700;
   cursor: pointer;
   border: none;
-  border-radius: 6px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
+  letter-spacing: 0.2px;
 }
 
 .game-button:disabled {
-  opacity: 0.5;
+  opacity: 0.45;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .start-game-button {
-  background-color: #475569;
-  color: #ffffff;
+  background-color: #ffffff;
+  color: #475569;
+  border: 1px solid #cbd5e1;
 }
+
 .start-game-button:hover:not(:disabled) {
-  background-color: #334155;
+  background-color: #f1f5f9;
+  border-color: #94a3b8;
 }
 
 .spell-phase-button {
-  background-color: #0891b2;
-  color: #ffffff;
+  background-color: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
 }
+
 .spell-phase-button:hover:not(:disabled) {
-  background-color: #0e7490;
+  background-color: #e0f2fe;
+  border-color: #7dd3fc;
 }
 
 .submit-action-button {
   background-color: #2563eb;
   color: #ffffff;
+  box-shadow: 0 3px 10px rgba(37, 99, 235, 0.25);
 }
+
 .submit-action-button:hover:not(:disabled) {
   background-color: #1d4ed8;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+  transform: translateY(-1px);
 }
 
 .fetch-button,
@@ -165,17 +198,17 @@ body {
   padding: 8px 16px;
   font-size: 14px;
   cursor: pointer;
-  background-color: #007bff;
+  background-color: #2563eb;
   color: white;
   border: none;
-  border-radius: 5px;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   transition: background-color 0.2s ease;
 }
 
 .fetch-button:hover,
 .blue-button:hover {
-  background-color: #0056b3;
+  background-color: #1d4ed8;
 }
 
 .result-container {
@@ -188,72 +221,77 @@ body {
   height: auto;
   margin: 20px auto;
   padding: 24px;
-  background-color: #fff;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
   border-radius: 16px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
   box-sizing: border-box;
 }
 
 .monster-image {
-  max-width: 100%; /* 親要素の幅に収まるように */
-  max-height: 100%; /* 親要素の高さに収まるように */
-  width: auto; /* アスペクト比を保つ */
-  height: auto; /* アスペクト比を保つ */
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
 }
 
 .monster-placeholder-icon {
-  font-size: 30px;
+  font-size: 28px;
   display: flex;
   justify-content: center;
   align-items: center;
   height: 52px;
-  width: 90%;
-  background: radial-gradient(circle, #f8fafc 0%, #e2e8f0 100%);
+  width: 92%;
+  background: radial-gradient(circle, #f8fafc 0%, #f1f5f9 100%);
   border-radius: 6px;
   user-select: none;
   margin: 2px auto;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .monster-card h3,
 .monster-card p {
-  margin: 0; /* テキスト要素の余白を調整 */
-  font-size: 12px; /* テキストサイズを調整 */
-  text-align: center; /* テキストを中央揃え */
+  margin: 0;
+  font-size: 11px;
+  text-align: center;
   color: #0f172a;
 }
 
 .monster-card img {
-  width: 100%; /* 画像をカードの幅に収める */
-  height: auto; /* 画像のアスペクト比を保つ */
-  max-height: 60px; /* 画像の最大高さを制限 */
+  width: 100%;
+  height: auto;
+  max-height: 58px;
 }
 
 .highlight {
-  border: 2px solid yellow;
+  border: 2px solid #3b82f6 !important;
+  background-color: #eff6ff !important;
 }
 
 .player-stats,
 .opponent-stats {
   display: flex;
-  gap: 16px;
+  gap: 20px;
   justify-content: center;
   align-items: center;
-  color: #111;
-  font-weight: bold;
-  font-size: 14px;
-  background-color: rgba(255, 255, 255, 0.9);
-  padding: 6px 16px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  margin: 6px auto;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 13px;
+  background-color: #ffffff;
+  padding: 8px 24px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  margin: 8px auto;
   max-width: 600px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
 }
 
 .player-stats p,
 .opponent-stats p {
   margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .attack-button {
@@ -262,11 +300,16 @@ body {
   color: #ffffff;
   border: none;
   border-radius: 4px;
-  padding: 2px 4px;
+  padding: 3px 4px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 700;
   margin-top: 2px;
   width: 100%;
+  transition: background-color 0.15s ease;
+}
+
+.attack-button:hover:not(:disabled) {
+  background-color: #b91c1c;
 }
 
 .attack-button:disabled {
@@ -326,16 +369,17 @@ body {
 /* ターン演出・アニメーションスタイル */
 .turn-message-banner {
   margin: 12px auto;
-  padding: 10px 24px;
-  background: linear-gradient(135deg, #1f2328, #24292f);
-  color: #fff;
-  font-size: 16px;
-  font-weight: bold;
+  padding: 8px 24px;
+  background: #ffffff;
+  color: #0f172a;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  font-weight: 700;
   border-radius: 24px;
-  max-width: 500px;
+  max-width: 520px;
   text-align: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  letter-spacing: 0.5px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  letter-spacing: 0.3px;
   animation: fadeIn 0.3s ease;
 }
 
