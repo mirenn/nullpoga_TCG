@@ -69,6 +69,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
                     opacity: isFlyingThis ? 0 : canAfford && !isGameOver ? 1 : 0.45,
                     cursor: canAfford && !isAnimating && !isGameOver ? 'grab' : 'not-allowed',
                     transition: 'opacity 0.2s ease',
+                    flexShrink: 0,
                   }}
                 >
                   <MonsterCard
