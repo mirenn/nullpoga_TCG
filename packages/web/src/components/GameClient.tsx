@@ -331,48 +331,6 @@ function GameClient() {
     }
   };
 
-  const handleRenderExecuteEndPhase = () => {
-    const newExtractedGameResponse = structuredClone(extractedGameResponse);
-    const history = newExtractedGameResponse?.gameRoom?.gameState?.history;
-    let renderLastHisIndex =
-      newExtractedGameResponse?.gameRoom?.gameState?.renderLastHisIndex;
-    if (!history) {
-      return;
-    }
-
-    if (renderLastHisIndex === undefined) {
-      renderLastHisIndex = 0;
-    } else {
-      if (history.length > renderLastHisIndex + 1) {
-        renderLastHisIndex += 1;
-      } else {
-        renderLastHisIndex = undefined; 
-      }
-    }
-    console.log('Render Execute End Phase', renderLastHisIndex, history);
-
-    const lasthis = history[history.length - 1];
-    if (renderLastHisIndex !== undefined) {
-      const lastState = lasthis[renderLastHisIndex].State;
-      newExtractedGameResponse.gameRoom.gameState.player1 = lastState.player1;
-      newExtractedGameResponse.gameRoom.gameState.player2 = lastState.player2;
-      newExtractedGameResponse.gameRoom.gameState.renderLastHisIndex =
-        renderLastHisIndex;
-    } else {
-      if (gameResponse?.gameRoom?.gameState?.player1) {
-        newExtractedGameResponse.gameRoom.gameState.player1 =
-          gameResponse.gameRoom.gameState.player1;
-      }
-      if (gameResponse?.gameRoom?.gameState?.player2) {
-        newExtractedGameResponse.gameRoom.gameState.player2 =
-          gameResponse.gameRoom.gameState.player2;
-      }
-      newExtractedGameResponse.gameRoom.gameState.renderLastHisIndex =
-        renderLastHisIndex;
-    }
-    setExtractedGameResponse(newExtractedGameResponse);
-  };
-
   const handleStartGame = async () => {
     if (token) {
       const success = await GameUtils.startGame(token);
@@ -439,10 +397,8 @@ function GameClient() {
         />
         <ButtonContainer
           onStartGame={handleStartGame}
-          onGetGameState={handleGetGameState}
           onActionSubmit={handleActionSubmit}
           onSpellPhaseEnd={handleSpellPhaseEnd}
-          onRenderExecuteEndPhase={handleRenderExecuteEndPhase}
           isAnimating={isAnimating}
         />
         <ResultContainer
