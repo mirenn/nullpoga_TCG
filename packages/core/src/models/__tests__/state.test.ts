@@ -91,6 +91,34 @@ describe('State', () => {
             expect(turnHist[2].State.player1.zone.standbyField[0]).not.toBeNull();
             // player2 is now summoned in step 2
             expect(turnHist[2].State.player2.zone.standbyField[2]).not.toBeNull();
+
+            // ターン2: 待機フィールドのカードが前進（進軍）する
+            state.executeFullTurn([], [], [], []);
+            const turn2Hist = state['history'][1];
+            expect(turn2Hist).toBeDefined();
+
+            // step 0: ターン開始スナップショット（進軍前なので待機フィールドにカードがある）
+            expect(turn2Hist[0].ActionDict.system?.actionType).toBe('TURN_START_SNAPSHOT');
+            expect(turn2Hist[0].State.player1.zone.standbyField[0]).not.toBeNull();
+            expect(turn2Hist[0].State.player2.zone.standbyField[2]).not.toBeNull();
+
+            // step 1: player1 の進軍アクション (MONSTER_ADVANCE)
+            const advanceStep1 = turn2Hist.find(step => {
+                const act = step.ActionDict[state['player1'].userId];
+                return act?.actionType === ActionType.MONSTER_ADVANCE;
+            });
+            expect(advanceStep1).toBeDefined();
+            expect(advanceStep1!.ActionDict[state['player1'].userId].actionData.fromStandbyIdx).toBe(0);
+            expect(advanceStep1!.ActionDict[state['player1'].userId].actionData.toBattleIdx).toBe(0);
+
+            // step 2: player2 の進軍アクション (MONSTER_ADVANCE)
+            const advanceStep2 = turn2Hist.find(step => {
+                const act = step.ActionDict[state['player2'].userId];
+                return act?.actionType === ActionType.MONSTER_ADVANCE;
+            });
+            expect(advanceStep2).toBeDefined();
+            expect(advanceStep2!.ActionDict[state['player2'].userId].actionData.fromStandbyIdx).toBe(2);
+            expect(advanceStep2!.ActionDict[state['player2'].userId].actionData.toBattleIdx).toBe(2);
         });
     });
 });

@@ -20,8 +20,8 @@ export class State implements IState {
         player1?: Player,
         player2?: Player
     ) {
-        this.player1 = player1 || new Player(DECK_1);
-        this.player2 = player2 || new Player(DECK_2);
+        this.player1 = player1 || new Player(DECK_1, 'player1');
+        this.player2 = player2 || new Player(DECK_2, 'player2');
     }
 
     initGame(): void {
@@ -140,11 +140,7 @@ export class State implements IState {
     }
 
     private executeEndphase(player1: Player, player2: Player): void {
-        // Execute movement phase
-        this.moveForward(player1);
-        this.moveForward(player2);
-
-        // ターン開始時点（進軍完了・召喚前）のスナップショットを履歴の最初に記録
+        // 1. ターン開始時点（進軍前・召喚前）のスナップショットを履歴の最初に記録
         this.turnHistory.push({
             State: this.toJson(false),
             ActionDict: {
@@ -155,10 +151,45 @@ export class State implements IState {
             }
         });
 
-        // Execute summon phase
+        // 2. 進軍フェーズ（待機フィールドからバトルフィールドへの移動）の実行と記録
+        const p1Moves = this.getAdvanceMoves(player1);
+        const p2Moves = this.getAdvanceMoves(player2);
+
+        // 先攻から順に進軍アクションを1体ずつ実行・履歴に記録
+        const advanceOrder = player1.isFirstPlayer ? [player1, player2] : [player2, player1];
+        const movesMap = new Map<Player, Array<{ card: MonsterCard; fromIdx: number; toIdx: number }>>([
+            [player1, p1Moves],
+            [player2, p2Moves],
+        ]);
+        const maxMoves = Math.max(p1Moves.length, p2Moves.length);
+
+        for (let i = 0; i < maxMoves; i++) {
+            for (const p of advanceOrder) {
+                const moves = movesMap.get(p) || [];
+                const move = moves[i];
+                if (move) {
+                    this.advanceOneMonster(p, move.fromIdx, move.toIdx);
+                    this.turnHistory.push({
+                        State: this.toJson(false),
+                        ActionDict: {
+                            [p.userId]: {
+                                actionType: ActionType.MONSTER_ADVANCE,
+                                actionData: {
+                                    monsterCard: move.card,
+                                    fromStandbyIdx: move.fromIdx,
+                                    toBattleIdx: move.toIdx,
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        // 3. Execute summon phase
         this.executeSummon(player1, player2);
 
-        // Execute activity phase
+        // 4. Execute activity phase
         this.executeActivity(player1, player2);
 
         // Add turn history to main history
@@ -166,22 +197,25 @@ export class State implements IState {
         this.turnHistory = [];
     }
 
-    private moveForward(player: Player): void {
-        // 待機フィールドからバトルフィールドへの移動
+    private getAdvanceMoves(player: Player): Array<{ card: MonsterCard; fromIdx: number; toIdx: number }> {
+        const moves: Array<{ card: MonsterCard; fromIdx: number; toIdx: number }> = [];
         for (let i = 0; i < player.zone.standbyField.length; i++) {
             const card = player.zone.standbyField[i];
-            if (card) {
-                // バトルフィールドの同じインデックスが空いているか確認
-                if (!player.zone.battleField[i].card) {
-                    // カードを移動
-                    player.zone.battleField[i].card = card;
-                    // 待機フィールドをクリア
-                    player.zone.standbyField[i] = null;
-                }
+            if (card && !player.zone.battleField[i].card) {
+                moves.push({ card, fromIdx: i, toIdx: i });
             }
         }
-        if (player.planZone) {
-            player.planZone = player.zone.clone();
+        return moves;
+    }
+
+    private advanceOneMonster(player: Player, fromIdx: number, toIdx: number): void {
+        const card = player.zone.standbyField[fromIdx];
+        if (card && !player.zone.battleField[toIdx].card) {
+            player.zone.battleField[toIdx].card = card;
+            player.zone.standbyField[fromIdx] = null;
+            if (player.planZone) {
+                player.planZone = player.zone.clone();
+            }
         }
     }
 

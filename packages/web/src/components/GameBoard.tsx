@@ -57,14 +57,26 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
     return opponentStandbyField[i] || opponentZone?.standbyField?.[i] || null;
   };
 
-  const getOpponentBattleCard = (i: number) => {
+  const getOpponentBattleCard = (i: number, slotId?: string) => {
+    if (slotId && actionEffect?.flyingSlotId === slotId) {
+      return null;
+    }
+    if (slotId && actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
+      return actionEffect.summonCard;
+    }
     if (isAnimating) {
       return opponentZone?.battleField?.[i]?.card || null;
     }
     return opponentBattleField[i]?.card || opponentZone?.battleField?.[i]?.card || null;
   };
 
-  const getPlayerBattleCard = (i: number) => {
+  const getPlayerBattleCard = (i: number, slotId?: string) => {
+    if (slotId && actionEffect?.flyingSlotId === slotId) {
+      return null;
+    }
+    if (slotId && actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
+      return actionEffect.summonCard;
+    }
     if (isAnimating) {
       return playerZone?.battleField?.[i]?.card || null;
     }
@@ -135,8 +147,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
         const slotId = `opponent-bzone-${i}`;
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
-        const effectClass = isAttacking ? 'slot-attacking-opponent' : isTargeted ? 'slot-targeted' : '';
-        const card = getOpponentBattleCard(i);
+        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isLanding = isSummoning && actionEffect?.isLanding;
+        const effectClass = isAttacking
+          ? 'slot-attacking-opponent'
+          : isTargeted
+            ? 'slot-targeted'
+            : isLanding
+              ? 'slot-summon-landing'
+              : '';
+        const card = getOpponentBattleCard(i, slotId);
 
         return (
           <div
@@ -168,8 +188,16 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
         const slotId = `player-bzone-${i}`;
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
-        const effectClass = isAttacking ? 'slot-attacking-player' : isTargeted ? 'slot-targeted' : '';
-        const card = getPlayerBattleCard(i);
+        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isLanding = isSummoning && actionEffect?.isLanding;
+        const effectClass = isAttacking
+          ? 'slot-attacking-player'
+          : isTargeted
+            ? 'slot-targeted'
+            : isLanding
+              ? 'slot-summon-landing'
+              : '';
+        const card = getPlayerBattleCard(i, slotId);
 
         return (
           <div

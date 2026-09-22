@@ -4,6 +4,7 @@ export enum ActionType {
     CAST_SPELL = 'CAST_SPELL',
     SUMMON_MONSTER = 'SUMMON_MONSTER',
     MONSTER_MOVE = 'MONSTER_MOVE',
+    MONSTER_ADVANCE = 'MONSTER_ADVANCE', // 待機フィールドからバトルフィールドへの進軍
     DISABLE_ACTION = 'DISABLE_ACTION',
     MONSTER_ATTACK = 'MONSTER_ATTACK',
     SPELL_PHASE_END = 'SPELL_PHASE_END',
@@ -15,6 +16,8 @@ export interface ActionData {
     spellCard?: any;
     monsterCard?: any;
     summonStandbyFieldIdx?: number;
+    fromStandbyIdx?: number;
+    toBattleIdx?: number;
     moveBattleFieldIdx?: number;
     moveDirection?: string;
     attackDeclarationIdx?: number;

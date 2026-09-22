@@ -294,6 +294,67 @@ function GameClient() {
                   });
                   await new Promise((r) => setTimeout(r, 1200));
                   setActionEffect(null);
+                } else if (act.actionType === 'MONSTER_ADVANCE') {
+                  const card = act.actionData?.monsterCard;
+                  const cardName = card?.cardName || 'モンスター';
+                  const fromIdx = act.actionData?.fromStandbyIdx ?? 0;
+                  const toIdx = act.actionData?.toBattleIdx ?? 0;
+                  const startSlotId = isMe ? `player-szone-${fromIdx}` : `opponent-szone-${fromIdx}`;
+                  const endSlotId = isMe ? `player-bzone-${toIdx}` : `opponent-bzone-${toIdx}`;
+
+                  setTurnMessage(`【進軍】${actorName}の「${cardName}」が前線へ進軍！`);
+
+                  const CARD_WIDTH = 72;
+                  const CARD_HEIGHT = 98;
+                  const startEl = document.getElementById(startSlotId);
+                  const endEl = document.getElementById(endSlotId);
+                  let startRect: { top: number; left: number; width: number; height: number } | null = null;
+                  let endRect: { top: number; left: number; width: number; height: number } | null = null;
+
+                  if (startEl) {
+                    const sRect = startEl.getBoundingClientRect();
+                    startRect = {
+                      top: sRect.top + (sRect.height - CARD_HEIGHT) / 2,
+                      left: sRect.left + (sRect.width - CARD_WIDTH) / 2,
+                      width: CARD_WIDTH,
+                      height: CARD_HEIGHT,
+                    };
+                  }
+                  if (endEl) {
+                    const eRect = endEl.getBoundingClientRect();
+                    endRect = {
+                      top: eRect.top + (eRect.height - CARD_HEIGHT) / 2,
+                      left: eRect.left + (eRect.width - CARD_WIDTH) / 2,
+                      width: CARD_WIDTH,
+                      height: CARD_HEIGHT,
+                    };
+                  }
+
+                  // フライト演出の実行（待機ゾーンからバトルゾーンへ飛行移動）
+                  if (startRect && endRect && card) {
+                    setActionEffect({ flyingSlotId: startSlotId });
+                    setFlyingCard({ card, startRect, endRect });
+                    await new Promise((r) => setTimeout(r, 600));
+                    setFlyingCard(null);
+                  }
+
+                  // 着地：該当プレイヤーのみ盤面を更新
+                  const isActorP1 = animRoomState.gameRoom.gameState.player1?.userId === actorId;
+                  if (isActorP1) {
+                    if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  } else {
+                    if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  }
+                  setExtractedGameResponse(structuredClone(animRoomState));
+
+                  // バトルスロットへの着地パルス
+                  setActionEffect({
+                    summonSlotId: endSlotId,
+                    summonCard: card,
+                    isLanding: true,
+                  });
+                  await new Promise((r) => setTimeout(r, 650));
+                  setActionEffect(null);
                 } else if (act.actionType === 'MONSTER_MOVE') {
                   if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
                   if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
