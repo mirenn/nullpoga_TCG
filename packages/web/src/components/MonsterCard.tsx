@@ -48,19 +48,19 @@ const MonsterCard = ({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
     >
-      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '2px 3px' }}>
+      <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '1px 2px' }}>
         <h3
           title={card.cardName}
           style={{
             margin: 0,
-            fontSize: '11px',
+            fontSize: '10px',
             fontWeight: 800,
             color: '#0f172a',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: '46px',
-            letterSpacing: '-0.2px',
+            maxWidth: '42px',
+            letterSpacing: '-0.3px',
           }}
         >
           {card.cardName}
@@ -70,9 +70,9 @@ const MonsterCard = ({
           style={{
             backgroundColor: '#2563eb',
             color: '#ffffff',
-            borderRadius: '10px',
-            padding: '1px 5px',
-            fontSize: '9.5px',
+            borderRadius: '8px',
+            padding: '1px 4px',
+            fontSize: '9px',
             fontWeight: 800,
             flexShrink: 0,
             boxShadow: '0 1px 2px rgba(37, 99, 235, 0.25)',

@@ -195,8 +195,8 @@ function GameClient() {
                   setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
 
                   // 始点と終点のDOM座標を取得（カード実体サイズ 80x120 の中央配置位置を正確に計算）
-                  const CARD_WIDTH = 80;
-                  const CARD_HEIGHT = 120;
+                  const CARD_WIDTH = 68;
+                  const CARD_HEIGHT = 92;
                   let startRect: { top: number; left: number; width: number; height: number } | null = null;
                   if (isMe) {
                     const cardEl = card?.uniqId ? document.getElementById(`player-hand-card-${card.uniqId}`) : null;
@@ -369,45 +369,52 @@ function GameClient() {
   return (
     <div>
       <ArcherContainer strokeColor="red">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 20px', maxWidth: '1100px', margin: '0 auto', borderBottom: '1px solid #e2e8f0' }}>
-          <span style={{ fontSize: '13px', color: '#475569' }}>
-            ログイン中: <strong style={{ color: '#0f172a' }}>{userId}</strong>
-          </span>
-          <button
-            onClick={logout}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', maxWidth: '1000px', margin: '0 auto 4px auto', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px', whiteSpace: 'nowrap' }}>
+              ヌルポガ TCG
+            </h1>
+          </div>
+          <div
+            className="turn-message-banner"
+            id="turn-banner"
             style={{
-              padding: '4px 12px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              background: '#ffffff',
-              color: '#475569',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              transition: 'all 0.15s ease',
+              margin: '0',
+              flex: '1',
+              maxWidth: '480px',
+              backgroundColor: isGameOver
+                ? gameResult === 'VICTORY'
+                  ? '#065f46'
+                  : gameResult === 'DEFEAT'
+                  ? '#991b1b'
+                  : '#334155'
+                : undefined,
+              color: isGameOver ? '#ffffff' : undefined,
             }}
           >
-            ログアウト
-          </button>
-        </div>
-        <h1 style={{ textAlign: 'center', margin: '12px 0 6px 0', fontSize: '24px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.5px' }}>
-          ヌルポガ TCG
-        </h1>
-        <div
-          className="turn-message-banner"
-          id="turn-banner"
-          style={{
-            backgroundColor: isGameOver
-              ? gameResult === 'VICTORY'
-                ? '#065f46'
-                : gameResult === 'DEFEAT'
-                ? '#991b1b'
-                : '#334155'
-              : undefined,
-            color: isGameOver ? '#ffffff' : undefined,
-          }}
-        >
-          {isGameOver ? gameOverMessage : turnMessage}
+            {isGameOver ? gameOverMessage : turnMessage}
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>
+              <strong>{userId}</strong>
+            </span>
+            <button
+              onClick={logout}
+              style={{
+                padding: '2px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                background: '#ffffff',
+                color: '#475569',
+                border: '1px solid #cbd5e1',
+                borderRadius: '4px',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              ログアウト
+            </button>
+          </div>
         </div>
         <OpponentStats
           gameState={extractedGameResponse?.gameRoom?.gameState}
