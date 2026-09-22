@@ -49,8 +49,34 @@ const MonsterCard = ({
       onDragEnd={onDragEnd}
     >
       <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '2px 4px' }}>
-        <h3 style={{ margin: 0, fontSize: '12px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '70px' }}>{card.cardName}</h3>
-        <span className="card-cost" style={{ backgroundColor: '#0969da', color: '#fff', borderRadius: '10px', padding: '1px 5px', fontSize: '10px', fontWeight: 'bold', flexShrink: 0 }}>
+        <h3
+          title={card.cardName}
+          style={{
+            margin: 0,
+            fontSize: '11px',
+            fontWeight: 800,
+            color: '#0f172a',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '46px',
+            letterSpacing: '-0.3px',
+          }}
+        >
+          {card.cardName}
+        </h3>
+        <span
+          className="card-cost"
+          style={{
+            backgroundColor: '#2563eb',
+            color: '#ffffff',
+            borderRadius: '10px',
+            padding: '1px 5px',
+            fontSize: '10px',
+            fontWeight: 800,
+            flexShrink: 0,
+          }}
+        >
           {card.manaCost}マナ
         </span>
       </div>
@@ -67,16 +93,35 @@ const MonsterCard = ({
           {getCardFallbackEmoji(card.cardName || '')}
         </div>
       )}
-      <p style={{ margin: '2px 0', fontSize: '11px', fontWeight: 'bold' }}>
-        ATK: {card.attack} Life: {card.life}
-      </p>
+      <div
+        className="monster-card-stats"
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          width: '100%',
+          padding: '2px 4px',
+          margin: '2px 0 0 0',
+          backgroundColor: '#f8fafc',
+          borderRadius: '4px',
+          border: '1px solid #cbd5e1',
+          fontSize: '9.5px',
+          fontWeight: 800,
+          lineHeight: '1.2',
+          boxSizing: 'border-box',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <span style={{ color: '#b91c1c', letterSpacing: '-0.3px' }}>ATK {card.attack}</span>
+        <span style={{ color: '#15803d', letterSpacing: '-0.3px' }}>Life {card.life}</span>
+      </div>
       {canAttack && (
         <button
           className="attack-button"
           onClick={(e) => onAttack(e)}
           disabled={!card.canAct}
         >
-          {card.canAct ? '攻撃宣言' : '攻撃宣言済み' + activityIndex}
+          {card.canAct ? '攻撃宣言' : '攻撃済み' + (activityIndex >= 0 ? ` #${activityIndex + 1}` : '')}
         </button>
       )}
     </div>

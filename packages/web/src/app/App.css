@@ -62,7 +62,7 @@ body {
   width: 80px;
   height: 120px;
   background-color: #fff;
-  border: 2px solid #ccc;
+  border: 2px solid #cbd5e1;
   border-radius: 10px;
   display: flex;
   justify-content: center;
@@ -70,6 +70,7 @@ body {
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   transition: transform 0.2s ease;
+  color: #0f172a;
 }
 .mana-cost {
   position: absolute; /* 絶対位置で配置 */
@@ -84,10 +85,11 @@ body {
 }
 .monster-card {
   overflow: hidden; /* カードから画像がはみ出ないように */
-  border: 1px solid #ccc; /* カードの枠線を少し薄めに */
+  border: 1px solid #cbd5e1; /* カードの枠線を少し薄めに */
   padding: 2px; /* カード内の余白を狭める */
   box-sizing: border-box; /* ボーダーとパディングを含む */
   flex-direction: column; /* 縦方向に配置 */
+  color: #0f172a;
 }
 
 .card:hover {
@@ -167,6 +169,7 @@ body {
   margin: 0; /* テキスト要素の余白を調整 */
   font-size: 12px; /* テキストサイズを調整 */
   text-align: center; /* テキストを中央揃え */
+  color: #0f172a;
 }
 
 .monster-card img {
@@ -202,8 +205,22 @@ body {
   margin: 0;
 }
 
-.attack-button{
-  font-size: x-small;
+.attack-button {
+  font-size: 10px;
+  background-color: #dc2626;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 2px 4px;
+  cursor: pointer;
+  font-weight: bold;
+  margin-top: 2px;
+  width: 100%;
+}
+
+.attack-button:disabled {
+  background-color: #94a3b8;
+  cursor: not-allowed;
 }
 
 .login-container {
