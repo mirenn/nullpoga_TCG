@@ -8,7 +8,7 @@
 - **Mana System**: Standard progression. Available mana increases by +1 each turn. Starts at 1, capped at 10.
 - **Board / Zones**:
   - 5 columns across the board.
-  - ![zone.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/zone.png)
+  - ![zone.png](docs/images/zone.png)
   - **Standby Zone (スタンバイゾーン)**: Where monsters are initially summoned.
   - **Battle Zone (バトルゾーン)**: Where monsters advance and perform actions (move/attack).
 - **Turn Phases**:
@@ -20,10 +20,10 @@
      - **Attack Step**: Monsters attack forward.
      - Actions resolve in declared sequence.
      - Examples:
-       ![activity_plan.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_plan.png)
-       ![activity_1.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_1.png)
-       ![activity_2.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_2.png)
-       ![activity_3.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_3.png)
+       ![activity_plan.png](docs/images/activity_plan.png)
+       ![activity_1.png](docs/images/activity_1.png)
+       ![activity_2.png](docs/images/activity_2.png)
+       ![activity_3.png](docs/images/activity_3.png)
 - **Victory Conditions**:
   - Reduce opponent's Life (20) to <= 0.
   - Turn 4 consecutive Battle Zones of the opponent into Wilderness (荒野状態).
@@ -91,8 +91,8 @@
   - Example: Card No.1 (Meteor Fall) resolves before Card No.2 (Immovable Rock).
 - **Spell Fizzle / Negation (スペル不発)**:
   - If both players cast the **same spell card** in the same sub-phase on conflicting targets (e.g., overlapping `Front-Back Swap`), the spell can fizzle.
-    ![spell_huhatu.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/spell_huhatu.png)
-    ![spell_huhatu2.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/spell_huhatu2.png)
+    ![spell_huhatu.png](docs/images/spell_huhatu.png)
+    ![spell_huhatu2.png](docs/images/spell_huhatu2.png)
   - **General Fizzle Detection Algorithm**:
     When identical cards are played in the same sub-phase:
     1. Simulate Branch A (Player 1 executes first, then Player 2).
