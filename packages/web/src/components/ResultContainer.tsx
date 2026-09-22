@@ -5,73 +5,60 @@ import * as GameUtils from '../utils/gameUtils';
 interface ResultContainerProps {
   gameState?: GameModels.State;
   myUserId?: string;
+  onStartGame?: () => void;
 }
 
-const ResultContainer: React.FC<ResultContainerProps> = ({ gameState, myUserId }) => {
-  if (!gameState || !myUserId) {
-    return <div className="result-container" id="result"></div>;
+const ResultContainer: React.FC<ResultContainerProps> = ({ gameState, myUserId, onStartGame }) => {
+  const { isGameOver, result, message } = GameUtils.checkGameOver(gameState, myUserId);
+
+  if (!isGameOver || !result) {
+    return null;
   }
 
-  const myPlayer = GameUtils.getPlayerByUserId(gameState, myUserId);
-  const opponent = GameUtils.getPlayerExcludingUserId(gameState, myUserId);
-
-  if (!myPlayer || !opponent) {
-    return <div className="result-container" id="result"></div>;
-  }
-
-  // 終了条件チェック
-  const myWildernessAll = myPlayer.zone.battleField?.every(
-    (slot) => slot.status === GameModels.FieldStatus.WILDERNESS
-  );
-  const opponentWildernessAll = opponent.zone.battleField?.every(
-    (slot) => slot.status === GameModels.FieldStatus.WILDERNESS
-  );
-
-  const isGameOver =
-    myPlayer.life <= 0 ||
-    opponent.life <= 0 ||
-    myWildernessAll ||
-    opponentWildernessAll;
-
-  if (!isGameOver) {
-    return <div className="result-container" id="result"></div>;
-  }
-
-  let resultText = '';
-  let resultClass = '';
-
-  if (myPlayer.life <= 0 && opponent.life <= 0) {
-    if (myPlayer.life > opponent.life) {
-      resultText = 'VICTORY!';
-      resultClass = 'victory';
-    } else if (opponent.life > myPlayer.life) {
-      resultText = 'DEFEAT...';
-      resultClass = 'defeat';
-    } else {
-      resultText = 'DRAW GAME';
-      resultClass = 'draw';
-    }
-  } else if (opponent.life <= 0 || opponentWildernessAll) {
-    resultText = 'VICTORY!';
-    resultClass = 'victory';
-  } else if (myPlayer.life <= 0 || myWildernessAll) {
-    resultText = 'DEFEAT...';
-    resultClass = 'defeat';
-  }
+  const resultClass = result === 'VICTORY' ? 'victory' : result === 'DEFEAT' ? 'defeat' : 'draw';
+  const headerText = result === 'VICTORY' ? 'VICTORY!' : result === 'DEFEAT' ? 'DEFEAT...' : 'DRAW GAME';
 
   return (
-    <div className={`result-container ${resultClass}`} id="result" style={{
-      marginTop: '20px',
-      padding: '16px',
-      textAlign: 'center',
-      fontSize: '28px',
-      fontWeight: 'bold',
-      backgroundColor: resultClass === 'victory' ? '#e6ffed' : resultClass === 'defeat' ? '#ffeef0' : '#f6f8fa',
-      border: `2px solid ${resultClass === 'victory' ? '#2da44e' : resultClass === 'defeat' ? '#cf222e' : '#8c959f'}`,
-      borderRadius: '8px',
-      color: resultClass === 'victory' ? '#1a7f37' : resultClass === 'defeat' ? '#cf222e' : '#24292f'
-    }}>
-      {resultText}
+    <div
+      className={`result-container ${resultClass}`}
+      id="result"
+      style={{
+        margin: '24px auto',
+        maxWidth: '520px',
+        padding: '24px',
+        textAlign: 'center',
+        backgroundColor: resultClass === 'victory' ? '#ecfdf5' : resultClass === 'defeat' ? '#fef2f2' : '#f8fafc',
+        border: `2px solid ${resultClass === 'victory' ? '#10b981' : resultClass === 'defeat' ? '#ef4444' : '#94a3b8'}`,
+        borderRadius: '12px',
+        boxShadow: '0 8px 20px rgba(0, 0, 0, 0.12)',
+        color: resultClass === 'victory' ? '#065f46' : resultClass === 'defeat' ? '#991b1b' : '#1e293b',
+      }}
+    >
+      <div style={{ fontSize: '32px', fontWeight: 900, marginBottom: '8px', letterSpacing: '1px' }}>
+        {headerText}
+      </div>
+      <p style={{ fontSize: '15px', fontWeight: 'bold', margin: '0 0 16px 0', opacity: 0.9 }}>
+        {message}
+      </p>
+      {onStartGame && (
+        <button
+          onClick={onStartGame}
+          style={{
+            padding: '10px 24px',
+            fontSize: '15px',
+            fontWeight: 'bold',
+            color: '#ffffff',
+            backgroundColor: resultClass === 'victory' ? '#059669' : resultClass === 'defeat' ? '#dc2626' : '#475569',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          もう一度対戦する（Start New Game）
+        </button>
+      )}
     </div>
   );
 };

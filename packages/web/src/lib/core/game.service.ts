@@ -148,6 +148,11 @@ export const GameService = {
         const data = JSON.parse(dataStr);
         const state = State.fromDict(data.gameState);
 
+        if (state.isGameEnd()) {
+            console.log('Game is already over. No further actions processed.');
+            return state;
+        }
+
         const isPlayer1 = state.player1.userId === userId;
         const userPlayer = isPlayer1 ? state.player1 : state.player2;
         const opponentPlayer = isPlayer1 ? state.player2 : state.player1;

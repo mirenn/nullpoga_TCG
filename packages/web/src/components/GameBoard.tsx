@@ -20,8 +20,9 @@ interface GameBoardProps {
   isDragging: boolean;
   actionEffect?: ActionEffect | null;
   isAnimating?: boolean;
+  isGameOver?: boolean;
 }
-const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating }: GameBoardProps) => {
+const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver = false }: GameBoardProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
   const summonPhaseActions = useGameStore((s) => s.summonPhaseActions);
@@ -186,7 +187,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating }: GameBoar
                 onDragStart={() => {}}
                 onDragEnd={() => {}}
                 draggable={false}
-                canAttack={!isAnimating}
+                canAttack={!isAnimating && !isGameOver}
                 onAttack={handleAction}
               />
             ) : (

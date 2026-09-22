@@ -3,6 +3,7 @@ interface ButtonContainerProps {
   onActionSubmit: () => void;
   onSpellPhaseEnd: () => void;
   isAnimating?: boolean;
+  isGameOver?: boolean;
 }
 
 const ButtonContainer = ({
@@ -10,6 +11,7 @@ const ButtonContainer = ({
   onActionSubmit,
   onSpellPhaseEnd,
   isAnimating = false,
+  isGameOver = false,
 }: ButtonContainerProps) => (
   <div className="button-container">
     <button
@@ -18,13 +20,13 @@ const ButtonContainer = ({
       onClick={onStartGame}
       disabled={isAnimating}
     >
-      Start Game
+      {isGameOver ? 'New Game' : 'Start Game'}
     </button>
     <button
       id="spell-phase-end"
       className="game-button spell-phase-button"
       onClick={onSpellPhaseEnd}
-      disabled={isAnimating}
+      disabled={isAnimating || isGameOver}
     >
       End Spell Phase
     </button>
@@ -32,9 +34,9 @@ const ButtonContainer = ({
       id="action-submit"
       className="game-button submit-action-button"
       onClick={onActionSubmit}
-      disabled={isAnimating}
+      disabled={isAnimating || isGameOver}
     >
-      {isAnimating ? '処理中...' : 'Submit Actions'}
+      {isAnimating ? '処理中...' : isGameOver ? '対戦終了' : 'Submit Actions'}
     </button>
   </div>
 );

@@ -418,3 +418,60 @@ export async function startGame(token: string): Promise<boolean> {
     return false;
   }
 }
+
+export interface GameOverResult {
+  isGameOver: boolean;
+  result: 'VICTORY' | 'DEFEAT' | 'DRAW' | null;
+  message: string;
+}
+
+export function checkGameOver(
+  gameState?: GameModels.State | null,
+  myUserId?: string | null,
+): GameOverResult {
+  if (!gameState || !myUserId) {
+    return { isGameOver: false, result: null, message: '' };
+  }
+
+  const myPlayer = getPlayerByUserId(gameState, myUserId);
+  const opponent = getPlayerExcludingUserId(gameState, myUserId);
+
+  if (!myPlayer || !opponent) {
+    return { isGameOver: false, result: null, message: '' };
+  }
+
+  const myWildernessAll = myPlayer.zone?.battleField?.every(
+    (slot) => slot.status === GameModels.FieldStatus.WILDERNESS,
+  );
+  const opponentWildernessAll = opponent.zone?.battleField?.every(
+    (slot) => slot.status === GameModels.FieldStatus.WILDERNESS,
+  );
+
+  const isGameOver =
+    myPlayer.life <= 0 ||
+    opponent.life <= 0 ||
+    Boolean(myWildernessAll) ||
+    Boolean(opponentWildernessAll) ||
+    ((myPlayer.deckCards?.length ?? 0) < 1 && (opponent.deckCards?.length ?? 0) < 1);
+
+  if (!isGameOver) {
+    return { isGameOver: false, result: null, message: '' };
+  }
+
+  if (myPlayer.life <= 0 && opponent.life <= 0) {
+    if (myPlayer.life > opponent.life) {
+      return { isGameOver: true, result: 'VICTORY', message: '🎉 VICTORY! 相手のライフが先に0になりました。' };
+    } else if (opponent.life > myPlayer.life) {
+      return { isGameOver: true, result: 'DEFEAT', message: '💀 DEFEAT... あなたのライフが0になりました。' };
+    } else {
+      return { isGameOver: true, result: 'DRAW', message: '🤝 DRAW GAME（引き分け）' };
+    }
+  } else if (opponent.life <= 0 || opponentWildernessAll) {
+    return { isGameOver: true, result: 'VICTORY', message: '🎉 VICTORY! あなたの勝利です！' };
+  } else if (myPlayer.life <= 0 || myWildernessAll) {
+    return { isGameOver: true, result: 'DEFEAT', message: '💀 DEFEAT... あなたの敗北です。' };
+  }
+
+  return { isGameOver: true, result: 'DRAW', message: '🤝 ゲーム終了（引き分け）' };
+}
+

@@ -40,8 +40,14 @@ function GameClient() {
   const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
   const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null);
 
+  const currentGameState = extractedGameResponse?.gameRoom?.gameState;
+  const { isGameOver, result: gameResult, message: gameOverMessage } = GameUtils.checkGameOver(
+    currentGameState,
+    userId,
+  );
+
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
-    if (isAnimating) {
+    if (isAnimating || isGameOver) {
       event.preventDefault();
       return;
     }
@@ -85,14 +91,19 @@ function GameClient() {
       setExtractedGameResponse(res[0]);
       console.log(extractedGameResponse, res[0]);
       setGameResponse(res[1]);
-      setTurnMessage('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+      const checkRes = GameUtils.checkGameOver(res[0]?.gameRoom?.gameState, userId!);
+      if (checkRes.isGameOver) {
+        setTurnMessage(checkRes.message);
+      } else {
+        setTurnMessage('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+      }
     } else {
       setTurnMessage('「Start Game」を押してゲームを開始してください');
     }
   };
 
   const handleActionSubmit = async () => {
-    if (!token || isAnimating) return;
+    if (!token || isAnimating || isGameOver) return;
     setIsAnimating(true);
     setTurnMessage('アクション提出中...');
 
@@ -300,7 +311,12 @@ function GameClient() {
       // 最終状態（新ターンのドロー・マナ回復等）を反映
       setExtractedGameResponse(finalStateResponse);
       setGameResponse(res[1]);
-      setTurnMessage('ターン終了！次の行動を計画してください。');
+      const checkRes = GameUtils.checkGameOver(finalStateResponse.gameRoom?.gameState, userId!);
+      if (checkRes.isGameOver) {
+        setTurnMessage(checkRes.message);
+      } else {
+        setTurnMessage('ターン終了！次の行動を計画してください。');
+      }
     } catch (error) {
       console.error('Turn animation error:', error);
       setTurnMessage('エラーが発生しました。もう一度お試しください。');
@@ -312,6 +328,7 @@ function GameClient() {
   };
 
   const handleSpellPhaseEnd = () => {
+    if (isAnimating || isGameOver) return;
     console.log('End Spell Phase');
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
     const state = newExtractedGameResponse?.gameRoom?.gameState;
@@ -371,8 +388,21 @@ function GameClient() {
           </button>
         </div>
         <h1 style={{ textAlign: 'center', margin: '8px 0' }}>ヌルポガ TCG</h1>
-        <div className="turn-message-banner" id="turn-banner">
-          {turnMessage}
+        <div
+          className="turn-message-banner"
+          id="turn-banner"
+          style={{
+            backgroundColor: isGameOver
+              ? gameResult === 'VICTORY'
+                ? '#065f46'
+                : gameResult === 'DEFEAT'
+                ? '#991b1b'
+                : '#334155'
+              : undefined,
+            color: isGameOver ? '#ffffff' : undefined,
+          }}
+        >
+          {isGameOver ? gameOverMessage : turnMessage}
         </div>
         <OpponentStats
           gameState={extractedGameResponse?.gameRoom?.gameState}
@@ -383,12 +413,14 @@ function GameClient() {
           isDragging={isDragging}
           actionEffect={actionEffect}
           isAnimating={isAnimating}
+          isGameOver={isGameOver}
         />
         <Hand
           myUserId={userId}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           isAnimating={isAnimating}
+          isGameOver={isGameOver}
           flyingCardUniqId={flyingCard?.card?.uniqId}
         />
         <PlayerStats
@@ -400,10 +432,12 @@ function GameClient() {
           onActionSubmit={handleActionSubmit}
           onSpellPhaseEnd={handleSpellPhaseEnd}
           isAnimating={isAnimating}
+          isGameOver={isGameOver}
         />
         <ResultContainer
           gameState={extractedGameResponse?.gameRoom?.gameState}
           myUserId={userId}
+          onStartGame={handleStartGame}
         />
       </ArcherContainer>
       {flyingCard && (

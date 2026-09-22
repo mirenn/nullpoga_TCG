@@ -10,10 +10,11 @@ interface HandProps {
   onDragStart: (event: React.DragEvent<HTMLDivElement>) => void;
   onDragEnd: () => void;
   isAnimating?: boolean;
+  isGameOver?: boolean;
   flyingCardUniqId?: string | null;
 }
 
-const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, flyingCardUniqId }: HandProps) => {
+const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = false, flyingCardUniqId }: HandProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   
   try {
@@ -65,16 +66,16 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, flyingCardUniqId 
                 <div
                   id={`player-hand-card-${card.uniqId}`}
                   style={{
-                    opacity: isFlyingThis ? 0 : canAfford ? 1 : 0.45,
-                    cursor: canAfford && !isAnimating ? 'grab' : 'not-allowed',
+                    opacity: isFlyingThis ? 0 : canAfford && !isGameOver ? 1 : 0.45,
+                    cursor: canAfford && !isAnimating && !isGameOver ? 'grab' : 'not-allowed',
                     transition: 'opacity 0.2s ease',
                   }}
                 >
                   <MonsterCard
                     card={card}
-                    onDragStart={canAfford && !isAnimating ? onDragStart : (e) => e.preventDefault()}
+                    onDragStart={canAfford && !isAnimating && !isGameOver ? onDragStart : (e) => e.preventDefault()}
                     onDragEnd={onDragEnd}
-                    draggable={canAfford && !isAnimating}
+                    draggable={canAfford && !isAnimating && !isGameOver}
                     canAttack={false}
                     onAttack={() => {}}
                   />
