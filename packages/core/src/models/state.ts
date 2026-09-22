@@ -248,21 +248,27 @@ export class State implements IState {
             }
         };
 
-        // 両プレイヤーの召喚アクションを先攻から順に1アクションずつ実行・記録
-        const summonOrder = player1.isFirstPlayer ? [player1, player2] : [player2, player1];
+        // 両プレイヤーの召喚アクションを同時に実行・記録（1体目同士、2体目同士を同一ステップとして記録）
         const maxSummonLen = Math.max(player1.summonPhaseActions.length, player2.summonPhaseActions.length);
         for (let i = 0; i < maxSummonLen; i++) {
-            for (const p of summonOrder) {
-                const action = p.summonPhaseActions[i];
-                if (action) {
-                    executeSummonForPlayer(p, action);
-                    this.turnHistory.push({
-                        State: this.toJson(false),
-                        ActionDict: {
-                            [p.userId]: action
-                        }
-                    });
-                }
+            const stepActionDict: Record<string, Action> = {};
+            const act1 = player1.summonPhaseActions[i];
+            const act2 = player2.summonPhaseActions[i];
+
+            if (act1) {
+                executeSummonForPlayer(player1, act1);
+                stepActionDict[player1.userId] = act1;
+            }
+            if (act2) {
+                executeSummonForPlayer(player2, act2);
+                stepActionDict[player2.userId] = act2;
+            }
+
+            if (Object.keys(stepActionDict).length > 0) {
+                this.turnHistory.push({
+                    State: this.toJson(false),
+                    ActionDict: stepActionDict
+                });
             }
         }
 

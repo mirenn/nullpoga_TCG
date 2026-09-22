@@ -1,187 +1,101 @@
-# nullpoga_TCG
+# Nullpoga TCG (ヌルポガ TCG)
 
-- ヌルポガ TCG
-  - 以下は簡単な仕様書ですが、コロコロ変わるかもしれません
+> A simultaneous-decision, simultaneous-execution digital collectible card game.
 
-# デジタルカードゲーム「ヌルポガ」概要 バージョン 0.240611
+## Core Rules
 
-# ルール概要
+- **Simultaneous Turns**: Both players plan actions concurrently without knowing the opponent's moves. Planned actions are submitted to the server and executed deterministically in phase order.
+- **Mana System**: Standard progression. Available mana increases by +1 each turn. Starts at 1, capped at 10.
+- **Board / Zones**:
+  - 5 columns across the board.
+  - ![zone.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/zone.png)
+  - **Standby Zone (スタンバイゾーン)**: Where monsters are initially summoned.
+  - **Battle Zone (バトルゾーン)**: Where monsters advance and perform actions (move/attack).
+- **Turn Phases**:
+  Each turn consists of three main phases planned concurrently:
+  1. **Spell Phase (スペルフェイズ)**: Cast spell cards.
+  2. **March/Summon Phase (進軍召喚フェイズ)**: Summon monsters to Standby Zone. Monsters already in Standby Zone advance (march) to Battle Zone. Newly summoned monsters do not march on the turn they are summoned; they march next turn.
+  3. **Activity Phase (行動フェイズ)**: Battle Zone monsters act. Split into two sequential sub-steps:
+     - **Movement Step**: Monsters can move to an adjacent empty column (left or right).
+     - **Attack Step**: Monsters attack forward.
+     - Actions resolve in declared sequence.
+     - Examples:
+       ![activity_plan.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_plan.png)
+       ![activity_1.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_1.png)
+       ![activity_2.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_2.png)
+       ![activity_3.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_3.png)
+- **Victory Conditions**:
+  - Reduce opponent's Life (20) to <= 0.
+  - Turn 4 consecutive Battle Zones of the opponent into Wilderness (荒野状態).
+    - When a monster attacks and no enemy monster faces it in the opposing Battle Zone, direct damage equal to Attack is dealt to the player and that Battle Zone turns into Wilderness.
+  - If both satisfy victory conditions simultaneously, the player with higher remaining Life wins (Life can be negative). If equal, it's a draw.
 
-- ターン制
-  - ただし、交互にではなく、二人同時にプレイする（そのため引き分けになりやすいかもしれない）
-- マナコスト制
-  - オーソドックスなスタイル。毎ターン使用可能マナが 1 マナ増加。開始マナ 1、最大 10
-- ゾーン
-  - 横 5 列
-  ![zone.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/zone.png)
-  - スタンバイゾーン：モンスターを召喚する場所
-  - バトルゾーン：モンスターが行動する場所
-- 1 ターンは、スペルフェイズ、進軍召喚フェイズ、行動フェイズの三つに分けられる
-  - プレイヤーはスペル、進軍召喚、行動フェイズでプレイする内容を決定する。二人のプレイヤーがともにプレイ内容を決定完了したら、その後実際に順番に処理が実行される。つまり、各プレイヤーは相手がどんなプレイングをしているかは知らずにすべてのフェイズをプレイングし、処理時に初めて相手のプレイング内容を知る。
-  - スペルフェイズ：スペルカードを持っている場合、スペルを発動可能なフェイズ
-  - 進軍召喚フェイズ：モンスターを召喚する。すでに召喚されているモンスターがスタンバイゾーンにいる場合はバトルゾーンに進む
-    - 補足：召喚されたばかりのモンスターは進軍しない、次のターンに進軍
-  - 行動フェイズ：バトルゾーンにいるそれぞれのモンスターの行動を決定する。基本的な効果なしモンスターの場合、攻撃か移動（左か右の空いているマスへ）が可能。
-    - なお、行動フェイズは、移動処理完了後攻撃開始。つまり、行動フェイズはさらに移動フェイズと攻撃フェイズに分けられる。
-    - お互いのモンスターは、移動または攻撃がそれぞれできる。指示した順番に処理される。
-    - 例：
-      ![activity_plan.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_plan.png)
-      ![activity_1.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_1.png)
-      ![activity_2.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_2.png)
-      ![activity_3.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/activity_3.png)
-- 勝利条件
-  - 以下のいずれか達成で勝利
-    - 相手のライフ 20 を削りきる
-    - 相手の 5 つのバトルゾーンすべてを荒野状態にする //TODO: 連続した4つのバトルゾーンに変更
-      - 自分のモンスターが攻撃するとき対面するバトルゾーンに相手モンスターがいない場合、モンスターの攻撃力分相手プレイヤーのライフが減ると同時にそのバトルゾーンが荒野状態となる
-  - お互いのプレイヤーが同時に勝利条件を達成したとき、ライフが相手より高い方が勝者となる（なお、過剰に受けた攻撃でライフはマイナスの値も取る。）。ライフが同じ数値なら引き分け
+## Deck & Card Specifications
 
-# カード
+- **Deck Size**: 30 cards. Max 2 copies of identical cards.
+- **Draw**: Initial hand of 5 cards. Draw 1 card per turn.
+- [Google Spreadsheet Card List](https://docs.google.com/spreadsheets/d/e/2PACX-1vThBi5yGqPFNrDPT00hie3CD4JGQ6Qx71EwTzj8FgZzrGZuejdW0tBbDFIx67aUr9NlhRa1gYO8xvAu/pubhtml)
 
-- スペルカードとモンスターカードの 2 種類
-  - モンスターカード（攻撃力、ライフ、効果テキスト）
-- デッキは 30 枚。同名カードは 2 枚まで。
-  - 実装未定：対戦開始時、事前に組んだ 15 枚のカード束 4 つをフルオープン。相手のカード束を確認可能で、自分のカード束 4 つのうち 2 つを選んでデッキとして対戦開始。とすると競技性が増すのではないかと考えているが面倒なだけかもしれない。当面デッキは普通に 30 枚で組んで戦う形式とする。
-- 初期ドローは 5 枚。毎ターン 1 枚ドロー
-  - 実装未定：手札のスペルカードは相手に見えているようにしたい
-- 以下カードリストは chatgpt で生成したものも含んでいます
-- [スプレッドシートで管理している分](https://docs.google.com/spreadsheets/d/e/2PACX-1vThBi5yGqPFNrDPT00hie3CD4JGQ6Qx71EwTzj8FgZzrGZuejdW0tBbDFIx67aUr9NlhRa1gYO8xvAu/pubhtml)
+### Spell Cards
 
-## スペルカード
+- **Meteor Fall (隕石落下)**:
+  - Cost: 3. Deals 3 damage to a monster in the specified zone. If the zone is a Battle Zone and empty, turns it into Wilderness. Does not damage player directly.
+- **Immovable Rock (不動の岩)**:
+  - Cost: 3. Places an Immovable Rock (Atk: 0, Life: 3) in an empty specified Battle Zone (can target opponent's zone). Has no valid actions in Activity Phase. Nerf: Life -1 at turn start.
+- **Front-Back Swap (前後交換)**:
+  - Cost: 7. Swaps the two vertical slots at the specified column. Can pull an enemy monster to own side.
+- **Flame Guardian (炎の守護)**:
+  - Cost: 4. Target 1 friendly monster; it becomes invincible until next turn.
+- **Summoning Ritual (召喚の儀式)**:
+  - Cost: 3. Summons a monster with mana cost <= 3 directly from hand into Battle Zone.
+- **Blazing Spell (烈火の呪文)**:
+  - Cost: 5. Deals 1 damage to all enemy monsters in Battle Zone and applies Burn (take 1 damage at next turn start).
+- **Fire Rain (火の雨)**:
+  - Cost: 6. Strikes 3 random Battle Zones; deals 3 damage to all monsters in each targeted zone.
 
-- 隕石落下
-  - コスト３：指定したゾーンにモンスターがいる場合モンスターに 3 ダメージ与える。指定したゾーンがバトルゾーンでかつモンスターがいない場合は、荒野に変える。
-  - 補足：相手プレイヤーに直接ダメージは入らない。が、強すぎるか？
-- 不動の岩
-  - コスト３：空いている指定したバトルゾーンに不動の岩（攻撃力：0 　ライフ：3）を置く。
-    - ナーフ：ターン開始時にライフ-1
-    - 補足：不動の岩は、行動フェイズに可能な行動はない。相手のバトルゾーンにも置ける
-- 前後交換
-  - コスト 7：指定した位置の縦 2 マスを交換する
-  - 補足：相手のモンスターを自分に引き入れることも可能。強すぎるので、モンスターがいるところ同士の交換しかゆるさないとするか？
+### Monster Cards
 
-1. **炎の守護**:
-   - コスト：4
-   - 効果：自分のモンスター 1 体を選ぶ。そのモンスターは次のターンまで無敵状態となり、相手の攻撃を受けません。
-2. **召喚の儀式**:
-   - コスト：3
-   - 効果：バトルゾーンに手札から新しいモンスターを召喚します。このモンスターはマナコストが 3 以下である必要があります。召喚したモンスターはこのターンの進軍召喚フェイズでバトルゾーンに進軍します。
-3. **烈火の呪文**:
-   - コスト：5
-   - 効果：相手のバトルゾーンにいる全てのモンスターに 1 ダメージ。さらにダメージを与えたモンスターを 1 ターンの間、燃焼状態にする。燃焼状態:次のターン開始時に 1 ダメージを受ける。
-     - 補足：強すぎたためナーフ。(即時発動するカードは強かった)
-4. **火の雨**:
-   - コスト：6
-   - 効果：ランダムに 3 つのバトルゾーンに火の雨を降らせ、それぞれのバトルゾーンにいる全てのモンスターに 3 ダメージを与えます。
+| Name | Code Name | Cost | Atk | Life | Effect |
+|------|-----------|------|-----|------|--------|
+| Mouse | ネズミ | 1 | 1 | 1 | - |
+| Shiba Inu Ranmaru | 柴犬ラン丸 | 2 | 1 (or 2) | 2 (or 1) | Attack +1 whenever it moves |
+| Cat | ネコ | 1 | 2 | 2 | - |
+| Frog Private | カエル三等兵 | 0 (or 2) | 1 | 2 | Grows at turn start: T1 +1 Life, T2 +1 Atk, T3 +1 Atk & +1 Life |
+| Turtle | 亀 (亀吉) | 0 (or 2) | 4 (or 0) | 2 (or 4) | High durability tank |
+| Electric Jellyfish | 電気クラゲ | 1 (or 2) | 1 | 2 (or 1) | Inflicts Stun (cannot act next turn) on attacked enemy |
+| Boar | イノシシ | 3 | 2 (or 3) | 3 (or 2) | - |
+| Neighboring Stoat | となりのオコジョ | 3 | 1 | 2 | Attacks forward and forward-right simultaneously |
+| Wyvern | ワイバーン | 4 | 4 | 2 | - |
+| Pisces Archer | うお座の射手 | 4 | 2 | 2 | Can attack any chosen Battle Zone |
+| Fire Dragon | 炎のドラゴン | 5 | 6 | 7 | On marching into Battle Zone, deals 2 damage to all adjacent enemy monsters |
+| Ulvan | ウルヴァン | 8 | 8 | 8 | High-stat powerhouse |
+| Frost Witch | 氷の魔導士「フロストウィッチ」 | 5 | 3 | 4 | Freezes a chosen enemy monster at activity phase start |
+| Thunder Colossus | 雷の巨人「サンダーコロッサス」 | 8 | 4 | 7 | Deals 3 damage to a random enemy monster at turn start |
+| Gaia Beast | 大地の守護者「ガイアビースト」 | 6 | 2 | 7 | Gains +1 Atk for each 1 damage taken |
+| Nightmare Lord | 闇の召喚者「ナイトメアロード」 | 6 | 4 | 5 | Summons two Nightmare Tokens (1/1) on summon |
+| Tempest Knight | 風の戦士「テンペストナイト」 | 5 | 3 | 4 | Moves an enemy monster to an empty Battle Zone |
+| Seraphim | 聖なる天使「セラフィム」 | 6 | 2 | 6 | Heals all allies for 2 at activity phase end |
+| Venom Snake | 毒の蛇「ヴェノムスネーク」 | 4 | 3 | 3 | Inflicts Poison for 2 turns on hit |
+| Mecha Golem | 機械のゴーレム「メカゴーレム」 | 7 | 5 | 5 | Doubles Atk of a random ally for 2 turns on summon |
+| Chrono Mage | 時間の操り師「クロノメイジ」 | 5 | 2 | 4 | Repeats one chosen phase |
 
-## モンスターカード
+## Spell Execution Engine Specifications
 
-- ネズミ
-  - マナコスト１攻撃力１ライフ１
-- 柴犬ラン丸
-  - マナコスト 2 攻撃力 2 ライフ 1
-  - 効果：移動するごとに攻撃力＋ 1
-- ネコ
-  - マナコスト 2 攻撃力 1 ライフ 2
-- カエル三等兵
-  - マナコスト 2 攻撃力 1 ライフ 1
-  - 次ターン開始時 攻撃力 1 ライフ 2
-  - 次ターン開始時 攻撃力 2 ライフ 2
-  - 次ターン開始時 攻撃力 3 ライフ 3 となる
-    - 補足：二等兵、一等兵、軍曹
-- 亀吉
-  - マナコスト 2 攻撃力 0 ライフ 4
-- 電気クラゲ
-  - マナコスト 2 攻撃力 1 ライフ 1
-  - 効果：攻撃した相手モンスターにスタンを付与する。スタン：次のターン行動不能。
-- イノシシ
-  - マナコスト 3 攻撃力 3 ライフ 2
-- となりのオコジョ
-  - マナコスト 3 攻撃力 1 ライフ 2 攻撃時、前と右前に同時に攻撃する。
-- ワイバーン
-  - マナコスト４攻撃力 4 ライフ 2
-- うお座の射手
-  - マナコスト 4 攻撃力 2 ライフ 2
-  - 任意のバトルゾーンに攻撃することができる。
-
-1. **炎のドラゴン「ファイアストーム」**
-   - 攻撃力: 5
-   - ライフ: 6
-   - 効果: バトルゾーンに進軍したとき、隣接するすべての敵モンスターに 2 ダメージを与える。
-   - **マナコスト: 7**
-2. **氷の魔導士「フロストウィッチ」**
-   - 攻撃力: 3
-   - ライフ: 4
-   - 効果: 行動フェイズ開始時、指定した敵モンスターを 1 ターン凍結（行動不能）させる。
-     - 補足：いつ指定する？
-   - **マナコスト: 5**
-3. **雷の巨人「サンダーコロッサス」**
-   - 攻撃力: 4
-   - ライフ: 7
-   - 効果: 毎ターン開始時に、ランダムな敵モンスターに 3 ダメージを与える。
-   - **マナコスト: 8**
-4. **大地の守護者「ガイアビースト」**
-   - 攻撃力: 2
-   - ライフ: 7
-   - 効果: 自身のライフが減少すると、そのダメージを吸収し、自分の攻撃力が増加する（1 ダメージにつき攻撃力+1）。
-   - **マナコスト: 6**
-5. **闇の召喚者「ナイトメアロード」**
-   - 攻撃力: 4
-   - ライフ: 5
-   - 効果: 召喚時に、「ナイトメアトークン」2 体をバトルゾーンに追加する（攻撃力: 1、ライフ: 1）。
-   - **マナコスト: 6**
-6. **風の戦士「テンペストナイト」**
-   - 攻撃力: 3
-   - ライフ: 4
-   - 効果: 移動フェイズ時、敵モンスターを 1 体指定し、任意の空いているバトルゾーンに移動させることができる。
-     - 補足：処理時に、指定した移動先のバトルゾーンが埋まっていたら不発。指定した敵モンスターが存在しなくなっていた場合も不発。
-   - **マナコスト: 5**
-7. **聖なる天使「セラフィム」**
-   - 攻撃力: 2
-   - ライフ: 6
-   - 効果: 行動フェイズ終了時に、自身を含むすべての味方モンスターのライフを 2 回復する。
-   - **マナコスト: 6**
-8. **毒の蛇「ヴェノムスネーク」**
-   - 攻撃力: 3
-   - ライフ: 3
-   - 効果: 攻撃が命中した敵モンスターを 2 ターンの間「毒状態」にする（ターン終了時にライフが 1 減少）。
-     - 補足：弱そうな気がするがスタッツそんなに悪くない
-   - **マナコスト: 4**
-9. **機械のゴーレム「メカゴーレム」**
-   - 攻撃力: 5
-   - ライフ: 5
-   - 効果: 召喚時に、自身を含むランダムな味方モンスター 1 体の攻撃力を 2 ターンの間 2 倍にする。
-   - **マナコスト: 7**
-10. **時間の操り師「クロノメイジ」**
-    - 攻撃力: 2
-    - ライフ: 4
-    - 効果: 行動フェイズ開始時に、任意の 1 フェイズをもう一度実行できる（同じフェイズの行動を 2 回行う）。
-      - 補足：興味深いがさすがに実装難しそう。使って面白いかどうかもわからない。スペル２回発動すると考えたら結構よいか？
-    - **マナコスト: 5**
-
-# スペルの実装のための処理補足
-
-- スペルフェイズについて。スペルフェイズはスペルフェイズ 1,スペルフェイズ 2…スペルフェイズ N に細分化される
-  - 自分がスペル「隕石落下」、「不動の岩」相手が「隕石落下」を使ったターンのスペルの処理。
-
-スペルフェイズ１お互いの「隕石落下」が同時に発動
-
-スペルフェイズ２自分の「不動の岩」が発動
-
-という順になる。使った枚数だけスペルフェイズが増える。
-
-- スペルスピードについて
-  同じスペルフェイズに実行されるカードは、すべてのカード種類ごとにカードナンバーをつけておいてカードナンバーが小さいほうを先に処理する。
-  例：自分「隕石落下」（カード No.1 とする）と相手「不動の岩」（カード No.2）が同じマスを指定してスペルフェイズ１でこの二つのスペルが発動されたとき。「隕石落下」してから「不動の岩」が生成される。（「不動の岩」に「隕石落下」によるダメージは入らない）
-- スペル不発
-  - 一部のカードは同じスペルフェイズ N でお互い同時に使うと不発になる場合がある
-  - 例：今のカードプールでは、スペルカード「前後交換」のみスペル不発が発生しうる。スペルフェイズ１でお互い「前後交換」を全く別のマスに対して使用していた場合は不発にはならないが、以下画像のように一部重なって「前後交換」を使用していた場合にスペル不発となってスペルは消える。
+- **Spell Phase Subdivisions**:
+  - The Spell Phase is evaluated in sequential sub-phases: Spell Phase 1, Spell Phase 2, ... Spell Phase N.
+  - If Player A casts Meteor Fall & Immovable Rock, and Player B casts Meteor Fall:
+    - *Sub-phase 1*: Both Meteor Falls resolve.
+    - *Sub-phase 2*: Player A's Immovable Rock resolves.
+- **Spell Priority (Speed)**:
+  - Spells within the same sub-phase resolve in ascending order of `cardNo` (lower card numbers resolve first).
+  - Example: Card No.1 (Meteor Fall) resolves before Card No.2 (Immovable Rock).
+- **Spell Fizzle / Negation (スペル不発)**:
+  - If both players cast the **same spell card** in the same sub-phase on conflicting targets (e.g., overlapping `Front-Back Swap`), the spell can fizzle.
     ![spell_huhatu.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/spell_huhatu.png)
     ![spell_huhatu2.png](%E3%83%86%E3%82%99%E3%82%B7%E3%82%99%E3%82%BF%E3%83%AB%E3%82%AB%E3%83%BC%E3%83%88%E3%82%99%E3%82%B1%E3%82%99%E3%83%BC%E3%83%A0%E3%80%8C%E3%83%8C%E3%83%AB%E3%83%9B%E3%82%9A%E3%82%AB%E3%82%99%E3%80%8D%201955a0bf5d894d4788fa4f70df5c7497/spell_huhatu2.png)
-  - プログラムとしては「前後交換」のこの場合のみ不発となるという特殊処理を書くとほかにもこのようなカードが増えた時辛いため、不発処理はより汎用的な次のような判定処理とする。
-    - 同じフェイズ N で同名のカードがプレイされた場合、プレイヤーＡのカードを先に実行した場合と、プレイヤーＢのカードを先に実行した場合の二つの盤面を生成する。生成した盤面の結果が異なる場合、不発処理とする。
-    - 繰り返しになるが、同じフェイズ N の同名カードでない限りスペル不発は起きない。なぜなら処理の優先順位があり、その順番に一意に処理されるため。
-    - テストケース：ランダムに攻撃する系「火の雨」が不発処理とならないように乱数の処理は気を付けること。プレイヤー A、プレイヤー B どちらを先にしても同じ盤面になるようにテストしておく。
-
-# その他メモ
- - 移動先にモンスターがいる場合交代できる方が面白いかも
+  - **General Fizzle Detection Algorithm**:
+    When identical cards are played in the same sub-phase:
+    1. Simulate Branch A (Player 1 executes first, then Player 2).
+    2. Simulate Branch B (Player 2 executes first, then Player 1).
+    3. If the resulting board states differ, the action fizzles (negated with no effect).
+    *(Random-targeting spells like Fire Rain use deterministic seeds so ordering does not cause false fizzles).*

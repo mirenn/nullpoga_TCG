@@ -1,31 +1,32 @@
-# ヌルポガ TCG APIリファレンス
+# Nullpoga TCG API Reference
 
-## 目次
+## Table of Contents
 
-1. 認証API
-2. ゲーム管理API
-3. アクション操作API
+1. Authentication API
+2. Game Management API
+3. Action Operations API
+4. Action Data Structures & Enums
 
-## 認証API
+---
 
-### ログイン
+## 1. Authentication API
 
-ユーザー認証を行い、JWTトークンを取得します。
+### Login
 
-```
+Authenticates user and returns JWT token.
+
+```http
 POST /auth/login
 ```
 
-#### リクエストボディ
-
+#### Request Body
 ```json
 {
   "username": "string"
 }
 ```
 
-#### レスポンス
-
+#### Response
 ```json
 {
   "access_token": "string",
@@ -36,21 +37,21 @@ POST /auth/login
 }
 ```
 
-## ゲーム管理API
+---
 
-### ゲーム開始（マッチメイキング）
+## 2. Game Management API
 
-対戦相手とのマッチメイキングを開始します。
+### Start Game / Matchmaking
 
-```
+Starts matchmaking to find an opponent or create a room.
+
+```http
 POST /api/start-game
 ```
 
-#### 認証
-- Bearer トークン必須
+- **Auth**: Bearer Token required.
 
-#### レスポンス
-- 対戦相手が見つかった場合
+#### Response (Match Found)
 ```json
 {
   "status": "matched",
@@ -58,151 +59,125 @@ POST /api/start-game
 }
 ```
 
-- 対戦相手待ちの場合
+#### Response (Waiting)
 ```json
 {
   "status": "waiting"
 }
 ```
 
-### ゲーム状態取得
+### Get Game State
 
-現在のゲーム状態を取得します。
+Retrieves the current game room state.
 
-```
+```http
 GET /api/game-state
 ```
 
-#### 認証
-- Bearer トークン必須
+- **Auth**: Bearer Token required.
 
-#### レスポンス
-
+#### Response
 ```json
 {
   "roomId": "string",
   "gameRoom": {
     "userIds": ["string", "string"],
     "gameState": {
-      "player1": { /* プレイヤー情報 */ },
-      "player2": { /* プレイヤー情報 */ },
-      "history": [ /* 履歴情報 */ ],
-      "renderLastHisIndex": number
+      "player1": { /* Player details */ },
+      "player2": { /* Player details */ },
+      "history": [ /* TurnHistoryEntry array */ ],
+      "renderLastHisIndex": 0
     }
   }
 }
 ```
 
-### マッチング待機状態確認
+### Matchmaking Status & Cancellation
 
-ユーザーがマッチング待機中かどうかを確認します。
-
-```
+```http
 GET /api/is-waiting/:userId
 ```
+- Response: `true` | `false`
 
-#### パスパラメータ
-- `userId`: ユーザーID
-
-#### レスポンス
-
-```json
-true または false
-```
-
-### マッチング待機キャンセル
-
-マッチング待機をキャンセルします。
-
-```
+```http
 GET /api/cancel-matching/:userId
 ```
+- Response: `true` | `false`
 
-#### パスパラメータ
-- `userId`: ユーザーID
+---
 
-## アクション操作API
+## 3. Action Operations API
 
-### プレイヤーアクション提出（対人戦）
+### Submit Player Actions (PvP)
 
-プレイヤーのアクションを提出します。
+Submits all planned phase actions for the turn.
 
-```
+```http
 POST /api/player-action
 ```
 
-#### 認証
-- Bearer トークン必須
+- **Auth**: Bearer Token required.
 
-#### リクエストボディ
-
+#### Request Body
 ```json
 {
-  "spell_phase_actions": [/* スペルフェイズのアクション */],
-  "summon_phase_actions": [/* 進軍召喚フェイズのアクション */],
-  "activity_phase_actions": [/* 行動フェイズのアクション */],
+  "spell_phase_actions": [/* Spell Phase Actions */],
+  "summon_phase_actions": [/* Summon Phase Actions */],
+  "activity_phase_actions": [/* Activity Phase Actions */],
   "roomId": "string"
 }
 ```
 
-#### レスポンス
-
+#### Response
 ```json
 {
   "success": true,
   "gameState": {
     "roomId": "string",
-    "gameRoom": {
-      /* ゲーム状態 */
-    }
+    "gameRoom": { /* Current Game Room */ }
   }
 }
 ```
 
-### プレイヤーアクション提出（CPU戦）
+### Submit Player Actions (CPU Mode)
 
-プレイヤーのアクションを提出し、CPUの応答も自動的に処理します。
+Submits player actions and immediately triggers CPU response + turn resolution.
 
-```
+```http
 POST /api/player-action-with-cpu
 ```
 
-#### 認証
-- Bearer トークン必須
+- **Auth**: Bearer Token required.
 
-#### リクエストボディ
-
+#### Request Body
 ```json
 {
-  "spell_phase_actions": [/* スペルフェイズのアクション */],
-  "summon_phase_actions": [/* 進軍召喚フェイズのアクション */],
-  "activity_phase_actions": [/* 行動フェイズのアクション */],
+  "spell_phase_actions": [/* Spell Phase Actions */],
+  "summon_phase_actions": [/* Summon Phase Actions */],
+  "activity_phase_actions": [/* Activity Phase Actions */],
   "roomId": "string"
 }
 ```
 
-#### レスポンス
-
+#### Response
 ```json
 {
   "success": true,
   "gameState": {
     "roomId": "string",
-    "gameRoom": {
-      /* ゲーム状態 */
-    }
+    "gameRoom": { /* Resolved Game Room with history */ }
   }
 }
 ```
 
-## アクションデータ構造
+---
 
-### アクションタイプ
+## 4. Action Data Structures & Enums
 
-アクションタイプは以下の値を取ります:
+### ActionType Enum
 
 ```typescript
-enum ActionType {
+export enum ActionType {
   CAST_SPELL = 'CAST_SPELL',
   SUMMON_MONSTER = 'SUMMON_MONSTER',
   MONSTER_MOVE = 'MONSTER_MOVE',
@@ -214,12 +189,10 @@ enum ActionType {
 }
 ```
 
-### フェイズ種別
-
-フェイズ種別は以下の値を取ります:
+### PhaseKind Enum
 
 ```typescript
-enum PhaseKind {
+export enum PhaseKind {
   SPELL_PHASE = 'SPELL_PHASE',
   SUMMON_PHASE = 'SUMMON_PHASE',
   ACTIVITY_PHASE = 'ACTIVITY_PHASE',
@@ -228,25 +201,34 @@ enum PhaseKind {
 }
 ```
 
-### モンスター召喚アクション例
+### Action Payload Examples
 
+#### Monster Summon Action
 ```json
 {
   "actionType": "SUMMON_MONSTER",
   "actionData": {
-    "monsterCard": { /* モンスターカード情報 */ },
+    "monsterCard": {
+      "cardNo": 1,
+      "cardName": "ネズミ",
+      "attack": 1,
+      "life": 1,
+      "manaCost": 1
+    },
     "summonStandbyFieldIdx": 2
   }
 }
 ```
 
-### モンスター攻撃アクション例
-
+#### Monster Attack Action
 ```json
 {
   "actionType": "MONSTER_ATTACK",
   "actionData": {
-    "monsterCard": { /* モンスターカード情報 */ }
+    "monsterCard": {
+      "cardNo": 1,
+      "cardName": "ネズミ"
+    }
   }
 }
 ```

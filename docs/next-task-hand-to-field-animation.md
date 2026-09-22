@@ -1,53 +1,54 @@
-# 次回タスク：手札から場への召喚アニメーションとフェイズ別状態管理の実装
+# Next Task: Summon Animation (Hand-to-Field Flight) & Phase-based State Management
 
-## 1. ユーザー要望と背景
-- **要望**:
-  > 「すこしよくなりましたが、初めからそこに表示されているのは私のイメージとは違います。手札から場に出るアニメーションをつけるべきで、召喚されるまではそれぞれ手札など正しい場所にいるべきです。」
-- **課題**:
-  - 現在の実装では、計画段階（ドラッグ＆ドロップ時）でスロットにカードが仮置きされ、ターン提出（Submit Actions）後のアニメーション再生開始時にもすでにスロットにカードが表示された状態になってしまっている。
-  - そのため、召喚演出のタイミングになった時に「最初からスロットにあるカードの枠が光っているだけ」に見え、デジタルTCGらしい「手札からフィールドへカードが繰り出されるダイナミックさ」が不足している。
+## 1. Requirement & Background
 
----
-
-## 2. 実現する仕様（理想のユーザー体験）
-
-### ① アクション提出直後〜召喚フェイズまでの状態
-- アクション提出後、アニメーション再生が開始された時点では、**召喚予定のカードはまだ手札に残っており、対象のスタンバイゾーンは空**の状態でスタートする。
-- プレイヤー・相手ともに「ターン開始時点の元の位置」にカードが正しく存在している。
-
-### ② 召喚ステップでの演出（手札から場への飛翔）
-1. **召喚アナウンス**:
-   - バナーに「【召喚】あなたが『ネズミ』を召喚！」と表示。
-2. **手札からのカード飛翔アニメーション**:
-   - 手札内の該当カード（またはクローン要素）が、対象スタンバイゾーンのスロット位置に向かってスムーズに移動・縮小しながら飛んでいく（フライト演出）。
-   - 相手（BOT）の召喚時も同様に、相手手札エリアから相手のスタンバイゾーンへカードが飛び出す。
-3. **着地・配置演出**:
-   - スロットに到達した瞬間に、スロットがシアン色に発光（召喚パルス）し、カードが実体化してスロット内に収まる。
-   - 同時に手札からそのカードが完全に消費される。
+- **Feedback**:
+  > "Having the card appear in the slot right from the start doesn't match the vision. Cards should fly from the hand onto the field with an animation, staying in their proper place (the hand) until they are summoned."
+- **Issue**:
+  - Currently, when cards are planned via Drag & Drop, they tentatively sit in the standby slot. Upon submission (`handleActionSubmit`), they remain rendered directly in the slot before the summon step animation even begins.
+  - As a result, the summon moment feels like "a card that was already sitting in the slot simply glows", lacking the dynamic card flight feel characteristic of digital TCGs.
 
 ---
 
-## 3. 実装アプローチ案
+## 2. Target Specifications & User Experience
 
-### 案A: FLIP技法 / 絶対座標トランスレーションによるフライト演出（推奨）
-- `getBoundingClientRect()` を利用し、手札内のカード要素の位置と、配置先スロット（`player-szone-${idx}`）の位置を取得。
-- 召喚時に一時的なフライングカード要素（固定位置オーバーレイ）を生成し、手札位置からスロット位置へ CSS `transition: transform 0.6s cubic-bezier(...)` で滑らかに移動させる。
-- 移動完了コールバック後にスロットにカードを描画し、オーバーレイ要素を破棄する。
+### Phase 1: State Immediately Post-Submit until Summon Resolution
+- When action submission completes and animation sequence begins, **cards scheduled for summon must still visually reside in the player's hand**, and target Standby Zones must remain empty.
+- Both player and CPU cards should start at their initial turn-start positions.
 
-### 案B: Framer Motion / react-spring などのアニメーションライブラリの導入
-- Next.js / React 用のモーションライブラリ（`framer-motion` など）を活用し、`layoutId` または座標アニメーションで手札からスロットへの移動を宣言的に実装する。
-
-### 盤面状態の制御（GameClient.tsx）
-- `handleActionSubmit` のアニメーション開始時に、一度「手札から召喚前の状態」を初期ステートとして描画。
-- 召喚ステップの `act.actionType === 'SUMMON_MONSTER'` を処理する瞬間に、上記アニメーションをトリガーし、アニメーション完了と同時に盤面のスタンバイゾーンにカードを追加する。
+### Phase 2: Summon Step Execution (Hand-to-Field Flight)
+1. **Summon Announcement**:
+   - Banner displays: `"【Summon】You summoned 'Mouse (ネズミ)'!"`
+2. **Flight Animation from Hand to Field**:
+   - The card element in hand (or an animated clone overlay) smoothly transitions and scales toward the destination Standby Zone slot (`player-szone-${idx}`).
+   - The same applies to opponent (BOT) summons: flight from opponent hand area to their standby slot.
+3. **Landing & Placement Pulse**:
+   - Upon reaching the slot, the slot emits a cyan/gold glow pulse.
+   - The card materializes inside the Standby Zone slot.
+   - The card is simultaneously removed from the hand.
 
 ---
 
-## 4. 修正対象想定ファイル
+## 3. Implementation Approaches
+
+### Approach A: FLIP / Absolute Coordinate Flight Overlay (Recommended)
+- Use `getBoundingClientRect()` to compute starting hand card coordinates and target standby slot coordinates.
+- Spawn a temporary floating overlay card with CSS `transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.6s`.
+- On transition completion callback, commit card to `boardState.standbyZone` and remove the overlay.
+
+### Approach B: Motion Library (`framer-motion`)
+- Use `layoutId` or declarative motion components between hand elements and target field slots.
+
+### Game State Orchestration (`GameClient.tsx`)
+- At the start of `handleActionSubmit` playback, initialize a snapshot where planned summon cards remain in hand.
+- When stepping through `act.actionType === 'SUMMON_MONSTER'`, trigger the flight animation sequence and wait for it before proceeding to subsequent steps.
+
+---
+
+## 4. Target Files to Modify
 1. `packages/web/src/components/GameClient.tsx`:
-   - アニメーション再生開始時の初期ステート（召喚前の手札・空スロット）の設定
-   - 召喚フライトアニメーションのトリガー制御
+   - Pre-summon initial state setup and playback step synchronization.
 2. `packages/web/src/components/GameBoard.tsx` / `packages/web/src/components/Hand.tsx`:
-   - 手札要素とスロット要素のDOM参照（ref）またはID連携
-3. `packages/web/src/app/App.css` または専用エフェクトコンポーネント:
-   - 手札から場への移動、着地エフェクトのスタイル
+   - Slot coordinate refs/IDs and flight origin references.
+3. `packages/web/src/app/App.css` or dedicated effect overlay:
+   - Flight trajectory and landing pulse styles.

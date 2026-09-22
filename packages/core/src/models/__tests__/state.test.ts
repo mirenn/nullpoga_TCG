@@ -52,8 +52,8 @@ describe('State', () => {
         });
     });
 
-    describe('executeFullTurn sequential history', () => {
-        it('should record summon actions sequentially in separate history entries', () => {
+    describe('executeFullTurn simultaneous summon history', () => {
+        it('should record both players 1st summon actions simultaneously in the same history entry', () => {
             const p1Card = state['player1'].handCards[0];
             const p2Card = state['player2'].handCards[0];
 
@@ -80,17 +80,12 @@ describe('State', () => {
             expect(turnHist[0].State.player1.zone.standbyField[0]).toBeNull();
             expect(turnHist[0].State.player2.zone.standbyField[2]).toBeNull();
 
-            // step 1: player1 (first player) summon
+            // step 1: Both player1 and player2 summon simultaneously
+            expect(turnHist.length).toBe(2); // snapshot + 1 simultaneous summon step
             expect(turnHist[1].ActionDict[state['player1'].userId]).toBeDefined();
+            expect(turnHist[1].ActionDict[state['player2'].userId]).toBeDefined();
             expect(turnHist[1].State.player1.zone.standbyField[0]).not.toBeNull();
-            // player2 is not yet summoned in step 1
-            expect(turnHist[1].State.player2.zone.standbyField[2]).toBeNull();
-
-            // step 2: player2 summon
-            expect(turnHist[2].ActionDict[state['player2'].userId]).toBeDefined();
-            expect(turnHist[2].State.player1.zone.standbyField[0]).not.toBeNull();
-            // player2 is now summoned in step 2
-            expect(turnHist[2].State.player2.zone.standbyField[2]).not.toBeNull();
+            expect(turnHist[1].State.player2.zone.standbyField[2]).not.toBeNull();
 
             // ターン2: 待機フィールドのカードが前進（進軍）する
             state.executeFullTurn([], [], [], []);

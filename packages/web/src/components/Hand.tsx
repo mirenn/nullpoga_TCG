@@ -12,9 +12,10 @@ interface HandProps {
   isAnimating?: boolean;
   isGameOver?: boolean;
   flyingCardUniqId?: string | null;
+  flyingCardUniqIds?: string[];
 }
 
-const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = false, flyingCardUniqId }: HandProps) => {
+const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = false, flyingCardUniqId, flyingCardUniqIds }: HandProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   
   try {
@@ -34,7 +35,7 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
         {myHandCds.map((card, index) => {
           if (card.cardType === GameModels.CardType.MONSTER) {
             const canAfford = card.manaCost <= currentPlanMana;
-            const isFlyingThis = flyingCardUniqId && flyingCardUniqId === card.uniqId;
+            const isFlyingThis = (flyingCardUniqId && flyingCardUniqId === card.uniqId) || Boolean(flyingCardUniqIds?.includes(card.uniqId));
             let summon_standby_field_idx = undefined;
             const action = GameUtils.getRenderActionByUserId(gameState, myUserId);
             if (

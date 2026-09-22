@@ -38,7 +38,7 @@ function GameClient() {
   const [isAnimating, setIsAnimating] = useState(false);
   const [turnMessage, setTurnMessage] = useState<string>('「Start Game」を押してゲームを開始してください');
   const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
-  const [flyingCard, setFlyingCard] = useState<FlyingCardState | null>(null);
+  const [flyingCards, setFlyingCards] = useState<FlyingCardState[]>([]);
 
   const currentGameState = extractedGameResponse?.gameRoom?.gameState;
   const { isGameOver, result: gameResult, message: gameOverMessage } = GameUtils.checkGameOver(
@@ -181,25 +181,50 @@ function GameClient() {
               setTurnMessage(`アクション実行中... (${i + 1}/${lastTurnSteps.length})`);
               await new Promise((r) => setTimeout(r, 600));
             } else {
-              for (const actorId of actorIds) {
-                const act = actionDict[actorId];
-                const isMe = actorId === userId;
-                const actorName = isMe ? 'あなた' : '相手(BOT)';
+              // 召喚アクションが含まれているか確認（自分・相手の同時召喚を判定）
+              const summonActorIds = actorIds.filter(
+                (actorId) =>
+                  actionDict[actorId]?.actionType === 'SUMMON_MONSTER' ||
+                  actionDict[actorId]?.actionType === 'SUMMON_PHASE_END'
+              );
 
-                if (act.actionType === 'SUMMON_MONSTER' || act.actionType === 'SUMMON_PHASE_END') {
+              if (summonActorIds.length > 0) {
+                const CARD_WIDTH = 72;
+                const CARD_HEIGHT = 98;
+                const newFlyingCards: FlyingCardState[] = [];
+                const flyingSlotIds: string[] = [];
+                const summonSlotIds: string[] = [];
+                const summonCards: Record<string, GameModels.MonsterCard> = {};
+
+                const summonInfos = summonActorIds.map((actorId) => {
+                  const act = actionDict[actorId];
+                  const isMe = actorId === userId;
+                  const actorName = isMe ? 'あなた' : '相手(BOT)';
                   const card = act.actionData?.monsterCard;
                   const cardName = card?.cardName || 'モンスター';
                   const slotIdx = act.actionData?.summonStandbyFieldIdx;
                   const slotId = isMe ? `player-szone-${slotIdx}` : `opponent-szone-${slotIdx}`;
+                  return { actorId, act, isMe, actorName, card, cardName, slotIdx, slotId };
+                });
 
-                  setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
+                // バナーメッセージ設定
+                if (summonInfos.length >= 2) {
+                  const myInfo = summonInfos.find((s) => s.isMe);
+                  const oppInfo = summonInfos.find((s) => !s.isMe);
+                  if (myInfo && oppInfo) {
+                    setTurnMessage(`【同時召喚】あなた「${myInfo.cardName}」と相手「${oppInfo.cardName}」が同時に召喚！`);
+                  } else {
+                    setTurnMessage(`【同時召喚】双方が同時にモンスターを召喚！`);
+                  }
+                } else {
+                  setTurnMessage(`【召喚】${summonInfos[0].actorName}が「${summonInfos[0].cardName}」を召喚！`);
+                }
 
-                  // 始点と終点のDOM座標を取得（カード実体サイズ 80x120 の中央配置位置を正確に計算）
-                  const CARD_WIDTH = 72;
-                  const CARD_HEIGHT = 98;
+                // 始点・終点座標の計算
+                for (const info of summonInfos) {
                   let startRect: { top: number; left: number; width: number; height: number } | null = null;
-                  if (isMe) {
-                    const cardEl = card?.uniqId ? document.getElementById(`player-hand-card-${card.uniqId}`) : null;
+                  if (info.isMe) {
+                    const cardEl = info.card?.uniqId ? document.getElementById(`player-hand-card-${info.card.uniqId}`) : null;
                     if (cardEl) {
                       const rect = cardEl.getBoundingClientRect();
                       startRect = {
@@ -233,12 +258,10 @@ function GameClient() {
                     }
                   }
 
-                  const slotEl = document.getElementById(slotId);
+                  const slotEl = document.getElementById(info.slotId);
                   let endRect: { top: number; left: number; width: number; height: number } | null = null;
                   if (slotEl) {
                     const rect = slotEl.getBoundingClientRect();
-                    // スロット（幅約200px）の中央にカード（幅80px、高さ120px）が配置されるため、
-                    // スロット中央のカード座標を着地点として正確に設定
                     endRect = {
                       top: rect.top + (rect.height - CARD_HEIGHT) / 2,
                       left: rect.left + (rect.width - CARD_WIDTH) / 2,
@@ -247,32 +270,47 @@ function GameClient() {
                     };
                   }
 
-                  // フライト演出の実行（手札からスロットへ飛ぶ）
-                  if (startRect && endRect && card) {
-                    setActionEffect({ flyingSlotId: slotId });
-                    setFlyingCard({ card, startRect, endRect });
-                    await new Promise((r) => setTimeout(r, 600));
-                    setFlyingCard(null);
+                  if (startRect && endRect && info.card) {
+                    newFlyingCards.push({ card: info.card, startRect, endRect });
+                    flyingSlotIds.push(info.slotId);
                   }
-
-                  // 着地：該当プレイヤーのみ盤面を更新（他プレイヤーのカードが先行出現するのを防ぐ）
-                  const isActorP1 = animRoomState.gameRoom.gameState.player1?.userId === actorId;
-                  if (isActorP1) {
-                    if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
-                  } else {
-                    if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  summonSlotIds.push(info.slotId);
+                  if (info.card) {
+                    summonCards[info.slotId] = info.card;
                   }
-                  setExtractedGameResponse(structuredClone(animRoomState));
+                }
 
-                  // 着地パルス（シアン色の光彩と衝撃波）
-                  setActionEffect({
-                    summonSlotId: slotId,
-                    summonCard: card,
-                    isLanding: true,
-                  });
-                  await new Promise((r) => setTimeout(r, 650));
-                  setActionEffect(null);
-                } else if (act.actionType === 'MONSTER_ATTACK') {
+                // フライト演出の実行（手札からスロットへ飛ぶ：両者同時）
+                if (newFlyingCards.length > 0) {
+                  setActionEffect({ flyingSlotIds });
+                  setFlyingCards(newFlyingCards);
+                  await new Promise((r) => setTimeout(r, 600));
+                  setFlyingCards([]);
+                }
+
+                // 着地：盤面更新（両プレイヤーの状態を同時に反映）
+                if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                setExtractedGameResponse(structuredClone(animRoomState));
+
+                // 着地パルス（シアン色の光彩と衝撃波：両スロット同時）
+                setActionEffect({
+                  summonSlotIds,
+                  summonCards,
+                  isLanding: true,
+                });
+                await new Promise((r) => setTimeout(r, 650));
+                setActionEffect(null);
+              }
+
+              // 召喚以外のアクション（攻撃、進軍など）を処理
+              const nonSummonActorIds = actorIds.filter((id) => !summonActorIds.includes(id));
+              for (const actorId of nonSummonActorIds) {
+                const act = actionDict[actorId];
+                const isMe = actorId === userId;
+                const actorName = isMe ? 'あなた' : '相手(BOT)';
+
+                if (act.actionType === 'MONSTER_ATTACK') {
                   if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
                   if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
                   setExtractedGameResponse(structuredClone(animRoomState));
@@ -333,9 +371,9 @@ function GameClient() {
                   // フライト演出の実行（待機ゾーンからバトルゾーンへ飛行移動）
                   if (startRect && endRect && card) {
                     setActionEffect({ flyingSlotId: startSlotId });
-                    setFlyingCard({ card, startRect, endRect });
+                    setFlyingCards([{ card, startRect, endRect }]);
                     await new Promise((r) => setTimeout(r, 600));
-                    setFlyingCard(null);
+                    setFlyingCards([]);
                   }
 
                   // 着地：該当プレイヤーのみ盤面を更新
@@ -382,7 +420,7 @@ function GameClient() {
       console.error('Turn animation error:', error);
       setTurnMessage('エラーが発生しました。もう一度お試しください。');
     } finally {
-      setFlyingCard(null);
+      setFlyingCards([]);
       setActionEffect(null);
       setIsAnimating(false);
     }
@@ -507,7 +545,7 @@ function GameClient() {
               onDragEnd={handleDragEnd}
               isAnimating={isAnimating}
               isGameOver={isGameOver}
-              flyingCardUniqId={flyingCard?.card?.uniqId}
+              flyingCardUniqIds={flyingCards.map((fc) => fc.card.uniqId)}
             />
           </div>
 
@@ -529,14 +567,15 @@ function GameClient() {
           onStartGame={handleStartGame}
         />
       </ArcherContainer>
-      {flyingCard && (
+      {flyingCards.map((fc, idx) => (
         <FlyingCard
-          card={flyingCard.card}
-          startRect={flyingCard.startRect}
-          endRect={flyingCard.endRect}
+          key={fc.card.uniqId || `flying-card-${idx}`}
+          card={fc.card}
+          startRect={fc.startRect}
+          endRect={fc.endRect}
           durationMs={580}
         />
-      )}
+      ))}
     </div>
   );
 }

@@ -1,85 +1,84 @@
-# ヌルポガ TCG アーキテクチャ
+# Nullpoga TCG Architecture
 
-## システム概要
-ヌルポガ TCGは同時決定・同時実行型のターン制デジタルカードゲームです。プレイヤーは相手の行動を知ることなく各フェイズでのアクションを計画し、両プレイヤーの計画が提出された後にサーバーで処理が実行されるという戦略性の高いゲームシステムを採用しています。
+## System Overview
 
-## 技術スタック
-- フロントエンド: React
-- バックエンド: Nest.js
-- データ形式: JSON
-- 通信プロトコル: HTTP/HTTPS
+Nullpoga TCG is a simultaneous-decision, simultaneous-execution digital collectible card game. Both players plan their actions concurrently without knowledge of the opponent's choices. Once submitted to the server, actions resolve deterministically in structured phase order.
+
+## Tech Stack
+
+- **Frontend**: React (Next.js) / TypeScript
+- **Backend / Core**: Nest.js / TypeScript (`packages/core`)
+- **Data Format**: JSON
+- **Protocol**: HTTP/HTTPS / WebSockets (planned)
 
 ```mermaid
 flowchart TB
-    subgraph クライアント[クライアントサイド - React]
-        UI[ゲームUI]
-        GameState[ゲーム状態管理]
-        ActionPlanner[アクション計画機能]
-        ResultViewer[結果表示機能]
+    subgraph Client["Client-Side (React / Next.js)"]
+        UI["Game UI"]
+        GameState["Client State Management"]
+        ActionPlanner["Action Planning Planner"]
+        ResultViewer["Result Animation Viewer"]
     end
 
-    subgraph サーバー[サーバーサイド - Nest.js]
-        API[APIエンドポイント]
-        subgraph コアロジック[ゲームコアロジック]
-            State[状態管理]
-            Turn[ターン処理]
-            Phase[フェイズ処理]
-            Action[アクション処理]
-            MCTS[MCTS AI]
+    subgraph Server["Server-Side (Nest.js / Core)"]
+        API["API Endpoints"]
+        subgraph Core["Game Core Logic"]
+            State["State Management"]
+            Turn["Turn Processor"]
+            Phase["Phase Engine"]
+            Action["Action Handler"]
+            MCTS["MCTS AI Engine"]
         end
-        DB[(ゲームデータ)]
+        DB[("Game State Store")]
     end
 
-    UI --> |ユーザー操作| ActionPlanner
-    ActionPlanner --> |計画完了| GameState
-    GameState --> |アクション提出| API
-    API --> |状態要求| State
-    State --> |現在状態| API
-    API --> |状態更新| DB
-    DB --> |状態取得| API
-    API --> |実行結果| GameState
-    GameState --> |結果反映| ResultViewer
-    ResultViewer --> |次ターン準備| UI
+    UI --> |User Input| ActionPlanner
+    ActionPlanner --> |Plan Finalized| GameState
+    GameState --> |Submit Actions| API
+    API --> |Request State| State
+    State --> |Current State| API
+    API --> |Update State| DB
+    DB --> |Get State| API
+    API --> |Turn History / State| GameState
+    GameState --> |Trigger Animations| ResultViewer
+    ResultViewer --> |Prepare Next Turn| UI
     
-    API --> |両プレイヤーアクション揃った場合| Turn
-    Turn --> |フェイズ順処理| Phase
-    Phase --> |アクション処理| Action
-    Action --> |状態更新| State
-    State --> |AI対戦時| MCTS
-    MCTS --> |AIの行動決定| Action
+    API --> |Both Players Submitted| Turn
+    Turn --> |Process in Phase Order| Phase
+    Phase --> |Resolve Actions| Action
+    Action --> |Mutate State| State
+    State --> |CPU Turn| MCTS
+    MCTS --> |Decide AI Actions| Action
 ```
 
-## コンポーネント説明
+## Component Breakdown
 
-### クライアントサイド
-- **ゲームUI**: プレイヤーとのインタラクションを担当する画面コンポーネント群
-- **アクション計画機能**: 各フェイズでのプレイヤーの行動を決定するUI
-- **ゲーム状態管理**: クライアント側でのゲーム状態保持と更新
-- **結果表示機能**: アクション実行結果のアニメーションと表示
+### Client-Side
+- **Game UI**: Interactive board layout, hand area, stats, and action control buttons.
+- **Action Planner**: Manages uncommitted temporary placements and target vectors for each phase.
+- **Client State Management**: Tracks active board snapshot, hand cards, player life/mana, and server synchronization.
+- **Result Animation Viewer**: Iteratively replays sequential state transitions (`turnHistory`) returned by the server.
 
-### サーバーサイド
-#### APIエンドポイント:
-- `/game_state/{user_id}`: ゲーム状態取得
-- `/submit_actions/{game_id}/{user_id}`: アクション提出
-- `/execute_actions/{game_id}`: アクション実行
+### Server-Side
+- **API Endpoints**:
+  - `GET /api/game-state`: Retrieve current game room state.
+  - `POST /api/player-action`: Submit planned actions (PvP).
+  - `POST /api/player-action-with-cpu`: Submit planned actions with immediate CPU resolution.
+- **Game Core Logic (`packages/core`)**:
+  - `State`: Master game state model managing players, board zones, turns, and history.
+  - `Turn Processor`: Coordinates the progression from turn start to turn end.
+  - `Phase Engine`: Evaluates phases in order: Spell Sub-phases -> March/Summon Phase -> Activity Phase (Move -> Attack).
+  - `Action Handler`: Applies card spells, summoning, unit displacement, and attack resolutions.
+  - `MCTS AI`: Monte Carlo Tree Search engine for CPU opponent decision-making.
 
-#### ゲームコアロジック:
-- **状態管理**: ゲーム全体の状態（State）と個別プレイヤー（Player）の状態管理
-- **ターン処理**: ターン開始、終了処理
-- **フェイズ処理**: スペル、進軍召喚、行動フェイズの処理
-- **アクション処理**: 各種アクション（カード使用、攻撃など）の処理
-- **MCTS AI**: CPU対戦用のモンテカルロ木探索AI
+## Data Flow & Turn Lifecycle
 
-## データフロープロセス
-1. プレイヤーは各フェイズのアクションをUIで計画（相手の計画を見ることなく）
-2. 計画完了後、アクションをサーバーに提出
-3. 両プレイヤーのアクションが揃うとサーバーで処理を実行
-   - ターン開始処理
-   - スペルフェイズ処理（カードナンバー順、不発条件の確認）
-   - 進軍召喚フェイズ処理
-   - 行動フェイズ処理（移動→攻撃の順）
-   - ターン終了処理
-4. 処理結果をクライアントに返し、UIに反映
-5. 勝利条件判定（ライフ0、荒野状態の連続4マス）
-
-この設計により、「見えない意思決定」と「同時実行」という戦略的要素をシステムとして実現しています。
+1. **Planning**: Both players plan actions locally across all three phases without seeing opponent plans.
+2. **Submission**: Players send action batches (`spellPhaseActions`, `summonPhaseActions`, `activityPhaseActions`) to the server.
+3. **Deterministic Resolution**: Once both submissions are received, the server executes:
+   - Turn Start effects, mana increment (+1), and card draw.
+   - Spell Phase sub-phases (ordered by ascending `cardNo`, evaluating fizzle condition on identical cards).
+   - March/Summon Phase (simultaneous summon to Standby Zone, followed by march into Battle Zone).
+   - Activity Phase (all movement resolves first, followed by combat attacks).
+   - Turn End cleanup and victory condition evaluation (Life <= 0 or 4 contiguous Wilderness zones).
+4. **Playback**: Server returns final state alongside step-by-step history (`turnHistory`). The client visualizes each step with sequential animations.

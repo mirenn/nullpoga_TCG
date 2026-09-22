@@ -8,8 +8,11 @@ export interface ActionEffect {
   attackerSlotId?: string;
   targetSlotId?: string;
   summonSlotId?: string;
+  summonSlotIds?: string[];
   flyingSlotId?: string;
+  flyingSlotIds?: string[];
   summonCard?: GameModels.MonsterCard | null;
+  summonCards?: Record<string, GameModels.MonsterCard>;
   isPlayerAttack?: boolean;
   damage?: number;
   isLanding?: boolean;
@@ -42,13 +45,32 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
   const playerZone = player?.zone;
   const opponentZone = opponent?.zone;
 
-  const getOpponentStandbyCard = (i: number, slotId: string) => {
-    // フライト中（着地前）はスロットを空にする
-    if (actionEffect?.flyingSlotId === slotId) {
-      return null;
-    }
+  const isSlotFlying = (slotId?: string) => {
+    if (!slotId) return false;
+    return actionEffect?.flyingSlotId === slotId || Boolean(actionEffect?.flyingSlotIds?.includes(slotId));
+  };
+
+  const isSlotSummoning = (slotId?: string) => {
+    if (!slotId) return false;
+    return actionEffect?.summonSlotId === slotId || Boolean(actionEffect?.summonSlotIds?.includes(slotId));
+  };
+
+  const getSlotSummonCard = (slotId?: string) => {
+    if (!slotId) return null;
     if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
       return actionEffect.summonCard;
+    }
+    return actionEffect?.summonCards?.[slotId] || null;
+  };
+
+  const getOpponentStandbyCard = (i: number, slotId: string) => {
+    // フライト中（着地前）はスロットを空にする
+    if (isSlotFlying(slotId)) {
+      return null;
+    }
+    const summonCard = getSlotSummonCard(slotId);
+    if (summonCard) {
+      return summonCard;
     }
     // アニメーション再生中はサーバーのゾーンを直接参照
     if (isAnimating) {
@@ -58,11 +80,12 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
   };
 
   const getOpponentBattleCard = (i: number, slotId?: string) => {
-    if (slotId && actionEffect?.flyingSlotId === slotId) {
+    if (isSlotFlying(slotId)) {
       return null;
     }
-    if (slotId && actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
-      return actionEffect.summonCard;
+    const summonCard = getSlotSummonCard(slotId);
+    if (summonCard) {
+      return summonCard;
     }
     if (isAnimating) {
       return opponentZone?.battleField?.[i]?.card || null;
@@ -71,11 +94,12 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
   };
 
   const getPlayerBattleCard = (i: number, slotId?: string) => {
-    if (slotId && actionEffect?.flyingSlotId === slotId) {
+    if (isSlotFlying(slotId)) {
       return null;
     }
-    if (slotId && actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
-      return actionEffect.summonCard;
+    const summonCard = getSlotSummonCard(slotId);
+    if (summonCard) {
+      return summonCard;
     }
     if (isAnimating) {
       return playerZone?.battleField?.[i]?.card || null;
@@ -85,11 +109,12 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
 
   const getPlayerStandbyCard = (i: number, slotId: string) => {
     // フライト中（着地前）はスロットを空にする
-    if (actionEffect?.flyingSlotId === slotId) {
+    if (isSlotFlying(slotId)) {
       return null;
     }
-    if (actionEffect?.summonSlotId === slotId && actionEffect.summonCard) {
-      return actionEffect.summonCard;
+    const summonCard = getSlotSummonCard(slotId);
+    if (summonCard) {
+      return summonCard;
     }
     // アニメーション再生中はサーバーのゾーンを直接参照
     if (isAnimating) {
@@ -118,7 +143,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
       {/* スタンバイフィールド */}
       {[4, 3, 2, 1, 0].map((i) => {
         const slotId = `opponent-szone-${i}`;
-        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
         const card = getOpponentStandbyCard(i, slotId);
         return (
@@ -147,7 +172,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
         const slotId = `opponent-bzone-${i}`;
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
-        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
         const effectClass = isAttacking
           ? 'slot-attacking-opponent'
@@ -188,7 +213,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
         const slotId = `player-bzone-${i}`;
         const isAttacking = actionEffect?.attackerSlotId === slotId;
         const isTargeted = actionEffect?.targetSlotId === slotId;
-        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
         const effectClass = isAttacking
           ? 'slot-attacking-player'
@@ -228,7 +253,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
       {/* スタンバイフィールド */}
       {[0, 1, 2, 3, 4].map((i) => {
         const slotId = `player-szone-${i}`;
-        const isSummoning = actionEffect?.summonSlotId === slotId;
+        const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
         const card = getPlayerStandbyCard(i, slotId);
 
