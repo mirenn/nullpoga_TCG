@@ -10,24 +10,63 @@ body {
   justify-content: center;
 }
 
+/* 3カラムゲームレイアウト（左：戦況HUD / 中央：盤面・手札 / 右：操作系） */
+.game-main-layout {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 20px;
+  width: 98%;
+  max-width: 1360px;
+  margin: 4px auto;
+  box-sizing: border-box;
+}
+
+.layout-left-col {
+  width: 210px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 6px;
+}
+
+.layout-center-col {
+  flex: 1;
+  max-width: 920px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.layout-right-col {
+  width: 190px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 10px;
+}
+
 .game-board {
   display: grid;
   grid-template-columns: repeat(5, 1fr); /* 5列に分割 */
-  grid-template-rows: repeat(4, 96px); /* 1画面に収まるよう高さを96pxに最適化 */
+  grid-template-rows: repeat(4, 102px); /* 左右カラム化で縦に余裕ができたため102pxに拡大 */
   gap: 8px;
-  width: 94%;
+  width: 100%;
   max-width: 900px;
-  margin: 6px auto;
+  margin: 4px auto;
   padding: 10px 14px;
   background-color: #ffffff;
   border: 1px solid #e2e8f0;
   border-radius: 14px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
 }
 
 .card-slot {
   position: relative;
-  height: 96px;
+  height: 102px;
   border: 1.5px solid #e2e8f0;
   border-radius: 10px;
   display: flex;
@@ -60,20 +99,22 @@ body {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  margin: 6px auto;
+  margin: 8px auto 4px auto;
+  width: 100%;
   max-width: 900px;
   flex-wrap: wrap;
-  padding: 6px 14px;
+  padding: 8px 14px;
   background-color: rgba(255, 255, 255, 0.85);
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+  box-sizing: border-box;
 }
 
 .card {
   position: relative;
-  width: 68px;
-  height: 92px;
+  width: 72px;
+  height: 98px;
   background-color: #ffffff;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
@@ -94,7 +135,7 @@ body {
   color: #ffffff;
   padding: 1px 5px;
   border-radius: 8px;
-  font-size: 9px;
+  font-size: 9.5px;
   font-weight: 800;
   z-index: 1;
   box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
@@ -134,16 +175,21 @@ body {
 
 .button-container {
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
   gap: 10px;
-  margin: 6px auto;
-  max-width: 800px;
+  width: 100%;
+  background-color: #ffffff;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  box-sizing: border-box;
 }
 
 .game-button {
-  padding: 6px 16px;
-  font-size: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   border: none;
@@ -151,6 +197,8 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   transition: all 0.2s ease;
   letter-spacing: 0.2px;
+  text-align: center;
+  box-sizing: border-box;
 }
 
 .game-button:disabled {
@@ -184,12 +232,14 @@ body {
 .submit-action-button {
   background-color: #2563eb;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
+  padding: 13px 16px;
+  font-size: 14px;
+  box-shadow: 0 3px 12px rgba(37, 99, 235, 0.3);
 }
 
 .submit-action-button:hover:not(:disabled) {
   background-color: #1d4ed8;
-  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+  box-shadow: 0 5px 16px rgba(37, 99, 235, 0.4);
   transform: translateY(-1px);
 }
 
@@ -271,29 +321,31 @@ body {
 .player-stats,
 .opponent-stats {
   display: flex;
-  gap: 16px;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
   color: #0f172a;
   font-weight: 700;
-  font-size: 12px;
+  font-size: 13px;
   background-color: #ffffff;
-  padding: 4px 18px;
-  border-radius: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
   border: 1px solid #e2e8f0;
-  margin: 4px auto;
-  max-width: 680px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
-  white-space: nowrap;
+  margin: 0;
+  width: 100%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
 }
 
 .player-stats p,
 .opponent-stats p {
   margin: 0;
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   white-space: nowrap;
+  font-size: 12px;
 }
 
 .attack-button {

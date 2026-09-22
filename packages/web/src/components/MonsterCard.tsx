@@ -53,14 +53,14 @@ const MonsterCard = ({
           title={card.cardName}
           style={{
             margin: 0,
-            fontSize: '10px',
+            fontSize: '10.5px',
             fontWeight: 800,
             color: '#0f172a',
             whiteSpace: 'nowrap',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
-            maxWidth: '42px',
-            letterSpacing: '-0.3px',
+            maxWidth: '46px',
+            letterSpacing: '-0.2px',
           }}
         >
           {card.cardName}
@@ -72,7 +72,7 @@ const MonsterCard = ({
             color: '#ffffff',
             borderRadius: '8px',
             padding: '1px 4px',
-            fontSize: '9px',
+            fontSize: '9.5px',
             fontWeight: 800,
             flexShrink: 0,
             boxShadow: '0 1px 2px rgba(37, 99, 235, 0.25)',
@@ -106,7 +106,7 @@ const MonsterCard = ({
           backgroundColor: '#f8fafc',
           borderRadius: '4px',
           border: '1px solid #e2e8f0',
-          fontSize: '9.5px',
+          fontSize: '10px',
           fontWeight: 800,
           lineHeight: '1.2',
           boxSizing: 'border-box',

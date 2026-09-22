@@ -195,8 +195,8 @@ function GameClient() {
                   setTurnMessage(`【召喚】${actorName}が「${cardName}」を召喚！`);
 
                   // 始点と終点のDOM座標を取得（カード実体サイズ 80x120 の中央配置位置を正確に計算）
-                  const CARD_WIDTH = 68;
-                  const CARD_HEIGHT = 92;
+                  const CARD_WIDTH = 72;
+                  const CARD_HEIGHT = 98;
                   let startRect: { top: number; left: number; width: number; height: number } | null = null;
                   if (isMe) {
                     const cardEl = card?.uniqId ? document.getElementById(`player-hand-card-${card.uniqId}`) : null;
@@ -369,7 +369,7 @@ function GameClient() {
   return (
     <div>
       <ArcherContainer strokeColor="red">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 16px', maxWidth: '1000px', margin: '0 auto 4px auto', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 20px', maxWidth: '1360px', margin: '0 auto 6px auto', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.3px', whiteSpace: 'nowrap' }}>
               ヌルポガ TCG
@@ -381,7 +381,7 @@ function GameClient() {
             style={{
               margin: '0',
               flex: '1',
-              maxWidth: '480px',
+              maxWidth: '560px',
               backgroundColor: isGameOver
                 ? gameResult === 'VICTORY'
                   ? '#065f46'
@@ -401,14 +401,14 @@ function GameClient() {
             <button
               onClick={logout}
               style={{
-                padding: '2px 8px',
+                padding: '3px 10px',
                 fontSize: '11px',
                 fontWeight: 600,
                 cursor: 'pointer',
                 background: '#ffffff',
                 color: '#475569',
                 border: '1px solid #cbd5e1',
-                borderRadius: '4px',
+                borderRadius: '6px',
                 transition: 'all 0.15s ease',
               }}
             >
@@ -416,36 +416,52 @@ function GameClient() {
             </button>
           </div>
         </div>
-        <OpponentStats
-          gameState={extractedGameResponse?.gameRoom?.gameState}
-          myUserId={userId}
-        />
-        <GameBoard
-          myUserId={userId}
-          isDragging={isDragging}
-          actionEffect={actionEffect}
-          isAnimating={isAnimating}
-          isGameOver={isGameOver}
-        />
-        <Hand
-          myUserId={userId}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          isAnimating={isAnimating}
-          isGameOver={isGameOver}
-          flyingCardUniqId={flyingCard?.card?.uniqId}
-        />
-        <PlayerStats
-          gameState={extractedGameResponse?.gameRoom?.gameState}
-          myUserId={userId}
-        />
-        <ButtonContainer
-          onStartGame={handleStartGame}
-          onActionSubmit={handleActionSubmit}
-          onSpellPhaseEnd={handleSpellPhaseEnd}
-          isAnimating={isAnimating}
-          isGameOver={isGameOver}
-        />
+
+        {/* 3カラムメインレイアウト */}
+        <div className="game-main-layout">
+          {/* 左サイドパネル：戦況HUD（相手＆自分） */}
+          <div className="layout-left-col">
+            <OpponentStats
+              gameState={extractedGameResponse?.gameRoom?.gameState}
+              myUserId={userId}
+            />
+            <PlayerStats
+              gameState={extractedGameResponse?.gameRoom?.gameState}
+              myUserId={userId}
+            />
+          </div>
+
+          {/* 中央：メイン盤面 ＆ 手札 */}
+          <div className="layout-center-col">
+            <GameBoard
+              myUserId={userId}
+              isDragging={isDragging}
+              actionEffect={actionEffect}
+              isAnimating={isAnimating}
+              isGameOver={isGameOver}
+            />
+            <Hand
+              myUserId={userId}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+              isAnimating={isAnimating}
+              isGameOver={isGameOver}
+              flyingCardUniqId={flyingCard?.card?.uniqId}
+            />
+          </div>
+
+          {/* 右サイドパネル：アクション操作パネル */}
+          <div className="layout-right-col">
+            <ButtonContainer
+              onStartGame={handleStartGame}
+              onActionSubmit={handleActionSubmit}
+              onSpellPhaseEnd={handleSpellPhaseEnd}
+              isAnimating={isAnimating}
+              isGameOver={isGameOver}
+            />
+          </div>
+        </div>
+
         <ResultContainer
           gameState={extractedGameResponse?.gameRoom?.gameState}
           myUserId={userId}

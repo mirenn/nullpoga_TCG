@@ -14,13 +14,16 @@ const ButtonContainer = ({
   isGameOver = false,
 }: ButtonContainerProps) => (
   <div className="button-container">
+    <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textAlign: 'center', marginBottom: '2px', letterSpacing: '0.5px' }}>
+      🎮 アクション操作
+    </div>
     <button
-      id="start-game"
-      className="game-button start-game-button"
-      onClick={onStartGame}
-      disabled={isAnimating}
+      id="action-submit"
+      className="game-button submit-action-button"
+      onClick={onActionSubmit}
+      disabled={isAnimating || isGameOver}
     >
-      {isGameOver ? 'New Game' : 'Start Game'}
+      {isAnimating ? '処理中...' : isGameOver ? '対戦終了' : 'Submit Actions ➔'}
     </button>
     <button
       id="spell-phase-end"
@@ -31,12 +34,12 @@ const ButtonContainer = ({
       End Spell Phase
     </button>
     <button
-      id="action-submit"
-      className="game-button submit-action-button"
-      onClick={onActionSubmit}
-      disabled={isAnimating || isGameOver}
+      id="start-game"
+      className="game-button start-game-button"
+      onClick={onStartGame}
+      disabled={isAnimating}
     >
-      {isAnimating ? '処理中...' : isGameOver ? '対戦終了' : 'Submit Actions'}
+      {isGameOver ? '↺ New Game' : 'Start Game'}
     </button>
   </div>
 );
