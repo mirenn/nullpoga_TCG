@@ -42,3 +42,18 @@ export interface SpellEffect {
   type: 'meteor' | 'burn';
   createdAt: number;
 }
+
+export type AttackEffectType = 'fireball' | 'lightning' | 'slash' | 'base_hit';
+
+export interface AttackEffect {
+  id: string;
+  attackerId: string;
+  lane: number;
+  fromY: number;
+  toY: number;
+  owner: 'player' | 'cpu';
+  effectType: AttackEffectType;
+  damage: number;
+  createdAt: number;
+  duration: number; // アニメーション時間 (ms)
+}

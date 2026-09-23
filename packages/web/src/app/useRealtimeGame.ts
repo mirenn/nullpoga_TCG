@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoCard, Unit, SpellEffect } from './types';
+import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType } from './types';
 
 export const CARD_POOL: DemoCard[] = [
   {
@@ -192,6 +192,8 @@ export function useRealtimeGame() {
   const [units, setUnits] = useState<Unit[]>([]);
   // スペルエフェクト
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
+  // 攻撃エフェクト（弾道・斬撃・着弾）
+  const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -455,6 +457,8 @@ export function useRealtimeGame() {
 
         // 3. ユニット更新
         const now = Date.now();
+        const newAttackEffects: AttackEffect[] = [];
+
         setUnits((prevUnits) => {
           let pDamageToCpu = 0;
           let cpuDamageToPlayer = 0;
@@ -463,8 +467,10 @@ export function useRealtimeGame() {
             const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
             let cooldown = Math.max(0, unit.attackCooldown - dt);
             let y = unit.y;
-            let attack = unit.attack;
             let distance = unit.distanceTraveled || 0;
+            let attack = unit.cardNo === 2
+              ? 1 + Math.min(4, Math.floor(distance / 20))
+              : unit.attack;
             let lastAttack = unit.lastAttackEffectTime;
 
             if (isStunned) {
@@ -508,6 +514,32 @@ export function useRealtimeGame() {
               if (cooldown <= 0) {
                 cooldown = unit.attackInterval;
                 lastAttack = now;
+
+                // 攻撃種別に応じたエフェクト種別と継続時間を設定
+                let effectType: AttackEffectType = 'slash';
+                let duration = 240;
+                if (unit.cardNo === 11) {
+                  // 炎のドラゴン: 遠距離火球ブレス
+                  effectType = 'fireball';
+                  duration = 320;
+                } else if (unit.cardNo === 6) {
+                  // 電気クラゲ: 放電電撃弾
+                  effectType = 'lightning';
+                  duration = 260;
+                }
+
+                newAttackEffects.push({
+                  id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                  attackerId: unit.id,
+                  lane: unit.lane,
+                  fromY: unit.y,
+                  toY: (targetEnemy as Unit).y,
+                  owner: unit.owner,
+                  effectType,
+                  damage: attack,
+                  createdAt: now,
+                  duration,
+                });
               }
               return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
             }
@@ -518,6 +550,30 @@ export function useRealtimeGame() {
               if (cooldown <= 0) {
                 cooldown = unit.attackInterval;
                 lastAttack = now;
+                const targetBaseY = unit.owner === 'player' ? 2 : 98;
+                let effectType: AttackEffectType = 'base_hit';
+                let duration = 250;
+                if (unit.cardNo === 11) {
+                  effectType = 'fireball';
+                  duration = 320;
+                } else if (unit.cardNo === 6) {
+                  effectType = 'lightning';
+                  duration = 260;
+                }
+
+                newAttackEffects.push({
+                  id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                  attackerId: unit.id,
+                  lane: unit.lane,
+                  fromY: unit.y,
+                  toY: targetBaseY,
+                  owner: unit.owner,
+                  effectType,
+                  damage: attack,
+                  createdAt: now,
+                  duration,
+                });
+
                 if (unit.owner === 'player') {
                   pDamageToCpu += attack;
                 } else {
@@ -622,6 +678,12 @@ export function useRealtimeGame() {
           return finalUnits.filter((u) => u.hp > 0);
         });
 
+        // 攻撃エフェクトの反映とクリーンアップ（duration+200ms経過で消去）
+        if (newAttackEffects.length > 0) {
+          setAttackEffects((prev) => [...prev, ...newAttackEffects]);
+        }
+        setAttackEffects((prev) => prev.filter((e) => now - e.createdAt < e.duration + 200));
+
         // スペルエフェクトの掃除（1秒以上経過したものを除去）
         setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1000));
       }
@@ -641,6 +703,7 @@ export function useRealtimeGame() {
     setCpuMana(INITIAL_MANA);
     setUnits([]);
     setSpellEffects([]);
+    setAttackEffects([]);
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;
@@ -663,6 +726,7 @@ export function useRealtimeGame() {
     setSelectedCardIndex,
     units,
     spellEffects,
+    attackEffects,
     gameResult,
     checkCanPlayCard,
     playCardOnLane,

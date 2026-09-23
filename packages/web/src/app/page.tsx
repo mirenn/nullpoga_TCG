@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
-import { Unit } from './types';
+import { Unit, AttackEffect } from './types';
 
 export default function RealtimeDemoPage() {
   const {
@@ -21,6 +21,7 @@ export default function RealtimeDemoPage() {
     setSelectedCardIndex,
     units,
     spellEffects,
+    attackEffects,
     gameResult,
     checkCanPlayCard,
     playCardOnLane,
@@ -142,6 +143,156 @@ export default function RealtimeDemoPage() {
       <style>{`
         .realtime-demo-container {
           box-sizing: border-box;
+        }
+
+        /* ユニット攻撃時の一瞬の踏み込みバンプ */
+        @keyframes unit-attack-player {
+          0% { transform: translateY(0); }
+          35% { transform: translateY(-8px) scale(1.1); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        @keyframes unit-attack-cpu {
+          0% { transform: translateY(0); }
+          35% { transform: translateY(8px) scale(1.1); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        .unit-attacking-player {
+          animation: unit-attack-player 0.22s ease-out;
+        }
+        .unit-attacking-cpu {
+          animation: unit-attack-cpu 0.22s ease-out;
+        }
+
+        /* 弾道: 炎のドラゴン（火炎弾ブレス） */
+        @keyframes fireball-fly {
+          0% {
+            top: var(--from-y);
+            transform: translate(-50%, -50%) scale(0.65);
+            opacity: 0.9;
+          }
+          75% {
+            top: var(--to-y);
+            transform: translate(-50%, -50%) scale(1.35);
+            opacity: 1;
+          }
+          100% {
+            top: var(--to-y);
+            transform: translate(-50%, -50%) scale(2.2);
+            opacity: 0;
+          }
+        }
+        .projectile-fireball {
+          animation: fireball-fly cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+        }
+        .fireball-glow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #ea580c 0%, rgba(239, 68, 68, 0.6) 60%, transparent 100%);
+          box-shadow: 0 0 16px #f97316, 0 0 28px #ea580c;
+        }
+
+        /* 弾道: 電気クラゲ（放電電撃弾） */
+        @keyframes lightning-fly {
+          0% {
+            top: var(--from-y);
+            transform: translate(-50%, -50%) scale(0.7);
+            opacity: 0.9;
+          }
+          75% {
+            top: var(--to-y);
+            transform: translate(-50%, -50%) scale(1.35);
+            opacity: 1;
+          }
+          100% {
+            top: var(--to-y);
+            transform: translate(-50%, -50%) scale(2.0);
+            opacity: 0;
+          }
+        }
+        .projectile-lightning {
+          animation: lightning-fly cubic-bezier(0.2, 0.7, 0.4, 1) forwards;
+        }
+        .lightning-glow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #38bdf8 0%, rgba(2, 132, 199, 0.5) 60%, transparent 100%);
+          box-shadow: 0 0 14px #38bdf8, 0 0 24px #0284c7;
+        }
+
+        /* 近接攻撃: 斬撃・爪痕・打撃 */
+        @keyframes melee-slash-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5) rotate(-25deg);
+            opacity: 0.2;
+          }
+          35% {
+            transform: translate(-50%, -50%) scale(1.5) rotate(10deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 10px #f59e0b);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.8) rotate(35deg);
+            opacity: 0;
+          }
+        }
+        .melee-slash-effect {
+          animation: melee-slash-anim 0.22s ease-out forwards;
+        }
+
+        /* 拠点ヒット衝撃 */
+        @keyframes base-hit-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 1;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.6);
+            opacity: 1;
+            filter: drop-shadow(0 0 14px #ef4444);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.2);
+            opacity: 0;
+          }
+        }
+        .base-hit-effect {
+          animation: base-hit-anim 0.28s ease-out forwards;
+        }
+
+        /* 着弾時のダメージ数値ポップアップ */
+        @keyframes damage-popup-anim {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, 0) scale(0.6);
+          }
+          25% {
+            opacity: 1;
+            transform: translate(-50%, -16px) scale(1.35);
+          }
+          70% {
+            opacity: 1;
+            transform: translate(-50%, -28px) scale(1.1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -40px) scale(0.8);
+          }
+        }
+        .damage-popup-text {
+          animation: damage-popup-anim 0.48s ease-out forwards;
+          color: #ff3344;
+          font-weight: 900;
+          font-size: 16px;
+          text-shadow: 0 0 4px #000, 0 0 8px #7f1d1d, 1px 1px 2px #000;
+          letter-spacing: -0.5px;
         }
         @media (max-width: 959px) {
           .desktop-side-panel {
@@ -312,6 +463,7 @@ export default function RealtimeDemoPage() {
               const laneSpells = spellEffects.filter(
                 (e) => e.lane === laneIndex || e.lane === -1
               );
+              const laneAttackEffects = attackEffects.filter((e) => e.lane === laneIndex);
               const activeCard = isDragging ? activeDraggedCard : selectedCard;
               const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
               const laneValidation = activeCard && activeCardIdx !== null
@@ -402,6 +554,11 @@ export default function RealtimeDemoPage() {
                     >
                       {spell.type === 'meteor' ? '💥 隕石着弾!!' : '🔥 烈火!!'}
                     </div>
+                  ))}
+
+                  {/* 攻撃エフェクト（弾道・斬撃・着弾・ダメージポップアップ） */}
+                  {laneAttackEffects.map((effect) => (
+                    <RenderAttackEffect key={effect.id} effect={effect} />
                   ))}
 
                   {/* ドラッグ＆ドロップ時のターゲットガイド */}
@@ -900,6 +1057,10 @@ function RenderUnit({ unit }: { unit: Unit }) {
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
+  const isAttacking = unit.lastAttackEffectTime && (Date.now() - unit.lastAttackEffectTime < 240);
+  const attackClass = isAttacking
+    ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
+    : '';
 
   return (
     <div
@@ -922,6 +1083,7 @@ function RenderUnit({ unit }: { unit: Unit }) {
 
       {/* ユニット本体アイコン */}
       <div
+        className={attackClass}
         style={{
           ...styles.unitBody,
           borderColor: isPlayer ? '#3b82f6' : '#ef4444',
@@ -946,6 +1108,111 @@ function RenderUnit({ unit }: { unit: Unit }) {
         <span style={styles.unitHpBadge}>{unit.hp}</span>
       </div>
     </div>
+  );
+}
+
+// 攻撃エフェクト（弾道・斬撃・着弾・ダメージポップアップ）描画サブコンポーネント
+function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
+  const now = Date.now();
+  const elapsed = now - effect.createdAt;
+  const showDamage = elapsed >= effect.duration * 0.4;
+
+  const styleVars: React.CSSProperties = {
+    ['--from-y' as any]: `${effect.fromY}%`,
+    ['--to-y' as any]: `${effect.toY}%`,
+    animationDuration: `${effect.duration}ms`,
+  };
+
+  return (
+    <>
+      {/* 1. 炎のドラゴン（火炎弾ブレス飛翔） */}
+      {effect.effectType === 'fireball' && (
+        <div
+          className="projectile-fireball"
+          style={{
+            ...styleVars,
+            position: 'absolute',
+            left: '50%',
+            pointerEvents: 'none',
+            zIndex: 35,
+          }}
+        >
+          <div className="fireball-glow">
+            <span style={{ fontSize: '20px', display: 'block', filter: 'drop-shadow(0 0 6px #f97316)' }}>
+              🔥
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 2. 電気クラゲ（放電電撃弾飛翔） */}
+      {effect.effectType === 'lightning' && (
+        <div
+          className="projectile-lightning"
+          style={{
+            ...styleVars,
+            position: 'absolute',
+            left: '50%',
+            pointerEvents: 'none',
+            zIndex: 35,
+          }}
+        >
+          <div className="lightning-glow">
+            <span style={{ fontSize: '18px', display: 'block', filter: 'drop-shadow(0 0 8px #38bdf8)' }}>
+              ⚡
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* 3. 近接攻撃（斬撃・爪痕・打撃） */}
+      {effect.effectType === 'slash' && (
+        <div
+          className="melee-slash-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: '50%',
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '22px', display: 'block' }}>⚔️</span>
+        </div>
+      )}
+
+      {/* 4. 拠点攻撃（直撃衝撃波） */}
+      {effect.effectType === 'base_hit' && (
+        <div
+          className="base-hit-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: '50%',
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '24px', display: 'block' }}>💥</span>
+        </div>
+      )}
+
+      {/* 5. 着弾時のダメージ数値ポップアップ */}
+      {showDamage && (
+        <div
+          className="damage-popup-text"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: '50%',
+            pointerEvents: 'none',
+            zIndex: 40,
+          }}
+        >
+          -{effect.damage}
+        </div>
+      )}
+    </>
   );
 }
 
