@@ -475,7 +475,7 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     pointerEvents: 'none',
     zIndex: 10,
-    transition: 'top 0.05s linear',
+    willChange: 'top',
   },
   unitHpBarBg: {
     width: '32px',

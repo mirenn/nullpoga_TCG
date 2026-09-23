@@ -13,7 +13,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 1,
     life: 1,
     speed: 16, // 速い
-    range: 3,
+    range: 9, // 近接接触
     effectDesc: '足が速い低コストアタッカー。奇襲や時間稼ぎに。',
     icon: '🐭',
   },
@@ -26,7 +26,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 2,
     life: 2,
     speed: 10,
-    range: 3,
+    range: 9,
     effectDesc: 'バランスの取れた標準的な歩兵ユニット。',
     icon: '🐱',
   },
@@ -39,7 +39,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 1,
     life: 2,
     speed: 10,
-    range: 3,
+    range: 9,
     effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。',
     icon: '🐕',
   },
@@ -52,7 +52,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 0,
     life: 7,
     speed: 4, // 非常に遅い
-    range: 2,
+    range: 8,
     effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。',
     icon: '🐢',
   },
@@ -65,7 +65,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 1,
     life: 2,
     speed: 8,
-    range: 4,
+    range: 12, // やや遠距離
     effectDesc: '攻撃時、相手ユニットを1.2秒間スタン（麻痺）させる。',
     icon: '🪼',
   },
@@ -78,7 +78,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 3,
     life: 4,
     speed: 13,
-    range: 3,
+    range: 9,
     effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。',
     icon: '🐗',
   },
@@ -91,7 +91,7 @@ export const CARD_POOL: DemoCard[] = [
     attack: 5,
     life: 8,
     speed: 7,
-    range: 5,
+    range: 15, // 遠距離ブレス
     effectDesc: '圧倒的なHPと火力を誇る前線の切り込み隊長。',
     icon: '🐉',
   },
@@ -144,6 +144,7 @@ export function useRealtimeGame() {
   // アニメーションループ用のref
   const lastTimeRef = useRef<number>(performance.now());
   const cpuActionTimerRef = useRef<number>(0);
+  const manaTimerRef = useRef<number>(0);
   const stateRef = useRef({
     playerHp,
     cpuHp,
@@ -306,9 +307,14 @@ export function useRealtimeGame() {
       lastTimeRef.current = timestamp;
 
       if (stateRef.current.gameResult === 'playing') {
-        // 1. マナ増加
-        setPlayerMana((m) => Math.min(MAX_MANA, m + MANA_REGEN_PER_SEC * dt));
-        setCpuMana((m) => Math.min(MAX_MANA, m + MANA_REGEN_PER_SEC * dt));
+        // 1. マナ増加（0.08秒ごとに更新して再レンダリング頻度を安定化）
+        manaTimerRef.current += dt;
+        if (manaTimerRef.current >= 0.08) {
+          const deltaMana = MANA_REGEN_PER_SEC * manaTimerRef.current;
+          manaTimerRef.current = 0;
+          setPlayerMana((m) => Math.min(MAX_MANA, m + deltaMana));
+          setCpuMana((m) => Math.min(MAX_MANA, m + deltaMana));
+        }
 
         // 2. CPU AI実行
         handleCpuAi(dt);
@@ -336,19 +342,34 @@ export function useRealtimeGame() {
               (u) => u.lane === unit.lane && u.owner !== unit.owner && u.hp > 0
             );
 
-            // 進行方向の前方にいる敵を探す
+            // 進行方向の前方にいる最も近い敵を探す
             let targetEnemy: Unit | null = null;
             let minDistance = 999;
 
             enemiesInLane.forEach((enemy) => {
               const dist = unit.owner === 'player' ? unit.y - enemy.y : enemy.y - unit.y;
-              if (dist >= 0 && dist < minDistance) {
-                minDistance = dist;
+              // わずかな重なり（-2%まで）も含めて正面交戦対象とする
+              if (dist >= -2 && dist < minDistance) {
+                minDistance = Math.max(0, dist);
                 targetEnemy = enemy;
               }
             });
 
-            // 敵が射程内にいる場合：攻撃
+            // 同一レーン内の前方にいる味方を探す（追い越し防止）
+            const alliesInLane = prevUnits.filter(
+              (u) => u.lane === unit.lane && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
+            );
+            let targetAlly: Unit | null = null;
+            let minAllyDist = 999;
+            alliesInLane.forEach((ally) => {
+              const dist = unit.owner === 'player' ? unit.y - ally.y : ally.y - unit.y;
+              if (dist > 0 && dist < minAllyDist) {
+                minAllyDist = dist;
+                targetAlly = ally;
+              }
+            });
+
+            // 敵が射程内にいる場合：停止して攻撃
             if (targetEnemy && minDistance <= unit.range) {
               if (cooldown <= 0) {
                 cooldown = unit.attackInterval;
@@ -358,7 +379,7 @@ export function useRealtimeGame() {
             }
 
             // 敵陣最奥に到達しているか？
-            const isAtBase = unit.owner === 'player' ? y <= 5 : y >= 95;
+            const isAtBase = unit.owner === 'player' ? y <= 6 : y >= 94;
             if (isAtBase) {
               if (cooldown <= 0) {
                 cooldown = unit.attackInterval;
@@ -372,12 +393,36 @@ export function useRealtimeGame() {
               return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
             }
 
-            // 前方に敵がいなければ前進
+            // 移動計算（すれ違い防止＆味方追い越し防止の物理壁）
             const moveDelta = unit.speed * dt;
             if (unit.owner === 'player') {
-              y = Math.max(5, y - moveDelta);
+              // プレイヤーユニットは上向き（y減少）
+              let maxYMove = y - moveDelta;
+              // 敵の接触限界（敵の8%手前）
+              if (targetEnemy) {
+                const enemyWall = (targetEnemy as Unit).y + 7.5;
+                maxYMove = Math.max(maxYMove, enemyWall);
+              }
+              // 前方の味方の接触限界（味方の8%手前で追従）
+              if (targetAlly) {
+                const allyWall = (targetAlly as Unit).y + 8.0;
+                maxYMove = Math.max(maxYMove, allyWall);
+              }
+              y = Math.max(5, maxYMove);
             } else {
-              y = Math.min(95, y + moveDelta);
+              // CPUユニットは下向き（y増加）
+              let maxYMove = y + moveDelta;
+              // 敵の接触限界（敵の8%手前）
+              if (targetEnemy) {
+                const enemyWall = (targetEnemy as Unit).y - 7.5;
+                maxYMove = Math.min(maxYMove, enemyWall);
+              }
+              // 前方の味方の接触限界（味方の8%手前で追従）
+              if (targetAlly) {
+                const allyWall = (targetAlly as Unit).y - 8.0;
+                maxYMove = Math.min(maxYMove, allyWall);
+              }
+              y = Math.min(95, maxYMove);
             }
             distance += moveDelta;
 
@@ -409,7 +454,7 @@ export function useRealtimeGame() {
                 attacker.lastAttackEffectTime === now
               ) {
                 const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
-                if (dist >= 0 && dist <= attacker.range) {
+                if (dist >= -2 && dist <= attacker.range + 2) {
                   hp -= attacker.attack;
                   // 電気クラゲのスタン効果
                   if (attacker.cardNo === 6) {
