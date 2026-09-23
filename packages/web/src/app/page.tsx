@@ -1127,7 +1127,7 @@ export default function RealtimeDemoPage() {
                 <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>☄️ 迎撃スペルの使いどころ</div>
                   <div style={styles.tipText}>
-                    迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン4ダメ）で迎撃しましょう。
+                    迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン3ダメ）で迎撃しましょう。
                   </div>
                 </div>
 

@@ -101,7 +101,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '隕石落下',
     type: 'SPELL',
     manaCost: 3,
-    effectDesc: '指定したレーンに隕石を落とし、範囲内の敵に4ダメージ。',
+    effectDesc: '指定したレーンに隕石を落とし、範囲内の敵に3ダメージ。',
     icon: '☄️',
   },
   {
@@ -370,7 +370,7 @@ export function useRealtimeGame() {
         setUnits((prev) => [...prev, newUnit]);
       } else if (card.type === 'SPELL') {
         if (card.id === 'meteor') {
-          // 指定レーンの敵に4ダメージ
+          // 指定レーンの敵に3ダメージ
           setSpellEffects((prev) => [
             ...prev,
             { id: `meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
@@ -379,7 +379,7 @@ export function useRealtimeGame() {
             prev
               .map((u) => {
                 if (u.owner === 'cpu' && u.lane === laneIndex) {
-                  return { ...u, hp: u.hp - 4 };
+                  return { ...u, hp: u.hp - 3 };
                 }
                 return u;
               })
