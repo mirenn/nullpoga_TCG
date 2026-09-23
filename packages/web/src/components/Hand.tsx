@@ -2,6 +2,7 @@ import React from 'react';
 import * as GameModels from '../types/gameModels';
 import * as GameUtils from '../utils/gameUtils';
 import MonsterCard from './MonsterCard';
+import SpellCard from './SpellCard';
 import { useGameStore } from '../store/gameStore';
 import { ArcherElement } from 'react-archer';
 
@@ -17,6 +18,9 @@ interface HandProps {
 
 const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = false, flyingCardUniqId, flyingCardUniqIds }: HandProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
+  const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
+  const spellPhaseActions = useGameStore((s) => s.spellPhaseActions);
+  const setSpellPhaseActions = useGameStore((s) => s.setSpellPhaseActions);
   
   try {
     const gameState = extractedGameResponse?.gameRoom?.gameState;
@@ -80,6 +84,47 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
                     draggable={canAfford && !isAnimating && !isGameOver}
                     canAttack={false}
                     onAttack={() => {}}
+                  />
+                </div>
+              </ArcherElement>
+            );
+          }
+          if (card.cardType === GameModels.CardType.SPELL) {
+            const canAfford = card.manaCost <= currentPlanMana;
+            const isFlyingThis = (flyingCardUniqId && flyingCardUniqId === card.uniqId) || Boolean(flyingCardUniqIds?.includes(card.uniqId));
+            return (
+              <ArcherElement
+                key={card.uniqId || `hand-card-${index}`}
+                id={`hand-card-${index}`}
+                relations={[]}
+              >
+                <div
+                  id={`player-hand-card-${card.uniqId}`}
+                  style={{
+                    opacity: isFlyingThis ? 0 : canAfford && !isGameOver ? 1 : 0.45,
+                    cursor: canAfford && !isAnimating && !isGameOver ? 'grab' : 'not-allowed',
+                    transition: 'opacity 0.2s ease',
+                    flexShrink: 0,
+                  }}
+                >
+                  <SpellCard
+                    card={card as GameModels.SpellCard}
+                    onDragStart={canAfford && !isAnimating && !isGameOver ? onDragStart : (e) => e.preventDefault()}
+                    onDragEnd={onDragEnd}
+                    draggable={canAfford && !isAnimating && !isGameOver}
+                    canCast={canAfford && !isAnimating && !isGameOver}
+                    onCast={() => {
+                      GameUtils.planCastSpell(
+                        card.uniqId,
+                        myUserId,
+                        extractedGameResponse,
+                        setExtractedGameResponse,
+                        undefined,
+                        undefined,
+                        spellPhaseActions,
+                        setSpellPhaseActions
+                      );
+                    }}
                   />
                 </div>
               </ArcherElement>

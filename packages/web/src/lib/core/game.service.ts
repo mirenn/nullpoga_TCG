@@ -1,4 +1,4 @@
-import { State, Player, Action, ActionType, MonsterCard } from '@nullpoga/core';
+import { State, Player, Action, ActionType, MonsterCard, SpellCard, DECK_1, DECK_2 } from '@nullpoga/core';
 import { redis } from '../redis';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -24,8 +24,9 @@ export const GameService = {
                 await redis.lpush('game:waiting', userId);
                 return { status: 'waiting' };
             }
-            // Match found!
-            const roomId = await this.createGame([userId, opponent]);
+            
+            // Match found! Create Game Room
+            const roomId = await this.createGame([opponent, userId]);
             return { status: 'matched', roomId };
         } else {
             // 一人プレイ（BOT対戦）として即座に対戦ルームを作成
@@ -50,11 +51,9 @@ export const GameService = {
     async createGame(userIds: string[]): Promise<string> {
         const roomId = uuidv4();
         
-        // Initialize State
-        // Ensure decks are configured or passed. Using Default currently.
-        // We need to fetch User IDs.
-        const player1 = new Player([7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2], userIds[0]);
-        const player2 = new Player([4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2], userIds[1]);
+        // Initialize State with DECK_1 and DECK_2 containing spells
+        const player1 = new Player([...DECK_1], userIds[0]);
+        const player2 = new Player([...DECK_2], userIds[1]);
         
         const state = new State(player1, player2);
         state.initGame();
@@ -98,11 +97,27 @@ export const GameService = {
     },
 
     // BOTプレイヤーの自動アクション生成
-    generateBotActions(botPlayer: Player, enemyPlayer: Player): { summonActions: Action[], activityActions: Action[] } {
+    generateBotActions(botPlayer: Player, enemyPlayer: Player): { spellActions: Action[], summonActions: Action[], activityActions: Action[] } {
+        const spellActions: Action[] = [];
         const summonActions: Action[] = [];
         const activityActions: Action[] = [];
 
         let availableMana = botPlayer.mana;
+
+        // スペルカードを使用
+        for (const card of botPlayer.handCards) {
+            if (card instanceof SpellCard && card.manaCost <= availableMana) {
+                availableMana -= card.manaCost;
+                const enemyMonsterIdx = enemyPlayer.zone.battleField.findIndex(s => s.card);
+                const targetIdx = enemyMonsterIdx !== -1 ? enemyMonsterIdx : 2;
+                spellActions.push(new Action(ActionType.CAST_SPELL, {
+                    spellCard: card,
+                    targetIdx,
+                    targetPlayerId: enemyPlayer.userId
+                }));
+            }
+        }
+
         const availableSlots: number[] = [];
         botPlayer.zone.standbyField.forEach((slot, idx) => {
             if (!slot) availableSlots.push(idx);
@@ -132,7 +147,7 @@ export const GameService = {
             }
         });
 
-        return { summonActions, activityActions };
+        return { spellActions, summonActions, activityActions };
     },
 
     async executeTurnActions(roomId: string, userId: string, actions: {
@@ -157,24 +172,29 @@ export const GameService = {
         const userPlayer = isPlayer1 ? state.player1 : state.player2;
         const opponentPlayer = isPlayer1 ? state.player2 : state.player1;
 
+        const userSpellActions = (actions.spell_phase_actions || []).map(a => Action.fromDict(a));
         const userSummonActions = (actions.summon_phase_actions || []).map(a => Action.fromDict(a));
         const userActivityActions = (actions.activity_phase_actions || []).map(a => Action.fromDict(a));
 
+        let opponentSpellActions: Action[] = [];
         let opponentSummonActions: Action[] = [];
         let opponentActivityActions: Action[] = [];
 
         if (opponentPlayer.userId === 'CPU_BOT') {
             const botActions = this.generateBotActions(opponentPlayer, userPlayer);
+            opponentSpellActions = botActions.spellActions;
             opponentSummonActions = botActions.summonActions;
             opponentActivityActions = botActions.activityActions;
         }
 
+        const p1Spell = isPlayer1 ? userSpellActions : opponentSpellActions;
         const p1Summon = isPlayer1 ? userSummonActions : opponentSummonActions;
         const p1Activity = isPlayer1 ? userActivityActions : opponentActivityActions;
+        const p2Spell = isPlayer1 ? opponentSpellActions : userSpellActions;
         const p2Summon = isPlayer1 ? opponentSummonActions : userSummonActions;
         const p2Activity = isPlayer1 ? opponentActivityActions : userActivityActions;
 
-        state.executeFullTurn(p1Summon, p1Activity, p2Summon, p2Activity);
+        state.executeFullTurn(p1Summon, p1Activity, p2Summon, p2Activity, p1Spell, p2Spell);
 
         data.gameState = state.toJson();
         await redis.set(`game:room:${roomId}`, JSON.stringify(data));

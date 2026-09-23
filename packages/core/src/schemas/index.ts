@@ -50,6 +50,9 @@ export const ActionDataSchema = z.object({
   targetIdx: z.number().nullable().optional(),
   fromIdx: z.number().nullable().optional(),
   toIdx: z.number().nullable().optional(),
+  targetPlayerId: z.string().nullable().optional(),
+  targetZone: z.string().nullable().optional(),
+  fizzled: z.boolean().nullable().optional(),
 });
 
 export const ActionDTOSchema = z.object({

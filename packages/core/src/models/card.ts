@@ -44,12 +44,14 @@ export function instanceCard(cardNo: number): Card {
     if (cardNo < 100) {
         return new MonsterCard(cardNo);
     } else {
-        switch (cardNo) {
-            case 1000:
-                return new SpellCard(cardNo, 1, "隕石落下");
-            default:
-                throw new Error(`Unknown spell card number: ${cardNo}`);
-        }
+        const stats = SpellCard.getSpellCardStats(cardNo);
+        return new SpellCard(
+            cardNo,
+            stats.manaCost,
+            stats.cardName,
+            stats.effect,
+            stats.imageUrl
+        );
     }
 }
 
@@ -105,6 +107,8 @@ export class MonsterCard extends Card {
                 return { life: 7, manaCost: 5, attack: 6, cardName: "炎のドラゴン" };
             case 12: // ウルヴァン
                 return { life: 8, manaCost: 8, attack: 8, cardName: "ウルヴァン", imageUrl: "/images/12.png" };
+            case 99: // 不動の岩（トークン）
+                return { life: 3, manaCost: 0, attack: 0, cardName: "不動の岩" };
             default:
                 throw new Error(`Unknown monster card number: ${cardNo}`);
         }
@@ -219,20 +223,103 @@ export class MonsterCard extends Card {
 }
 
 export class SpellCard extends Card {
+    public effect: string;
+    public imageUrl: string | null;
+
     constructor(
         cardNo: number,
         manaCost: number,
         cardName: string,
+        effect: string = "",
+        imageUrl: string | null = null,
         uniqId?: string
     ) {
         super(cardNo, manaCost, cardName, CardType.SPELL, uniqId);
+        this.effect = effect;
+        this.imageUrl = imageUrl;
     }
 
-    castSpell(): void {
-        // スペル開始時効果
+    public static getSpellCardStats(cardNo: number): { manaCost: number; cardName: string; effect: string; imageUrl?: string | null } {
+        switch (cardNo) {
+            case 101:
+            case 1000:
+                return {
+                    manaCost: 3,
+                    cardName: "隕石落下",
+                    effect: "指定したゾーンのモンスターに3ダメージ。空のバトルゾーンなら荒野化する。",
+                    imageUrl: "/images/101.png"
+                };
+            case 102:
+                return {
+                    manaCost: 3,
+                    cardName: "不動の岩",
+                    effect: "空いているバトルゾーンに不動の岩（攻0/HP3）を配置する。",
+                    imageUrl: "/images/102.png"
+                };
+            case 103:
+                return {
+                    manaCost: 7,
+                    cardName: "前後交換",
+                    effect: "指定した列の縦2マス（前線と待機ゾーン）の配置を入れ替える。",
+                    imageUrl: "/images/103.png"
+                };
+            case 104:
+                return {
+                    manaCost: 4,
+                    cardName: "炎の守護",
+                    effect: "味方モンスター1体のHPを+5する。",
+                    imageUrl: "/images/104.png"
+                };
+            case 105:
+                return {
+                    manaCost: 3,
+                    cardName: "召喚の儀式",
+                    effect: "手札のコスト3以下のモンスターを1体直接バトルゾーンに出す。",
+                    imageUrl: "/images/105.png"
+                };
+            case 106:
+                return {
+                    manaCost: 5,
+                    cardName: "烈火の呪文",
+                    effect: "相手バトルゾーンの全モンスターに1ダメージを与える。",
+                    imageUrl: "/images/106.png"
+                };
+            case 107:
+                return {
+                    manaCost: 6,
+                    cardName: "火の雨",
+                    effect: "ランダムなバトルゾーン3箇所に3ダメージを与える。",
+                    imageUrl: "/images/107.png"
+                };
+            default:
+                throw new Error(`Unknown spell card number: ${cardNo}`);
+        }
+    }
+
+    public clone(): SpellCard {
+        const cloned = instanceCard(this.cardNo) as SpellCard;
+        cloned.uniqId = this.uniqId;
+        cloned.effect = this.effect;
+        cloned.imageUrl = this.imageUrl;
+        return cloned;
+    }
+
+    override toDict(): Record<string, any> {
+        return {
+            ...super.toDict(),
+            effect: this.effect,
+            imageUrl: this.imageUrl
+        };
     }
 
     static fromDict(data: any): SpellCard {
-        return new SpellCard(data.cardNo, data.manaCost, data.cardName, data.uniqId);
+        return new SpellCard(
+            data.cardNo,
+            data.manaCost,
+            data.cardName,
+            data.effect || "",
+            data.imageUrl || null,
+            data.uniqId
+        );
     }
 }

@@ -3,11 +3,11 @@ import { Player } from './player';
 import { Action, ActionType } from './action';
 import { PhaseKind } from './phase';
 import { FieldStatus } from './zone';
-import { MonsterCard, instanceCard } from './card';
+import { MonsterCard, SpellCard, instanceCard } from './card';
 
-// Initial deck configurations
-export const DECK_1 = [7, 5, 2, 1, 4, 6, 7, 5, 1, 4, 3, 3, 6, 2];
-export const DECK_2 = [4, 1, 7, 5, 5, 7, 6, 3, 4, 1, 3, 6, 2, 2];
+// Initial deck configurations (including spell cards 101: 隕石落下, 102: 不動の岩, 106: 烈火の呪文)
+export const DECK_1 = [7, 5, 101, 2, 1, 102, 4, 6, 106, 7, 5, 1, 4, 3, 3, 6, 2];
+export const DECK_2 = [4, 1, 102, 7, 5, 101, 5, 7, 106, 6, 3, 4, 1, 3, 6, 2, 2];
 
 export class State implements IState {
     private history: Array<Array<Record<string, any>>> = [];
@@ -128,10 +128,14 @@ export class State implements IState {
         player1SummonActions: Action[],
         player1ActivityActions: Action[],
         player2SummonActions: Action[],
-        player2ActivityActions: Action[]
+        player2ActivityActions: Action[],
+        player1SpellActions: Action[] = [],
+        player2SpellActions: Action[] = []
     ): void {
+        this.player1.spellPhaseActions = player1SpellActions;
         this.player1.summonPhaseActions = player1SummonActions;
         this.player1.activityPhaseActions = player1ActivityActions;
+        this.player2.spellPhaseActions = player2SpellActions;
         this.player2.summonPhaseActions = player2SummonActions;
         this.player2.activityPhaseActions = player2ActivityActions;
 
@@ -151,7 +155,10 @@ export class State implements IState {
             }
         });
 
-        // 2. 進軍フェーズ（待機フィールドからバトルフィールドへの移動）の実行と記録
+        // 2. スペルフェーズの実行と記録
+        this.executeSpell(player1, player2);
+
+        // 3. 進軍フェーズ（待機フィールドからバトルフィールドへの移動）の実行と記録
         const p1Moves = this.getAdvanceMoves(player1);
         const p2Moves = this.getAdvanceMoves(player2);
 
@@ -376,16 +383,257 @@ export class State implements IState {
 
         // カードコレクションのコピー
         newPlayer.handCards = player.handCards.map(card =>
-            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+            card instanceof MonsterCard ? card.clone() : (card instanceof SpellCard ? card.clone() : instanceCard(card.cardNo))
         );
 
         newPlayer.planHandCards = player.planHandCards ? player.planHandCards.map(card =>
-            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+            card instanceof MonsterCard ? card.clone() : (card instanceof SpellCard ? card.clone() : instanceCard(card.cardNo))
         ) : [];
 
         newPlayer.deckCards = [...player.deckCards];
 
         return newPlayer;
+    }
+
+    public clone(): State {
+        const clonedState = new State(this.clonePlayer(this.player1), this.clonePlayer(this.player2));
+        clonedState.history = JSON.parse(JSON.stringify(this.history));
+        return clonedState;
+    }
+
+    public areBoardsEqual(stateA: State, stateB: State): boolean {
+        const comparePlayer = (pA: Player, pB: Player) => {
+            if (pA.life !== pB.life) return false;
+            for (let i = 0; i < 5; i++) {
+                const sA = pA.zone.battleField[i];
+                const sB = pB.zone.battleField[i];
+                if (sA.status !== sB.status) return false;
+                if (!sA.card && sB.card) return false;
+                if (sA.card && !sB.card) return false;
+                if (sA.card && sB.card) {
+                    if (sA.card.cardNo !== sB.card.cardNo || sA.card.life !== sB.card.life) return false;
+                }
+            }
+            for (let i = 0; i < 5; i++) {
+                const cA = pA.zone.standbyField[i];
+                const cB = pB.zone.standbyField[i];
+                if (!cA && cB) return false;
+                if (cA && !cB) return false;
+                if (cA && cB) {
+                    if (cA.cardNo !== cB.cardNo || cA.life !== cB.life) return false;
+                }
+            }
+            return true;
+        };
+
+        return comparePlayer(stateA.player1, stateB.player1) && comparePlayer(stateA.player2, stateB.player2);
+    }
+
+    private paySpellCost(caster: Player, action: Action): void {
+        const spellCard = action.actionData?.spellCard;
+        if (spellCard) {
+            const cost = spellCard.manaCost ?? 0;
+            caster.mana = Math.max(0, caster.mana - cost);
+            if (caster.planMana !== undefined) {
+                caster.planMana = Math.max(0, caster.planMana - cost);
+            }
+            caster.handCards = caster.handCards.filter(c => c.uniqId !== spellCard.uniqId);
+            if (caster.planHandCards) {
+                caster.planHandCards = caster.planHandCards.filter(c => c.uniqId !== spellCard.uniqId);
+            }
+        }
+    }
+
+    private applySpellEffect(caster: Player, opponent: Player, action: Action): void {
+        const spellCard = action.actionData?.spellCard;
+        if (!spellCard) return;
+
+        this.paySpellCost(caster, action);
+
+        const cardNo = spellCard.cardNo;
+        const targetIdx = action.actionData?.targetIdx ?? 0;
+        const targetPlayer = action.actionData?.targetPlayerId === caster.userId ? caster : opponent;
+
+        switch (cardNo) {
+            case 101:
+            case 1000: { // 隕石落下: 指定ゾーンのモンスターに3ダメ。空のバトルゾーンなら荒野化
+                const slot = targetPlayer.zone.battleField[targetIdx];
+                if (slot) {
+                    if (slot.card) {
+                        slot.card.life -= 3;
+                    } else {
+                        slot.status = FieldStatus.WILDERNESS;
+                    }
+                }
+                break;
+            }
+            case 102: { // 不動の岩: 空いているバトルゾーンに不動の岩（攻0/HP3）を配置
+                const slot = targetPlayer.zone.battleField[targetIdx];
+                if (slot && !slot.card) {
+                    const rock = new MonsterCard(99);
+                    rock.canAct = false;
+                    slot.card = rock;
+                }
+                break;
+            }
+            case 103: { // 前後交換: 縦2マス（前線と待機ゾーン、または前線同士）の配置を入れ替える
+                if (action.actionData?.targetZone === 'OPPONENT_BATTLE') {
+                    // 自陣バトルゾーンと対面相手バトルゾーンを入れ替える（敵モンスターを自陣に引き寄せる）
+                    const oppIdx = 4 - targetIdx;
+                    const mySlot = caster.zone.battleField[targetIdx];
+                    const oppSlot = opponent.zone.battleField[oppIdx];
+                    if (mySlot && oppSlot) {
+                        const temp = mySlot.card;
+                        mySlot.card = oppSlot.card;
+                        oppSlot.card = temp;
+                    }
+                } else {
+                    const bSlot = targetPlayer.zone.battleField[targetIdx];
+                    const sCard = targetPlayer.zone.standbyField[targetIdx];
+                    if (bSlot) {
+                        const temp = bSlot.card;
+                        bSlot.card = sCard;
+                        targetPlayer.zone.standbyField[targetIdx] = temp;
+                    }
+                }
+                break;
+            }
+            case 104: { // 炎の守護: 味方モンスター1体のHPを+5する
+                const slot = caster.zone.battleField[targetIdx];
+                if (slot && slot.card) {
+                    slot.card.life += 5;
+                }
+                break;
+            }
+            case 105: { // 召喚の儀式: 手札のコスト3以下のモンスターを1体直接バトルゾーンに出す
+                const monsterIdx = caster.handCards.findIndex(
+                    c => c instanceof MonsterCard && c.manaCost <= 3
+                );
+                if (monsterIdx !== -1) {
+                    const monster = caster.handCards[monsterIdx] as MonsterCard;
+                    const emptySlotIdx = caster.zone.battleField.findIndex(s => !s.card);
+                    if (emptySlotIdx !== -1) {
+                        caster.zone.battleField[emptySlotIdx].card = monster;
+                        caster.handCards.splice(monsterIdx, 1);
+                        if (caster.planHandCards) {
+                            caster.planHandCards = caster.planHandCards.filter(c => c.uniqId !== monster.uniqId);
+                        }
+                    }
+                }
+                break;
+            }
+            case 106: { // 烈火の呪文: 相手バトルゾーンの全モンスターに1ダメージ
+                opponent.zone.battleField.forEach(slot => {
+                    if (slot.card) {
+                        slot.card.life -= 1;
+                    }
+                });
+                break;
+            }
+            case 107: { // 火の雨: ランダムなバトルゾーン3箇所に3ダメージ
+                const targetIndices = [targetIdx % 5, (targetIdx + 1) % 5, (targetIdx + 3) % 5];
+                for (const idx of targetIndices) {
+                    const slot = opponent.zone.battleField[idx];
+                    if (slot && slot.card) {
+                        slot.card.life -= 3;
+                    }
+                }
+                break;
+            }
+            default:
+                break;
+        }
+
+        this.deleteMonster(caster, opponent);
+        if (caster.planZone) caster.planZone = caster.zone.clone();
+        if (opponent.planZone) opponent.planZone = opponent.zone.clone();
+    }
+
+    private executeSpell(player1: Player, player2: Player): void {
+        const p1Spells = player1.spellPhaseActions.filter(a => a?.actionType === ActionType.CAST_SPELL);
+        const p2Spells = player2.spellPhaseActions.filter(a => a?.actionType === ActionType.CAST_SPELL);
+
+        const maxSpellLen = Math.max(p1Spells.length, p2Spells.length);
+
+        for (let i = 0; i < maxSpellLen; i++) {
+            const act1 = p1Spells[i];
+            const act2 = p2Spells[i];
+
+            if (act1 && act2) {
+                const card1 = act1.actionData?.spellCard;
+                const card2 = act2.actionData?.spellCard;
+
+                // 同名カードの競合判定（不発判定アルゴリズム）
+                if (card1 && card2 && card1.cardNo === card2.cardNo) {
+                    const simA = this.clone();
+                    simA.applySpellEffect(simA.player1, simA.player2, act1);
+                    simA.applySpellEffect(simA.player2, simA.player1, act2);
+
+                    const simB = this.clone();
+                    simB.applySpellEffect(simB.player2, simB.player1, act2);
+                    simB.applySpellEffect(simB.player1, simB.player2, act1);
+
+                    if (!this.areBoardsEqual(simA, simB)) {
+                        // 不発！効果は無効化、マナ消費と手札破棄のみ実行
+                        this.paySpellCost(player1, act1);
+                        this.paySpellCost(player2, act2);
+
+                        const fizzleAct1 = new Action(act1.actionType, { ...act1.actionData, fizzled: true });
+                        const fizzleAct2 = new Action(act2.actionType, { ...act2.actionData, fizzled: true });
+
+                        this.turnHistory.push({
+                            State: this.toJson(false),
+                            ActionDict: {
+                                [player1.userId]: fizzleAct1,
+                                [player2.userId]: fizzleAct2,
+                            }
+                        });
+                        continue;
+                    }
+                }
+
+                // cardNo昇順（小さい順）に解決
+                const cardNo1 = card1?.cardNo ?? 9999;
+                const cardNo2 = card2?.cardNo ?? 9999;
+
+                const order = cardNo1 <= cardNo2
+                    ? [{ caster: player1, opp: player2, act: act1 }, { caster: player2, opp: player1, act: act2 }]
+                    : [{ caster: player2, opp: player1, act: act2 }, { caster: player1, opp: player2, act: act1 }];
+
+                for (const item of order) {
+                    this.applySpellEffect(item.caster, item.opp, item.act);
+                    this.turnHistory.push({
+                        State: this.toJson(false),
+                        ActionDict: {
+                            [item.caster.userId]: item.act
+                        }
+                    });
+                }
+            } else if (act1) {
+                this.applySpellEffect(player1, player2, act1);
+                this.turnHistory.push({
+                    State: this.toJson(false),
+                    ActionDict: {
+                        [player1.userId]: act1
+                    }
+                });
+            } else if (act2) {
+                this.applySpellEffect(player2, player1, act2);
+                this.turnHistory.push({
+                    State: this.toJson(false),
+                    ActionDict: {
+                        [player2.userId]: act2
+                    }
+                });
+            }
+
+            if (this.isGameEnd()) {
+                break;
+            }
+        }
+
+        player1.spellPhaseActions = [];
+        player2.spellPhaseActions = [];
     }
 
     toJson(includeHistory: boolean = true): Record<string, any> {
@@ -401,13 +649,13 @@ export class State implements IState {
 
     private deleteMonster(myPlayer: Player, enemyPlayer: Player): void {
         myPlayer.zone.battleField.forEach(slot => {
-            if (slot.card?.life <= 0) {
+            if (slot.card && slot.card.life <= 0) {
                 slot.removeCard();
             }
         });
 
         enemyPlayer.zone.battleField.forEach(slot => {
-            if (slot.card?.life <= 0) {
+            if (slot.card && slot.card.life <= 0) {
                 slot.removeCard();
             }
         });

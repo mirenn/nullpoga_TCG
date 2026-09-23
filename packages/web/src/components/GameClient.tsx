@@ -52,7 +52,7 @@ function GameClient() {
       return;
     }
     const target = event.target as HTMLElement;
-    const cardElement = target.closest('.card.monster-card');
+    const cardElement = target.closest('.card');
     if (cardElement) {
       event.dataTransfer.setData('text', cardElement.id);
       setIsDragging(true);
@@ -378,9 +378,37 @@ function GameClient() {
                 await new Promise((r) => setTimeout(r, 400));
               }
 
-              // 召喚・攻撃以外のアクション（進軍、移動など）を処理
+              // スペルアクションが含まれているか確認
+              const spellActorIds = actorIds.filter(
+                (actorId) => actionDict[actorId]?.actionType === 'CAST_SPELL'
+              );
+
+              if (spellActorIds.length > 0) {
+                const isFizzled = spellActorIds.some((id) => actionDict[id]?.actionData?.fizzled);
+                if (isFizzled) {
+                  setTurnMessage(`【スペル不発】同一スペルの競合により呪文が打ち消し合いました！`);
+                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                  setExtractedGameResponse(structuredClone(animRoomState));
+                  await new Promise((r) => setTimeout(r, 1000));
+                } else {
+                  for (const actorId of spellActorIds) {
+                    const act = actionDict[actorId];
+                    const isMe = actorId === userId;
+                    const actorName = isMe ? 'あなた' : '相手(BOT)';
+                    const cardName = act.actionData?.spellCard?.cardName || 'スペル';
+                    setTurnMessage(`【スペル発動】${actorName}が「${cardName}」を発動！`);
+                    if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                    if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                    setExtractedGameResponse(structuredClone(animRoomState));
+                    await new Promise((r) => setTimeout(r, 1000));
+                  }
+                }
+              }
+
+              // 召喚・攻撃・スペル以外のアクション（進軍、移動など）を処理
               const otherActorIds = actorIds.filter(
-                (id) => !summonActorIds.includes(id) && !attackActorIds.includes(id)
+                (id) => !summonActorIds.includes(id) && !attackActorIds.includes(id) && !spellActorIds.includes(id)
               );
               for (const actorId of otherActorIds) {
                 const act = actionDict[actorId];

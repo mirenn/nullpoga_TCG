@@ -36,6 +36,8 @@ interface GameBoardProps {
 const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver = false }: GameBoardProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
+  const spellPhaseActions = useGameStore((s) => s.spellPhaseActions);
+  const setSpellPhaseActions = useGameStore((s) => s.setSpellPhaseActions);
   const summonPhaseActions = useGameStore((s) => s.summonPhaseActions);
   const setSummonPhaseActions = useGameStore((s) => s.setSummonPhaseActions);
   const activityPhaseActions = useGameStore((s) => s.activityPhaseActions);
@@ -208,6 +210,30 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
             key={slotId}
             className={`card-slot battle-field ${opponentBattleField[i]?.status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''} ${effectClass}`}
             id={slotId}
+            onDragOver={(e) => {
+              if (isDragging) e.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const draggedElementId = event.dataTransfer?.getData('text');
+              if (draggedElementId) {
+                const isSpell = player?.planHandCards?.some(
+                  (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
+                );
+                if (isSpell) {
+                  GameUtils.planCastSpell(
+                    draggedElementId,
+                    myUserId,
+                    extractedGameResponse,
+                    setExtractedGameResponse,
+                    i,
+                    opponent?.userId,
+                    spellPhaseActions,
+                    setSpellPhaseActions
+                  );
+                }
+              }
+            }}
           >
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
             {isTargeted && targetDamage !== undefined && (
@@ -261,6 +287,30 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
             key={slotId}
             className={`card-slot battle-field ${playerBattleField[i]?.status === GameModels.FieldStatus.WILDERNESS ? 'wilderness' : ''} ${effectClass}`}
             id={slotId}
+            onDragOver={(e) => {
+              if (isDragging) e.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const draggedElementId = event.dataTransfer?.getData('text');
+              if (draggedElementId) {
+                const isSpell = player?.planHandCards?.some(
+                  (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
+                );
+                if (isSpell) {
+                  GameUtils.planCastSpell(
+                    draggedElementId,
+                    myUserId,
+                    extractedGameResponse,
+                    setExtractedGameResponse,
+                    i,
+                    myUserId,
+                    spellPhaseActions,
+                    setSpellPhaseActions
+                  );
+                }
+              }
+            }}
           >
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
             {isTargeted && targetDamage !== undefined && (
@@ -322,16 +372,32 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
                     if (draggedElement && dropAreaId) {
                       const match = dropAreaId.match(/\d+$/);
                       if (match) {
-                        const summonIndex = match[0];
-                        GameUtils.planSummonMonster(
-                          draggedElementId,
-                          myUserId,
-                          extractedGameResponse,
-                          setExtractedGameResponse,
-                          Number(summonIndex),
-                          summonPhaseActions,
-                          setSummonPhaseActions,
+                        const summonIndex = Number(match[0]);
+                        const isSpell = player?.planHandCards?.some(
+                          (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
                         );
+                        if (isSpell) {
+                          GameUtils.planCastSpell(
+                            draggedElementId,
+                            myUserId,
+                            extractedGameResponse,
+                            setExtractedGameResponse,
+                            summonIndex,
+                            opponent?.userId,
+                            spellPhaseActions,
+                            setSpellPhaseActions
+                          );
+                        } else {
+                          GameUtils.planSummonMonster(
+                            draggedElementId,
+                            myUserId,
+                            extractedGameResponse,
+                            setExtractedGameResponse,
+                            summonIndex,
+                            summonPhaseActions,
+                            setSummonPhaseActions,
+                          );
+                        }
                       }
                     }
                   }}

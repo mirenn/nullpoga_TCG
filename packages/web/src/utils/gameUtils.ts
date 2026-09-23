@@ -90,6 +90,64 @@ export function planSummonMonster(
   }
 }
 
+export function planCastSpell(
+  uniq_id: string,
+  myUserId: string,
+  extractedGameResponse: GameModels.RoomStateResponse | null,
+  setExtractedGameResponse: React.Dispatch<
+    React.SetStateAction<GameModels.RoomStateResponse | null>
+  >,
+  targetIdx: number | undefined,
+  targetPlayerId: string | undefined,
+  spell_phase_actions: GameModels.Action[],
+  set_spell_phase_actions: (actions: GameModels.Action[] | ((prev: GameModels.Action[]) => GameModels.Action[])) => void,
+) {
+  try {
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const myPlayer = getPlayerByUserId(
+      newExtractedGameResponse?.gameRoom.gameState,
+      myUserId,
+    );
+    if (!myPlayer) {
+      console.error('Player not found in planCastSpell');
+      return;
+    }
+
+    const playerHand = myPlayer.planHandCards;
+    const cardIndex = playerHand.findIndex((card) => card.uniqId === uniq_id);
+    if (cardIndex === -1) {
+      console.error('Spell card not found in planHandCards');
+      return;
+    }
+
+    const spellCard = playerHand[cardIndex];
+    const currentPlanMana = myPlayer.planMana !== undefined ? myPlayer.planMana : (myPlayer.mana ?? 0);
+    if (spellCard.manaCost > currentPlanMana) {
+      console.warn(`マナが足りません: 必要マナ ${spellCard.manaCost} > 現在のプランマナ ${currentPlanMana}`);
+      return;
+    }
+
+    playerHand.splice(cardIndex, 1);
+    myPlayer.planMana = currentPlanMana - spellCard.manaCost;
+
+    const oppPlayer = getPlayerExcludingUserId(newExtractedGameResponse?.gameRoom.gameState, myUserId);
+    const newAction: GameModels.Action = {
+      actionType: GameModels.ActionType.CAST_SPELL,
+      actionData: {
+        spellCard,
+        targetIdx: targetIdx !== undefined ? targetIdx : 2,
+        targetPlayerId: targetPlayerId || oppPlayer?.userId,
+      },
+    };
+
+    set_spell_phase_actions([...spell_phase_actions, newAction]);
+    setExtractedGameResponse(newExtractedGameResponse);
+    console.log(`Spell ${spellCard.cardName} planned! Remaining mana: ${myPlayer.planMana}`);
+  } catch (error) {
+    console.error('Failed to plan cast spell:', error);
+  }
+}
+
 export function planAttackMonster(
   uniq_id: string,
   myUserId: string,

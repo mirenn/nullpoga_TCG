@@ -25,6 +25,9 @@ export interface ActionData {
     targetIdx?: number;
     fromIdx?: number;
     toIdx?: number;
+    targetPlayerId?: string;
+    targetZone?: string;
+    fizzled?: boolean;
 }
 
 export class Action {
@@ -34,9 +37,18 @@ export class Action {
     ) {}
 
     toDict(): Record<string, any> {
+        let ad = this.actionData ? { ...this.actionData } : undefined;
+        if (ad) {
+            if (ad.monsterCard && typeof ad.monsterCard.toDict === 'function') {
+                ad.monsterCard = ad.monsterCard.toDict();
+            }
+            if (ad.spellCard && typeof ad.spellCard.toDict === 'function') {
+                ad.spellCard = ad.spellCard.toDict();
+            }
+        }
         return {
             actionType: this.actionType,
-            actionData: this.actionData
+            actionData: ad
         };
     }
 
@@ -47,6 +59,9 @@ export class Action {
             const ad = { ...data.actionData };
             if (ad.monsterCard) {
                 ad.monsterCard = Card.fromDict(ad.monsterCard);
+            }
+            if (ad.spellCard) {
+                ad.spellCard = Card.fromDict(ad.spellCard);
             }
             actionData = ad;
         }

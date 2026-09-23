@@ -1,7 +1,7 @@
 import { PhaseKind } from './phase';
 import { Zone, Slot, FieldStatus } from './zone';
 import { Action, ActionType } from './action';
-import { Card, MonsterCard, instanceCard } from './card';
+import { Card, MonsterCard, SpellCard, CardType, instanceCard } from './card';
 
 export class Player {
     public zone: Zone;
@@ -44,7 +44,7 @@ export class Player {
     private currentToPlan(): void {
         // Clone hand cards
         this.planHandCards = this.handCards.map(card => 
-            card instanceof MonsterCard ? card.clone() : instanceCard(card.cardNo)
+            card instanceof MonsterCard ? card.clone() : (card instanceof SpellCard ? card.clone() : instanceCard(card.cardNo))
         );
         
         // Clone zone
@@ -129,8 +129,19 @@ export class Player {
     }
 
     private getSpellPhaseActions(): Action[] {
-        // 現状ではスペルカードの実装がないため、フェーズ終了のみ
-        return [new Action(ActionType.SPELL_PHASE_END)];
+        const actions: Action[] = [];
+        this.planHandCards.forEach(card => {
+            if (card instanceof SpellCard && card.manaCost <= this.planMana) {
+                for (let targetIdx = 0; targetIdx < 5; targetIdx++) {
+                    actions.push(new Action(ActionType.CAST_SPELL, {
+                        spellCard: card,
+                        targetIdx
+                    }));
+                }
+            }
+        });
+        actions.push(new Action(ActionType.SPELL_PHASE_END));
+        return actions;
     }
 
     private getSummonPhaseActions(): Action[] {
@@ -232,6 +243,13 @@ export class Player {
     private handleSpellPhase(action: Action): void {
         // スペルフェーズのアクションを処理
         this.spellPhaseActions.push(action);
+        if (action.actionType === ActionType.CAST_SPELL && action.actionData?.spellCard) {
+            const cost = action.actionData.spellCard.manaCost ?? 0;
+            this.planMana = Math.max(0, this.planMana - cost);
+            this.planHandCards = this.planHandCards.filter(
+                card => card.uniqId !== action.actionData?.spellCard?.uniqId
+            );
+        }
         if (action.actionType === ActionType.SPELL_PHASE_END) {
             this.phase = PhaseKind.SUMMON_PHASE;
         }
