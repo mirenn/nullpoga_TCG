@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRealtimeGame, CARD_POOL } from './useRealtimeGame';
+import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
 import { Unit } from './types';
 
 export default function RealtimeDemoPage() {
@@ -11,6 +11,8 @@ export default function RealtimeDemoPage() {
     cpuHp,
     playerMana,
     maxMana,
+    manaRegenRate,
+    setManaRegenRate,
     hand,
     selectedCardIndex,
     setSelectedCardIndex,
@@ -24,7 +26,70 @@ export default function RealtimeDemoPage() {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'tips' | 'catalog'>('tips');
 
+  // ドラッグ＆ドロップ用ステート
+  const [draggedCardIndex, setDraggedCardIndex] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOverLaneIndex, setDragOverLaneIndex] = useState<number | null>(null);
+  const [spawnRippleLane, setSpawnRippleLane] = useState<number | null>(null);
+
   const selectedCard = selectedCardIndex !== null ? hand[selectedCardIndex] : null;
+  const activeDraggedCard = draggedCardIndex !== null ? hand[draggedCardIndex] : null;
+
+  // ドラッグ開始
+  const handleDragStart = (e: React.DragEvent, idx: number) => {
+    const card = hand[idx];
+    if (!card || playerMana < card.manaCost || gameResult !== 'playing') {
+      e.preventDefault();
+      return;
+    }
+    e.dataTransfer.setData('text/plain', String(idx));
+    e.dataTransfer.effectAllowed = 'copyMove';
+    setDraggedCardIndex(idx);
+    setIsDragging(true);
+  };
+
+  // ドラッグ終了
+  const handleDragEnd = () => {
+    setDraggedCardIndex(null);
+    setIsDragging(false);
+    setDragOverLaneIndex(null);
+  };
+
+  // レーン上のドラッグオーバー
+  const handleLaneDragOver = (e: React.DragEvent, laneIndex: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    if (dragOverLaneIndex !== laneIndex) {
+      setDragOverLaneIndex(laneIndex);
+    }
+  };
+
+  // レーンから離脱
+  const handleLaneDragLeave = (e: React.DragEvent, laneIndex: number) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      if (dragOverLaneIndex === laneIndex) {
+        setDragOverLaneIndex(null);
+      }
+    }
+  };
+
+  // レーンへのドロップ
+  const handleLaneDrop = (e: React.DragEvent, laneIndex: number) => {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('text/plain');
+    const cardIdx = data !== '' ? parseInt(data, 10) : draggedCardIndex;
+    if (cardIdx !== null && cardIdx !== undefined && !isNaN(cardIdx)) {
+      const card = hand[cardIdx];
+      if (card && playerMana >= card.manaCost && gameResult === 'playing') {
+        playCardOnLane(laneIndex, cardIdx);
+        setSpawnRippleLane(laneIndex);
+        setTimeout(() => setSpawnRippleLane(null), 400);
+      }
+    }
+    setDraggedCardIndex(null);
+    setIsDragging(false);
+    setDragOverLaneIndex(null);
+  };
 
   // キーボードショートカット (1〜4キーで手札選択、Escで選択解除)
   const handleKeyDown = useCallback(
@@ -91,6 +156,22 @@ export default function RealtimeDemoPage() {
           </div>
         </div>
         <div style={styles.headerRight}>
+          {/* マナ回復速度セレクター */}
+          <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
+            <span style={styles.manaSpeedLabel}>⚡マナ速度:</span>
+            <select
+              value={manaRegenRate}
+              onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
+              style={styles.manaSpeedSelect}
+            >
+              {MANA_SPEED_PRESETS.map((preset) => (
+                <option key={preset.value} value={preset.value}>
+                  {preset.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button
             onClick={() => setShowGuideModal(true)}
             style={styles.guideToggleButton}
@@ -133,24 +214,52 @@ export default function RealtimeDemoPage() {
                 (e) => e.lane === laneIndex || e.lane === -1
               );
               const canAfford = selectedCard && playerMana >= selectedCard.manaCost;
+              const isHoveredDrop = isDragging && dragOverLaneIndex === laneIndex;
+              const isDroppableTarget = isDragging && activeDraggedCard && playerMana >= activeDraggedCard.manaCost;
+              const isRippling = spawnRippleLane === laneIndex;
 
               return (
                 <div
                   key={laneIndex}
                   onClick={() => playCardOnLane(laneIndex)}
+                  onDragOver={(e) => handleLaneDragOver(e, laneIndex)}
+                  onDragEnter={(e) => {
+                    e.preventDefault();
+                    if (dragOverLaneIndex !== laneIndex) setDragOverLaneIndex(laneIndex);
+                  }}
+                  onDragLeave={(e) => handleLaneDragLeave(e, laneIndex)}
+                  onDrop={(e) => handleLaneDrop(e, laneIndex)}
                   style={{
                     ...styles.lane,
-                    backgroundColor:
-                      selectedCard && canAfford
-                        ? 'rgba(30, 58, 138, 0.28)'
-                        : 'rgba(15, 23, 42, 0.85)',
-                    borderColor:
-                      selectedCard && canAfford ? '#3b82f6' : '#334155',
-                    cursor: selectedCard && canAfford ? 'pointer' : 'default',
-                    boxShadow:
-                      selectedCard && canAfford
-                        ? 'inset 0 0 16px rgba(59, 130, 246, 0.25)'
-                        : 'none',
+                    backgroundColor: isHoveredDrop
+                      ? 'rgba(30, 58, 138, 0.45)'
+                      : isDroppableTarget
+                      ? 'rgba(30, 58, 138, 0.16)'
+                      : selectedCard && canAfford
+                      ? 'rgba(30, 58, 138, 0.28)'
+                      : 'rgba(15, 23, 42, 0.85)',
+                    borderColor: isHoveredDrop
+                      ? '#60a5fa'
+                      : isDroppableTarget
+                      ? 'rgba(96, 165, 250, 0.65)'
+                      : selectedCard && canAfford
+                      ? '#3b82f6'
+                      : '#334155',
+                    borderStyle: isDroppableTarget && !isHoveredDrop ? 'dashed' : 'solid',
+                    borderWidth: isHoveredDrop ? '2px' : '1px',
+                    cursor: isDroppableTarget
+                      ? 'copy'
+                      : selectedCard && canAfford
+                      ? 'pointer'
+                      : 'default',
+                    boxShadow: isHoveredDrop
+                      ? 'inset 0 0 24px rgba(59, 130, 246, 0.5), 0 0 16px rgba(59, 130, 246, 0.4)'
+                      : isRippling
+                      ? 'inset 0 0 24px rgba(34, 197, 94, 0.6), 0 0 16px rgba(34, 197, 94, 0.4)'
+                      : selectedCard && canAfford
+                      ? 'inset 0 0 16px rgba(59, 130, 246, 0.25)'
+                      : 'none',
+                    transition: 'all 0.12s ease',
                   }}
                 >
                   {/* レーン番号（上部） */}
@@ -177,10 +286,32 @@ export default function RealtimeDemoPage() {
                     </div>
                   ))}
 
-                  {/* 召喚ガイド表示（選択中のみ） */}
-                  {selectedCard && canAfford && (
+                  {/* ドラッグ＆ドロップ時のターゲットガイド */}
+                  {isHoveredDrop && activeDraggedCard && (
+                    <div
+                      style={{
+                        ...styles.summonGuideBadge,
+                        backgroundColor: activeDraggedCard.type === 'SPELL' ? '#ea580c' : '#2563eb',
+                        boxShadow: activeDraggedCard.type === 'SPELL'
+                          ? '0 0 14px rgba(234, 88, 12, 0.9)'
+                          : '0 0 14px rgba(37, 99, 235, 0.9)',
+                      }}
+                    >
+                      {activeDraggedCard.type === 'SPELL' ? '✨ ドロップで発動！' : '🎯 ドロップで出撃！'}
+                    </div>
+                  )}
+
+                  {/* 他のレーンのドロップヒント（ドラッグ中） */}
+                  {isDroppableTarget && !isHoveredDrop && (
+                    <div style={styles.dropZoneHint}>
+                      ⬇️ ドロップ
+                    </div>
+                  )}
+
+                  {/* クリック選択時の出撃ガイド（ドラッグしていない時のみ） */}
+                  {!isDragging && selectedCard && canAfford && (
                     <div style={styles.summonGuideBadge}>
-                      ▲ 出撃
+                      ▲ クリック出撃
                     </div>
                   )}
 
@@ -235,17 +366,29 @@ export default function RealtimeDemoPage() {
           <div
             style={{
               ...styles.instructionTicker,
-              backgroundColor: selectedCard ? 'rgba(37, 99, 235, 0.2)' : 'rgba(30, 41, 59, 0.4)',
-              borderColor: selectedCard ? 'rgba(59, 130, 246, 0.4)' : '#334155',
+              backgroundColor: isDragging
+                ? 'rgba(37, 99, 235, 0.25)'
+                : selectedCard
+                ? 'rgba(37, 99, 235, 0.2)'
+                : 'rgba(30, 41, 59, 0.4)',
+              borderColor: isDragging
+                ? '#60a5fa'
+                : selectedCard
+                ? 'rgba(59, 130, 246, 0.4)'
+                : '#334155',
             }}
           >
-            {selectedCard ? (
+            {isDragging && activeDraggedCard ? (
               <span style={styles.instructionActive}>
-                👉 <strong>{selectedCard.name}</strong>（マナ {selectedCard.manaCost}）選択中！ 出撃先レーンをクリック [Escで解除]
+                ✋ <strong>{activeDraggedCard.name}</strong> をドラッグ中... 配置したいレーンへドロップ！
+              </span>
+            ) : selectedCard ? (
+              <span style={styles.instructionActive}>
+                👉 <strong>{selectedCard.name}</strong>（マナ {selectedCard.manaCost}）選択中！ レーンをクリック（または直接ドラッグ＆ドロップ） [Escで解除]
               </span>
             ) : (
               <span style={styles.instructionIdle}>
-                カードをクリック または キー[1〜4] で選択し、進軍レーンをクリック
+                💡 カードをレーンにドラッグ＆ドロップして出撃！（クリック / キー[1〜4] でも配置可能）
               </span>
             )}
           </div>
@@ -254,11 +397,15 @@ export default function RealtimeDemoPage() {
           <div style={styles.handGrid}>
             {hand.map((card, idx) => {
               const isSelected = selectedCardIndex === idx;
+              const isBeingDragged = isDragging && draggedCardIndex === idx;
               const canPlay = playerMana >= card.manaCost;
 
               return (
                 <div
                   key={`${card.id}_${idx}`}
+                  draggable={canPlay && gameResult === 'playing'}
+                  onDragStart={(e) => handleDragStart(e, idx)}
+                  onDragEnd={handleDragEnd}
                   onClick={() => {
                     if (isSelected) {
                       setSelectedCardIndex(null);
@@ -266,16 +413,28 @@ export default function RealtimeDemoPage() {
                       setSelectedCardIndex(idx);
                     }
                   }}
+                  title={canPlay ? 'ドラッグ＆ドロップ または クリックで配置' : `マナが足りません (${card.manaCost}必要)`}
                   style={{
                     ...styles.card,
                     ...(isSelected ? styles.cardSelected : {}),
-                    opacity: canPlay ? 1 : 0.45,
+                    opacity: isBeingDragged ? 0.35 : canPlay ? 1 : 0.45,
+                    borderStyle: isBeingDragged ? 'dashed' : 'solid',
                     borderColor: isSelected
                       ? '#3b82f6'
                       : card.type === 'SPELL'
                       ? '#f97316'
                       : '#475569',
-                    cursor: canPlay ? 'pointer' : 'not-allowed',
+                    cursor: canPlay ? (isDragging ? 'grabbing' : 'grab') : 'not-allowed',
+                    transform: isBeingDragged
+                      ? 'scale(0.95)'
+                      : isSelected
+                      ? 'translateY(-3px)'
+                      : 'none',
+                    boxShadow: isBeingDragged
+                      ? 'none'
+                      : isSelected
+                      ? '0 4px 12px rgba(59, 130, 246, 0.5)'
+                      : 'none',
                   }}
                 >
                   {/* カード上部：コスト・タイプ・ショートカットキー */}
@@ -371,9 +530,18 @@ export default function RealtimeDemoPage() {
                   </div>
                 </div>
 
+                <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>⚡ マナ回復速度の変更</div>
+                  <div style={styles.tipText}>
+                    上部ヘッダーの「マナ速度」セレクタから、プレイスタイルに合わせて回復ペース（4.0秒〜1.3秒/マナ）を変更できます。
+                  </div>
+                </div>
+
                 <div style={styles.shortcutGuide}>
-                  <strong>⌨️ ショートカットキー：</strong>
-                  <span>[1]〜[4] で手札選択 / [Esc] で選択解除</span>
+                  <strong>🎮 操作方法：</strong>
+                  <span>・カードをレーンにドラッグ＆ドロップして出撃</span>
+                  <span>・カードをクリック後、レーンをクリックで配置</span>
+                  <span>・キー [1]〜[4] で選択 / [Esc] で解除</span>
                 </div>
               </div>
             ) : (
@@ -444,6 +612,12 @@ export default function RealtimeDemoPage() {
                 <div style={styles.tipTitle}>☄️ 迎撃スペル</div>
                 <div style={styles.tipText}>
                   迫る群れを隕石落下や烈火の呪文で一掃できます。
+                </div>
+              </div>
+              <div style={styles.tipBox}>
+                <div style={styles.tipTitle}>⚡ マナ回復速度</div>
+                <div style={styles.tipText}>
+                  ヘッダーの「マナ速度」セレクタで低速(4.0s)〜高速(1.3s)を切り替え可能です。
                 </div>
               </div>
               <div style={{ marginTop: '16px' }}>
@@ -608,6 +782,32 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '8px',
   },
+  manaSpeedSelector: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    backgroundColor: '#1e293b',
+    border: '1px solid #334155',
+    borderRadius: '6px',
+    padding: '3px 8px',
+  },
+  manaSpeedLabel: {
+    fontSize: '11px',
+    color: '#60a5fa',
+    fontWeight: 'bold',
+    whiteSpace: 'nowrap',
+  },
+  manaSpeedSelect: {
+    backgroundColor: '#0f172a',
+    color: '#f8fafc',
+    border: '1px solid #475569',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 'bold',
+    padding: '2px 4px',
+    cursor: 'pointer',
+    outline: 'none',
+  },
   guideToggleButton: {
     backgroundColor: '#1e3a8a',
     color: '#bfdbfe',
@@ -764,6 +964,19 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 15,
     animation: 'pulseSummonBadge 0.8s infinite ease-in-out',
     boxShadow: '0 0 10px rgba(37,99,235,0.7)',
+  },
+  dropZoneHint: {
+    position: 'absolute',
+    bottom: '16px',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    border: '1px dashed rgba(96, 165, 250, 0.6)',
+    color: '#93c5fd',
+    fontSize: '9px',
+    padding: '2px 5px',
+    borderRadius: '3px',
+    fontWeight: 'bold',
+    pointerEvents: 'none',
+    zIndex: 14,
   },
   unitWrapper: {
     position: 'absolute',

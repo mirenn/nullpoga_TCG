@@ -115,15 +115,24 @@ export const CARD_POOL: DemoCard[] = [
   },
 ];
 
+export const MANA_SPEED_PRESETS = [
+  { label: '低速 (4.0秒/マナ)', value: 0.25, secPerMana: '4.0秒' },
+  { label: '標準 (2.5秒/マナ)', value: 0.40, secPerMana: '2.5秒' },
+  { label: '速め (1.8秒/マナ)', value: 0.55, secPerMana: '1.8秒' },
+  { label: '高速 (1.3秒/マナ)', value: 0.75, secPerMana: '1.3秒' },
+] as const;
+
+export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1マナ（クラロワ風バランス）
 const INITIAL_LIFE = 20;
+const INITIAL_MANA = 3;
 const MAX_MANA = 10;
-const MANA_REGEN_PER_SEC = 0.75; // 約1.3秒で1マナ
 
 export function useRealtimeGame() {
   const [playerHp, setPlayerHp] = useState(INITIAL_LIFE);
   const [cpuHp, setCpuHp] = useState(INITIAL_LIFE);
-  const [playerMana, setPlayerMana] = useState(3);
-  const [cpuMana, setCpuMana] = useState(3);
+  const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
+  const [cpuMana, setCpuMana] = useState(INITIAL_MANA);
+  const [manaRegenRate, setManaRegenRate] = useState<number>(DEFAULT_MANA_REGEN_PER_SEC);
 
   // 手札（4枚）
   const [hand, setHand] = useState<DemoCard[]>(() => [
@@ -145,6 +154,9 @@ export function useRealtimeGame() {
   const lastTimeRef = useRef<number>(performance.now());
   const cpuActionTimerRef = useRef<number>(0);
   const manaTimerRef = useRef<number>(0);
+  const manaRegenRateRef = useRef<number>(manaRegenRate);
+  manaRegenRateRef.current = manaRegenRate;
+
   const stateRef = useRef({
     playerHp,
     cpuHp,
@@ -176,11 +188,12 @@ export function useRealtimeGame() {
     });
   }, []);
 
-  // プレイヤーがレーンを指定してカードを使用
+  // プレイヤーがレーンを指定してカードを使用（ドラッグ＆ドロップ時はcardIndexOverrideを渡す）
   const playCardOnLane = useCallback(
-    (laneIndex: number) => {
-      if (selectedCardIndex === null) return;
-      const card = hand[selectedCardIndex];
+    (laneIndex: number, cardIndexOverride?: number) => {
+      const cardIdx = cardIndexOverride !== undefined ? cardIndexOverride : selectedCardIndex;
+      if (cardIdx === null || cardIdx === undefined) return;
+      const card = hand[cardIdx];
       if (!card || playerMana < card.manaCost || gameResult !== 'playing') return;
 
       // マナ消費
@@ -243,7 +256,7 @@ export function useRealtimeGame() {
       }
 
       // 手札の補充と選択解除
-      drawCard(selectedCardIndex);
+      drawCard(cardIdx);
       setSelectedCardIndex(null);
     },
     [selectedCardIndex, hand, playerMana, gameResult, drawCard]
@@ -310,7 +323,7 @@ export function useRealtimeGame() {
         // 1. マナ増加（0.08秒ごとに更新して再レンダリング頻度を安定化）
         manaTimerRef.current += dt;
         if (manaTimerRef.current >= 0.08) {
-          const deltaMana = MANA_REGEN_PER_SEC * manaTimerRef.current;
+          const deltaMana = manaRegenRateRef.current * manaTimerRef.current;
           manaTimerRef.current = 0;
           setPlayerMana((m) => Math.min(MAX_MANA, m + deltaMana));
           setCpuMana((m) => Math.min(MAX_MANA, m + deltaMana));
@@ -502,8 +515,8 @@ export function useRealtimeGame() {
   const resetGame = useCallback(() => {
     setPlayerHp(INITIAL_LIFE);
     setCpuHp(INITIAL_LIFE);
-    setPlayerMana(4);
-    setCpuMana(4);
+    setPlayerMana(INITIAL_MANA);
+    setCpuMana(INITIAL_MANA);
     setUnits([]);
     setSpellEffects([]);
     setGameResult('playing');
@@ -516,6 +529,8 @@ export function useRealtimeGame() {
     playerMana,
     cpuMana,
     maxMana: MAX_MANA,
+    manaRegenRate,
+    setManaRegenRate,
     hand,
     selectedCardIndex,
     setSelectedCardIndex,
