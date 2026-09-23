@@ -64,9 +64,9 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 2,
     attack: 1,
     life: 2,
-    speed: 4, // 後方支援ペース（旧8から調整）
-    range: 12, // やや遠距離
-    effectDesc: '攻撃時、相手ユニットを1.2秒間スタン（麻痺）させる。',
+    speed: 3.5, // 後方支援ペース
+    range: 28, // 長距離放電（旧12から大幅拡大：遠くから雷撃）
+    effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。',
     icon: '🪼',
   },
   {
@@ -90,9 +90,9 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 5,
     attack: 5,
     life: 8,
-    speed: 3.5, // 重量級ボス（旧7から調整）
-    range: 15, // 遠距離ブレス
-    effectDesc: '圧倒的なHPと火力を誇る前線の切り込み隊長。',
+    speed: 3.5, // 重量級ボス
+    range: 32, // 長距離火炎ブレス（旧15から大幅拡大）
+    effectDesc: '遠距離から強烈な火炎ブレスを浴びせ、大ダメージを与える。',
     icon: '🐉',
   },
   {
@@ -517,15 +517,15 @@ export function useRealtimeGame() {
 
                 // 攻撃種別に応じたエフェクト種別と継続時間を設定
                 let effectType: AttackEffectType = 'slash';
-                let duration = 280;
+                let duration = 300;
                 if (unit.cardNo === 11) {
-                  // 炎のドラゴン: 遠距離火炎弾ブレス
+                  // 炎のドラゴン: 長距離火炎ブレス
                   effectType = 'fireball';
-                  duration = 460;
+                  duration = 550;
                 } else if (unit.cardNo === 6) {
-                  // 電気クラゲ: 放電電撃弾＆着弾放電スパーク
+                  // 電気クラゲ: 長距離放電電撃ビーム＆着弾放電スパーク
                   effectType = 'lightning';
-                  duration = 420;
+                  duration = 520;
                 }
 
                 newAttackEffects.push({
@@ -552,13 +552,13 @@ export function useRealtimeGame() {
                 lastAttack = now;
                 const targetBaseY = unit.owner === 'player' ? 2 : 98;
                 let effectType: AttackEffectType = 'base_hit';
-                let duration = 300;
+                let duration = 320;
                 if (unit.cardNo === 11) {
                   effectType = 'fireball';
-                  duration = 460;
+                  duration = 550;
                 } else if (unit.cardNo === 6) {
                   effectType = 'lightning';
-                  duration = 420;
+                  duration = 520;
                 }
 
                 newAttackEffects.push({

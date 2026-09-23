@@ -235,60 +235,85 @@ export default function RealtimeDemoPage() {
           box-shadow: 0 0 16px #38bdf8, 0 0 28px #0284c7;
         }
 
-        /* 電気クラゲ: 電撃ビームライン（クラゲから標的へ走る稲妻） */
+        /* 電気クラゲ: 放電電撃ビームライン（クラゲから標的へ走る極太の稲妻） */
         @keyframes lightning-beam-flicker {
-          0% { opacity: 0; transform: translateX(-50%) scaleX(0.5); }
-          25% { opacity: 1; transform: translateX(-50%) scaleX(1.5); }
-          50% { opacity: 0.8; transform: translateX(-50%) scaleX(1.0); }
-          75% { opacity: 1; transform: translateX(-50%) scaleX(1.8); }
+          0% { opacity: 0; transform: translateX(-50%) scaleX(0.4); }
+          15% { opacity: 1; transform: translateX(-50%) scaleX(1.6); }
+          35% { opacity: 0.7; transform: translateX(-50%) scaleX(1.0); }
+          55% { opacity: 1; transform: translateX(-50%) scaleX(2.0); }
+          80% { opacity: 0.8; transform: translateX(-50%) scaleX(1.3); }
           100% { opacity: 0; transform: translateX(-50%) scaleX(0.2); }
         }
         .lightning-beam-line {
           position: absolute;
           left: 50%;
-          width: 5px;
-          background: linear-gradient(to bottom, #ffffff, #38bdf8, #0284c7, #ffffff);
-          box-shadow: 0 0 10px #38bdf8, 0 0 20px #0284c7, 0 0 30px #ffffff;
-          border-radius: 3px;
+          width: 8px;
+          background: linear-gradient(to bottom, #ffffff, #38bdf8 30%, #e0f2fe 50%, #0284c7 70%, #ffffff);
+          box-shadow: 0 0 14px #38bdf8, 0 0 28px #0284c7, 0 0 42px #ffffff;
+          border-radius: 4px;
           pointer-events: none;
-          z-index: 34;
-          animation: lightning-beam-flicker 0.36s ease-out forwards;
+          z-index: 35;
+          animation: lightning-beam-flicker 0.48s ease-out forwards;
+        }
+
+        /* 炎のドラゴン: 火炎ブレス流線（口から標的へ噴射される火炎） */
+        @keyframes fire-stream-flicker {
+          0% { opacity: 0; transform: translateX(-50%) scaleX(0.3); }
+          20% { opacity: 1; transform: translateX(-50%) scaleX(1.5); }
+          50% { opacity: 0.85; transform: translateX(-50%) scaleX(1.1); }
+          75% { opacity: 1; transform: translateX(-50%) scaleX(1.8); }
+          100% { opacity: 0; transform: translateX(-50%) scaleX(0.2); }
+        }
+        .fire-breath-stream {
+          position: absolute;
+          left: 50%;
+          width: 12px;
+          background: linear-gradient(to bottom, #fef08a, #f97316 25%, #ea580c 50%, #dc2626 75%, #fef08a);
+          box-shadow: 0 0 16px #f97316, 0 0 32px #ea580c, 0 0 48px #fef08a;
+          border-radius: 6px;
+          pointer-events: none;
+          z-index: 35;
+          animation: fire-stream-flicker 0.5s ease-out forwards;
         }
 
         /* 電気クラゲ: 着弾地点のバチバチ放電スパーク */
         @keyframes lightning-impact-anim {
           0% {
-            transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+            transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
             opacity: 0;
           }
-          30% {
-            transform: translate(-50%, -50%) scale(1.5) rotate(-15deg);
+          20% {
+            transform: translate(-50%, -50%) scale(1.6) rotate(-20deg);
             opacity: 1;
-            filter: drop-shadow(0 0 18px #38bdf8);
+            filter: drop-shadow(0 0 20px #38bdf8);
           }
-          65% {
-            transform: translate(-50%, -50%) scale(1.9) rotate(20deg);
+          50% {
+            transform: translate(-50%, -50%) scale(2.0) rotate(15deg);
             opacity: 1;
-            filter: drop-shadow(0 0 26px #eab308);
+            filter: drop-shadow(0 0 28px #eab308);
+          }
+          80% {
+            transform: translate(-50%, -50%) scale(1.7) rotate(-10deg);
+            opacity: 0.9;
           }
           100% {
-            transform: translate(-50%, -50%) scale(2.4) rotate(35deg);
+            transform: translate(-50%, -50%) scale(2.4) rotate(30deg);
             opacity: 0;
           }
         }
         .lightning-impact-effect {
-          animation: lightning-impact-anim 0.38s ease-out forwards;
+          animation: lightning-impact-anim 0.5s ease-out forwards;
         }
         @keyframes shockwave-pulse-cyan {
           0% {
             width: 10px;
             height: 10px;
             opacity: 1;
-            border-width: 3px;
+            border-width: 4px;
           }
           100% {
-            width: 64px;
-            height: 64px;
+            width: 72px;
+            height: 72px;
             opacity: 0;
             border-width: 1px;
           }
@@ -299,10 +324,10 @@ export default function RealtimeDemoPage() {
           left: 50%;
           transform: translate(-50%, -50%);
           border-radius: 50%;
-          border: 2px solid #38bdf8;
-          box-shadow: 0 0 14px #38bdf8;
+          border: 3px solid #38bdf8;
+          box-shadow: 0 0 16px #38bdf8;
           pointer-events: none;
-          animation: shockwave-pulse-cyan 0.35s ease-out forwards;
+          animation: shockwave-pulse-cyan 0.45s ease-out forwards;
         }
 
         /* 近接攻撃: 斬撃・爪痕・打撃 */
@@ -1216,88 +1241,73 @@ function RenderUnit({ unit }: { unit: Unit }) {
   );
 }
 
-// 攻撃エフェクト（弾道・電撃ビーム・着弾放電スパーク・火炎爆発・ダメージポップアップ）描画サブコンポーネント
+// 攻撃エフェクト（電撃ビーム・火炎ブレス・着弾放電スパーク・火炎爆発・ダメージポップアップ）描画サブコンポーネント
 function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   const now = Date.now();
   const elapsed = now - effect.createdAt;
-  const showImpact = elapsed >= effect.duration * 0.35;
-  const showDamage = elapsed >= effect.duration * 0.45;
+  const showDamage = elapsed >= 120;
 
-  // 動的一意キーフレーム名
-  const safeId = effect.id.replace(/[^a-zA-Z0-9_]/g, '_');
-  const flyAnimName = `fly_${safeId}`;
-
-  // 電撃ビーム用の垂直範囲
+  // ビーム・流線用の垂直範囲
   const minY = Math.min(effect.fromY, effect.toY);
-  const heightY = Math.max(4, Math.abs(effect.toY - effect.fromY));
+  const heightY = Math.max(5, Math.abs(effect.toY - effect.fromY));
 
   return (
     <>
-      {/* 飛翔アニメーション用インラインキーフレーム（CSS変数補間バグを完全に回避） */}
-      <style>{`
-        @keyframes ${flyAnimName} {
-          0% {
-            top: ${effect.fromY}%;
-            opacity: 0.95;
-            transform: translate(-50%, -50%) scale(0.8);
-          }
-          65% {
-            top: ${effect.toY}%;
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.4);
-          }
-          100% {
-            top: ${effect.toY}%;
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(2.0);
-          }
-        }
-      `}</style>
-
-      {/* 1. 炎のドラゴン（火炎弾ブレス飛翔 ＆ 着弾大爆発） */}
+      {/* 1. 炎のドラゴン（長距離火炎ブレス流線 ＆ 着弾大爆発） */}
       {effect.effectType === 'fireball' && (
         <>
-          {/* 飛翔する火炎球 */}
+          {/* ドラゴンから標的へ噴射される火炎ブレスの流線 */}
+          <div
+            className="fire-breath-stream"
+            style={{
+              top: `${minY}%`,
+              height: `${heightY}%`,
+            }}
+          />
+
+          {/* 発射元（ドラゴンの口元）の炎熱オーラ */}
           <div
             style={{
               position: 'absolute',
+              top: `${effect.fromY}%`,
               left: '50%',
+              transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
-              zIndex: 35,
-              animation: `${flyAnimName} ${effect.duration}ms cubic-bezier(0.2, 0.7, 0.4, 1) forwards`,
+              zIndex: 36,
             }}
           >
             <div className="fireball-glow">
-              <span style={{ fontSize: '24px', display: 'block', filter: 'drop-shadow(0 0 8px #f97316)' }}>
+              <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 10px #f97316)' }}>
                 🔥
               </span>
             </div>
           </div>
 
           {/* 着弾地点の火炎大爆発＆衝撃波リング */}
-          {showImpact && (
-            <div
-              style={{
-                position: 'absolute',
-                top: `${effect.toY}%`,
-                left: '50%',
-                pointerEvents: 'none',
-                zIndex: 37,
-              }}
-            >
-              <div className="shockwave-ring-orange" />
-              <div className="fireball-impact-effect">
-                <span style={{ fontSize: '32px', display: 'block' }}>💥</span>
-              </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: `${effect.toY}%`,
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 38,
+            }}
+          >
+            <div className="shockwave-ring-orange" />
+            <div className="fireball-impact-effect">
+              <span style={{ fontSize: '36px', display: 'block', filter: 'drop-shadow(0 0 16px #ea580c)' }}>
+                💥🔥
+              </span>
             </div>
-          )}
+          </div>
         </>
       )}
 
-      {/* 2. 電気クラゲ（電撃ビームライン ＆ 放電弾 ＆ 着弾バチバチ放電スパーク） */}
+      {/* 2. 電気クラゲ（長距離放電電撃ビーム ＆ 着弾バチバチ放電スパーク） */}
       {effect.effectType === 'lightning' && (
         <>
-          {/* クラゲから標的へ走る電撃ビーム（稲妻閃光ライン） */}
+          {/* クラゲから標的へ垂直に走る極太の放電稲妻ビーム */}
           <div
             className="lightning-beam-line"
             style={{
@@ -1306,14 +1316,15 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             }}
           />
 
-          {/* 飛翔する放電電撃弾 */}
+          {/* 発射元（クラゲ自身）の放電スパーク */}
           <div
             style={{
               position: 'absolute',
+              top: `${effect.fromY}%`,
               left: '50%',
+              transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
               zIndex: 36,
-              animation: `${flyAnimName} ${effect.duration}ms cubic-bezier(0.15, 0.8, 0.35, 1) forwards`,
             }}
           >
             <div className="lightning-glow">
@@ -1324,24 +1335,23 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
           </div>
 
           {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング */}
-          {showImpact && (
-            <div
-              style={{
-                position: 'absolute',
-                top: `${effect.toY}%`,
-                left: '50%',
-                pointerEvents: 'none',
-                zIndex: 38,
-              }}
-            >
-              <div className="shockwave-ring-cyan" />
-              <div className="lightning-impact-effect">
-                <span style={{ fontSize: '28px', display: 'block', textShadow: '0 0 12px #38bdf8, 0 0 24px #eab308' }}>
-                  ⚡💥
-                </span>
-              </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: `${effect.toY}%`,
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 39,
+            }}
+          >
+            <div className="shockwave-ring-cyan" />
+            <div className="lightning-impact-effect">
+              <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
+                ⚡💥⚡
+              </span>
             </div>
-          )}
+          </div>
         </>
       )}
 
@@ -1357,7 +1367,7 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '26px', display: 'block' }}>⚔️</span>
+          <span style={{ fontSize: '28px', display: 'block' }}>⚔️</span>
         </div>
       )}
 
@@ -1373,7 +1383,7 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '28px', display: 'block' }}>💥</span>
+          <span style={{ fontSize: '30px', display: 'block' }}>💥</span>
         </div>
       )}
 
