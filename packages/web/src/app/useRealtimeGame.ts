@@ -79,7 +79,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 7, // 突破突進（旧13から調整）
     range: 9,
-    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。',
+    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。攻撃ヒット時に相手をノックバックさせる。',
     icon: '🐗',
   },
   {
@@ -711,6 +711,7 @@ export function useRealtimeGame() {
           const finalUnits = updated.map((unit) => {
             let hp = unit.hp;
             let stunnedUntil = unit.isStunnedUntil;
+            let y = unit.y;
 
             // このユニットを攻撃している敵をすべて探す
             updated.forEach((attacker) => {
@@ -725,12 +726,26 @@ export function useRealtimeGame() {
                 const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
                 if (dist >= -2 && dist <= attacker.range + 2) {
                   hp -= attacker.attack;
+
+                  // イノシシ (cardNo: 7) のノックバック効果
+                  if (attacker.cardNo === 7) {
+                    const pushBackAmount = 8 + Math.random() * 2; // 8%〜10%
+                    if (attacker.owner === 'player') {
+                      // プレイヤー攻撃時は敵を奥（y減少方向だが、CPUベースはy=5なのでyを減らす）
+                      y = Math.max(5, y - pushBackAmount);
+                    } else {
+                      // CPU攻撃時は敵を手前（y増加方向、プレイヤーベースはy=95なのでyを増やす）
+                      y = Math.min(95, y + pushBackAmount);
+                    }
+                    // ノックバック時0.3秒スタン
+                    stunnedUntil = now + 300;
+                  }
                 }
               }
             });
 
             const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-            return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+            return { ...unit, hp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
           });
 
           // 拠点ダメージ反映
