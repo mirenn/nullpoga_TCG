@@ -209,3 +209,85 @@
 .jelly-stunned-glow {
   filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px #eab308);
 }
+
+/* ─── イノシシ (Boar) ─── */
+
+/* idle: 荒い鼻息や呼吸に合わせた上下動 */
+@keyframes boar-idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.8px); }
+}
+
+/* walking: 前傾姿勢での猛突進ダッシュ（上下バウンド） */
+@keyframes boar-dash-bounce {
+  0%, 100% { transform: translateY(0) rotate(5deg); }
+  50% { transform: translateY(-2px) rotate(8deg); }
+}
+
+/* walking: 脚のスイング（激しく） */
+@keyframes boar-leg-swing {
+  0% { transform: rotate(35deg); }
+  100% { transform: rotate(-35deg); }
+}
+
+/* attacking: ヘッドバットタックル */
+@keyframes boar-attack-headbutt {
+  0% { transform: translateY(0) rotate(0deg) scale(1); }
+  20% { transform: translateY(2px) rotate(-5deg) scale(0.95); } /* タメ */
+  40% { transform: translateY(-6px) rotate(15deg) scale(1.05); } /* かち上げ */
+  60% { transform: translateY(-6px) rotate(15deg) scale(1.05); } /* キープ */
+  100% { transform: translateY(0) rotate(0deg) scale(1); }
+}
+
+/* stunned: コミカルに目が回る（回転） */
+@keyframes boar-dizzy-eyes {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* クラス適用 */
+.boar-idle-body {
+  animation: boar-idle-bob 1s ease-in-out infinite;
+}
+
+.boar-walk-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: boar-dash-bounce 0.25s ease-in-out infinite;
+}
+
+.boar-walk-leg-f-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: boar-leg-swing 0.2s ease-in-out infinite alternate;
+}
+
+.boar-walk-leg-f-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: boar-leg-swing 0.2s ease-in-out infinite alternate-reverse;
+}
+
+.boar-walk-leg-b-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: boar-leg-swing 0.2s ease-in-out infinite alternate-reverse;
+}
+
+.boar-walk-leg-b-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: boar-leg-swing 0.2s ease-in-out infinite alternate;
+}
+
+.boar-attack-body {
+  transform-box: fill-box;
+  transform-origin: center right;
+  animation: boar-attack-headbutt 0.4s ease-out forwards;
+}
+
+.boar-stunned-eye {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: boar-dizzy-eyes 0.8s linear infinite;
+}
