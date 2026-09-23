@@ -56,15 +56,22 @@ function GameClient() {
   }, []);
 
   const currentGameState = extractedGameResponse?.gameRoom?.gameState;
-  const myPlayer = GameUtils.getPlayerByUserId(currentGameState, userId!);
-  const opponentPlayer = GameUtils.getPlayerExcludingUserId(currentGameState, userId!);
+  let myPlayer: GameModels.Player | null = null;
+  let opponentPlayer: GameModels.Player | null = null;
+  if (currentGameState && userId) {
+    try {
+      myPlayer = GameUtils.getPlayerByUserId(currentGameState, userId);
+      opponentPlayer = GameUtils.getPlayerExcludingUserId(currentGameState, userId);
+    } catch {
+      // 未参加またはユーザー不一致時はnull
+    }
+  }
   const myDeckCount = myPlayer?.deckCards?.length ?? 0;
   const oppDeckCount = opponentPlayer?.deckCards?.length ?? 0;
 
-  const { isGameOver, result: gameResult, message: gameOverMessage } = GameUtils.checkGameOver(
-    currentGameState,
-    userId,
-  );
+  const { isGameOver, result: gameResult, message: gameOverMessage } = (currentGameState && userId)
+    ? GameUtils.checkGameOver(currentGameState, userId)
+    : { isGameOver: false, result: null, message: '' };
 
   const handleDragStart = (event: React.DragEvent<HTMLDivElement>) => {
     if (isAnimating || isGameOver) {
