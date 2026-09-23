@@ -384,24 +384,63 @@ function GameClient() {
               );
 
               if (spellActorIds.length > 0) {
+                const SPELL_EMOJIS: Record<number, string> = {
+                  101: '☄️',
+                  102: '🪨',
+                  103: '🔄',
+                  104: '🛡️',
+                  105: '🔯',
+                  106: '🔥',
+                  107: '🌧️',
+                };
                 const isFizzled = spellActorIds.some((id) => actionDict[id]?.actionData?.fizzled);
                 if (isFizzled) {
                   setTurnMessage(`【スペル不発】同一スペルの競合により呪文が打ち消し合いました！`);
+                  setActionEffect({
+                    spellEmoji: '💨 不発!',
+                  });
+                  await new Promise((r) => setTimeout(r, 1200));
+                  setActionEffect(null);
                   if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
                   if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
                   setExtractedGameResponse(structuredClone(animRoomState));
-                  await new Promise((r) => setTimeout(r, 1000));
+                  await new Promise((r) => setTimeout(r, 400));
                 } else {
                   for (const actorId of spellActorIds) {
                     const act = actionDict[actorId];
                     const isMe = actorId === userId;
                     const actorName = isMe ? 'あなた' : '相手(BOT)';
-                    const cardName = act.actionData?.spellCard?.cardName || 'スペル';
+                    const spellCard = act.actionData?.spellCard;
+                    const cardName = spellCard?.cardName || 'スペル';
+                    const cardNo = spellCard?.cardNo;
+                    const spellEmoji = (cardNo && SPELL_EMOJIS[cardNo]) || '✨';
+
+                    const targetIdx = act.actionData?.targetIdx;
+                    const targetPlayerId = act.actionData?.targetPlayerId;
+                    const targetZone = act.actionData?.targetZone;
+
+                    let spellSlotId: string | undefined;
+                    if (targetIdx !== undefined) {
+                      const isTargetMe = targetPlayerId === userId;
+                      if (targetZone === 'STANDBY') {
+                        spellSlotId = isTargetMe ? `player-szone-${targetIdx}` : `opponent-szone-${targetIdx}`;
+                      } else {
+                        spellSlotId = isTargetMe ? `player-bzone-${targetIdx}` : `opponent-bzone-${targetIdx}`;
+                      }
+                    }
+
                     setTurnMessage(`【スペル発動】${actorName}が「${cardName}」を発動！`);
+                    setActionEffect({
+                      spellEmoji,
+                      spellSlotId,
+                    });
+                    await new Promise((r) => setTimeout(r, 1000));
+                    setActionEffect(null);
+
                     if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
                     if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
                     setExtractedGameResponse(structuredClone(animRoomState));
-                    await new Promise((r) => setTimeout(r, 1000));
+                    await new Promise((r) => setTimeout(r, 400));
                   }
                 }
               }
@@ -507,6 +546,17 @@ function GameClient() {
       setActionEffect(null);
       setIsAnimating(false);
     }
+  };
+
+  const handleCancelSpell = (uniqId: string) => {
+    GameUtils.cancelPlannedSpell(
+      uniqId,
+      userId!,
+      extractedGameResponse,
+      setExtractedGameResponse,
+      spellPhaseActions,
+      setSpellPhaseActions
+    );
   };
 
   const handleSpellPhaseEnd = () => {
@@ -638,6 +688,8 @@ function GameClient() {
               onStartGame={handleStartGame}
               onActionSubmit={handleActionSubmit}
               onSpellPhaseEnd={handleSpellPhaseEnd}
+              spellPhaseActions={spellPhaseActions}
+              onCancelSpell={handleCancelSpell}
               isAnimating={isAnimating}
               isGameOver={isGameOver}
             />

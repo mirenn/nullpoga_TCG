@@ -680,3 +680,75 @@ button:disabled,
 .spell-cast-btn:active {
   transform: scale(0.95);
 }
+
+/* スペル発動エフェクトバッジ */
+.spell-effect-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 32px;
+  z-index: 70;
+  pointer-events: none;
+  animation: spellBadgePulse 0.5s ease-in-out infinite alternate;
+  filter: drop-shadow(0 0 12px rgba(168, 85, 247, 0.9));
+  white-space: nowrap;
+}
+
+@keyframes spellBadgePulse {
+  0% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.8; }
+  100% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+}
+
+/* 詠唱準備中のスペルリスト */
+.planned-spells-container {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.planned-spells-header {
+  font-size: 11px;
+  font-weight: 700;
+  color: #7c3aed;
+  text-align: left;
+}
+
+.planned-spell-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #f3e8ff;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #581c87;
+}
+
+.cancel-spell-btn {
+  background: #ef4444;
+  color: #fff;
+  border: none;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  font-size: 9px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 6px;
+  transition: transform 0.1s, background-color 0.1s;
+}
+
+.cancel-spell-btn:hover {
+  background: #dc2626;
+  transform: scale(1.15);
+}
+

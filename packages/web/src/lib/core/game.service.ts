@@ -1,4 +1,4 @@
-import { State, Player, Action, ActionType, MonsterCard, SpellCard, DECK_1, DECK_2 } from '@nullpoga/core';
+import { State, Player, Action, ActionType, CardType, MonsterCard, SpellCard, DECK_1, DECK_2 } from '@nullpoga/core';
 import { redis } from '../redis';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -106,14 +106,77 @@ export const GameService = {
 
         // スペルカードを使用
         for (const card of botPlayer.handCards) {
-            if (card instanceof SpellCard && card.manaCost <= availableMana) {
+            const isSpell = card instanceof SpellCard || (card as any).cardType === CardType.SPELL || (card as any).effect !== undefined;
+            if (isSpell && card.manaCost <= availableMana) {
+                let targetIdx = 2;
+                let targetPlayerId = enemyPlayer.userId;
+                let targetZone = 'BATTLE';
+
+                if (card.cardNo === 104) {
+                    // 炎の守護: 味方モンスターをターゲット
+                    targetPlayerId = botPlayer.userId;
+                    const friendlyIdx = botPlayer.zone.battleField.findIndex(s => s.card);
+                    if (friendlyIdx !== -1) {
+                        targetIdx = friendlyIdx;
+                        targetZone = 'BATTLE';
+                    } else {
+                        const friendlyStandby = botPlayer.zone.standbyField.findIndex(c => c !== null);
+                        if (friendlyStandby !== -1) {
+                            targetIdx = friendlyStandby;
+                            targetZone = 'STANDBY';
+                        } else {
+                            continue;
+                        }
+                    }
+                } else if (card.cardNo === 102) {
+                    // 不動の岩: 相手の空きバトルゾーン、または自陣の空きバトルゾーンに設置
+                    const emptyEnemyIdx = enemyPlayer.zone.battleField.findIndex(s => !s.card);
+                    if (emptyEnemyIdx !== -1) {
+                        targetIdx = emptyEnemyIdx;
+                        targetPlayerId = enemyPlayer.userId;
+                    } else {
+                        const emptyMyIdx = botPlayer.zone.battleField.findIndex(s => !s.card);
+                        if (emptyMyIdx !== -1) {
+                            targetIdx = emptyMyIdx;
+                            targetPlayerId = botPlayer.userId;
+                        } else {
+                            continue;
+                        }
+                    }
+                } else if (card.cardNo === 103) {
+                    // 前後交換: 相手のバトルゾーンにモンスターがいれば自陣へ引き寄せ
+                    const oppMonsterIdx = enemyPlayer.zone.battleField.findIndex(s => s.card);
+                    if (oppMonsterIdx !== -1) {
+                        targetIdx = 4 - oppMonsterIdx;
+                        targetPlayerId = enemyPlayer.userId;
+                        targetZone = 'OPPONENT_BATTLE';
+                    } else {
+                        targetIdx = 2;
+                        targetPlayerId = botPlayer.userId;
+                    }
+                } else if (card.cardNo === 105) {
+                    // 召喚の儀式: 手札にコスト3以下のモンスターがいて、空きバトルゾーンがあるか確認
+                    const hasLowCostMonster = botPlayer.handCards.some(
+                        c => (c instanceof MonsterCard || (c as any).cardType === CardType.MONSTER) && c.manaCost <= 3 && c.uniqId !== card.uniqId
+                    );
+                    const emptyBattleIdx = botPlayer.zone.battleField.findIndex(s => !s.card);
+                    if (!hasLowCostMonster || emptyBattleIdx === -1) {
+                        continue;
+                    }
+                    targetIdx = emptyBattleIdx;
+                    targetPlayerId = botPlayer.userId;
+                } else {
+                    const enemyMonsterIdx = enemyPlayer.zone.battleField.findIndex(s => s.card);
+                    targetIdx = enemyMonsterIdx !== -1 ? enemyMonsterIdx : 2;
+                    targetPlayerId = enemyPlayer.userId;
+                }
+
                 availableMana -= card.manaCost;
-                const enemyMonsterIdx = enemyPlayer.zone.battleField.findIndex(s => s.card);
-                const targetIdx = enemyMonsterIdx !== -1 ? enemyMonsterIdx : 2;
                 spellActions.push(new Action(ActionType.CAST_SPELL, {
                     spellCard: card,
                     targetIdx,
-                    targetPlayerId: enemyPlayer.userId
+                    targetPlayerId,
+                    targetZone
                 }));
             }
         }

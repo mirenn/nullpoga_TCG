@@ -23,6 +23,8 @@ export interface MonsterCardData {
   justSummoned: boolean;
   canAct: boolean;
   attackDeclaration: boolean;
+  isInvincible?: boolean;
+  burnCount?: number;
 }
 
 export interface SpellCardData {

@@ -338,7 +338,7 @@ describe('State', () => {
             expect(p2.zone.battleField[0].status).toBe(FieldStatus.WILDERNESS);
         });
 
-        it('should execute Immovable Rock (102): spawn rock token on target empty slot', () => {
+        it('should execute Immovable Rock (102): spawn rock token on target empty slot with turn-start nerf', () => {
             const p1 = state['player1'];
             p1.mana = 5;
 
@@ -356,7 +356,8 @@ describe('State', () => {
             const spawned = p1.zone.battleField[1].card;
             expect(spawned).not.toBeNull();
             expect(spawned?.cardNo).toBe(99);
-            expect(spawned?.life).toBe(3);
+            // Spawned with HP 3, then at turn start took -1 from Immovable Rock nerf -> HP 2
+            expect(spawned?.life).toBe(2);
             expect(spawned?.attack).toBe(0);
             expect(spawned?.canAct).toBe(false);
         });
@@ -388,8 +389,9 @@ describe('State', () => {
             expect(p1.zone.standbyField[3]?.cardName).toBe('Front');
         });
 
-        it('should execute Flame Guardian (104): increase target monster life by 5', () => {
+        it('should execute Flame Guardian (104): target monster becomes invincible and takes no damage', () => {
             const p1 = state['player1'];
+            const p2 = state['player2'];
             p1.mana = 5;
 
             const monster = new MonsterCard(1);
@@ -405,9 +407,20 @@ describe('State', () => {
                 targetPlayerId: p1.userId,
             });
 
-            state.executeFullTurn([], [], [], [], [guardianAction], []);
+            // Enemy attacks the protected monster during activity phase
+            const enemyMonster = new MonsterCard(7);
+            enemyMonster.attack = 3;
+            p2.zone.battleField[4].card = enemyMonster;
+            const enemyAttack = new Action(ActionType.MONSTER_ATTACK, {
+                attackerIdx: 4,
+                targetIdx: 0,
+                monsterCard: enemyMonster,
+            });
 
-            expect(p1.zone.battleField[0].card?.life).toBe(8);
+            state.executeFullTurn([], [], [], [enemyAttack], [guardianAction], []);
+
+            // Invincible: took 0 damage, life remains 3!
+            expect(p1.zone.battleField[0].card?.life).toBe(3);
         });
 
         it('should execute Summoning Ritual (105): summon cost <= 3 monster from hand to battlefield', () => {
@@ -434,7 +447,7 @@ describe('State', () => {
             expect(battlefieldCards).toContain('RitualMonster');
         });
 
-        it('should execute Blazing Spell (106): 1 damage to all enemy battlefield monsters', () => {
+        it('should execute Blazing Spell (106): 1 damage to all enemy battlefield monsters and apply burn at turn start', () => {
             const p1 = state['player1'];
             const p2 = state['player2'];
             p1.mana = 5;
@@ -442,7 +455,7 @@ describe('State', () => {
             const m1 = new MonsterCard(1);
             m1.life = 3;
             const m2 = new MonsterCard(2);
-            m2.life = 1; // will be deleted!
+            m2.life = 1; // will be deleted by immediate 1 damage!
 
             p2.zone.battleField[0].card = m1;
             p2.zone.battleField[4].card = m2;
@@ -456,8 +469,9 @@ describe('State', () => {
 
             state.executeFullTurn([], [], [], [], [blazeAction], []);
 
-            expect(p2.zone.battleField[0].card?.life).toBe(2);
-            expect(p2.zone.battleField[4].card).toBeNull(); // defeated and removed
+            // m1 took 1 spell damage + 1 burn damage at next turn refresh -> life is 1
+            expect(p2.zone.battleField[0].card?.life).toBe(1);
+            expect(p2.zone.battleField[4].card).toBeNull(); // defeated immediately and removed
         });
 
         it('should execute Fire Rain (107): 3 damage to 3 battlefield slots', () => {
@@ -518,9 +532,12 @@ describe('State', () => {
             expect(spellSteps[0].ActionDict[p2.userId]?.actionData?.spellCard?.cardNo).toBe(102);
             expect(spellSteps[1].ActionDict[p1.userId]?.actionData?.spellCard?.cardNo).toBe(106);
 
-            // Rock (HP 3) was spawned by p2 (102), then damaged by p1's 106 -> HP 2
-            expect(p2.zone.battleField[2].card?.cardNo).toBe(99);
-            expect(p2.zone.battleField[2].card?.life).toBe(2);
+            // In step 0 snapshot, rock was spawned with HP 3
+            expect(spellSteps[0].State.player2.zone.battleField[2].card?.cardNo).toBe(99);
+            expect(spellSteps[0].State.player2.zone.battleField[2].card?.life).toBe(3);
+
+            // In step 1 snapshot, rock was damaged by 106 -> HP 2
+            expect(spellSteps[1].State.player2.zone.battleField[2].card?.life).toBe(2);
         });
 
         it('should detect fizzle when identical spells are cast on conflicting targets', () => {
@@ -572,6 +589,117 @@ describe('State', () => {
             // But mana was consumed (cost 7): 10 - 7 + 1 = 4
             expect(p1.mana).toBe(10 - 7 + 1);
             expect(p2.mana).toBe(10 - 7 + 1);
+        });
+
+        it('should execute Meteor Fall (101) targeting standby zone and damage standby monster', () => {
+            const p1 = state['player1'];
+            const p2 = state['player2'];
+            p1.mana = 5;
+
+            const standbyMonster = new MonsterCard(1); // life: 1
+            p2.zone.standbyField[2] = standbyMonster;
+
+            const spell = instanceCard(101) as SpellCard;
+            p1.handCards.push(spell);
+
+            const meteorStandby = new Action(ActionType.CAST_SPELL, {
+                spellCard: spell,
+                targetIdx: 2,
+                targetPlayerId: p2.userId,
+                targetZone: 'STANDBY',
+            });
+
+            state.executeFullTurn([], [], [], [], [meteorStandby], []);
+
+            // Monster had 1 life, took 3 damage, died and was cleaned up from standby field
+            expect(p2.zone.standbyField[2]).toBeNull();
+        });
+
+        it('should execute Front-Back Swap (103) pulling enemy monster to own side', () => {
+            const p1 = state['player1'];
+            const p2 = state['player2'];
+            p1.mana = 10;
+
+            const enemyMonster = new MonsterCard(7); // イノシシ
+            enemyMonster.cardName = 'OpponentBoar';
+            // Opponent's slot 3 faces Player's slot 1 (4 - 1 = 3)
+            p2.zone.battleField[3].card = enemyMonster;
+
+            const swapSpell = instanceCard(103) as SpellCard;
+            p1.handCards.push(swapSpell);
+
+            const pullAction = new Action(ActionType.CAST_SPELL, {
+                spellCard: swapSpell,
+                targetIdx: 1, // player column 1 -> oppIdx = 3
+                targetZone: 'OPPONENT_BATTLE',
+            });
+
+            state.executeFullTurn([], [], [], [], [pullAction], []);
+
+            // Opponent monster is pulled to player's battle slot 1!
+            expect(p1.zone.battleField[1].card?.cardName).toBe('OpponentBoar');
+            expect(p2.zone.battleField[3].card).toBeNull();
+        });
+
+        it('should correctly refill mana to maxMana (turnCount) at turn start even when mana was depleted', () => {
+            const freshState = new State();
+            freshState.initGame();
+
+            const p1 = freshState['player1'];
+            // Turn 1: 1 mana
+            expect(p1.turnCount).toBe(1);
+            expect(p1.mana).toBe(1);
+
+            // Spend 1 mana in turn 1
+            const card1 = p1.handCards[0];
+            card1.manaCost = 1;
+            const summon1 = new Action(ActionType.SUMMON_MONSTER, {
+                monsterCard: card1,
+                summonStandbyFieldIdx: 0,
+            });
+
+            freshState.executeFullTurn([summon1], [], [], []);
+
+            // Turn 2: mana must refill to 2, not 1!
+            expect(p1.turnCount).toBe(2);
+            expect(p1.mana).toBe(2);
+
+            // Spend 2 mana in turn 2
+            p1.mana = 0; // depleted all 2 mana
+            freshState.executeFullTurn([], [], [], []);
+
+            // Turn 3: mana must refill to 3!
+            expect(p1.turnCount).toBe(3);
+            expect(p1.mana).toBe(3);
+        });
+
+        it('should validate DECK_1 and DECK_2 conform to 30-card deck and max 2 copies rules', () => {
+            expect(DECK_1.length).toBe(30);
+            expect(DECK_2.length).toBe(30);
+
+            // Check that all 7 spells (101-107) are present in both decks
+            const allSpells = [101, 102, 103, 104, 105, 106, 107];
+            allSpells.forEach(spellNo => {
+                expect(DECK_1.filter(no => no === spellNo).length).toBe(2);
+                expect(DECK_2.filter(no => no === spellNo).length).toBe(2);
+            });
+
+            // Check that no card exceeds 2 copies
+            const countCards = (deck: number[]) => {
+                const map = new Map<number, number>();
+                deck.forEach(no => map.set(no, (map.get(no) || 0) + 1));
+                return map;
+            };
+
+            const counts1 = countCards(DECK_1);
+            const counts2 = countCards(DECK_2);
+
+            for (const [, count] of counts1.entries()) {
+                expect(count).toBeLessThanOrEqual(2);
+            }
+            for (const [, count] of counts2.entries()) {
+                expect(count).toBeLessThanOrEqual(2);
+            }
         });
     });
 });

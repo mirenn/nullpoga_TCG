@@ -1,7 +1,11 @@
+import * as GameModels from '../types/gameModels';
+
 interface ButtonContainerProps {
   onStartGame: () => void;
   onActionSubmit: () => void;
   onSpellPhaseEnd: () => void;
+  spellPhaseActions?: GameModels.Action[];
+  onCancelSpell?: (uniqId: string) => void;
   isAnimating?: boolean;
   isGameOver?: boolean;
 }
@@ -10,6 +14,8 @@ const ButtonContainer = ({
   onStartGame,
   onActionSubmit,
   onSpellPhaseEnd,
+  spellPhaseActions = [],
+  onCancelSpell,
   isAnimating = false,
   isGameOver = false,
 }: ButtonContainerProps) => (
@@ -41,8 +47,32 @@ const ButtonContainer = ({
     >
       {isGameOver ? '↺ New Game' : 'Start Game'}
     </button>
+
+    {spellPhaseActions && spellPhaseActions.length > 0 && (
+      <div className="planned-spells-container">
+        <div className="planned-spells-header">詠唱準備中のスペル:</div>
+        {spellPhaseActions.map((action, idx) => {
+          const spell = action.actionData?.spellCard;
+          if (!spell) return null;
+          return (
+            <div key={spell.uniqId || idx} className="planned-spell-chip">
+              <span>{spell.cardName} (コスト{spell.manaCost})</span>
+              {onCancelSpell && (
+                <button
+                  className="cancel-spell-btn"
+                  onClick={() => onCancelSpell(spell.uniqId)}
+                  disabled={isAnimating || isGameOver}
+                  title="取り消す"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    )}
   </div>
 );
 
 export default ButtonContainer;
-

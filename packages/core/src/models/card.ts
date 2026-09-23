@@ -62,6 +62,8 @@ export class MonsterCard extends Card {
     public justSummoned: boolean = true;
     public canAct: boolean = true;
     public life: number;
+    public isInvincible: boolean = false;
+    public burnCount: number = 0;
     private turnCount?: number;
 
     constructor(cardNo: number, uniqId?: string) {
@@ -83,6 +85,9 @@ export class MonsterCard extends Card {
                 break;
             case 6: // 電気クラゲ
                 this._initElectricJellyfish();
+                break;
+            case 99: // 不動の岩
+                this._initImmovableRock();
                 break;
         }
     }
@@ -112,6 +117,14 @@ export class MonsterCard extends Card {
             default:
                 throw new Error(`Unknown monster card number: ${cardNo}`);
         }
+    }
+
+    private _initImmovableRock(): void {
+        const originalTurnStartEffect = this.turnStartEffect.bind(this);
+        this.turnStartEffect = () => {
+            originalTurnStartEffect();
+            this.life -= 1;
+        };
     }
 
     private _initShibaInuRanmaru(): void {
@@ -155,12 +168,15 @@ export class MonsterCard extends Card {
 
     public clone(): MonsterCard {
         const cloned = instanceCard(this.cardNo) as MonsterCard;
+        cloned.uniqId = this.uniqId;
         cloned.life = this.life;
         cloned.attack = this.attack;
         cloned.stunCount = this.stunCount;
         cloned.attackDeclaration = this.attackDeclaration;
         cloned.justSummoned = this.justSummoned;
         cloned.canAct = this.canAct;
+        cloned.isInvincible = this.isInvincible;
+        cloned.burnCount = this.burnCount;
         return cloned;
     }
 
@@ -172,7 +188,9 @@ export class MonsterCard extends Card {
             imageUrl: this.imageUrl,
             stunCount: this.stunCount,
             justSummoned: this.justSummoned,
-            canAct: this.canAct
+            canAct: this.canAct,
+            isInvincible: this.isInvincible,
+            burnCount: this.burnCount
         };
     }
 
@@ -213,10 +231,12 @@ export class MonsterCard extends Card {
         card.life = data.life;
         card.attack = data.attack;
         card.imageUrl = data.imageUrl;
-        card.stunCount = data.stunCount;
+        card.stunCount = data.stunCount ?? 0;
         card.justSummoned = data.justSummoned;
         card.canAct = data.canAct;
         card.attackDeclaration = data.attackDeclaration;
+        card.isInvincible = Boolean(data.isInvincible);
+        card.burnCount = data.burnCount ?? 0;
         
         return card;
     }
@@ -260,14 +280,14 @@ export class SpellCard extends Card {
                 return {
                     manaCost: 7,
                     cardName: "前後交換",
-                    effect: "指定した列の縦2マス（前線と待機ゾーン）の配置を入れ替える。",
+                    effect: "指定した列の縦2マス（前線と待機ゾーン、または敵モンスター引き寄せ）の配置を入れ替える。",
                     imageUrl: "/images/103.png"
                 };
             case 104:
                 return {
                     manaCost: 4,
                     cardName: "炎の守護",
-                    effect: "味方モンスター1体のHPを+5する。",
+                    effect: "味方モンスター1体を次のターンまで無敵にする。",
                     imageUrl: "/images/104.png"
                 };
             case 105:
@@ -281,7 +301,7 @@ export class SpellCard extends Card {
                 return {
                     manaCost: 5,
                     cardName: "烈火の呪文",
-                    effect: "相手バトルゾーンの全モンスターに1ダメージを与える。",
+                    effect: "相手バトルゾーンの全モンスターに1ダメージを与え、火傷（次ターン開始時に1ダメージ）を付与する。",
                     imageUrl: "/images/106.png"
                 };
             case 107:

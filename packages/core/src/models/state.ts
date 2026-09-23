@@ -3,11 +3,19 @@ import { Player } from './player';
 import { Action, ActionType } from './action';
 import { PhaseKind } from './phase';
 import { FieldStatus } from './zone';
-import { MonsterCard, SpellCard, instanceCard } from './card';
+import { MonsterCard, SpellCard, instanceCard, CardType } from './card';
 
-// Initial deck configurations (including spell cards 101: 隕石落下, 102: 不動の岩, 106: 烈火の呪文)
-export const DECK_1 = [7, 5, 101, 2, 1, 102, 4, 6, 106, 7, 5, 1, 4, 3, 3, 6, 2];
-export const DECK_2 = [4, 1, 102, 7, 5, 101, 5, 7, 106, 6, 3, 4, 1, 3, 6, 2, 2];
+// Initial deck configurations: full 30-card decks with all 7 spells (max 2 copies per card)
+export const DECK_1 = [
+    1, 4, 101, 2, 3, 102, 5, 6, 105, 7,
+    1, 2, 104, 3, 4, 106, 5, 6, 107, 7,
+    11, 101, 102, 103, 104, 105, 106, 107, 12, 103
+];
+export const DECK_2 = [
+    4, 1, 105, 3, 2, 102, 6, 5, 101, 7,
+    2, 1, 106, 4, 3, 104, 6, 5, 103, 7,
+    11, 107, 101, 102, 105, 104, 106, 107, 12, 103
+];
 
 export class State implements IState {
     private history: Array<Array<Record<string, any>>> = [];
@@ -29,9 +37,17 @@ export class State implements IState {
         this.player1.isFirstPlayer = true;
         this.player2.isFirstPlayer = false;
 
+        // Turn count begins at 1
+        this.player1.turnCount = 1;
+        this.player2.turnCount = 1;
+
         // Initial mana (開始マナ 1, 最大 10)
+        this.player1.maxMana = 1;
+        this.player2.maxMana = 1;
         this.player1.mana = 1;
         this.player2.mana = 1;
+        this.player1.planMana = 1;
+        this.player2.planMana = 1;
 
         // Initial draw
         this.player1.init();
@@ -411,7 +427,14 @@ export class State implements IState {
                 if (!sA.card && sB.card) return false;
                 if (sA.card && !sB.card) return false;
                 if (sA.card && sB.card) {
-                    if (sA.card.cardNo !== sB.card.cardNo || sA.card.life !== sB.card.life) return false;
+                    if (sA.card.cardNo !== sB.card.cardNo ||
+                        sA.card.life !== sB.card.life ||
+                        sA.card.attack !== sB.card.attack ||
+                        sA.card.uniqId !== sB.card.uniqId ||
+                        Boolean(sA.card.isInvincible) !== Boolean(sB.card.isInvincible) ||
+                        (sA.card.burnCount || 0) !== (sB.card.burnCount || 0)) {
+                        return false;
+                    }
                 }
             }
             for (let i = 0; i < 5; i++) {
@@ -420,7 +443,14 @@ export class State implements IState {
                 if (!cA && cB) return false;
                 if (cA && !cB) return false;
                 if (cA && cB) {
-                    if (cA.cardNo !== cB.cardNo || cA.life !== cB.life) return false;
+                    if (cA.cardNo !== cB.cardNo ||
+                        cA.life !== cB.life ||
+                        cA.attack !== cB.attack ||
+                        cA.uniqId !== cB.uniqId ||
+                        Boolean(cA.isInvincible) !== Boolean(cB.isInvincible) ||
+                        (cA.burnCount || 0) !== (cB.burnCount || 0)) {
+                        return false;
+                    }
                 }
             }
             return true;
@@ -457,12 +487,21 @@ export class State implements IState {
         switch (cardNo) {
             case 101:
             case 1000: { // 隕石落下: 指定ゾーンのモンスターに3ダメ。空のバトルゾーンなら荒野化
-                const slot = targetPlayer.zone.battleField[targetIdx];
-                if (slot) {
-                    if (slot.card) {
-                        slot.card.life -= 3;
-                    } else {
-                        slot.status = FieldStatus.WILDERNESS;
+                if (action.actionData?.targetZone === 'STANDBY') {
+                    const card = targetPlayer.zone.standbyField[targetIdx];
+                    if (card && !card.isInvincible) {
+                        card.life -= 3;
+                    }
+                } else {
+                    const slot = targetPlayer.zone.battleField[targetIdx];
+                    if (slot) {
+                        if (slot.card) {
+                            if (!slot.card.isInvincible) {
+                                slot.card.life -= 3;
+                            }
+                        } else {
+                            slot.status = FieldStatus.WILDERNESS;
+                        }
                     }
                 }
                 break;
@@ -476,7 +515,7 @@ export class State implements IState {
                 }
                 break;
             }
-            case 103: { // 前後交換: 縦2マス（前線と待機ゾーン、または前線同士）の配置を入れ替える
+            case 103: { // 前後交換: 縦2マス（前線と待機ゾーン、または敵モンスター引き寄せ）の配置を入れ替える
                 if (action.actionData?.targetZone === 'OPPONENT_BATTLE') {
                     // 自陣バトルゾーンと対面相手バトルゾーンを入れ替える（敵モンスターを自陣に引き寄せる）
                     const oppIdx = 4 - targetIdx;
@@ -498,43 +537,62 @@ export class State implements IState {
                 }
                 break;
             }
-            case 104: { // 炎の守護: 味方モンスター1体のHPを+5する
+            case 104: { // 炎の守護: 味方モンスター1体を次のターンまで無敵にする
                 const slot = caster.zone.battleField[targetIdx];
                 if (slot && slot.card) {
-                    slot.card.life += 5;
+                    slot.card.isInvincible = true;
+                } else if (caster.zone.standbyField[targetIdx]) {
+                    caster.zone.standbyField[targetIdx]!.isInvincible = true;
                 }
                 break;
             }
             case 105: { // 召喚の儀式: 手札のコスト3以下のモンスターを1体直接バトルゾーンに出す
-                const monsterIdx = caster.handCards.findIndex(
-                    c => c instanceof MonsterCard && c.manaCost <= 3
-                );
+                let monster: MonsterCard | null = null;
+                let monsterIdx = -1;
+                if (action.actionData?.monsterCard) {
+                    monsterIdx = caster.handCards.findIndex(c => c.uniqId === action.actionData?.monsterCard?.uniqId);
+                }
+                if (monsterIdx === -1) {
+                    monsterIdx = caster.handCards.findIndex(
+                        c => (c.cardType === CardType.MONSTER || c instanceof MonsterCard) && c.manaCost <= 3
+                    );
+                }
                 if (monsterIdx !== -1) {
-                    const monster = caster.handCards[monsterIdx] as MonsterCard;
-                    const emptySlotIdx = caster.zone.battleField.findIndex(s => !s.card);
-                    if (emptySlotIdx !== -1) {
-                        caster.zone.battleField[emptySlotIdx].card = monster;
+                    monster = caster.handCards[monsterIdx] as MonsterCard;
+                    let targetSlot = caster.zone.battleField[targetIdx];
+                    if (!targetSlot || targetSlot.card) {
+                        const emptyIdx = caster.zone.battleField.findIndex(s => !s.card);
+                        targetSlot = emptyIdx !== -1 ? caster.zone.battleField[emptyIdx] : targetSlot;
+                    }
+                    if (targetSlot && !targetSlot.card) {
+                        monster.justSummoned = false;
+                        monster.canAct = true;
+                        targetSlot.card = monster;
                         caster.handCards.splice(monsterIdx, 1);
                         if (caster.planHandCards) {
-                            caster.planHandCards = caster.planHandCards.filter(c => c.uniqId !== monster.uniqId);
+                            caster.planHandCards = caster.planHandCards.filter(c => c.uniqId !== monster!.uniqId);
                         }
                     }
                 }
                 break;
             }
-            case 106: { // 烈火の呪文: 相手バトルゾーンの全モンスターに1ダメージ
+            case 106: { // 烈火の呪文: 相手バトルゾーンの全モンスターに1ダメージ + 火傷付与
                 opponent.zone.battleField.forEach(slot => {
                     if (slot.card) {
-                        slot.card.life -= 1;
+                        if (!slot.card.isInvincible) {
+                            slot.card.life -= 1;
+                        }
+                        slot.card.burnCount = (slot.card.burnCount || 0) + 1;
                     }
                 });
                 break;
             }
             case 107: { // 火の雨: ランダムなバトルゾーン3箇所に3ダメージ
-                const targetIndices = [targetIdx % 5, (targetIdx + 1) % 5, (targetIdx + 3) % 5];
+                const seed = action.actionData?.targetIdx ?? 0;
+                const targetIndices = [seed % 5, (seed + 1) % 5, (seed + 3) % 5];
                 for (const idx of targetIndices) {
                     const slot = opponent.zone.battleField[idx];
-                    if (slot && slot.card) {
+                    if (slot && slot.card && !slot.card.isInvincible) {
                         slot.card.life -= 3;
                     }
                 }
@@ -657,6 +715,18 @@ export class State implements IState {
         enemyPlayer.zone.battleField.forEach(slot => {
             if (slot.card && slot.card.life <= 0) {
                 slot.removeCard();
+            }
+        });
+
+        myPlayer.zone.standbyField.forEach((card, idx) => {
+            if (card && card.life <= 0) {
+                myPlayer.zone.standbyField[idx] = null;
+            }
+        });
+
+        enemyPlayer.zone.standbyField.forEach((card, idx) => {
+            if (card && card.life <= 0) {
+                enemyPlayer.zone.standbyField[idx] = null;
             }
         });
     }

@@ -24,6 +24,8 @@ export interface ActionEffect {
   damage?: number;
   isLanding?: boolean;
   attacks?: AttackInfo[];
+  spellEmoji?: string;
+  spellSlotId?: string;
 }
 
 interface GameBoardProps {
@@ -161,7 +163,37 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
             key={slotId}
             className={`card-slot standby-field ${isLanding ? 'slot-summon-landing' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
             id={slotId}
+            onDragOver={(e) => {
+              if (isDragging) e.preventDefault();
+            }}
+            onDrop={(event) => {
+              event.preventDefault();
+              const draggedElementId = event.dataTransfer?.getData('text');
+              if (draggedElementId) {
+                const isSpell = player?.planHandCards?.some(
+                  (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
+                );
+                if (isSpell) {
+                  GameUtils.planCastSpell(
+                    draggedElementId,
+                    myUserId,
+                    extractedGameResponse,
+                    setExtractedGameResponse,
+                    i,
+                    opponent?.userId,
+                    spellPhaseActions,
+                    setSpellPhaseActions,
+                    'STANDBY'
+                  );
+                }
+              }
+            }}
           >
+            {actionEffect?.spellSlotId === slotId && actionEffect?.spellEmoji && (
+              <div className="spell-effect-badge">
+                {actionEffect.spellEmoji}
+              </div>
+            )}
             {card ? (
               <MonsterCard
                 card={card as GameModels.MonsterCard}
@@ -217,24 +249,45 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
               event.preventDefault();
               const draggedElementId = event.dataTransfer?.getData('text');
               if (draggedElementId) {
-                const isSpell = player?.planHandCards?.some(
+                const spell = player?.planHandCards?.find(
                   (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
                 );
-                if (isSpell) {
-                  GameUtils.planCastSpell(
-                    draggedElementId,
-                    myUserId,
-                    extractedGameResponse,
-                    setExtractedGameResponse,
-                    i,
-                    opponent?.userId,
-                    spellPhaseActions,
-                    setSpellPhaseActions
-                  );
+                if (spell) {
+                  if (spell.cardNo === 103) {
+                    // 前後交換：相手バトルゾーンを選択した場合、対面の相手モンスターを引き寄せる
+                    GameUtils.planCastSpell(
+                      draggedElementId,
+                      myUserId,
+                      extractedGameResponse,
+                      setExtractedGameResponse,
+                      4 - i,
+                      opponent?.userId,
+                      spellPhaseActions,
+                      setSpellPhaseActions,
+                      'OPPONENT_BATTLE'
+                    );
+                  } else {
+                    GameUtils.planCastSpell(
+                      draggedElementId,
+                      myUserId,
+                      extractedGameResponse,
+                      setExtractedGameResponse,
+                      i,
+                      opponent?.userId,
+                      spellPhaseActions,
+                      setSpellPhaseActions,
+                      'BATTLE'
+                    );
+                  }
                 }
               }
             }}
           >
+            {actionEffect?.spellSlotId === slotId && actionEffect?.spellEmoji && (
+              <div className="spell-effect-badge">
+                {actionEffect.spellEmoji}
+              </div>
+            )}
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
             {isTargeted && targetDamage !== undefined && (
               <div className="damage-popup-overlay">💥 -{targetDamage}</div>
@@ -306,12 +359,18 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
                     i,
                     myUserId,
                     spellPhaseActions,
-                    setSpellPhaseActions
+                    setSpellPhaseActions,
+                    'BATTLE'
                   );
                 }
               }
             }}
           >
+            {actionEffect?.spellSlotId === slotId && actionEffect?.spellEmoji && (
+              <div className="spell-effect-badge">
+                {actionEffect.spellEmoji}
+              </div>
+            )}
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
             {isTargeted && targetDamage !== undefined && (
               <div className="damage-popup-overlay">💥 -{targetDamage}</div>
@@ -348,7 +407,46 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
               key={slotId}
               className={`card-slot standby-field ${isDragging ? 'highlight' : ''} ${isLanding ? 'slot-summon-landing' : ''} ${isSummoning ? 'slot-summoning' : ''}`}
               id={slotId}
+              onDragOver={(e) => {
+                if (isDragging) e.preventDefault();
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                const draggedElementId = event.dataTransfer?.getData('text');
+                if (!draggedElementId) return;
+                const isSpell = player?.planHandCards?.some(
+                  (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
+                );
+                if (isSpell) {
+                  GameUtils.planCastSpell(
+                    draggedElementId,
+                    myUserId,
+                    extractedGameResponse,
+                    setExtractedGameResponse,
+                    i,
+                    myUserId,
+                    spellPhaseActions,
+                    setSpellPhaseActions,
+                    'STANDBY'
+                  );
+                } else if (!card) {
+                  GameUtils.planSummonMonster(
+                    draggedElementId,
+                    myUserId,
+                    extractedGameResponse,
+                    setExtractedGameResponse,
+                    i,
+                    summonPhaseActions,
+                    setSummonPhaseActions
+                  );
+                }
+              }}
             >
+              {actionEffect?.spellSlotId === slotId && actionEffect?.spellEmoji && (
+                <div className="spell-effect-badge">
+                  {actionEffect.spellEmoji}
+                </div>
+              )}
               {card ? (
                 <MonsterCard
                   card={card as GameModels.MonsterCard}
@@ -359,52 +457,7 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
                   onAttack={() => {}}
                 />
               ) : (
-                <div
-                  className="empty-slot"
-                  onDrop={(event) => {
-                    event.preventDefault();
-                    const dropAreaId = (event.target as HTMLElement).closest(
-                      '.card-slot',
-                    )?.id;
-                    const draggedElementId = event.dataTransfer!.getData('text');
-                    const draggedElement =
-                      document.getElementById(draggedElementId);
-                    if (draggedElement && dropAreaId) {
-                      const match = dropAreaId.match(/\d+$/);
-                      if (match) {
-                        const summonIndex = Number(match[0]);
-                        const isSpell = player?.planHandCards?.some(
-                          (c) => c.uniqId === draggedElementId && c.cardType === GameModels.CardType.SPELL
-                        );
-                        if (isSpell) {
-                          GameUtils.planCastSpell(
-                            draggedElementId,
-                            myUserId,
-                            extractedGameResponse,
-                            setExtractedGameResponse,
-                            summonIndex,
-                            opponent?.userId,
-                            spellPhaseActions,
-                            setSpellPhaseActions
-                          );
-                        } else {
-                          GameUtils.planSummonMonster(
-                            draggedElementId,
-                            myUserId,
-                            extractedGameResponse,
-                            setExtractedGameResponse,
-                            summonIndex,
-                            summonPhaseActions,
-                            setSummonPhaseActions,
-                          );
-                        }
-                      }
-                    }
-                  }}
-                  onDragOver={(event) => {
-                    event.preventDefault();
-                  }}
-                ></div>
+                <div className="empty-slot"></div>
               )}
             </div>
           </ArcherElement>

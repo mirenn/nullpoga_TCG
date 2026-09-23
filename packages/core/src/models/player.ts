@@ -9,6 +9,7 @@ export class Player {
     public life: number = 20;
     public mana: number = 0;
     public planMana: number = 0;
+    public maxMana: number = 0;
     public isFirstPlayer: boolean = false;
     public turnCount: number = 0;
     public phase: PhaseKind = PhaseKind.SPELL_PHASE;
@@ -55,7 +56,9 @@ export class Player {
 
     nextTurnRefresh(): void {
         this.turnCount++;
-        this.mana = Math.min(10, this.mana + 1);
+        // Available mana increases each turn (starts at 1, max 10) and refills to max
+        this.maxMana = Math.min(10, Math.max(this.maxMana + 1, this.turnCount, this.mana + 1));
+        this.mana = this.maxMana;
         this.planMana = this.mana;
         this.drawCard();
         
@@ -64,10 +67,39 @@ export class Player {
         this.summonPhaseActions = [];
         this.activityPhaseActions = [];
         
-        // Reset attack declarations
+        // Turn-start effects, burn damage, and invincibility reset
         this.zone.battleField.forEach(slot => {
             if (slot.card) {
+                if (slot.card.burnCount > 0) {
+                    slot.card.life -= slot.card.burnCount;
+                    slot.card.burnCount = 0;
+                }
+                slot.card.turnStartEffect();
                 slot.card.attackDeclaration = false;
+                slot.card.isInvincible = false;
+            }
+        });
+
+        this.zone.standbyField.forEach(card => {
+            if (card) {
+                if (card.burnCount > 0) {
+                    card.life -= card.burnCount;
+                    card.burnCount = 0;
+                }
+                card.turnStartEffect();
+                card.isInvincible = false;
+            }
+        });
+
+        // Clean up defeated monsters from turn start effects/burn
+        this.zone.battleField.forEach(slot => {
+            if (slot.card && slot.card.life <= 0) {
+                slot.removeCard();
+            }
+        });
+        this.zone.standbyField.forEach((card, idx) => {
+            if (card && card.life <= 0) {
+                this.zone.standbyField[idx] = null;
             }
         });
         
@@ -100,8 +132,10 @@ export class Player {
         const targetSlot = this.zone.battleField[targetIdx];
 
         if (attackerSlot?.card && targetSlot?.card) {
-            const damage = attackerSlot.card.attack ?? 1;
-            targetSlot.card.life -= damage;
+            if (!targetSlot.card.isInvincible) {
+                const damage = attackerSlot.card.attack ?? 1;
+                targetSlot.card.life -= damage;
+            }
             attackerSlot.card.attackDeclaration = true;
         } else if (attackerSlot?.card && !targetSlot?.card) {
             const damage = attackerSlot.card.attack ?? 1;
@@ -214,7 +248,7 @@ export class Player {
             planHandCards: (this.planHandCards && this.planHandCards.length > 0)
                 ? this.planHandCards.map(card => card.toDict())
                 : this.handCards.map(card => card.toDict()),
-            deckCards: this.deckCards,
+            deckCards: this.deckCards.map(card => typeof card?.toDict === 'function' ? card.toDict() : card),
             zone: this.zone.toDict(),
             planZone: this.planZone ? this.planZone.toDict() : this.zone.toDict(),
             spellPhaseActions: this.spellPhaseActions.map(action => typeof action?.toDict === 'function' ? action.toDict() : action),

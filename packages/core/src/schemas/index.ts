@@ -24,6 +24,8 @@ export const MonsterCardSchema = z.object({
   justSummoned: z.boolean().default(true),
   canAct: z.boolean().default(false),
   attackDeclaration: z.boolean().default(false),
+  isInvincible: z.boolean().optional(),
+  burnCount: z.number().optional(),
 });
 
 export const SpellCardSchema = z.object({

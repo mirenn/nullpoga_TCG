@@ -101,6 +101,7 @@ export function planCastSpell(
   targetPlayerId: string | undefined,
   spell_phase_actions: GameModels.Action[],
   set_spell_phase_actions: (actions: GameModels.Action[] | ((prev: GameModels.Action[]) => GameModels.Action[])) => void,
+  targetZone?: string,
 ) {
   try {
     const newExtractedGameResponse = structuredClone(extractedGameResponse);
@@ -131,12 +132,18 @@ export function planCastSpell(
     myPlayer.planMana = currentPlanMana - spellCard.manaCost;
 
     const oppPlayer = getPlayerExcludingUserId(newExtractedGameResponse?.gameRoom.gameState, myUserId);
+    let finalTargetPlayerId = targetPlayerId;
+    if (!finalTargetPlayerId) {
+      finalTargetPlayerId = spellCard.cardNo === 104 ? myUserId : (oppPlayer?.userId || 'opponent');
+    }
+
     const newAction: GameModels.Action = {
       actionType: GameModels.ActionType.CAST_SPELL,
       actionData: {
         spellCard,
         targetIdx: targetIdx !== undefined ? targetIdx : 2,
-        targetPlayerId: targetPlayerId || oppPlayer?.userId,
+        targetPlayerId: finalTargetPlayerId,
+        targetZone: targetZone || 'BATTLE',
       },
     };
 
@@ -145,6 +152,47 @@ export function planCastSpell(
     console.log(`Spell ${spellCard.cardName} planned! Remaining mana: ${myPlayer.planMana}`);
   } catch (error) {
     console.error('Failed to plan cast spell:', error);
+  }
+}
+
+export function cancelPlannedSpell(
+  target: number | string,
+  myUserId: string,
+  extractedGameResponse: GameModels.RoomStateResponse | null,
+  setExtractedGameResponse: React.Dispatch<
+    React.SetStateAction<GameModels.RoomStateResponse | null>
+  >,
+  spell_phase_actions: GameModels.Action[],
+  set_spell_phase_actions: (actions: GameModels.Action[] | ((prev: GameModels.Action[]) => GameModels.Action[])) => void,
+) {
+  try {
+    const actionIndex = typeof target === 'number'
+      ? target
+      : spell_phase_actions.findIndex((a) => a.actionData?.spellCard?.uniqId === target);
+    if (actionIndex < 0 || actionIndex >= spell_phase_actions.length) return;
+
+    const actionToCancel = spell_phase_actions[actionIndex];
+    if (!actionToCancel || !actionToCancel.actionData?.spellCard) return;
+
+    const spellCard = actionToCancel.actionData.spellCard;
+    const newExtractedGameResponse = structuredClone(extractedGameResponse);
+    const myPlayer = getPlayerByUserId(
+      newExtractedGameResponse?.gameRoom.gameState,
+      myUserId,
+    );
+    if (!myPlayer) return;
+
+    // Refund mana and return card to planHandCards
+    myPlayer.planMana = (myPlayer.planMana ?? 0) + (spellCard.manaCost ?? 0);
+    myPlayer.planHandCards.push(spellCard);
+
+    const nextActions = [...spell_phase_actions];
+    nextActions.splice(actionIndex, 1);
+    set_spell_phase_actions(nextActions);
+    setExtractedGameResponse(newExtractedGameResponse);
+    console.log(`Spell ${spellCard.cardName} cancelled. Mana refunded to ${myPlayer.planMana}`);
+  } catch (error) {
+    console.error('Failed to cancel planned spell:', error);
   }
 }
 
