@@ -14,11 +14,15 @@ export default function RealtimeDemoPage() {
     manaRegenRate,
     setManaRegenRate,
     hand,
+    nextCard,
+    deckCount,
+    discardCount,
     selectedCardIndex,
     setSelectedCardIndex,
     units,
     spellEffects,
     gameResult,
+    checkCanPlayCard,
     playCardOnLane,
     resetGame,
   } = useRealtimeGame();
@@ -46,8 +50,8 @@ export default function RealtimeDemoPage() {
 
   // ドラッグ開始
   const handleDragStart = (e: React.DragEvent, idx: number) => {
-    const card = hand[idx];
-    if (!card || playerMana < card.manaCost || gameResult !== 'playing') {
+    const validation = checkCanPlayCard(idx);
+    if (!validation.canPlay) {
       e.preventDefault();
       return;
     }
@@ -88,8 +92,8 @@ export default function RealtimeDemoPage() {
     const data = e.dataTransfer.getData('text/plain');
     const cardIdx = data !== '' ? parseInt(data, 10) : draggedCardIndex;
     if (cardIdx !== null && cardIdx !== undefined && !isNaN(cardIdx)) {
-      const card = hand[cardIdx];
-      if (card && playerMana >= card.manaCost && gameResult === 'playing') {
+      const validation = checkCanPlayCard(cardIdx, laneIndex);
+      if (validation.canPlay) {
         playCardOnLane(laneIndex, cardIdx);
         setSpawnRippleLane(laneIndex);
         setTimeout(() => setSpawnRippleLane(null), 400);
@@ -206,6 +210,16 @@ export default function RealtimeDemoPage() {
           .card-speed-badge {
             display: none !important;
           }
+          .next-card-slot {
+            width: 48px !important;
+            padding: 3px 1px !important;
+          }
+          .next-card-name {
+            display: none !important;
+          }
+          .next-card-icon {
+            font-size: 16px !important;
+          }
         }
         @media (max-height: 520px) {
           .realtime-demo-container {
@@ -298,9 +312,16 @@ export default function RealtimeDemoPage() {
               const laneSpells = spellEffects.filter(
                 (e) => e.lane === laneIndex || e.lane === -1
               );
+              const activeCard = isDragging ? activeDraggedCard : selectedCard;
+              const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
+              const laneValidation = activeCard && activeCardIdx !== null
+                ? checkCanPlayCard(activeCardIdx, laneIndex)
+                : { canPlay: true };
+              const isBlocked = !laneValidation.canPlay;
+
               const canAfford = selectedCard && playerMana >= selectedCard.manaCost;
               const isHoveredDrop = isDragging && dragOverLaneIndex === laneIndex;
-              const isDroppableTarget = isDragging && activeDraggedCard && playerMana >= activeDraggedCard.manaCost;
+              const isDroppableTarget = isDragging && activeDraggedCard && playerMana >= activeDraggedCard.manaCost && !isBlocked;
               const isRippling = spawnRippleLane === laneIndex;
 
               return (
@@ -317,31 +338,43 @@ export default function RealtimeDemoPage() {
                   style={{
                     ...styles.lane,
                     backgroundColor: isHoveredDrop
-                      ? 'rgba(30, 58, 138, 0.45)'
+                      ? isBlocked
+                        ? 'rgba(239, 68, 68, 0.35)'
+                        : 'rgba(30, 58, 138, 0.45)'
                       : isDroppableTarget
                       ? 'rgba(30, 58, 138, 0.16)'
-                      : selectedCard && canAfford
+                      : selectedCard && canAfford && !isBlocked
                       ? 'rgba(30, 58, 138, 0.28)'
+                      : selectedCard && isBlocked
+                      ? 'rgba(239, 68, 68, 0.12)'
                       : 'rgba(15, 23, 42, 0.85)',
                     borderColor: isHoveredDrop
-                      ? '#60a5fa'
+                      ? isBlocked
+                        ? '#ef4444'
+                        : '#60a5fa'
                       : isDroppableTarget
                       ? 'rgba(96, 165, 250, 0.65)'
-                      : selectedCard && canAfford
+                      : selectedCard && canAfford && !isBlocked
                       ? '#3b82f6'
+                      : selectedCard && isBlocked
+                      ? 'rgba(239, 68, 68, 0.5)'
                       : '#334155',
                     borderStyle: isDroppableTarget && !isHoveredDrop ? 'dashed' : 'solid',
                     borderWidth: isHoveredDrop ? '2px' : '1px',
-                    cursor: isDroppableTarget
+                    cursor: isHoveredDrop && isBlocked
+                      ? 'not-allowed'
+                      : isDroppableTarget
                       ? 'copy'
-                      : selectedCard && canAfford
+                      : selectedCard && canAfford && !isBlocked
                       ? 'pointer'
                       : 'default',
                     boxShadow: isHoveredDrop
-                      ? 'inset 0 0 24px rgba(59, 130, 246, 0.5), 0 0 16px rgba(59, 130, 246, 0.4)'
+                      ? isBlocked
+                        ? 'inset 0 0 24px rgba(239, 68, 68, 0.5), 0 0 16px rgba(239, 68, 68, 0.4)'
+                        : 'inset 0 0 24px rgba(59, 130, 246, 0.5), 0 0 16px rgba(59, 130, 246, 0.4)'
                       : isRippling
                       ? 'inset 0 0 24px rgba(34, 197, 94, 0.6), 0 0 16px rgba(34, 197, 94, 0.4)'
-                      : selectedCard && canAfford
+                      : selectedCard && canAfford && !isBlocked
                       ? 'inset 0 0 16px rgba(59, 130, 246, 0.25)'
                       : 'none',
                     transition: 'all 0.12s ease',
@@ -376,13 +409,23 @@ export default function RealtimeDemoPage() {
                     <div
                       style={{
                         ...styles.summonGuideBadge,
-                        backgroundColor: activeDraggedCard.type === 'SPELL' ? '#ea580c' : '#2563eb',
-                        boxShadow: activeDraggedCard.type === 'SPELL'
+                        backgroundColor: isBlocked
+                          ? '#ef4444'
+                          : activeDraggedCard.type === 'SPELL'
+                          ? '#ea580c'
+                          : '#2563eb',
+                        boxShadow: isBlocked
+                          ? '0 0 14px rgba(239, 68, 68, 0.9)'
+                          : activeDraggedCard.type === 'SPELL'
                           ? '0 0 14px rgba(234, 88, 12, 0.9)'
                           : '0 0 14px rgba(37, 99, 235, 0.9)',
                       }}
                     >
-                      {activeDraggedCard.type === 'SPELL' ? '✨ ドロップ発動' : '🎯 ドロップ出撃'}
+                      {isBlocked
+                        ? `🚫 ${laneValidation.reason}`
+                        : activeDraggedCard.type === 'SPELL'
+                        ? '✨ ドロップ発動'
+                        : '🎯 ドロップ出撃'}
                     </div>
                   )}
 
@@ -395,8 +438,13 @@ export default function RealtimeDemoPage() {
 
                   {/* クリック選択時の出撃ガイド（ドラッグしていない時のみ） */}
                   {!isDragging && selectedCard && canAfford && (
-                    <div style={styles.summonGuideBadge}>
-                      ▲ 出撃
+                    <div
+                      style={{
+                        ...styles.summonGuideBadge,
+                        backgroundColor: isBlocked ? '#ef4444' : '#2563eb',
+                      }}
+                    >
+                      {isBlocked ? `🚫 ${laneValidation.reason}` : '▲ 出撃'}
                     </div>
                   )}
 
@@ -478,93 +526,125 @@ export default function RealtimeDemoPage() {
             )}
           </div>
 
-          {/* 5. 手札カードリスト (下部ドック・4カード) */}
-          <div style={styles.handGrid} className="hand-grid">
-            {hand.map((card, idx) => {
-              const isSelected = selectedCardIndex === idx;
-              const isBeingDragged = isDragging && draggedCardIndex === idx;
-              const canPlay = playerMana >= card.manaCost;
-
-              return (
-                <div
-                  key={`${card.id}_${idx}`}
-                  draggable={canPlay && gameResult === 'playing'}
-                  onDragStart={(e) => handleDragStart(e, idx)}
-                  onDragEnd={handleDragEnd}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedCardIndex(null);
-                    } else {
-                      setSelectedCardIndex(idx);
-                    }
-                  }}
-                  title={canPlay ? 'ドラッグ＆ドロップ または クリックで配置' : `マナが足りません (${card.manaCost}必要)`}
-                  style={{
-                    ...styles.card,
-                    ...(isSelected ? styles.cardSelected : {}),
-                    opacity: isBeingDragged ? 0.35 : canPlay ? 1 : 0.45,
-                    borderStyle: isBeingDragged ? 'dashed' : 'solid',
-                    borderColor: isSelected
-                      ? '#3b82f6'
-                      : card.type === 'SPELL'
-                      ? '#f97316'
-                      : '#475569',
-                    cursor: canPlay ? (isDragging ? 'grabbing' : 'grab') : 'not-allowed',
-                    transform: isBeingDragged
-                      ? 'scale(0.95)'
-                      : isSelected
-                      ? 'translateY(-3px)'
-                      : 'none',
-                    boxShadow: isBeingDragged
-                      ? 'none'
-                      : isSelected
-                      ? '0 4px 12px rgba(59, 130, 246, 0.5)'
-                      : 'none',
-                  }}
-                  className="card-item"
-                >
-                  {/* カード上部：コスト・タイプ・ショートカットキー */}
-                  <div style={styles.cardHeader}>
-                    <span
-                      style={{
-                        ...styles.cardCostBadge,
-                        backgroundColor: card.type === 'SPELL' ? '#c2410c' : '#1d4ed8',
-                      }}
-                    >
-                      ⚡{card.manaCost}
-                    </span>
-                    <span style={styles.cardKeyBadge}>[{idx + 1}]</span>
+          {/* 5. 手札カードリスト & NEXTドック */}
+          <div style={styles.dockContainer} className="dock-container">
+            {/* NEXTカードスロット */}
+            <div
+              style={styles.nextCardSlot}
+              className="next-card-slot"
+              title={nextCard ? `次に引くカード: ${nextCard.name} (⚡${nextCard.manaCost})` : '山札なし'}
+            >
+              <div style={styles.nextBadge}>NEXT</div>
+              {nextCard ? (
+                <div style={styles.nextCardInner}>
+                  <div style={styles.nextCardCostBadge}>
+                    ⚡{nextCard.manaCost}
                   </div>
+                  <span style={styles.nextCardIcon} className="next-card-icon">{nextCard.icon}</span>
+                  <div style={styles.nextCardName} className="next-card-name">{nextCard.name}</div>
+                </div>
+              ) : (
+                <div style={styles.nextCardEmpty}>-</div>
+              )}
+              <div style={styles.deckCountBadge} title={`山札: 残り${deckCount}枚 / 捨て札: ${discardCount}枚`}>
+                🎴{deckCount}/15
+              </div>
+            </div>
 
-                  {/* カード本体：アイコン & 名前 */}
-                  <div style={styles.cardCenter}>
-                    <span style={styles.cardIcon} className="card-icon">{card.icon}</span>
-                    <div style={styles.cardName} className="card-name">{card.name}</div>
-                  </div>
+            {/* 4枚の手札グリッド */}
+            <div style={styles.handGrid} className="hand-grid">
+              {hand.map((card, idx) => {
+                const isSelected = selectedCardIndex === idx;
+                const isBeingDragged = isDragging && draggedCardIndex === idx;
+                const validation = checkCanPlayCard(idx);
+                const canPlay = validation.canPlay;
 
-                  {/* カード下部：攻防ステータス / スペル表記 */}
-                  <div style={styles.cardFooter}>
-                    {card.type === 'MONSTER' ? (
-                      <div style={styles.cardStats}>
-                        <span style={styles.cardAtk} title="攻撃力">⚔️{card.attack}</span>
-                        <span style={styles.cardHp} title="HP">❤️{card.life}</span>
-                        <span style={styles.cardSpeed} className="card-speed-badge" title="移動速度">🏃{card.speed}</span>
+                return (
+                  <div
+                    key={`${card.id}_${idx}`}
+                    draggable={canPlay && gameResult === 'playing'}
+                    onDragStart={(e) => handleDragStart(e, idx)}
+                    onDragEnd={handleDragEnd}
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCardIndex(null);
+                      } else {
+                        setSelectedCardIndex(idx);
+                      }
+                    }}
+                    title={canPlay ? 'ドラッグ＆ドロップ または クリックで配置' : validation.reason}
+                    style={{
+                      ...styles.card,
+                      ...(isSelected ? styles.cardSelected : {}),
+                      opacity: isBeingDragged ? 0.35 : canPlay ? 1 : 0.45,
+                      borderStyle: isBeingDragged ? 'dashed' : 'solid',
+                      borderColor: isSelected
+                        ? '#3b82f6'
+                        : !canPlay && validation.reason?.includes('ドラゴン')
+                        ? '#ef4444'
+                        : card.type === 'SPELL'
+                        ? '#f97316'
+                        : '#475569',
+                      cursor: canPlay ? (isDragging ? 'grabbing' : 'grab') : 'not-allowed',
+                      transform: isBeingDragged
+                        ? 'scale(0.95)'
+                        : isSelected
+                        ? 'translateY(-3px)'
+                        : 'none',
+                      boxShadow: isBeingDragged
+                        ? 'none'
+                        : isSelected
+                        ? '0 4px 12px rgba(59, 130, 246, 0.5)'
+                        : 'none',
+                    }}
+                    className="card-item"
+                  >
+                    {/* カード上部：コスト・タイプ・ショートカットキー */}
+                    <div style={styles.cardHeader}>
+                      <span
+                        style={{
+                          ...styles.cardCostBadge,
+                          backgroundColor: card.type === 'SPELL' ? '#c2410c' : '#1d4ed8',
+                        }}
+                      >
+                        ⚡{card.manaCost}
+                      </span>
+                      {!canPlay && validation.reason?.includes('ドラゴン') && (
+                        <span style={styles.cardLockBadge}>1体限</span>
+                      )}
+                      <span style={styles.cardKeyBadge}>[{idx + 1}]</span>
+                    </div>
+
+                    {/* カード本体：アイコン & 名前 */}
+                    <div style={styles.cardCenter}>
+                      <span style={styles.cardIcon} className="card-icon">{card.icon}</span>
+                      <div style={styles.cardName} className="card-name">{card.name}</div>
+                    </div>
+
+                    {/* カード下部：攻防ステータス / スペル表記 */}
+                    <div style={styles.cardFooter}>
+                      {card.type === 'MONSTER' ? (
+                        <div style={styles.cardStats}>
+                          <span style={styles.cardAtk} title="攻撃力">⚔️{card.attack}</span>
+                          <span style={styles.cardHp} title="HP">❤️{card.life}</span>
+                          <span style={styles.cardSpeed} className="card-speed-badge" title="移動速度">🏃{card.speed}</span>
+                        </div>
+                      ) : (
+                        <div style={styles.cardStats}>
+                          <span style={styles.cardSpellTag}>✨呪文</span>
+                          <span style={styles.cardSpellScope}>
+                            {card.id === 'fire_spell' ? '全体2' : '単体4'}
+                          </span>
+                        </div>
+                      )}
+                      <div style={styles.cardDescSnippet} className="card-desc-snippet" title={card.effectDesc}>
+                        {card.effectDesc}
                       </div>
-                    ) : (
-                      <div style={styles.cardStats}>
-                        <span style={styles.cardSpellTag}>✨呪文</span>
-                        <span style={styles.cardSpellScope}>
-                          {card.id === 'fire_spell' ? '全体2' : '単体4'}
-                        </span>
-                      </div>
-                    )}
-                    <div style={styles.cardDescSnippet} className="card-desc-snippet" title={card.effectDesc}>
-                      {card.effectDesc}
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -630,9 +710,18 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
-                  <div style={styles.tipTitle}>⚡ マナ回復速度の変更</div>
+                  <div style={styles.tipTitle}>🎴 15枚デッキ＆NEXTサイクル</div>
                   <div style={styles.tipText}>
-                    上部ヘッダーの「マナ速度」セレクタから、プレイスタイルに合わせて回復ペース（4.0秒〜1.3秒/マナ）を変更できます。
+                    手札4枚と<strong>NEXT（次弾）</strong>でテンポよく回転！山札（計15枚）が切れると捨て札が再シャッフルされリサイクルされます。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🛡️ 出撃バリデーション（戦略制約）</div>
+                  <div style={styles.tipText}>
+                    ・<strong>1レーン最大3体</strong>：過密レーンには召喚不可<br/>
+                    ・<strong>ドラゴン場に1体限</strong>：強力ボスの連続出し制限<br/>
+                    ・<strong>連打防止0.4s</strong>：落ち着いた操作テンポ
                   </div>
                 </div>
 
@@ -736,9 +825,15 @@ export default function RealtimeDemoPage() {
                     </div>
                   </div>
                   <div style={styles.tipBox}>
-                    <div style={styles.tipTitle}>⚡ マナ回復速度</div>
+                    <div style={styles.tipTitle}>🎴 15枚デッキ＆NEXTサイクル</div>
                     <div style={styles.tipText}>
-                      ヘッダーの「マナ速度」セレクタで低速(4.0s)〜高速(1.3s)を切り替え可能です。
+                      手札4枚＋NEXT1枚の合計15枚デッキ。使い切ると自動リサイクル！
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🛡️ 出撃バリデーション</div>
+                    <div style={styles.tipText}>
+                      1レーン最大3体まで、ドラゴンは場に1体限定、0.4秒クールダウンの制限があります。
                     </div>
                   </div>
                 </div>
@@ -803,7 +898,7 @@ export default function RealtimeDemoPage() {
 // ユニット描画サブコンポーネント
 function RenderUnit({ unit }: { unit: Unit }) {
   const isPlayer = unit.owner === 'player';
-  const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > Date.now();
+  const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
 
   return (
@@ -1335,13 +1430,99 @@ const styles: Record<string, React.CSSProperties> = {
   instructionIdle: {
     color: '#94a3b8',
   },
-  handGrid: {
+  dockContainer: {
     height: '100px',
     flexShrink: 0,
+    display: 'flex',
+    gap: '6px',
+    alignItems: 'stretch',
+    width: '100%',
+    boxSizing: 'border-box',
+  },
+  nextCardSlot: {
+    width: '64px',
+    flexShrink: 0,
+    backgroundColor: '#090d16',
+    borderRadius: '6px',
+    border: '1px dashed #334155',
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: '4px 2px',
+    boxSizing: 'border-box',
+    position: 'relative',
+    userSelect: 'none',
+  },
+  nextBadge: {
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#94a3b8',
+    letterSpacing: '0.5px',
+    backgroundColor: '#1e293b',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    lineHeight: 1,
+  },
+  nextCardInner: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: '2px',
+    width: '100%',
+  },
+  nextCardCostBadge: {
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#fff',
+    backgroundColor: '#1e40af',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    lineHeight: 1,
+  },
+  nextCardIcon: {
+    fontSize: '18px',
+    lineHeight: 1.1,
+  },
+  nextCardName: {
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#cbd5e1',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: '56px',
+    textAlign: 'center',
+  },
+  nextCardEmpty: {
+    color: '#475569',
+    fontSize: '14px',
+  },
+  deckCountBadge: {
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#60a5fa',
+    backgroundColor: '#172554',
+    padding: '1px 4px',
+    borderRadius: '3px',
+    lineHeight: 1,
+    whiteSpace: 'nowrap',
+  },
+  cardLockBadge: {
+    fontSize: '8px',
+    fontWeight: 'bold',
+    color: '#fff',
+    backgroundColor: '#dc2626',
+    padding: '0 3px',
+    borderRadius: '2px',
+    lineHeight: '12px',
+  },
+  handGrid: {
+    height: '100%',
+    flex: 1,
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '6px',
-    width: '100%',
     boxSizing: 'border-box',
   },
   card: {

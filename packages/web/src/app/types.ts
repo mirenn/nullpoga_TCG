@@ -30,6 +30,7 @@ export interface Unit {
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
   icon: string;
   isStunnedUntil?: number; // タイムスタンプ
+  isStunned?: boolean;
   distanceTraveled?: number; // 移動距離（柴犬のバフ用）
   lastAttackEffectTime?: number; // エフェクト描画用
 }

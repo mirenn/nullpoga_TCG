@@ -128,6 +128,53 @@ const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
 
+export const createDefault15Deck = (): DemoCard[] => {
+  const cardMap: Record<string, DemoCard> = {};
+  CARD_POOL.forEach((c) => {
+    cardMap[c.id] = c;
+  });
+  return [
+    cardMap['mouse'], cardMap['mouse'],
+    cardMap['cat'], cardMap['cat'],
+    cardMap['shiba'], cardMap['shiba'],
+    cardMap['turtle'], cardMap['turtle'],
+    cardMap['jellyfish'], cardMap['jellyfish'],
+    cardMap['boar'], cardMap['boar'],
+    cardMap['dragon'],
+    cardMap['meteor'],
+    cardMap['fire_spell'],
+  ].filter(Boolean);
+};
+
+export const shuffleCards = <T>(array: T[]): T[] => {
+  const arr = [...array];
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
+interface DeckState {
+  hand: DemoCard[];
+  nextCard: DemoCard | null;
+  deck: DemoCard[];
+  discardPile: DemoCard[];
+}
+
+const initDeckState = (): DeckState => {
+  const shuffled = shuffleCards(createDefault15Deck());
+  const initialHand = shuffled.slice(0, 4);
+  const next = shuffled[4] || null;
+  const initialDrawPile = shuffled.slice(5);
+  return {
+    hand: initialHand,
+    nextCard: next,
+    deck: initialDrawPile,
+    discardPile: [],
+  };
+};
+
 export function useRealtimeGame() {
   const [playerHp, setPlayerHp] = useState(INITIAL_LIFE);
   const [cpuHp, setCpuHp] = useState(INITIAL_LIFE);
@@ -135,14 +182,11 @@ export function useRealtimeGame() {
   const [cpuMana, setCpuMana] = useState(INITIAL_MANA);
   const [manaRegenRate, setManaRegenRate] = useState<number>(DEFAULT_MANA_REGEN_PER_SEC);
 
-  // 手札（4枚）
-  const [hand, setHand] = useState<DemoCard[]>(() => [
-    CARD_POOL[0], // ネズミ
-    CARD_POOL[1], // ネコ
-    CARD_POOL[2], // 柴犬
-    CARD_POOL[3], // 亀
-  ]);
+  // 15枚デッキ・手札・NEXT・山札・捨て札管理
+  const [deckState, setDeckState] = useState<DeckState>(initDeckState);
+  const { hand, nextCard, deck, discardPile } = deckState;
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
+  const cooldownRef = useRef<number>(0);
 
   // ユニット一覧
   const [units, setUnits] = useState<Unit[]>([]);
@@ -152,11 +196,14 @@ export function useRealtimeGame() {
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
   // アニメーションループ用のref
-  const lastTimeRef = useRef<number>(performance.now());
+  const lastTimeRef = useRef<number>(0);
   const cpuActionTimerRef = useRef<number>(0);
   const manaTimerRef = useRef<number>(0);
   const manaRegenRateRef = useRef<number>(manaRegenRate);
-  manaRegenRateRef.current = manaRegenRate;
+
+  useEffect(() => {
+    manaRegenRateRef.current = manaRegenRate;
+  }, [manaRegenRate]);
 
   const stateRef = useRef({
     playerHp,
@@ -179,13 +226,77 @@ export function useRealtimeGame() {
     };
   }, [playerHp, cpuHp, playerMana, cpuMana, units, gameResult]);
 
-  // デッキから手札を補充
-  const drawCard = useCallback((replaceIndex: number) => {
-    const randomCard = CARD_POOL[Math.floor(Math.random() * CARD_POOL.length)];
-    setHand((prev) => {
-      const next = [...prev];
-      next[replaceIndex] = randomCard;
-      return next;
+  // カードをプレイ可能かどうかのバリデーション
+  const checkCanPlayCard = useCallback(
+    (cardIndex: number, laneIndex?: number): { canPlay: boolean; reason?: string } => {
+      if (gameResult !== 'playing') {
+        return { canPlay: false, reason: 'ゲーム終了' };
+      }
+      const card = hand[cardIndex];
+      if (!card) {
+        return { canPlay: false, reason: 'カードが存在しません' };
+      }
+      if (Date.now() < cooldownRef.current) {
+        return { canPlay: false, reason: 'クールダウン中...' };
+      }
+      if (playerMana < card.manaCost) {
+        return { canPlay: false, reason: `マナ不足 (⚡${card.manaCost}必要)` };
+      }
+      // ユニーク制限: 炎のドラゴン（cardNo: 11）は場に1体まで
+      if (card.cardNo === 11) {
+        const hasDragon = stateRef.current.units.some(
+          (u) => u.owner === 'player' && u.cardNo === 11 && u.hp > 0
+        );
+        if (hasDragon) {
+          return { canPlay: false, reason: '炎のドラゴンは場に1体まで' };
+        }
+      }
+      // レーン過密制限: モンスターは1レーンあたり自軍最大3体まで
+      if (laneIndex !== undefined && card.type === 'MONSTER') {
+        const unitsInLane = stateRef.current.units.filter(
+          (u) => u.owner === 'player' && u.lane === laneIndex && u.hp > 0
+        ).length;
+        if (unitsInLane >= 3) {
+          return { canPlay: false, reason: 'このレーンは上限(3体)です' };
+        }
+      }
+      return { canPlay: true };
+    },
+    [gameResult, hand, playerMana]
+  );
+
+  // 手札からカードをプレイした後の手札補充（NEXTカードを使用枠へ移動＋山札からNEXT補充＋捨て札リサイクル）
+  const drawCardAfterPlay = useCallback((replaceIndex: number, playedCard: DemoCard) => {
+    setDeckState((prev) => {
+      const nextCardToPlace = prev.nextCard;
+      const newHand = [...prev.hand];
+      newHand[replaceIndex] = nextCardToPlace as DemoCard;
+
+      const newDiscard = [...prev.discardPile, playedCard];
+      let newDeck = [...prev.deck];
+      let newNextCard: DemoCard | null = null;
+
+      if (newDeck.length > 0) {
+        newNextCard = newDeck[0];
+        newDeck = newDeck.slice(1);
+        return {
+          hand: newHand,
+          nextCard: newNextCard,
+          deck: newDeck,
+          discardPile: newDiscard,
+        };
+      } else {
+        // 山札が空になったため、捨て札を再シャッフルして新しい山札へ
+        const recycled = shuffleCards(newDiscard);
+        newNextCard = recycled[0] || null;
+        newDeck = recycled.slice(1);
+        return {
+          hand: newHand,
+          nextCard: newNextCard,
+          deck: newDeck,
+          discardPile: [],
+        };
+      }
     });
   }, []);
 
@@ -195,7 +306,13 @@ export function useRealtimeGame() {
       const cardIdx = cardIndexOverride !== undefined ? cardIndexOverride : selectedCardIndex;
       if (cardIdx === null || cardIdx === undefined) return;
       const card = hand[cardIdx];
-      if (!card || playerMana < card.manaCost || gameResult !== 'playing') return;
+      if (!card) return;
+
+      const validation = checkCanPlayCard(cardIdx, laneIndex);
+      if (!validation.canPlay) return;
+
+      // 連打防止クールダウン（400ms）
+      cooldownRef.current = Date.now() + 400;
 
       // マナ消費
       setPlayerMana((m) => Math.max(0, m - card.manaCost));
@@ -257,10 +374,10 @@ export function useRealtimeGame() {
       }
 
       // 手札の補充と選択解除
-      drawCard(cardIdx);
+      drawCardAfterPlay(cardIdx, card);
       setSelectedCardIndex(null);
     },
-    [selectedCardIndex, hand, playerMana, gameResult, drawCard]
+    [selectedCardIndex, hand, checkCanPlayCard, drawCardAfterPlay]
   );
 
   // CPU思考ロジック
@@ -317,6 +434,9 @@ export function useRealtimeGame() {
     let animId: number;
 
     const gameLoop = (timestamp: number) => {
+      if (lastTimeRef.current === 0) {
+        lastTimeRef.current = timestamp;
+      }
       const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.1); // 最大0.1秒クリップ
       lastTimeRef.current = timestamp;
 
@@ -478,7 +598,8 @@ export function useRealtimeGame() {
               }
             });
 
-            return { ...unit, hp, isStunnedUntil: stunnedUntil };
+            const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
+            return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
           });
 
           // 拠点ダメージ反映
@@ -522,6 +643,8 @@ export function useRealtimeGame() {
     setSpellEffects([]);
     setGameResult('playing');
     setSelectedCardIndex(null);
+    cooldownRef.current = 0;
+    setDeckState(initDeckState());
   }, []);
 
   return {
@@ -533,11 +656,15 @@ export function useRealtimeGame() {
     manaRegenRate,
     setManaRegenRate,
     hand,
+    nextCard,
+    deckCount: deck.length,
+    discardCount: discardPile.length,
     selectedCardIndex,
     setSelectedCardIndex,
     units,
     spellEffects,
     gameResult,
+    checkCanPlayCard,
     playCardOnLane,
     resetGame,
   };
