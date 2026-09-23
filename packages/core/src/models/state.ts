@@ -278,39 +278,66 @@ export class State implements IState {
     }
 
     private executeActivity(player1: Player, player2: Player): void {
-        const activityOrder = player1.isFirstPlayer ? [player1, player2] : [player2, player1];
+        // 両プレイヤーの行動アクションを同時に実行・記録（1体目同士、2体目同士を同一ステップとして記録）
         const maxActivityLen = Math.max(player1.activityPhaseActions.length, player2.activityPhaseActions.length);
 
         for (let i = 0; i < maxActivityLen; i++) {
-            for (const actor of activityOrder) {
-                const target = actor === player1 ? player2 : player1;
-                const act = actor.activityPhaseActions[i];
-                if (!act) continue;
+            const stepActionDict: Record<string, Action> = {};
+            const act1 = player1.activityPhaseActions[i];
+            const act2 = player2.activityPhaseActions[i];
 
-                if (act.actionType === ActionType.MONSTER_MOVE) {
-                    actor.monsterMove(act, actor.zone);
-                    this.deleteMonster(player1, player2);
-                    if (player1.planZone) player1.planZone = player1.zone.clone();
-                    if (player2.planZone) player2.planZone = player2.zone.clone();
-                    this.turnHistory.push({
-                        State: this.toJson(false),
-                        ActionDict: { [actor.userId]: act }
-                    });
-                } else if (act.actionType === ActionType.MONSTER_ATTACK) {
-                    target.monsterAttacked(act, actor.zone);
-                    this.deleteMonster(player1, player2);
-                    if (player1.planZone) player1.planZone = player1.zone.clone();
-                    if (player2.planZone) player2.planZone = player2.zone.clone();
-                    this.turnHistory.push({
-                        State: this.toJson(false),
-                        ActionDict: { [actor.userId]: act }
-                    });
-                }
-
-                if (this.isGameEnd()) {
-                    break;
+            // 1. 移動アクションの実行
+            if (act1 && act1.actionType === ActionType.MONSTER_MOVE) {
+                const fromIdx = act1.actionData?.fromIdx;
+                if (fromIdx !== undefined && player1.zone.battleField[fromIdx]?.card) {
+                    player1.monsterMove(act1, player1.zone);
+                    stepActionDict[player1.userId] = act1;
                 }
             }
+            if (act2 && act2.actionType === ActionType.MONSTER_MOVE) {
+                const fromIdx = act2.actionData?.fromIdx;
+                if (fromIdx !== undefined && player2.zone.battleField[fromIdx]?.card) {
+                    player2.monsterMove(act2, player2.zone);
+                    stepActionDict[player2.userId] = act2;
+                }
+            }
+
+            // 2. 攻撃アクションの同時実行（両者のダメージ計算を deleteMonster 前に完了させる）
+            const canAct1Attack = Boolean(
+                act1 &&
+                act1.actionType === ActionType.MONSTER_ATTACK &&
+                act1.actionData?.attackerIdx !== undefined &&
+                player1.zone.battleField[act1.actionData.attackerIdx]?.card
+            );
+            const canAct2Attack = Boolean(
+                act2 &&
+                act2.actionType === ActionType.MONSTER_ATTACK &&
+                act2.actionData?.attackerIdx !== undefined &&
+                player2.zone.battleField[act2.actionData.attackerIdx]?.card
+            );
+
+            if (canAct1Attack && act1) {
+                player2.monsterAttacked(act1, player1.zone);
+                stepActionDict[player1.userId] = act1;
+            }
+            if (canAct2Attack && act2) {
+                player1.monsterAttacked(act2, player2.zone);
+                stepActionDict[player2.userId] = act2;
+            }
+
+            // 3. モンスターの撃破判定（ライフが0以下のモンスターを削除）
+            this.deleteMonster(player1, player2);
+            if (player1.planZone) player1.planZone = player1.zone.clone();
+            if (player2.planZone) player2.planZone = player2.zone.clone();
+
+            // 4. 履歴にステップを記録
+            if (Object.keys(stepActionDict).length > 0) {
+                this.turnHistory.push({
+                    State: this.toJson(false),
+                    ActionDict: stepActionDict
+                });
+            }
+
             if (this.isGameEnd()) {
                 break;
             }

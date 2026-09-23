@@ -303,18 +303,16 @@ function GameClient() {
                 setActionEffect(null);
               }
 
-              // 召喚以外のアクション（攻撃、進軍など）を処理
-              const nonSummonActorIds = actorIds.filter((id) => !summonActorIds.includes(id));
-              for (const actorId of nonSummonActorIds) {
-                const act = actionDict[actorId];
-                const isMe = actorId === userId;
-                const actorName = isMe ? 'あなた' : '相手(BOT)';
+              // 攻撃アクションが含まれているか確認（自分・相手の同時攻撃を並列実行）
+              const attackActorIds = actorIds.filter(
+                (actorId) => actionDict[actorId]?.actionType === 'MONSTER_ATTACK'
+              );
 
-                if (act.actionType === 'MONSTER_ATTACK') {
-                  if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
-                  if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
-                  setExtractedGameResponse(structuredClone(animRoomState));
-
+              if (attackActorIds.length > 0) {
+                const attackInfos = attackActorIds.map((actorId) => {
+                  const act = actionDict[actorId];
+                  const isMe = actorId === userId;
+                  const actorName = isMe ? 'あなた' : '相手(BOT)';
                   const cardName = act.actionData?.monsterCard?.cardName || 'モンスター';
                   const attackerIdx = act.actionData?.attackerIdx;
                   const targetIdx = act.actionData?.targetIdx;
@@ -323,16 +321,73 @@ function GameClient() {
                   const attackerSlotId = isMe ? `player-bzone-${attackerIdx}` : `opponent-bzone-${attackerIdx}`;
                   const targetSlotId = isMe ? `opponent-bzone-${targetIdx}` : `player-bzone-${targetIdx}`;
 
-                  setTurnMessage(`【攻撃】${actorName}の「${cardName}」の攻撃！（💥 ${damage} ダメージ）`);
-                  setActionEffect({
+                  return {
+                    actorId,
+                    act,
+                    isMe,
+                    actorName,
+                    cardName,
+                    attackerIdx,
+                    targetIdx,
+                    damage,
                     attackerSlotId,
                     targetSlotId,
-                    isPlayerAttack: isMe,
-                    damage,
-                  });
-                  await new Promise((r) => setTimeout(r, 1200));
-                  setActionEffect(null);
-                } else if (act.actionType === 'MONSTER_ADVANCE') {
+                  };
+                });
+
+                // バナーメッセージ設定（同時激突時のメッセージ）
+                if (attackInfos.length >= 2) {
+                  const myInfo = attackInfos.find((a) => a.isMe);
+                  const oppInfo = attackInfos.find((a) => !a.isMe);
+                  if (myInfo && oppInfo) {
+                    setTurnMessage(
+                      `【同時攻撃】あなたの「${myInfo.cardName}」(💥${myInfo.damage}) と 相手の「${oppInfo.cardName}」(💥${oppInfo.damage}) が激突！`
+                    );
+                  } else {
+                    setTurnMessage(`【同時攻撃】双方が同時に攻撃！`);
+                  }
+                } else {
+                  const info = attackInfos[0];
+                  setTurnMessage(`【攻撃】${info.actorName}の「${info.cardName}」の攻撃！（💥 ${info.damage} ダメージ）`);
+                }
+
+                // 攻撃エフェクトを並列実行
+                const attacks = attackInfos.map((info) => ({
+                  attackerSlotId: info.attackerSlotId,
+                  targetSlotId: info.targetSlotId,
+                  damage: info.damage,
+                  isPlayerAttack: info.isMe,
+                }));
+
+                setActionEffect({
+                  attacks,
+                  attackerSlotId: attacks[0].attackerSlotId,
+                  targetSlotId: attacks[0].targetSlotId,
+                  damage: attacks[0].damage,
+                  isPlayerAttack: attacks[0].isPlayerAttack,
+                });
+
+                // 攻撃アニメーション再生（激突・振動・ダメージ表示）
+                await new Promise((r) => setTimeout(r, 1200));
+                setActionEffect(null);
+
+                // 着弾後に盤面状態を反映（モンスターのHP減少、撃破モンスターの退場、ダイレクトアタックのライフ・荒野反映）
+                if (stepState.player1) animRoomState.gameRoom.gameState.player1 = stepState.player1;
+                if (stepState.player2) animRoomState.gameRoom.gameState.player2 = stepState.player2;
+                setExtractedGameResponse(structuredClone(animRoomState));
+                await new Promise((r) => setTimeout(r, 400));
+              }
+
+              // 召喚・攻撃以外のアクション（進軍、移動など）を処理
+              const otherActorIds = actorIds.filter(
+                (id) => !summonActorIds.includes(id) && !attackActorIds.includes(id)
+              );
+              for (const actorId of otherActorIds) {
+                const act = actionDict[actorId];
+                const isMe = actorId === userId;
+                const actorName = isMe ? 'あなた' : '相手(BOT)';
+
+                if (act.actionType === 'MONSTER_ADVANCE') {
                   const card = act.actionData?.monsterCard;
                   const cardName = card?.cardName || 'モンスター';
                   const fromIdx = act.actionData?.fromStandbyIdx ?? 0;

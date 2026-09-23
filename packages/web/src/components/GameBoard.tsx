@@ -4,6 +4,13 @@ import MonsterCard from './MonsterCard';
 import { useGameStore } from '../store/gameStore';
 import { ArcherElement } from 'react-archer';
 
+export interface AttackInfo {
+  attackerSlotId: string;
+  targetSlotId: string;
+  damage: number;
+  isPlayerAttack: boolean;
+}
+
 export interface ActionEffect {
   attackerSlotId?: string;
   targetSlotId?: string;
@@ -16,6 +23,7 @@ export interface ActionEffect {
   isPlayerAttack?: boolean;
   damage?: number;
   isLanding?: boolean;
+  attacks?: AttackInfo[];
 }
 
 interface GameBoardProps {
@@ -170,17 +178,29 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
       {/* バトルフィールド */}
       {[4, 3, 2, 1, 0].map((i) => {
         const slotId = `opponent-bzone-${i}`;
-        const isAttacking = actionEffect?.attackerSlotId === slotId;
-        const isTargeted = actionEffect?.targetSlotId === slotId;
+        const isAttacking = Boolean(
+          actionEffect?.attacks?.some((a) => a.attackerSlotId === slotId) ||
+          actionEffect?.attackerSlotId === slotId
+        );
+        const targetedAttacks = actionEffect?.attacks?.filter((a) => a.targetSlotId === slotId) || [];
+        const isTargeted = targetedAttacks.length > 0 || actionEffect?.targetSlotId === slotId;
+        const targetDamage = targetedAttacks.length > 0
+          ? targetedAttacks.reduce((sum, a) => sum + a.damage, 0)
+          : (actionEffect?.targetSlotId === slotId ? actionEffect?.damage : undefined);
+
         const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
-        const effectClass = isAttacking
-          ? 'slot-attacking-opponent'
-          : isTargeted
-            ? 'slot-targeted'
-            : isLanding
-              ? 'slot-summon-landing'
-              : '';
+
+        let effectClass = '';
+        if (isAttacking && isTargeted) {
+          effectClass = 'slot-clash-opponent';
+        } else if (isAttacking) {
+          effectClass = 'slot-attacking-opponent';
+        } else if (isTargeted) {
+          effectClass = 'slot-targeted';
+        } else if (isLanding) {
+          effectClass = 'slot-summon-landing';
+        }
         const card = getOpponentBattleCard(i, slotId);
 
         return (
@@ -190,8 +210,8 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
             id={slotId}
           >
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
-            {isTargeted && actionEffect?.damage !== undefined && (
-              <div className="damage-popup-overlay">💥 -{actionEffect.damage}</div>
+            {isTargeted && targetDamage !== undefined && (
+              <div className="damage-popup-overlay">💥 -{targetDamage}</div>
             )}
             {card ? (
               <MonsterCard
@@ -211,17 +231,29 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
       {/* プレイヤーのバトルフィールド */}
       {[0, 1, 2, 3, 4].map((i) => {
         const slotId = `player-bzone-${i}`;
-        const isAttacking = actionEffect?.attackerSlotId === slotId;
-        const isTargeted = actionEffect?.targetSlotId === slotId;
+        const isAttacking = Boolean(
+          actionEffect?.attacks?.some((a) => a.attackerSlotId === slotId) ||
+          actionEffect?.attackerSlotId === slotId
+        );
+        const targetedAttacks = actionEffect?.attacks?.filter((a) => a.targetSlotId === slotId) || [];
+        const isTargeted = targetedAttacks.length > 0 || actionEffect?.targetSlotId === slotId;
+        const targetDamage = targetedAttacks.length > 0
+          ? targetedAttacks.reduce((sum, a) => sum + a.damage, 0)
+          : (actionEffect?.targetSlotId === slotId ? actionEffect?.damage : undefined);
+
         const isSummoning = isSlotSummoning(slotId);
         const isLanding = isSummoning && actionEffect?.isLanding;
-        const effectClass = isAttacking
-          ? 'slot-attacking-player'
-          : isTargeted
-            ? 'slot-targeted'
-            : isLanding
-              ? 'slot-summon-landing'
-              : '';
+
+        let effectClass = '';
+        if (isAttacking && isTargeted) {
+          effectClass = 'slot-clash-player';
+        } else if (isAttacking) {
+          effectClass = 'slot-attacking-player';
+        } else if (isTargeted) {
+          effectClass = 'slot-targeted';
+        } else if (isLanding) {
+          effectClass = 'slot-summon-landing';
+        }
         const card = getPlayerBattleCard(i, slotId);
 
         return (
@@ -231,8 +263,8 @@ const GameBoard = ({ myUserId, isDragging, actionEffect, isAnimating, isGameOver
             id={slotId}
           >
             {isAttacking && <div className="attacking-badge">⚔️ 攻撃!</div>}
-            {isTargeted && actionEffect?.damage !== undefined && (
-              <div className="damage-popup-overlay">💥 -{actionEffect.damage}</div>
+            {isTargeted && targetDamage !== undefined && (
+              <div className="damage-popup-overlay">💥 -{targetDamage}</div>
             )}
             {card ? (
               <MonsterCard

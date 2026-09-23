@@ -501,6 +501,24 @@ button:disabled,
   100% { transform: translateY(25px) scale(1.1); }
 }
 
+/* 相打ち・同時戦闘時のクラッシュモーション（プレイヤー側） */
+.slot-clash-player {
+  z-index: 50 !important;
+  animation: attackLungeUp 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate, hitShake 0.3s ease-in-out infinite !important;
+  border-color: #ff5722 !important;
+  background-color: #ffebee !important;
+  box-shadow: 0 0 30px rgba(255, 87, 34, 0.9) !important;
+}
+
+/* 相打ち・同時戦闘時のクラッシュモーション（相手側） */
+.slot-clash-opponent {
+  z-index: 50 !important;
+  animation: attackLungeDown 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite alternate, hitShake 0.3s ease-in-out infinite !important;
+  border-color: #ff5722 !important;
+  background-color: #ffebee !important;
+  box-shadow: 0 0 30px rgba(255, 87, 34, 0.9) !important;
+}
+
 /* 被弾シェイク（激しい振動） */
 .slot-targeted {
   z-index: 40 !important;
