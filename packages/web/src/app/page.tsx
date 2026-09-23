@@ -379,12 +379,18 @@ export default function RealtimeDemoPage() {
           .mobile-guide-btn {
             display: inline-flex !important;
           }
+          .mobile-cpu-header {
+            display: flex !important;
+          }
         }
         @media (min-width: 960px) {
           .desktop-side-panel {
             display: flex !important;
           }
           .mobile-guide-btn {
+            display: none !important;
+          }
+          .mobile-cpu-header {
             display: none !important;
           }
         }
@@ -456,8 +462,8 @@ export default function RealtimeDemoPage() {
       <div style={styles.mainLayout}>
         {/* 左／中央：バトルアリーナ */}
         <div style={styles.arenaColumn} className="arena-column">
-          {/* 1. CPU陣地ステータスバー & コントロール */}
-          <div style={styles.cpuHeader}>
+          {/* 1. CPU陣地ステータスバー & コントロール (モバイル時のみアリーナ上部に表示、デスクトップは右パネルに集約) */}
+          <div style={styles.cpuHeader} className="mobile-cpu-header">
             <div style={styles.playerInfo}>
               <span style={styles.playerName}>🤖 相手（CPU）</span>
               <div style={styles.hpBarBg}>
@@ -862,6 +868,48 @@ export default function RealtimeDemoPage() {
           <div style={styles.sidePanelTitleRow}>
             <span style={styles.sidePanelTitle}>Nullpoga RTS</span>
             <span style={styles.sidePanelBadge}>5レーン検証</span>
+          </div>
+
+          {/* 対戦相手（CPU）ステータス ＆ バトル操作カード */}
+          <div style={styles.sideBattleCard}>
+            <div style={styles.sideCpuStatusRow}>
+              <div style={styles.sideCpuInfo}>
+                <span style={styles.sideCpuName}>🤖 相手 (CPU)</span>
+                <div style={styles.sideHpBarBg}>
+                  <div
+                    style={{
+                      ...styles.hpBarFillCpu,
+                      width: `${Math.max(0, (cpuHp / 20) * 100)}%`,
+                    }}
+                  />
+                  <span style={styles.hpText}>{cpuHp} / 20 HP</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.sideControlRow}>
+              {/* マナ回復速度セレクター */}
+              <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
+                <span style={styles.manaSpeedLabel} className="mana-speed-label-full">⚡速度:</span>
+                <span style={styles.manaSpeedLabel} className="mana-speed-label-short">⚡</span>
+                <select
+                  value={manaRegenRate}
+                  onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
+                  style={styles.manaSpeedSelect}
+                >
+                  {MANA_SPEED_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button onClick={handleReset} style={styles.resetButton} title="ゲームを最初からやり直す">
+                <span className="btn-text-desktop">🔄 やり直す</span>
+                <span className="btn-text-mobile">🔄</span>
+              </button>
+            </div>
           </div>
 
           <div style={styles.sidePanelHeader}>
@@ -2002,6 +2050,55 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '2px 6px',
     borderRadius: '6px',
     fontWeight: 'bold',
+  },
+  sideBattleCard: {
+    backgroundColor: '#0f172a',
+    borderRadius: '8px',
+    border: '1px solid #1e293b',
+    padding: '8px 10px',
+    marginBottom: '8px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '6px',
+    flexShrink: 0,
+  },
+  sideCpuStatusRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  sideCpuInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: '8px',
+  },
+  sideCpuName: {
+    fontWeight: 'bold',
+    fontSize: '12px',
+    color: '#cbd5e1',
+    whiteSpace: 'nowrap',
+  },
+  sideHpBarBg: {
+    flex: 1,
+    maxWidth: '160px',
+    minWidth: '70px',
+    height: '16px',
+    backgroundColor: '#030712',
+    borderRadius: '8px',
+    overflow: 'hidden',
+    position: 'relative',
+    border: '1px solid #374151',
+  },
+  sideControlRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '6px',
+    width: '100%',
+    paddingTop: '2px',
   },
   sidePanelHeader: {
     display: 'flex',
