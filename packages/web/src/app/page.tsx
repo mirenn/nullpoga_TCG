@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
 import { Unit, AttackEffect } from './types';
 
@@ -311,15 +310,6 @@ export default function RealtimeDemoPage() {
           }
         }
         @media (max-width: 640px) {
-          .header-badge {
-            display: none !important;
-          }
-          .back-link-full {
-            display: none !important;
-          }
-          .back-link-short {
-            display: inline !important;
-          }
           .mana-speed-label-full {
             display: none !important;
           }
@@ -334,9 +324,6 @@ export default function RealtimeDemoPage() {
           }
         }
         @media (min-width: 641px) {
-          .back-link-short {
-            display: none !important;
-          }
           .mana-speed-label-short {
             display: none !important;
           }
@@ -345,9 +332,6 @@ export default function RealtimeDemoPage() {
           }
         }
         @media (max-width: 480px) {
-          .header-title {
-            font-size: 13px !important;
-          }
           .card-name {
             font-size: 11px !important;
             max-width: 52px !important;
@@ -389,57 +373,11 @@ export default function RealtimeDemoPage() {
         }
       `}</style>
 
-      {/* ヘッダーバー (スリム 34px) */}
-      <header style={styles.header} className="header-bar">
-        <div style={styles.headerLeft}>
-          <Link href="/" style={styles.backLink} title="通常版に戻る">
-            <span className="back-link-full">← 通常版</span>
-            <span className="back-link-short">←</span>
-          </Link>
-          <div style={styles.titleGroup}>
-            <h1 style={styles.title} className="header-title">Nullpoga RTS</h1>
-            <span style={styles.badge} className="header-badge">5レーン検証</span>
-          </div>
-        </div>
-        <div style={styles.headerRight}>
-          {/* マナ回復速度セレクター */}
-          <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
-            <span style={styles.manaSpeedLabel} className="mana-speed-label-full">⚡速度:</span>
-            <span style={styles.manaSpeedLabel} className="mana-speed-label-short">⚡</span>
-            <select
-              value={manaRegenRate}
-              onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
-              style={styles.manaSpeedSelect}
-            >
-              {MANA_SPEED_PRESETS.map((preset) => (
-                <option key={preset.value} value={preset.value}>
-                  {preset.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <button
-            onClick={() => setShowGuideModal(true)}
-            style={styles.guideToggleButton}
-            className="mobile-guide-btn"
-            title="検証ガイド・カード図鑑を表示"
-          >
-            <span className="btn-text-desktop">💡 ガイド・図鑑</span>
-            <span className="btn-text-mobile">💡 ガイド</span>
-          </button>
-          <button onClick={handleReset} style={styles.resetButton} title="ゲームを最初からやり直す">
-            <span className="btn-text-desktop">🔄 やり直す</span>
-            <span className="btn-text-mobile">🔄</span>
-          </button>
-        </div>
-      </header>
-
       {/* メインゲーム領域 (100vh収容・レスポンシブ2カラム) */}
       <div style={styles.mainLayout}>
         {/* 左／中央：バトルアリーナ */}
         <div style={styles.arenaColumn} className="arena-column">
-          {/* 1. CPU陣地ステータスバー */}
+          {/* 1. CPU陣地ステータスバー & コントロール */}
           <div style={styles.cpuHeader}>
             <div style={styles.playerInfo}>
               <span style={styles.playerName}>🤖 相手（CPU）</span>
@@ -453,7 +391,41 @@ export default function RealtimeDemoPage() {
                 <span style={styles.hpText}>{cpuHp} / 20 HP</span>
               </div>
             </div>
-            <div style={styles.baseLabel}>敵 本 拠 地</div>
+
+            {/* ゲーム操作コントロール (速度・リセット・モバイルガイド) */}
+            <div style={styles.cpuHeaderControls}>
+              {/* マナ回復速度セレクター */}
+              <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
+                <span style={styles.manaSpeedLabel} className="mana-speed-label-full">⚡速度:</span>
+                <span style={styles.manaSpeedLabel} className="mana-speed-label-short">⚡</span>
+                <select
+                  value={manaRegenRate}
+                  onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
+                  style={styles.manaSpeedSelect}
+                >
+                  {MANA_SPEED_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={() => setShowGuideModal(true)}
+                style={styles.guideToggleButton}
+                className="mobile-guide-btn"
+                title="検証ガイド・カード図鑑を表示"
+              >
+                <span className="btn-text-desktop">💡 ガイド・図鑑</span>
+                <span className="btn-text-mobile">💡</span>
+              </button>
+
+              <button onClick={handleReset} style={styles.resetButton} title="ゲームを最初からやり直す">
+                <span className="btn-text-desktop">🔄 やり直す</span>
+                <span className="btn-text-mobile">🔄</span>
+              </button>
+            </div>
           </div>
 
           {/* 2. 5レーン戦場フィールド (flex: 1 で全画面収容) */}
@@ -807,6 +779,12 @@ export default function RealtimeDemoPage() {
 
         {/* 右：検証ガイド & カード戦術パネル (デスクトップ横並び表示) */}
         <div style={styles.sidePanel} className="desktop-side-panel">
+          {/* パネル上部タイトル */}
+          <div style={styles.sidePanelTitleRow}>
+            <span style={styles.sidePanelTitle}>Nullpoga RTS</span>
+            <span style={styles.sidePanelBadge}>5レーン検証</span>
+          </div>
+
           <div style={styles.sidePanelHeader}>
             <button
               onClick={() => setActiveTab('tips')}
@@ -1229,64 +1207,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontFamily: 'system-ui, -apple-system, sans-serif',
     boxSizing: 'border-box',
   },
-  header: {
-    width: '100%',
-    maxWidth: '1160px',
-    margin: '0 auto 4px auto',
-    minHeight: '34px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    flexShrink: 0,
-    gap: '8px',
-  },
-  headerLeft: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '8px',
-    flexShrink: 1,
-    minWidth: 0,
-  },
-  backLink: {
-    color: '#94a3b8',
-    fontSize: '12px',
-    backgroundColor: '#1e293b',
-    padding: '4px 8px',
-    borderRadius: '12px',
-    textDecoration: 'none',
-    border: '1px solid #334155',
-    transition: 'all 0.15s ease',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-  },
-  titleGroup: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    minWidth: 0,
-  },
-  title: {
-    fontSize: '15px',
-    fontWeight: 'bold',
-    margin: 0,
-    letterSpacing: '-0.3px',
-    whiteSpace: 'nowrap',
-  },
-  badge: {
-    backgroundColor: '#1d4ed8',
-    color: '#dbeafe',
-    fontSize: '10px',
-    padding: '2px 6px',
-    borderRadius: '8px',
-    fontWeight: 'bold',
-    whiteSpace: 'nowrap',
-  },
-  headerRight: {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '6px',
-    flexShrink: 0,
-  },
   manaSpeedSelector: {
     display: 'flex',
     alignItems: 'center',
@@ -1364,12 +1284,18 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: '28px',
+    height: '32px',
     flexShrink: 0,
-    paddingBottom: '2px',
+    paddingBottom: '3px',
     borderBottom: '1px solid #1f2937',
     width: '100%',
     boxSizing: 'border-box',
+  },
+  cpuHeaderControls: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexShrink: 0,
   },
   playerInfo: {
     display: 'flex',
@@ -1383,14 +1309,6 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '12px',
     color: '#cbd5e1',
     whiteSpace: 'nowrap',
-  },
-  baseLabel: {
-    fontSize: '10px',
-    color: '#64748b',
-    letterSpacing: '1px',
-    fontWeight: 'bold',
-    whiteSpace: 'nowrap',
-    marginLeft: '6px',
   },
   hpBarBg: {
     flex: 1,
@@ -1907,6 +1825,29 @@ const styles: Record<string, React.CSSProperties> = {
     boxSizing: 'border-box',
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
     minHeight: 0,
+  },
+  sidePanelTitleRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '8px',
+    paddingBottom: '6px',
+    borderBottom: '1px solid #1f2937',
+    flexShrink: 0,
+  },
+  sidePanelTitle: {
+    fontSize: '13px',
+    fontWeight: 'bold',
+    color: '#f8fafc',
+    letterSpacing: '-0.3px',
+  },
+  sidePanelBadge: {
+    backgroundColor: '#1d4ed8',
+    color: '#dbeafe',
+    fontSize: '10px',
+    padding: '2px 6px',
+    borderRadius: '6px',
+    fontWeight: 'bold',
   },
   sidePanelHeader: {
     display: 'flex',
