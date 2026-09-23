@@ -12,7 +12,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 1,
     attack: 1,
     life: 1,
-    speed: 16, // 速い
+    speed: 8, // 高速ダッシュ型アタッカー（旧16から調整）
     range: 9, // 近接接触
     effectDesc: '足が速い低コストアタッカー。奇襲や時間稼ぎに。',
     icon: '🐭',
@@ -25,7 +25,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 1,
     attack: 2,
     life: 2,
-    speed: 10,
+    speed: 5, // 標準歩兵ペース（旧10から調整）
     range: 9,
     effectDesc: 'バランスの取れた標準的な歩兵ユニット。',
     icon: '🐱',
@@ -38,7 +38,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 2,
     attack: 1,
     life: 2,
-    speed: 10,
+    speed: 5, // じっくり前進（旧10から調整）
     range: 9,
     effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。',
     icon: '🐕',
@@ -51,7 +51,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 2,
     attack: 0,
     life: 7,
-    speed: 4, // 非常に遅い
+    speed: 2.5, // 重装タンク歩行（旧4から調整）
     range: 8,
     effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。',
     icon: '🐢',
@@ -64,7 +64,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 2,
     attack: 1,
     life: 2,
-    speed: 8,
+    speed: 4, // 後方支援ペース（旧8から調整）
     range: 12, // やや遠距離
     effectDesc: '攻撃時、相手ユニットを1.2秒間スタン（麻痺）させる。',
     icon: '🪼',
@@ -77,7 +77,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 3,
     attack: 3,
     life: 4,
-    speed: 13,
+    speed: 7, // 突破突進（旧13から調整）
     range: 9,
     effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。',
     icon: '🐗',
@@ -90,7 +90,7 @@ export const CARD_POOL: DemoCard[] = [
     manaCost: 5,
     attack: 5,
     life: 8,
-    speed: 7,
+    speed: 3.5, // 重量級ボス（旧7から調整）
     range: 15, // 遠距離ブレス
     effectDesc: '圧倒的なHPと火力を誇る前線の切り込み隊長。',
     icon: '🐉',
@@ -123,6 +123,7 @@ export const MANA_SPEED_PRESETS = [
 ] as const;
 
 export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1マナ（クラロワ風バランス）
+export const MOVE_SPEED_SCALE = 1.0; // ユニット移動速度の全体スケーラー（調整用）
 const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
@@ -407,7 +408,7 @@ export function useRealtimeGame() {
             }
 
             // 移動計算（すれ違い防止＆味方追い越し防止の物理壁）
-            const moveDelta = unit.speed * dt;
+            const moveDelta = unit.speed * MOVE_SPEED_SCALE * dt;
             if (unit.owner === 'player') {
               // プレイヤーユニットは上向き（y減少）
               let maxYMove = y - moveDelta;

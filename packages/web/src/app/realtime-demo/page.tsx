@@ -35,6 +35,15 @@ export default function RealtimeDemoPage() {
   const selectedCard = selectedCardIndex !== null ? hand[selectedCardIndex] : null;
   const activeDraggedCard = draggedCardIndex !== null ? hand[draggedCardIndex] : null;
 
+  // ゲームリセット（D&D状態もクリア）
+  const handleReset = useCallback(() => {
+    setDraggedCardIndex(null);
+    setIsDragging(false);
+    setDragOverLaneIndex(null);
+    setSpawnRippleLane(null);
+    resetGame();
+  }, [resetGame]);
+
   // ドラッグ開始
   const handleDragStart = (e: React.DragEvent, idx: number) => {
     const card = hand[idx];
@@ -94,6 +103,18 @@ export default function RealtimeDemoPage() {
   // キーボードショートカット (1〜4キーで手札選択、Escで選択解除)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
+      // フォーム入力中の誤爆を防止
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'SELECT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       if (['1', '2', '3', '4'].includes(e.key)) {
         const index = parseInt(e.key, 10) - 1;
         if (index >= 0 && index < hand.length) {
@@ -134,31 +155,92 @@ export default function RealtimeDemoPage() {
             display: none !important;
           }
         }
+        @media (max-width: 640px) {
+          .header-badge {
+            display: none !important;
+          }
+          .back-link-full {
+            display: none !important;
+          }
+          .back-link-short {
+            display: inline !important;
+          }
+          .mana-speed-label-full {
+            display: none !important;
+          }
+          .mana-speed-label-short {
+            display: inline !important;
+          }
+          .btn-text-desktop {
+            display: none !important;
+          }
+          .btn-text-mobile {
+            display: inline !important;
+          }
+        }
+        @media (min-width: 641px) {
+          .back-link-short {
+            display: none !important;
+          }
+          .mana-speed-label-short {
+            display: none !important;
+          }
+          .btn-text-mobile {
+            display: none !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .header-title {
+            font-size: 13px !important;
+          }
+          .card-name {
+            font-size: 11px !important;
+            max-width: 52px !important;
+          }
+          .card-icon {
+            font-size: 17px !important;
+          }
+          .card-desc-snippet {
+            display: none !important;
+          }
+          .card-speed-badge {
+            display: none !important;
+          }
+        }
+        @media (max-height: 520px) {
+          .realtime-demo-container {
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh !important;
+          }
+        }
         @keyframes pulseGlow {
           0%, 100% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
           50% { box-shadow: 0 0 16px rgba(59, 130, 246, 0.85); }
         }
         @keyframes pulseSummonBadge {
-          0%, 100% { transform: scale(1); opacity: 0.95; }
-          50% { transform: scale(1.06); opacity: 1; }
+          0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.95; }
+          50% { transform: translate(-50%, 0) scale(1.05); opacity: 1; }
         }
       `}</style>
 
-      {/* ヘッダーバー (スリム 36px) */}
-      <header style={styles.header}>
+      {/* ヘッダーバー (スリム 34px) */}
+      <header style={styles.header} className="header-bar">
         <div style={styles.headerLeft}>
           <Link href="/" style={styles.backLink} title="通常版に戻る">
-            ← 通常版
+            <span className="back-link-full">← 通常版</span>
+            <span className="back-link-short">←</span>
           </Link>
           <div style={styles.titleGroup}>
-            <h1 style={styles.title}>Nullpoga RTS</h1>
-            <span style={styles.badge}>リアルタイム5レーン検証</span>
+            <h1 style={styles.title} className="header-title">Nullpoga RTS</h1>
+            <span style={styles.badge} className="header-badge">5レーン検証</span>
           </div>
         </div>
         <div style={styles.headerRight}>
           {/* マナ回復速度セレクター */}
           <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
-            <span style={styles.manaSpeedLabel}>⚡マナ速度:</span>
+            <span style={styles.manaSpeedLabel} className="mana-speed-label-full">⚡速度:</span>
+            <span style={styles.manaSpeedLabel} className="mana-speed-label-short">⚡</span>
             <select
               value={manaRegenRate}
               onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
@@ -176,11 +258,14 @@ export default function RealtimeDemoPage() {
             onClick={() => setShowGuideModal(true)}
             style={styles.guideToggleButton}
             className="mobile-guide-btn"
+            title="検証ガイド・カード図鑑を表示"
           >
-            💡 ガイド・図鑑
+            <span className="btn-text-desktop">💡 ガイド・図鑑</span>
+            <span className="btn-text-mobile">💡 ガイド</span>
           </button>
-          <button onClick={resetGame} style={styles.resetButton}>
-            🔄 やり直す
+          <button onClick={handleReset} style={styles.resetButton} title="ゲームを最初からやり直す">
+            <span className="btn-text-desktop">🔄 やり直す</span>
+            <span className="btn-text-mobile">🔄</span>
           </button>
         </div>
       </header>
@@ -297,21 +382,21 @@ export default function RealtimeDemoPage() {
                           : '0 0 14px rgba(37, 99, 235, 0.9)',
                       }}
                     >
-                      {activeDraggedCard.type === 'SPELL' ? '✨ ドロップで発動！' : '🎯 ドロップで出撃！'}
+                      {activeDraggedCard.type === 'SPELL' ? '✨ ドロップ発動' : '🎯 ドロップ出撃'}
                     </div>
                   )}
 
                   {/* 他のレーンのドロップヒント（ドラッグ中） */}
                   {isDroppableTarget && !isHoveredDrop && (
                     <div style={styles.dropZoneHint}>
-                      ⬇️ ドロップ
+                      ⬇️ ここに配置
                     </div>
                   )}
 
                   {/* クリック選択時の出撃ガイド（ドラッグしていない時のみ） */}
                   {!isDragging && selectedCard && canAfford && (
                     <div style={styles.summonGuideBadge}>
-                      ▲ クリック出撃
+                      ▲ 出撃
                     </div>
                   )}
 
@@ -362,7 +447,7 @@ export default function RealtimeDemoPage() {
             </div>
           </div>
 
-          {/* 4. 操作ナビゲーションティッカー (スリム 20px) */}
+          {/* 4. 操作ナビゲーションティッカー (スリム 22px) */}
           <div
             style={{
               ...styles.instructionTicker,
@@ -380,21 +465,21 @@ export default function RealtimeDemoPage() {
           >
             {isDragging && activeDraggedCard ? (
               <span style={styles.instructionActive}>
-                ✋ <strong>{activeDraggedCard.name}</strong> をドラッグ中... 配置したいレーンへドロップ！
+                ✋ <strong>{activeDraggedCard.name}</strong> をドラッグ中... 配置先レーンへドロップ！
               </span>
             ) : selectedCard ? (
               <span style={styles.instructionActive}>
-                👉 <strong>{selectedCard.name}</strong>（マナ {selectedCard.manaCost}）選択中！ レーンをクリック（または直接ドラッグ＆ドロップ） [Escで解除]
+                👉 <strong>{selectedCard.name}</strong>（マナ {selectedCard.manaCost}）選択中！ レーンをタップ/クリック [Escで解除]
               </span>
             ) : (
               <span style={styles.instructionIdle}>
-                💡 カードをレーンにドラッグ＆ドロップして出撃！（クリック / キー[1〜4] でも配置可能）
+                💡 カードを選択/ドラッグして進軍レーンへ出撃！（キー[1〜4]対応）
               </span>
             )}
           </div>
 
           {/* 5. 手札カードリスト (下部ドック・4カード) */}
-          <div style={styles.handGrid}>
+          <div style={styles.handGrid} className="hand-grid">
             {hand.map((card, idx) => {
               const isSelected = selectedCardIndex === idx;
               const isBeingDragged = isDragging && draggedCardIndex === idx;
@@ -436,6 +521,7 @@ export default function RealtimeDemoPage() {
                       ? '0 4px 12px rgba(59, 130, 246, 0.5)'
                       : 'none',
                   }}
+                  className="card-item"
                 >
                   {/* カード上部：コスト・タイプ・ショートカットキー */}
                   <div style={styles.cardHeader}>
@@ -452,21 +538,27 @@ export default function RealtimeDemoPage() {
 
                   {/* カード本体：アイコン & 名前 */}
                   <div style={styles.cardCenter}>
-                    <span style={styles.cardIcon}>{card.icon}</span>
-                    <div style={styles.cardName}>{card.name}</div>
+                    <span style={styles.cardIcon} className="card-icon">{card.icon}</span>
+                    <div style={styles.cardName} className="card-name">{card.name}</div>
                   </div>
 
                   {/* カード下部：攻防ステータス / スペル表記 */}
                   <div style={styles.cardFooter}>
                     {card.type === 'MONSTER' ? (
                       <div style={styles.cardStats}>
-                        <span style={styles.cardAtk}>⚔️{card.attack}</span>
-                        <span style={styles.cardHp}>❤️{card.life}</span>
+                        <span style={styles.cardAtk} title="攻撃力">⚔️{card.attack}</span>
+                        <span style={styles.cardHp} title="HP">❤️{card.life}</span>
+                        <span style={styles.cardSpeed} className="card-speed-badge" title="移動速度">🏃{card.speed}</span>
                       </div>
                     ) : (
-                      <span style={styles.cardSpellTag}>✨呪文</span>
+                      <div style={styles.cardStats}>
+                        <span style={styles.cardSpellTag}>✨呪文</span>
+                        <span style={styles.cardSpellScope}>
+                          {card.id === 'fire_spell' ? '全体2' : '単体4'}
+                        </span>
+                      </div>
                     )}
-                    <div style={styles.cardDescSnippet} title={card.effectDesc}>
+                    <div style={styles.cardDescSnippet} className="card-desc-snippet" title={card.effectDesc}>
                       {card.effectDesc}
                     </div>
                   </div>
@@ -524,6 +616,13 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🐗 イノシシの突進突破</div>
+                  <div style={styles.tipText}>
+                    コスト3で攻撃3/HP4/速度7の突進アタッカー。手薄なレーンを一気に押し込みます。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>☄️ 迎撃スペルの使いどころ</div>
                   <div style={styles.tipText}>
                     迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン4ダメ）で迎撃しましょう。
@@ -559,8 +658,8 @@ export default function RealtimeDemoPage() {
                           <>
                             <span>⚔️ {c.attack}</span>
                             <span>❤️ {c.life}</span>
-                            <span>速度:{c.speed}</span>
-                            <span>射程:{c.range}%</span>
+                            <span>🏃 {c.speed}</span>
+                            <span>🎯 {c.range}%</span>
                           </>
                         ) : (
                           <span style={{ color: '#f97316' }}>スペル（呪文）</span>
@@ -581,59 +680,94 @@ export default function RealtimeDemoPage() {
         <div style={styles.overlay} onClick={() => setShowGuideModal(false)}>
           <div style={styles.guideModal} onClick={(e) => e.stopPropagation()}>
             <div style={styles.guideModalHeader}>
-              <h3>💡 検証ガイド & カード一覧</h3>
+              <div style={styles.sidePanelHeader}>
+                <button
+                  onClick={() => setActiveTab('tips')}
+                  style={{
+                    ...styles.tabButton,
+                    ...(activeTab === 'tips' ? styles.tabButtonActive : {}),
+                  }}
+                >
+                  💡 戦術ポイント
+                </button>
+                <button
+                  onClick={() => setActiveTab('catalog')}
+                  style={{
+                    ...styles.tabButton,
+                    ...(activeTab === 'catalog' ? styles.tabButtonActive : {}),
+                  }}
+                >
+                  🃏 全カード図鑑 ({CARD_POOL.length})
+                </button>
+              </div>
               <button
                 onClick={() => setShowGuideModal(false)}
                 style={styles.guideModalCloseBtn}
+                title="閉じる"
               >
                 ✕
               </button>
             </div>
             <div style={styles.guideModalBody}>
-              <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>🐢 隊列と前線維持</div>
-                <div style={styles.tipText}>
-                  亀吉で耐えて後ろから猫やクラゲで支援する隊列戦闘の感触をお試しください。
+              {activeTab === 'tips' ? (
+                <div style={styles.tipsSection}>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🐢 隊列と前線維持</div>
+                    <div style={styles.tipText}>
+                      亀吉で耐えて後ろから猫やクラゲで支援する隊列戦闘の感触をお試しください。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🐭 逆サイド奇襲</div>
+                    <div style={styles.tipText}>
+                      敵の攻めを見て反対側の空きレーンにネズミを流す奇襲戦術が有効です。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🐕 柴犬の長距離バフ</div>
+                    <div style={styles.tipText}>
+                      走るほど攻撃力が上がる柴犬ラン丸で敵本拠地の一撃粉砕を狙えます。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>☄️ 迎撃スペル</div>
+                    <div style={styles.tipText}>
+                      迫る群れを隕石落下や烈火の呪文で一掃できます。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>⚡ マナ回復速度</div>
+                    <div style={styles.tipText}>
+                      ヘッダーの「マナ速度」セレクタで低速(4.0s)〜高速(1.3s)を切り替え可能です。
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>🐭 逆サイド奇襲</div>
-                <div style={styles.tipText}>
-                  敵の攻めを見て反対側の空きレーンにネズミを流す奇襲戦術が有効です。
-                </div>
-              </div>
-              <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>🐕 柴犬の長距離バフ</div>
-                <div style={styles.tipText}>
-                  走るほど攻撃力が上がる柴犬ラン丸で敵本拠地の一撃粉砕を狙えます。
-                </div>
-              </div>
-              <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>☄️ 迎撃スペル</div>
-                <div style={styles.tipText}>
-                  迫る群れを隕石落下や烈火の呪文で一掃できます。
-                </div>
-              </div>
-              <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>⚡ マナ回復速度</div>
-                <div style={styles.tipText}>
-                  ヘッダーの「マナ速度」セレクタで低速(4.0s)〜高速(1.3s)を切り替え可能です。
-                </div>
-              </div>
-              <div style={{ marginTop: '16px' }}>
-                <h4 style={{ marginBottom: '8px', color: '#93c5fd' }}>🃏 全カード性能</h4>
+              ) : (
                 <div style={styles.catalogList}>
                   {CARD_POOL.map((c) => (
                     <div key={c.id} style={styles.catalogItem}>
                       <span style={{ fontSize: '20px' }}>{c.icon}</span>
                       <div style={{ flex: 1, fontSize: '12px' }}>
-                        <strong>{c.name}</strong> (⚡{c.manaCost})
-                        <div style={{ color: '#94a3b8' }}>{c.effectDesc}</div>
+                        <div style={styles.catalogItemTop}>
+                          <strong>{c.name}</strong>
+                          <span style={styles.catalogItemCost}>⚡{c.manaCost}</span>
+                        </div>
+                        {c.type === 'MONSTER' && (
+                          <div style={styles.catalogItemStats}>
+                            <span>⚔️ {c.attack}</span>
+                            <span>❤️ {c.life}</span>
+                            <span>🏃 {c.speed}</span>
+                            <span>🎯 {c.range}%</span>
+                          </div>
+                        )}
+                        <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
+                          {c.effectDesc}
+                        </div>
                       </div>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -656,7 +790,7 @@ export default function RealtimeDemoPage() {
                 ? '敵の本拠地を攻め落としました！独立レーンでの進軍と押し引きの感触はいかがでしたか？'
                 : '自陣の防衛が破られました。防衛ユニットのタイミングや迎撃スペルの使い方がポイントです。'}
             </p>
-            <button onClick={resetGame} style={styles.modalButton}>
+            <button onClick={handleReset} style={styles.modalButton}>
               もう一度遊ぶ
             </button>
           </div>
@@ -729,58 +863,67 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#f8fafc',
     display: 'flex',
     flexDirection: 'column',
-    padding: '8px 12px',
+    padding: '6px 10px',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     boxSizing: 'border-box',
   },
   header: {
     width: '100%',
-    maxWidth: '1060px',
-    margin: '0 auto 6px auto',
-    height: '34px',
+    maxWidth: '1160px',
+    margin: '0 auto 4px auto',
+    minHeight: '34px',
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     flexShrink: 0,
+    gap: '8px',
   },
   headerLeft: {
     display: 'flex',
     alignItems: 'center',
-    gap: '10px',
+    gap: '8px',
+    flexShrink: 1,
+    minWidth: 0,
   },
   backLink: {
     color: '#94a3b8',
     fontSize: '12px',
     backgroundColor: '#1e293b',
-    padding: '4px 10px',
-    borderRadius: '14px',
+    padding: '4px 8px',
+    borderRadius: '12px',
     textDecoration: 'none',
     border: '1px solid #334155',
     transition: 'all 0.15s ease',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   titleGroup: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
+    minWidth: 0,
   },
   title: {
-    fontSize: '16px',
+    fontSize: '15px',
     fontWeight: 'bold',
     margin: 0,
     letterSpacing: '-0.3px',
+    whiteSpace: 'nowrap',
   },
   badge: {
     backgroundColor: '#1d4ed8',
     color: '#dbeafe',
     fontSize: '10px',
-    padding: '2px 8px',
-    borderRadius: '10px',
+    padding: '2px 6px',
+    borderRadius: '8px',
     fontWeight: 'bold',
+    whiteSpace: 'nowrap',
   },
   headerRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
+    flexShrink: 0,
   },
   manaSpeedSelector: {
     display: 'flex',
@@ -789,7 +932,7 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#1e293b',
     border: '1px solid #334155',
     borderRadius: '6px',
-    padding: '3px 8px',
+    padding: '2px 6px',
   },
   manaSpeedLabel: {
     fontSize: '11px',
@@ -812,75 +955,88 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#1e3a8a',
     color: '#bfdbfe',
     border: '1px solid #3b82f6',
-    padding: '4px 10px',
+    padding: '3px 8px',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 'bold',
+    whiteSpace: 'nowrap',
   },
   resetButton: {
     backgroundColor: '#334155',
     color: '#fff',
     border: 'none',
-    padding: '4px 10px',
+    padding: '3px 8px',
     borderRadius: '6px',
     cursor: 'pointer',
-    fontSize: '12px',
+    fontSize: '11px',
     fontWeight: 'bold',
+    whiteSpace: 'nowrap',
   },
   mainLayout: {
     flex: 1,
     minHeight: 0,
     width: '100%',
-    maxWidth: '1060px',
+    maxWidth: '1160px',
     margin: '0 auto',
     display: 'flex',
     justifyContent: 'center',
-    gap: '12px',
+    gap: '10px',
     overflow: 'hidden',
   },
   arenaColumn: {
     flex: 1,
     minHeight: 0,
-    maxWidth: '620px',
+    maxWidth: '780px',
+    width: '100%',
     display: 'flex',
     flexDirection: 'column',
     backgroundColor: '#111827',
     borderRadius: '10px',
-    padding: '8px 10px',
+    padding: '6px 10px',
     border: '1px solid #1f2937',
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+    boxSizing: 'border-box',
   },
   cpuHeader: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: '30px',
+    height: '28px',
     flexShrink: 0,
-    paddingBottom: '4px',
+    paddingBottom: '2px',
     borderBottom: '1px solid #1f2937',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   playerInfo: {
     display: 'flex',
     alignItems: 'center',
     gap: '8px',
+    flex: 1,
+    minWidth: 0,
   },
   playerName: {
     fontWeight: 'bold',
-    fontSize: '13px',
+    fontSize: '12px',
     color: '#cbd5e1',
+    whiteSpace: 'nowrap',
   },
   baseLabel: {
     fontSize: '10px',
     color: '#64748b',
     letterSpacing: '1px',
     fontWeight: 'bold',
+    whiteSpace: 'nowrap',
+    marginLeft: '6px',
   },
   hpBarBg: {
-    width: '130px',
-    height: '16px',
+    flex: 1,
+    maxWidth: '130px',
+    minWidth: '50px',
+    height: '15px',
     backgroundColor: '#030712',
-    borderRadius: '8px',
+    borderRadius: '7px',
     overflow: 'hidden',
     position: 'relative',
     border: '1px solid #374151',
@@ -908,12 +1064,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   fieldGrid: {
     flex: 1,
-    minHeight: '230px',
+    minHeight: '180px',
     display: 'grid',
     gridTemplateColumns: 'repeat(5, 1fr)',
     gap: '6px',
     position: 'relative',
-    margin: '6px 0',
+    margin: '4px 0',
   },
   lane: {
     borderRadius: '6px',
@@ -924,13 +1080,13 @@ const styles: Record<string, React.CSSProperties> = {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'space-between',
-    transition: 'background-color 0.15s, border-color 0.15s',
+    transition: 'background-color 0.12s, border-color 0.12s',
   },
   laneNumberTop: {
     fontSize: '10px',
     color: '#475569',
     fontWeight: 'bold',
-    marginTop: '3px',
+    marginTop: '2px',
     pointerEvents: 'none',
     zIndex: 1,
   },
@@ -938,7 +1094,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '10px',
     color: '#475569',
     fontWeight: 'bold',
-    marginBottom: '3px',
+    marginBottom: '2px',
     pointerEvents: 'none',
     zIndex: 1,
   },
@@ -953,23 +1109,28 @@ const styles: Record<string, React.CSSProperties> = {
   },
   summonGuideBadge: {
     position: 'absolute',
-    bottom: '16px',
+    bottom: '6px',
+    left: '50%',
+    transform: 'translate(-50%, 0)',
     backgroundColor: '#2563eb',
     color: '#fff',
     fontSize: '10px',
-    padding: '3px 6px',
+    padding: '2px 6px',
     borderRadius: '4px',
     fontWeight: 'bold',
     pointerEvents: 'none',
     zIndex: 15,
     animation: 'pulseSummonBadge 0.8s infinite ease-in-out',
     boxShadow: '0 0 10px rgba(37,99,235,0.7)',
+    whiteSpace: 'nowrap',
   },
   dropZoneHint: {
     position: 'absolute',
-    bottom: '16px',
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    border: '1px dashed rgba(96, 165, 250, 0.6)',
+    bottom: '6px',
+    left: '50%',
+    transform: 'translate(-50%, 0)',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    border: '1px dashed rgba(96, 165, 250, 0.8)',
     color: '#93c5fd',
     fontSize: '9px',
     padding: '2px 5px',
@@ -977,6 +1138,7 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 'bold',
     pointerEvents: 'none',
     zIndex: 14,
+    whiteSpace: 'nowrap',
   },
   unitWrapper: {
     position: 'absolute',
@@ -1075,25 +1237,29 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    height: '32px',
+    height: '30px',
     flexShrink: 0,
-    gap: '12px',
-    padding: '4px 6px',
+    gap: '8px',
+    padding: '3px 8px',
     backgroundColor: '#0f172a',
     borderRadius: '6px',
     border: '1px solid #1e293b',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   playerHpSection: {
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
-    flexShrink: 0,
+    gap: '6px',
+    flex: '1 1 42%',
+    minWidth: 0,
   },
   playerManaSection: {
-    flex: 1,
+    flex: '1 1 58%',
     display: 'flex',
     alignItems: 'center',
-    gap: '8px',
+    gap: '6px',
+    minWidth: 0,
     maxWidth: '300px',
   },
   manaInfo: {
@@ -1109,10 +1275,12 @@ const styles: Record<string, React.CSSProperties> = {
   },
   manaCount: {
     color: '#60a5fa',
-    fontSize: '13px',
+    fontSize: '12px',
+    whiteSpace: 'nowrap',
   },
   manaBarBg: {
     flex: 1,
+    minWidth: '50px',
     height: '14px',
     backgroundColor: '#030712',
     borderRadius: '7px',
@@ -1143,20 +1311,22 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   instructionTicker: {
-    height: '20px',
+    height: '22px',
     flexShrink: 0,
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: '4px',
     border: '1px solid',
-    margin: '4px 0',
+    margin: '3px 0',
     fontSize: '11px',
     padding: '0 8px',
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     transition: 'all 0.15s ease',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   instructionActive: {
     color: '#93c5fd',
@@ -1166,17 +1336,19 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#94a3b8',
   },
   handGrid: {
-    height: '102px',
+    height: '100px',
     flexShrink: 0,
     display: 'grid',
     gridTemplateColumns: 'repeat(4, 1fr)',
     gap: '6px',
+    width: '100%',
+    boxSizing: 'border-box',
   },
   card: {
     backgroundColor: '#0f172a',
     borderRadius: '6px',
     border: '1.5px solid #334155',
-    padding: '6px',
+    padding: '5px 4px',
     cursor: 'pointer',
     display: 'flex',
     flexDirection: 'column',
@@ -1186,6 +1358,7 @@ const styles: Record<string, React.CSSProperties> = {
     userSelect: 'none',
     boxSizing: 'border-box',
     overflow: 'hidden',
+    touchAction: 'manipulation',
   },
   cardSelected: {
     borderColor: '#3b82f6',
@@ -1201,10 +1374,10 @@ const styles: Record<string, React.CSSProperties> = {
     lineHeight: 1,
   },
   cardCostBadge: {
-    fontSize: '11px',
+    fontSize: '10px',
     fontWeight: 'bold',
     color: '#fff',
-    padding: '1px 5px',
+    padding: '1px 4px',
     borderRadius: '4px',
   },
   cardKeyBadge: {
@@ -1216,10 +1389,10 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     alignItems: 'center',
     gap: '4px',
-    margin: '2px 0',
+    margin: '1px 0',
   },
   cardIcon: {
-    fontSize: '20px',
+    fontSize: '19px',
   },
   cardName: {
     fontSize: '12px',
@@ -1238,7 +1411,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
   cardStats: {
     display: 'flex',
-    gap: '6px',
+    gap: '5px',
     fontSize: '10px',
     fontWeight: 'bold',
     lineHeight: 1,
@@ -1249,11 +1422,19 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 'bold',
     lineHeight: 1,
   },
+  cardSpellScope: {
+    fontSize: '9px',
+    color: '#fdba74',
+    lineHeight: 1,
+  },
   cardAtk: {
     color: '#f59e0b',
   },
   cardHp: {
     color: '#22c55e',
+  },
+  cardSpeed: {
+    color: '#38bdf8',
   },
   cardDescSnippet: {
     fontSize: '9px',
@@ -1277,6 +1458,7 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     boxSizing: 'border-box',
     boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+    minHeight: 0,
   },
   sidePanelHeader: {
     display: 'flex',
@@ -1284,6 +1466,7 @@ const styles: Record<string, React.CSSProperties> = {
     marginBottom: '8px',
     borderBottom: '1px solid #1f2937',
     paddingBottom: '6px',
+    flexShrink: 0,
   },
   tabButton: {
     flex: 1,
@@ -1305,6 +1488,7 @@ const styles: Record<string, React.CSSProperties> = {
     flex: 1,
     overflowY: 'auto',
     paddingRight: '2px',
+    minHeight: 0,
   },
   tipsSection: {
     display: 'flex',
@@ -1437,9 +1621,9 @@ const styles: Record<string, React.CSSProperties> = {
   guideModal: {
     backgroundColor: '#111827',
     borderRadius: '10px',
-    padding: '16px',
+    padding: '14px',
     maxWidth: '440px',
-    width: '90%',
+    width: '92%',
     maxHeight: '80vh',
     display: 'flex',
     flexDirection: 'column',
@@ -1450,9 +1634,8 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: '12px',
-    paddingBottom: '8px',
-    borderBottom: '1px solid #1f2937',
+    marginBottom: '8px',
+    gap: '8px',
   },
   guideModalCloseBtn: {
     backgroundColor: 'transparent',
@@ -1460,6 +1643,8 @@ const styles: Record<string, React.CSSProperties> = {
     color: '#94a3b8',
     fontSize: '18px',
     cursor: 'pointer',
+    padding: '4px 8px',
+    lineHeight: 1,
   },
   guideModalBody: {
     flex: 1,
@@ -1467,5 +1652,6 @@ const styles: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
+    minHeight: 0,
   },
 };
