@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
 import { Unit, AttackEffect } from './types';
+import { UnitSvgRenderer, deriveAnimationState } from '../components/units/UnitSvgRenderer';
 
 export default function RealtimeDemoPage() {
   const {
@@ -1089,7 +1090,7 @@ export default function RealtimeDemoPage() {
                   <div style={styles.tipBox}>
                     <div style={styles.tipTitle}>🛡️ 出撃バリデーション</div>
                     <div style={styles.tipText}>
-                      1レーン最大3体まで、ドラゴンは場に1体限定、0.4秒クールダウンの制限があります。
+                      1レーン最大3体まで、ドラゴンは場に1体限定、連打誤爆防止（約0.12秒）の制限があります。
                     </div>
                   </div>
                 </div>
@@ -1161,6 +1162,16 @@ function RenderUnit({ unit }: { unit: Unit }) {
     ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
     : '';
 
+  // SVG アニメーション状態を算出
+  const animState = deriveAnimationState(unit);
+  const svgElement = UnitSvgRenderer({
+    cardNo: unit.cardNo,
+    state: animState,
+    isPlayer,
+    size: 36,
+  });
+  const hasSvg = svgElement !== null;
+
   return (
     <div
       style={{
@@ -1192,9 +1203,12 @@ function RenderUnit({ unit }: { unit: Unit }) {
             : isPlayer
             ? '0 2px 6px rgba(59, 130, 246, 0.4)'
             : '0 2px 6px rgba(239, 68, 68, 0.4)',
+          // SVG の尻尾・触手がはみ出せるように
+          overflow: hasSvg ? 'visible' : undefined,
         }}
       >
-        <span style={styles.unitIconText}>{unit.icon}</span>
+        {/* SVG コンポーネント or 絵文字フォールバック */}
+        {svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>}
 
         {/* 状態異常・バフ表示 */}
         {isStunned && <span style={styles.statusStun}>⚡麻痺</span>}
@@ -1209,6 +1223,7 @@ function RenderUnit({ unit }: { unit: Unit }) {
     </div>
   );
 }
+
 
 // 攻撃エフェクト（電撃ビーム・火炎ブレス・着弾放電スパーク・火炎爆発・ダメージポップアップ）描画サブコンポーネント
 function RenderAttackEffect({ effect }: { effect: AttackEffect }) {

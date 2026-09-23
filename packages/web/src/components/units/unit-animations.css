@@ -1,0 +1,211 @@
+/* ============================================================
+   Unit SVG Animation — Shared & Per-character Keyframes
+   ============================================================ */
+
+/* ─── 共通: スタン (震え + 白フラッシュ) ─── */
+
+@keyframes unit-stunned-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(-1.5px, 0.8px) rotate(-2deg); }
+  20% { transform: translate(1.5px, -0.8px) rotate(2deg); }
+  30% { transform: translate(-1.2px, -0.5px) rotate(-1.5deg); }
+  40% { transform: translate(1.2px, 0.5px) rotate(1.5deg); }
+  50% { transform: translate(-1px, 0.8px) rotate(-1deg); }
+  60% { transform: translate(1px, -0.5px) rotate(1deg); }
+  70% { transform: translate(-0.8px, -0.3px) rotate(-0.5deg); }
+  80% { transform: translate(0.8px, 0.3px) rotate(0.5deg); }
+  90% { transform: translate(-0.5px, 0.3px) rotate(-0.5deg); }
+}
+
+@keyframes unit-stunned-flash {
+  0%, 100% { opacity: 1; filter: brightness(1); }
+  30% { opacity: 0.5; filter: brightness(2.5); }
+  60% { opacity: 0.9; filter: brightness(1.2); }
+  80% { opacity: 0.4; filter: brightness(3); }
+}
+
+.unit-svg-stunned {
+  animation:
+    unit-stunned-shake 0.25s ease-in-out infinite,
+    unit-stunned-flash 0.35s ease-in-out infinite;
+}
+
+/* ─── ネコ (Cat) ─── */
+
+/* 歩行: 前脚スイング */
+@keyframes cat-front-leg-swing {
+  0%   { transform: rotate(20deg); }
+  100% { transform: rotate(-20deg); }
+}
+
+/* 歩行: 後脚スイング (逆位相) */
+@keyframes cat-back-leg-swing {
+  0%   { transform: rotate(-15deg); }
+  100% { transform: rotate(15deg); }
+}
+
+/* 歩行: 体のゆらゆら上下動 */
+@keyframes cat-body-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+
+/* idle: 尻尾ゆらゆら */
+@keyframes cat-tail-sway {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(8deg); }
+  75% { transform: rotate(-8deg); }
+}
+
+/* 攻撃: 前脚ひっかきスワイプ */
+@keyframes cat-paw-slash {
+  0%   { transform: rotate(0deg) translateY(0); }
+  25%  { transform: rotate(-60deg) translateY(-4px); }
+  50%  { transform: rotate(-45deg) translateY(-2px); }
+  100% { transform: rotate(0deg) translateY(0); }
+}
+
+/* 攻撃: 体の突進 */
+@keyframes cat-attack-lunge {
+  0%   { transform: translateY(0) scale(1); }
+  30%  { transform: translateY(-3px) scale(1.05); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* 歩行クラス */
+.cat-walk-front-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-front-leg-swing 0.35s ease-in-out infinite alternate;
+}
+
+.cat-walk-front-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-front-leg-swing 0.35s ease-in-out infinite alternate-reverse;
+}
+
+.cat-walk-back-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-back-leg-swing 0.35s ease-in-out infinite alternate-reverse;
+}
+
+.cat-walk-back-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-back-leg-swing 0.35s ease-in-out infinite alternate;
+}
+
+.cat-walk-body {
+  animation: cat-body-bob 0.35s ease-in-out infinite;
+}
+
+/* idle クラス */
+.cat-idle-tail {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation: cat-tail-sway 2s ease-in-out infinite;
+}
+
+/* 攻撃クラス */
+.cat-attack-paw {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-paw-slash 0.24s ease-out forwards;
+}
+
+.cat-attack-body {
+  animation: cat-attack-lunge 0.24s ease-out forwards;
+}
+
+/* ─── 電気クラゲ (Jellyfish) ─── */
+
+/* 泳ぎ: 傘のパルス */
+@keyframes jelly-bell-pulse {
+  0%, 100% { transform: scaleY(1) scaleX(1); }
+  50% { transform: scaleY(0.82) scaleX(1.08); }
+}
+
+/* 泳ぎ: 触手ゆらゆら */
+@keyframes jelly-tentacle-wave {
+  0%, 100% { transform: skewX(0deg) scaleY(1); }
+  25% { transform: skewX(6deg) scaleY(0.95); }
+  75% { transform: skewX(-6deg) scaleY(1.05); }
+}
+
+/* 泳ぎ: 全体のフワフワ浮遊 */
+@keyframes jelly-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+
+/* 攻撃: 傘の急収縮 */
+@keyframes jelly-bell-contract {
+  0%   { transform: scaleY(1) scaleX(1); }
+  30%  { transform: scaleY(0.55) scaleX(1.2); }
+  60%  { transform: scaleY(0.65) scaleX(1.15); }
+  100% { transform: scaleY(1) scaleX(1); }
+}
+
+/* 攻撃: 触手が広がる */
+@keyframes jelly-tentacle-spread {
+  0%   { transform: scaleX(1) scaleY(1); }
+  30%  { transform: scaleX(1.4) scaleY(0.85); }
+  100% { transform: scaleX(1) scaleY(1); }
+}
+
+/* 攻撃: 放電フラッシュ */
+@keyframes jelly-zap-flash {
+  0%   { opacity: 0; filter: drop-shadow(0 0 0px #facc15); }
+  15%  { opacity: 1; filter: drop-shadow(0 0 6px #facc15); }
+  30%  { opacity: 0.3; filter: drop-shadow(0 0 2px #facc15); }
+  50%  { opacity: 1; filter: drop-shadow(0 0 8px #facc15); }
+  70%  { opacity: 0.2; filter: drop-shadow(0 0 1px #facc15); }
+  85%  { opacity: 0.9; filter: drop-shadow(0 0 5px #facc15); }
+  100% { opacity: 0; filter: drop-shadow(0 0 0px #facc15); }
+}
+
+/* 泳ぎクラス */
+.jelly-swim-bell {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: jelly-bell-pulse 1.6s ease-in-out infinite;
+}
+
+.jelly-swim-tentacle {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: jelly-tentacle-wave 2.2s ease-in-out infinite;
+}
+
+.jelly-swim-tentacle-d1 { animation-delay: -0.3s; }
+.jelly-swim-tentacle-d2 { animation-delay: -0.7s; }
+.jelly-swim-tentacle-d3 { animation-delay: -1.1s; }
+.jelly-swim-tentacle-d4 { animation-delay: -1.5s; }
+
+.jelly-swim-float {
+  animation: jelly-float 2.4s ease-in-out infinite;
+}
+
+/* 攻撃クラス */
+.jelly-attack-bell {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: jelly-bell-contract 0.24s ease-out forwards;
+}
+
+.jelly-attack-tentacles {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: jelly-tentacle-spread 0.24s ease-out forwards;
+}
+
+.jelly-attack-zap {
+  animation: jelly-zap-flash 0.24s ease-out forwards;
+}
+
+/* スタン: 感電痙攣 (共通 unit-svg-stunned に追加で黄色グロー) */
+.jelly-stunned-glow {
+  filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px #eab308);
+}
