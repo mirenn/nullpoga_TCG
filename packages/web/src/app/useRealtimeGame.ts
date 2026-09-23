@@ -517,15 +517,15 @@ export function useRealtimeGame() {
 
                 // 攻撃種別に応じたエフェクト種別と継続時間を設定
                 let effectType: AttackEffectType = 'slash';
-                let duration = 240;
+                let duration = 280;
                 if (unit.cardNo === 11) {
-                  // 炎のドラゴン: 遠距離火球ブレス
+                  // 炎のドラゴン: 遠距離火炎弾ブレス
                   effectType = 'fireball';
-                  duration = 320;
+                  duration = 460;
                 } else if (unit.cardNo === 6) {
-                  // 電気クラゲ: 放電電撃弾
+                  // 電気クラゲ: 放電電撃弾＆着弾放電スパーク
                   effectType = 'lightning';
-                  duration = 260;
+                  duration = 420;
                 }
 
                 newAttackEffects.push({
@@ -552,13 +552,13 @@ export function useRealtimeGame() {
                 lastAttack = now;
                 const targetBaseY = unit.owner === 'player' ? 2 : 98;
                 let effectType: AttackEffectType = 'base_hit';
-                let duration = 250;
+                let duration = 300;
                 if (unit.cardNo === 11) {
                   effectType = 'fireball';
-                  duration = 320;
+                  duration = 460;
                 } else if (unit.cardNo === 6) {
                   effectType = 'lightning';
-                  duration = 260;
+                  duration = 420;
                 }
 
                 newAttackEffects.push({
@@ -678,11 +678,11 @@ export function useRealtimeGame() {
           return finalUnits.filter((u) => u.hp > 0);
         });
 
-        // 攻撃エフェクトの反映とクリーンアップ（duration+200ms経過で消去）
+        // 攻撃エフェクトの反映とクリーンアップ（duration+300ms経過で消去）
         if (newAttackEffects.length > 0) {
           setAttackEffects((prev) => [...prev, ...newAttackEffects]);
         }
-        setAttackEffects((prev) => prev.filter((e) => now - e.createdAt < e.duration + 200));
+        setAttackEffects((prev) => prev.filter((e) => now - e.createdAt < e.duration + 300));
 
         // スペルエフェクトの掃除（1秒以上経過したものを除去）
         setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1000));
