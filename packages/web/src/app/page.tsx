@@ -281,13 +281,63 @@ export default function RealtimeDemoPage() {
           box-shadow: 0 0 16px #38bdf8, 0 0 28px #0284c7;
         }
 
-        /* 電気クラゲ: 放電電撃ビームライン（クラゲから標的へ走る極太の稲妻） */
+        /* 電気クラゲ: 放電電撃弾（クラゲから相手へ飛翔するエネルギー球） */
+        @keyframes lightning-orb-fly {
+          0% {
+            top: var(--from-y);
+            opacity: 0.9;
+            transform: translate(-50%, -50%) scale(0.7);
+          }
+          15% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.15);
+          }
+          85% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.15);
+          }
+          100% {
+            top: var(--to-y);
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.3);
+          }
+        }
+        .lightning-projectile-orb {
+          position: absolute;
+          left: 50%;
+          width: 26px;
+          height: 26px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: radial-gradient(circle, #ffffff 0%, #38bdf8 40%, rgba(2, 132, 199, 0.8) 70%, transparent 100%);
+          box-shadow: 0 0 16px #ffffff, 0 0 28px #38bdf8, 0 0 44px #0284c7;
+          pointer-events: none;
+          z-index: 40;
+          animation: lightning-orb-fly var(--flight-duration, 300ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+        }
+
+        /* 電撃弾のスパーク回転演出 */
+        @keyframes lightning-trail-pulse {
+          0% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.25) rotate(180deg); }
+          100% { transform: scale(1) rotate(360deg); }
+        }
+        .lightning-orb-spark {
+          font-size: 16px;
+          line-height: 1;
+          filter: drop-shadow(0 0 6px #ffffff);
+          animation: lightning-trail-pulse 0.15s linear infinite;
+        }
+
+        /* 電気クラゲ: 放電電撃ビームライン（着弾瞬間に走る稲妻フラッシュ） */
         @keyframes lightning-beam-flicker {
           0% { opacity: 0; transform: translateX(-50%) scaleX(0.4); }
-          15% { opacity: 1; transform: translateX(-50%) scaleX(1.6); }
-          35% { opacity: 0.7; transform: translateX(-50%) scaleX(1.0); }
-          55% { opacity: 1; transform: translateX(-50%) scaleX(2.0); }
-          80% { opacity: 0.8; transform: translateX(-50%) scaleX(1.3); }
+          20% { opacity: 1; transform: translateX(-50%) scaleX(1.6); }
+          40% { opacity: 0.7; transform: translateX(-50%) scaleX(1.0); }
+          60% { opacity: 1; transform: translateX(-50%) scaleX(1.8); }
+          80% { opacity: 0.8; transform: translateX(-50%) scaleX(1.2); }
           100% { opacity: 0; transform: translateX(-50%) scaleX(0.2); }
         }
         .lightning-beam-line {
@@ -299,7 +349,7 @@ export default function RealtimeDemoPage() {
           border-radius: 4px;
           pointer-events: none;
           z-index: 35;
-          animation: lightning-beam-flicker 0.48s ease-out forwards;
+          animation: lightning-beam-flicker 0.35s ease-out forwards;
         }
 
         /* 炎のドラゴン: 火炎ブレス流線（口から標的へ噴射される火炎） */
@@ -1375,7 +1425,11 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
 function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   const now = Date.now();
   const elapsed = now - effect.createdAt;
-  const showDamage = elapsed >= 120;
+
+  // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら120ms）
+  const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 120);
+  const isHit = elapsed >= flightTime;
+  const showDamage = isHit;
 
   // ビーム・流線用の垂直範囲
   const minY = Math.min(effect.fromY, effect.toY);
@@ -1434,19 +1488,10 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         </>
       )}
 
-      {/* 2. 電気クラゲ（長距離放電電撃ビーム ＆ 着弾バチバチ放電スパーク） */}
+      {/* 2. 電気クラゲ（電撃弾の高速飛翔 ＆ 着弾バチバチ放電スパーク） */}
       {effect.effectType === 'lightning' && (
         <>
-          {/* クラゲから標的へ垂直に走る極太の放電稲妻ビーム */}
-          <div
-            className="lightning-beam-line"
-            style={{
-              top: `${minY}%`,
-              height: `${heightY}%`,
-            }}
-          />
-
-          {/* 発射元（クラゲ自身）の放電スパーク */}
+          {/* 発射元（クラゲ自身）の放電スパーク（発射時に手元でピカッと光る） */}
           <div
             style={{
               position: 'absolute',
@@ -1464,24 +1509,53 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             </div>
           </div>
 
-          {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング */}
-          <div
-            style={{
-              position: 'absolute',
-              top: `${effect.toY}%`,
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none',
-              zIndex: 39,
-            }}
-          >
-            <div className="shockwave-ring-cyan" />
-            <div className="lightning-impact-effect">
-              <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
-                ⚡💥⚡
-              </span>
+          {/* クラゲから相手へ高速飛翔する電撃弾（オーブ） - 着弾前のみ表示 */}
+          {!isHit && (
+            <div
+              className="lightning-projectile-orb"
+              style={{
+                '--from-y': `${effect.fromY}%`,
+                '--to-y': `${effect.toY}%`,
+                '--flight-duration': `${flightTime}ms`,
+                top: `${effect.fromY}%`,
+              } as React.CSSProperties}
+            >
+              <span className="lightning-orb-spark">⚡</span>
             </div>
-          </div>
+          )}
+
+          {/* 着弾後の演出（着弾時刻に達した瞬間に発火！） */}
+          {isHit && (
+            <>
+              {/* クラゲから標的へ一瞬走る稲妻放電ライン */}
+              <div
+                className="lightning-beam-line"
+                style={{
+                  top: `${minY}%`,
+                  height: `${heightY}%`,
+                }}
+              />
+
+              {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${effect.toY}%`,
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 39,
+                }}
+              >
+                <div className="shockwave-ring-cyan" />
+                <div className="lightning-impact-effect">
+                  <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
+                    ⚡💥⚡
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
 
@@ -1535,6 +1609,7 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
     </>
   );
 }
+
 
 const styles: Record<string, React.CSSProperties> = {
   container: {

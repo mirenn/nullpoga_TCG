@@ -56,4 +56,5 @@ export interface AttackEffect {
   damage: number;
   createdAt: number;
   duration: number; // アニメーション時間 (ms)
+  flightDuration?: number; // 弾が飛ぶ時間 (ms)
 }

@@ -130,9 +130,9 @@ const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
 
-// 電気クラゲの雷撃飛行時間（距離に比例: 最小100ms〜最大350ms）
-const LIGHTNING_FLIGHT_MIN_MS = 100;
-const LIGHTNING_FLIGHT_MAX_MS = 350;
+// 電気クラゲの雷撃飛行時間（距離に比例: 最小220ms〜最大380ms、目で弾道をしっかり追えるスピード感）
+const LIGHTNING_FLIGHT_MIN_MS = 220;
+const LIGHTNING_FLIGHT_MAX_MS = 380;
 const LIGHTNING_MAX_RANGE = 28; // クラゲの射程（%）
 
 /** 着弾待ちの雷撃ヒット予約 */
@@ -570,14 +570,18 @@ export function useRealtimeGame() {
                 // 攻撃種別に応じたエフェクト種別と継続時間を設定
                 let effectType: AttackEffectType = 'slash';
                 let duration = 300;
+                let flightMs: number | undefined;
+
                 if (unit.cardNo === 11) {
                   // 炎のドラゴン: 長距離火炎ブレス
                   effectType = 'fireball';
                   duration = 550;
                 } else if (unit.cardNo === 6) {
-                  // 電気クラゲ: 長距離放電電撃ビーム＆着弾放電スパーク
+                  // 電気クラゲ: 電撃弾プロジェクタイル飛行 ＆ 着弾放電スパーク
                   effectType = 'lightning';
-                  duration = 520;
+                  const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
+                  flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                  duration = flightMs + 450; // 飛行時間 + 着弾余韻
                 }
 
                 newAttackEffects.push({
@@ -591,12 +595,11 @@ export function useRealtimeGame() {
                   damage: attack,
                   createdAt: now,
                   duration,
+                  flightDuration: flightMs,
                 });
 
                 // 電気クラゲ: ダメージ+スタンは着弾時に遅延適用
-                if (unit.cardNo === 6) {
-                  const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
-                  const flightMs = LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS);
+                if (unit.cardNo === 6 && flightMs) {
                   newPendingHits.push({
                     id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
                     targetId: (targetEnemy as Unit).id,
@@ -620,12 +623,17 @@ export function useRealtimeGame() {
                 const targetBaseY = unit.owner === 'player' ? 2 : 98;
                 let effectType: AttackEffectType = 'base_hit';
                 let duration = 320;
+                let baseFlightMs: number | undefined;
+
                 if (unit.cardNo === 11) {
                   effectType = 'fireball';
                   duration = 550;
                 } else if (unit.cardNo === 6) {
                   effectType = 'lightning';
-                  duration = 520;
+                  const baseDist = Math.abs(unit.y - targetBaseY);
+                  const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
+                  baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                  duration = baseFlightMs + 450;
                 }
 
                 newAttackEffects.push({
@@ -639,6 +647,7 @@ export function useRealtimeGame() {
                   damage: attack,
                   createdAt: now,
                   duration,
+                  flightDuration: baseFlightMs,
                 });
 
                 if (unit.owner === 'player') {
