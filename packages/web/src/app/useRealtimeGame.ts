@@ -130,6 +130,22 @@ const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
 
+// 電気クラゲの雷撃飛行時間（距離に比例: 最小100ms〜最大350ms）
+const LIGHTNING_FLIGHT_MIN_MS = 100;
+const LIGHTNING_FLIGHT_MAX_MS = 350;
+const LIGHTNING_MAX_RANGE = 28; // クラゲの射程（%）
+
+/** 着弾待ちの雷撃ヒット予約 */
+interface PendingLightningHit {
+  id: string;
+  targetId: string;       // 着弾対象ユニットID
+  attackerId: string;     // 攻撃者ID（クラゲ）
+  lane: number;
+  damage: number;
+  stunDuration: number;   // ms (1200)
+  hitTime: number;        // 着弾予定時刻 (Date.now() + 飛行時間)
+}
+
 export const createDefault15Deck = (): DemoCard[] => {
   const cardMap: Record<string, DemoCard> = {};
   CARD_POOL.forEach((c) => {
@@ -196,6 +212,8 @@ export function useRealtimeGame() {
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
   // 攻撃エフェクト（弾道・斬撃・着弾）
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
+  // 電気クラゲの着弾待ち雷撃
+  const [pendingLightningHits, setPendingLightningHits] = useState<PendingLightningHit[]>([]);
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -491,6 +509,7 @@ export function useRealtimeGame() {
         // 3. ユニット更新
         const now = Date.now();
         const newAttackEffects: AttackEffect[] = [];
+        const newPendingHits: PendingLightningHit[] = [];
 
         setUnits((prevUnits) => {
           let pDamageToCpu = 0;
@@ -573,6 +592,21 @@ export function useRealtimeGame() {
                   createdAt: now,
                   duration,
                 });
+
+                // 電気クラゲ: ダメージ+スタンは着弾時に遅延適用
+                if (unit.cardNo === 6) {
+                  const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
+                  const flightMs = LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS);
+                  newPendingHits.push({
+                    id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                    targetId: (targetEnemy as Unit).id,
+                    attackerId: unit.id,
+                    lane: unit.lane,
+                    damage: attack,
+                    stunDuration: 1200,
+                    hitTime: now + flightMs,
+                  });
+                }
               }
               return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
             }
@@ -676,13 +710,12 @@ export function useRealtimeGame() {
                 attacker.owner !== unit.owner &&
                 attacker.lastAttackEffectTime === now
               ) {
+                // 電気クラゲ(cardNo:6)はダメージ+スタンを着弾時に遅延適用するのでスキップ
+                if (attacker.cardNo === 6) return;
+
                 const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
                 if (dist >= -2 && dist <= attacker.range + 2) {
                   hp -= attacker.attack;
-                  // 電気クラゲのスタン効果
-                  if (attacker.cardNo === 6) {
-                    stunnedUntil = now + 1200;
-                  }
                 }
               }
             });
@@ -717,6 +750,50 @@ export function useRealtimeGame() {
         }
         setAttackEffects((prev) => prev.filter((e) => now - e.createdAt < e.duration + 300));
 
+        // 電気クラゲの着弾予約をキューに追加
+        if (newPendingHits.length > 0) {
+          setPendingLightningHits((prev) => [...prev, ...newPendingHits]);
+        }
+
+        // 着弾時刻に達した雷撃を解決（ダメージ+スタン適用）
+        setPendingLightningHits((prev) => {
+          const stillPending: PendingLightningHit[] = [];
+          const resolvedHits: PendingLightningHit[] = [];
+
+          for (const hit of prev) {
+            if (now >= hit.hitTime) {
+              resolvedHits.push(hit);
+            } else {
+              stillPending.push(hit);
+            }
+          }
+
+          // 着弾したヒットをユニットに反映
+          if (resolvedHits.length > 0) {
+            setUnits((prevUnits) => {
+              return prevUnits.map((unit) => {
+                let hp = unit.hp;
+                let stunnedUntil = unit.isStunnedUntil;
+
+                for (const hit of resolvedHits) {
+                  if (hit.targetId === unit.id && unit.hp > 0) {
+                    hp -= hit.damage;
+                    stunnedUntil = now + hit.stunDuration;
+                  }
+                }
+
+                if (hp !== unit.hp || stunnedUntil !== unit.isStunnedUntil) {
+                  const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
+                  return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+                }
+                return unit;
+              }).filter((u) => u.hp > 0);
+            });
+          }
+
+          return stillPending;
+        });
+
         // スペルエフェクトの掃除（1秒以上経過したものを除去）
         setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1000));
       }
@@ -737,6 +814,7 @@ export function useRealtimeGame() {
     setUnits([]);
     setSpellEffects([]);
     setAttackEffects([]);
+    setPendingLightningHits([]);
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;
