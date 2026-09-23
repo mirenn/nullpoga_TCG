@@ -734,38 +734,7 @@ export default function RealtimeDemoPage() {
             </div>
           </div>
 
-          {/* 4. 操作ナビゲーションティッカー (スリム 22px) */}
-          <div
-            style={{
-              ...styles.instructionTicker,
-              backgroundColor: isDragging
-                ? 'rgba(37, 99, 235, 0.25)'
-                : selectedCard
-                ? 'rgba(37, 99, 235, 0.2)'
-                : 'rgba(30, 41, 59, 0.4)',
-              borderColor: isDragging
-                ? '#60a5fa'
-                : selectedCard
-                ? 'rgba(59, 130, 246, 0.4)'
-                : '#334155',
-            }}
-          >
-            {isDragging && activeDraggedCard ? (
-              <span style={styles.instructionActive}>
-                ✋ <strong>{activeDraggedCard.name}</strong> をドラッグ中... 配置先レーンへドロップ！
-              </span>
-            ) : selectedCard ? (
-              <span style={styles.instructionActive}>
-                👉 <strong>{selectedCard.name}</strong>（マナ {selectedCard.manaCost}）選択中！ レーンをタップ/クリック [Escで解除]
-              </span>
-            ) : (
-              <span style={styles.instructionIdle}>
-                💡 カードを選択/ドラッグして進軍レーンへ出撃！（キー[1〜4]対応）
-              </span>
-            )}
-          </div>
-
-          {/* 5. 手札カードリスト & NEXTドック */}
+          {/* 4. 手札カードリスト & NEXTドック */}
           <div style={styles.dockContainer} className="dock-container">
             {/* NEXTカードスロット */}
             <div
@@ -1738,6 +1707,7 @@ const styles: Record<string, React.CSSProperties> = {
     border: '1px solid #1e293b',
     width: '100%',
     boxSizing: 'border-box',
+    marginBottom: '6px',
   },
   playerHpSection: {
     display: 'flex',
@@ -1801,31 +1771,6 @@ const styles: Record<string, React.CSSProperties> = {
     width: '1px',
     height: '100%',
     backgroundColor: 'rgba(255,255,255,0.25)',
-  },
-  instructionTicker: {
-    height: '22px',
-    flexShrink: 0,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: '4px',
-    border: '1px solid',
-    margin: '3px 0',
-    fontSize: '11px',
-    padding: '0 8px',
-    overflow: 'hidden',
-    textOverflow: 'ellipsis',
-    whiteSpace: 'nowrap',
-    transition: 'all 0.15s ease',
-    width: '100%',
-    boxSizing: 'border-box',
-  },
-  instructionActive: {
-    color: '#93c5fd',
-    fontWeight: 'bold',
-  },
-  instructionIdle: {
-    color: '#94a3b8',
   },
   dockContainer: {
     height: '100px',
