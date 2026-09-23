@@ -1,3 +1,0 @@
-# requirements-dev.txt
-pytest
-pytest-asyncio

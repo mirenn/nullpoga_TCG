@@ -1,8 +1,0 @@
-# requirements.txt
-fastapi
-uvicorn
-httpx
-jinja2
-pydantic
-authlib
-starlette
