@@ -15,6 +15,8 @@ import OpponentStats from './OpponentStats';
 import { ArcherContainer } from 'react-archer';
 import FlyingCard from './FlyingCard';
 import * as GameModels from '../types/gameModels';
+import Link from 'next/link';
+import { getActiveDeck } from '../utils/deckStorage';
 
 interface FlyingCardState {
   card: GameModels.MonsterCard;
@@ -582,7 +584,8 @@ function GameClient() {
 
   const handleStartGame = async () => {
     if (token) {
-      const success = await GameUtils.startGame(token);
+      const activeDeck = getActiveDeck();
+      const success = await GameUtils.startGame(token, activeDeck?.cards);
       if (success) {
         await handleGetGameState();
       }
@@ -627,6 +630,25 @@ function GameClient() {
             {isGameOver ? gameOverMessage : turnMessage}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <Link
+              href="/deck"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: '4px 10px',
+                fontSize: '12px',
+                fontWeight: 600,
+                color: '#2563eb',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                textDecoration: 'none',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              🃏 デッキ構築
+            </Link>
             <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>
               <strong>{userId}</strong>
             </span>

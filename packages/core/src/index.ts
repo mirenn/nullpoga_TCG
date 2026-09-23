@@ -10,4 +10,5 @@ export * from './models/mcts/monte-carlo-tree-search';
 export * from './models/mcts/node';
 export * from './models/mcts/utils';
 export type * from './interfaces/istate';
+export * from './models/card-master';
 export * from './schemas';

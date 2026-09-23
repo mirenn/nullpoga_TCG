@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { signToken, verifyToken } from '../lib/auth';
 import { GameService } from '../lib/core/game.service';
 
+import { validateDeck } from '@nullpoga/core';
+
 type Variables = {
   userId: string;
 };
@@ -31,6 +33,10 @@ const loginSchema = z.object({
   username: z.string().min(1, 'Username is required'),
 });
 
+const startGameSchema = z.object({
+  deck: z.array(z.number()).optional(),
+}).optional();
+
 const routes = app
   .post('/auth/login', zValidator('json', loginSchema), async (c) => {
     const { username } = c.req.valid('json');
@@ -39,15 +45,30 @@ const routes = app
   })
 
   // 2. ゲーム開始 / マッチング (POST /api/start-game)
-  .post('/start-game', authMiddleware, async (c) => {
-    const userId = c.get('userId');
-    try {
-      const result = await GameService.startMatching(userId);
-      return c.json(result);
-    } catch (error: any) {
-      return c.json({ error: error.message }, 500);
+  .post(
+    '/start-game',
+    authMiddleware,
+    zValidator('json', startGameSchema),
+    async (c) => {
+      const userId = c.get('userId');
+      const body = c.req.valid('json');
+      const deck = body?.deck;
+
+      if (deck) {
+        const validation = validateDeck(deck);
+        if (!validation.valid) {
+          return c.json({ error: validation.reason }, 400);
+        }
+      }
+
+      try {
+        const result = await GameService.startMatching(userId, deck);
+        return c.json(result);
+      } catch (error: any) {
+        return c.json({ error: error.message }, 500);
+      }
     }
-  })
+  )
 
   // 3. ゲーム状態取得 (GET /api/game-state)
   .get('/game-state', authMiddleware, async (c) => {

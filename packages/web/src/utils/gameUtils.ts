@@ -495,10 +495,12 @@ export function getActionDictExcludingUserId(
   return actionDict[opponentId];
 }
 
-export async function startGame(token: string): Promise<boolean> {
+export async function startGame(token: string, deck?: number[]): Promise<boolean> {
   try {
     const api = getApiClient(token);
-    const response = await api.api['start-game'].$post();
+    const response = await api.api['start-game'].$post({
+      json: deck ? { deck } : {},
+    });
 
     if (response.status === 401) {
       console.warn('Unauthorized in startGame. Logging out.');

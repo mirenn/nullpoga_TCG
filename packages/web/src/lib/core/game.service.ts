@@ -13,7 +13,7 @@ export const GameService = {
     },
 
     // マッチング待ちのプレイヤーを管理 (Redis List: game:waiting)
-    async startMatching(userId: string): Promise<{ status: 'waiting' | 'matched', roomId?: string }> {
+    async startMatching(userId: string, deck?: number[]): Promise<{ status: 'waiting' | 'matched', roomId?: string }> {
         // Check if anyone is waiting
         // Use RPOP to get a waiting player
         const opponent = await redis.rpop('game:waiting');
@@ -26,12 +26,12 @@ export const GameService = {
             }
             
             // Match found! Create Game Room
-            const roomId = await this.createGame([opponent, userId]);
+            const roomId = await this.createGame([opponent, userId], [DECK_1, deck || DECK_2]);
             return { status: 'matched', roomId };
         } else {
             // 一人プレイ（BOT対戦）として即座に対戦ルームを作成
             const botUserId = 'CPU_BOT';
-            const roomId = await this.createGame([userId, botUserId]);
+            const roomId = await this.createGame([userId, botUserId], [deck || DECK_1, DECK_2]);
             return { status: 'matched', roomId };
         }
     },
@@ -48,12 +48,14 @@ export const GameService = {
     },
 
     // ゲームインスタンスを作成 (Redis key: game:room:{roomId})
-    async createGame(userIds: string[]): Promise<string> {
+    async createGame(userIds: string[], decks?: number[][]): Promise<string> {
         const roomId = uuidv4();
         
-        // Initialize State with DECK_1 and DECK_2 containing spells
-        const player1 = new Player([...DECK_1], userIds[0]);
-        const player2 = new Player([...DECK_2], userIds[1]);
+        // Initialize State with custom deck or fallback to DECK_1 / DECK_2
+        const p1Deck = decks?.[0] || DECK_1;
+        const p2Deck = decks?.[1] || DECK_2;
+        const player1 = new Player([...p1Deck], userIds[0]);
+        const player2 = new Player([...p2Deck], userIds[1]);
         
         const state = new State(player1, player2);
         state.initGame();
