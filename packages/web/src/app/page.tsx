@@ -1090,7 +1090,7 @@ export default function RealtimeDemoPage() {
                   <div style={styles.tipBox}>
                     <div style={styles.tipTitle}>🛡️ 出撃バリデーション</div>
                     <div style={styles.tipText}>
-                      1レーン最大3体まで、ドラゴンは場に1体限定、連打誤爆防止（約0.12秒）の制限があります。
+                      1レーン最大3体、前の味方が少し前進するまでの出撃スペース確保、ドラゴン1体限定、連打誤爆防止（約0.12秒）の制限があります。
                     </div>
                   </div>
                 </div>

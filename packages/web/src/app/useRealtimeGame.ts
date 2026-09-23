@@ -125,6 +125,7 @@ export const MANA_SPEED_PRESETS = [
 export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1マナ（クラロワ風バランス）
 export const MOVE_SPEED_SCALE = 1.0; // ユニット移動速度の全体スケーラー（調整用）
 export const PLAY_CARD_COOLDOWN_MS = 120; // カード使用時の誤爆・連打防止デバウンス（約0.12秒）
+export const SPAWN_MIN_SPACE = 8.0; // 召喚時の最小専有空間（%単位：味方の前進待ちスペース）
 const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
@@ -258,9 +259,18 @@ export function useRealtimeGame() {
       if (laneIndex !== undefined && card.type === 'MONSTER') {
         const unitsInLane = stateRef.current.units.filter(
           (u) => u.owner === 'player' && u.lane === laneIndex && u.hp > 0
-        ).length;
-        if (unitsInLane >= 3) {
+        );
+        if (unitsInLane.length >= 3) {
           return { canPlay: false, reason: 'このレーンは上限(3体)です' };
+        }
+
+        // 出撃スペース制限: 直前の味方モンスターが出撃地点(y=95)から一定距離(SPAWN_MIN_SPACE)前進するまで待機
+        // ※敵モンスターが自陣手前にいる場合は防衛・迎撃出撃のため制限せず召喚可能
+        const hasBlockingAlly = unitsInLane.some(
+          (u) => u.y > 95 - SPAWN_MIN_SPACE
+        );
+        if (hasBlockingAlly) {
+          return { canPlay: false, reason: '出撃スペース不足' };
         }
       }
       return { canPlay: true };
@@ -399,16 +409,38 @@ export function useRealtimeGame() {
       if (availableCards.length === 0) return;
 
       const chosenCard = availableCards[Math.floor(Math.random() * availableCards.length)];
-      // プレイヤーユニットが多く攻めてきているレーン、またはランダムなレーンを選択
-      const laneCounts = [0, 0, 0, 0, 0];
-      stateRef.current.units.forEach((u) => {
-        if (u.owner === 'player') laneCounts[u.lane]++;
+      // ユニーク制限: 炎のドラゴン（cardNo: 11）はCPU側も場に1体まで
+      if (chosenCard.cardNo === 11) {
+        const hasDragon = stateRef.current.units.some(
+          (u) => u.owner === 'cpu' && u.cardNo === 11 && u.hp > 0
+        );
+        if (hasDragon) return;
+      }
+
+      // 出撃可能なレーンをフィルタ（味方3体未満 かつ 出撃スペース y >= 5 + SPAWN_MIN_SPACE が空いているレーン）
+      const validLanes = [0, 1, 2, 3, 4].filter((lane) => {
+        const cpuUnitsInLane = stateRef.current.units.filter(
+          (u) => u.owner === 'cpu' && u.lane === lane && u.hp > 0
+        );
+        if (cpuUnitsInLane.length >= 3) return false;
+        const hasBlockingAlly = cpuUnitsInLane.some((u) => u.y < 5 + SPAWN_MIN_SPACE);
+        return !hasBlockingAlly;
       });
-      // プレイヤーがいるレーンを優先、いなければランダム
-      const candidateLanes = laneCounts
-        .map((count, idx) => ({ count, idx }))
-        .sort((a, b) => b.count - a.count);
-      const chosenLane = Math.random() < 0.6 ? candidateLanes[0].idx : Math.floor(Math.random() * 5);
+      if (validLanes.length === 0) return;
+
+      // プレイヤーユニットが多く攻めてきているレーンを優先、または出撃可能レーンから選択
+      const lanePlayerCounts = [0, 0, 0, 0, 0];
+      stateRef.current.units.forEach((u) => {
+        if (u.owner === 'player' && u.hp > 0) lanePlayerCounts[u.lane]++;
+      });
+
+      const candidateLanes = [...validLanes].sort(
+        (a, b) => lanePlayerCounts[b] - lanePlayerCounts[a]
+      );
+      const chosenLane =
+        Math.random() < 0.65
+          ? candidateLanes[0]
+          : validLanes[Math.floor(Math.random() * validLanes.length)];
 
       setCpuMana((m) => Math.max(0, m - chosenCard.manaCost));
       const cpuUnit: Unit = {
