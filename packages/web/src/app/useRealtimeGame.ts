@@ -124,6 +124,7 @@ export const MANA_SPEED_PRESETS = [
 
 export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1マナ（クラロワ風バランス）
 export const MOVE_SPEED_SCALE = 1.0; // ユニット移動速度の全体スケーラー（調整用）
+export const PLAY_CARD_COOLDOWN_MS = 120; // カード使用時の誤爆・連打防止デバウンス（約0.12秒）
 const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
@@ -313,8 +314,8 @@ export function useRealtimeGame() {
       const validation = checkCanPlayCard(cardIdx, laneIndex);
       if (!validation.canPlay) return;
 
-      // 連打防止クールダウン（400ms）
-      cooldownRef.current = Date.now() + 400;
+      // 連打誤爆防止デバウンス（約0.12秒）
+      cooldownRef.current = Date.now() + PLAY_CARD_COOLDOWN_MS;
 
       // マナ消費
       setPlayerMana((m) => Math.max(0, m - card.manaCost));
