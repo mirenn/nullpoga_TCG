@@ -53,3 +53,6 @@ cookies.txt
 # .bakファイルを無視
 *.bak
 packages/frontend/.turbo/turbo-build.log
+screenshot-*.png
+test_layout.cjs
+test_play.cjs
