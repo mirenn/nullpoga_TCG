@@ -145,6 +145,51 @@ export default function RealtimeDemoPage() {
           box-sizing: border-box;
         }
 
+        /* 出撃ゾーン: ハザード斜線ストライプ（出撃スペース不足時） */
+        @keyframes hazard-stripe-scroll {
+          0% { background-position: 0 0; }
+          100% { background-position: 28px 0; }
+        }
+        .spawn-zone-blocked {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 14%;
+          background: repeating-linear-gradient(
+            -45deg,
+            rgba(239, 68, 68, 0.22),
+            rgba(239, 68, 68, 0.22) 10px,
+            rgba(185, 28, 28, 0.45) 10px,
+            rgba(185, 28, 28, 0.45) 20px
+          );
+          background-size: 28px 28px;
+          animation: hazard-stripe-scroll 1.2s linear infinite;
+          border-top: 2px dashed #ef4444;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 12;
+          box-shadow: inset 0 4px 12px rgba(239, 68, 68, 0.35), 0 -2px 8px rgba(239, 68, 68, 0.25);
+        }
+        .spawn-zone-ready {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 14%;
+          background: rgba(37, 99, 235, 0.12);
+          border-top: 1.5px dashed rgba(96, 165, 250, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 12;
+          transition: all 0.15s ease;
+        }
+
         /* ユニット攻撃時の一瞬の踏み込みバンプ */
         @keyframes unit-attack-player {
           0% { transform: translateY(0); }
@@ -553,6 +598,8 @@ export default function RealtimeDemoPage() {
                 ? checkCanPlayCard(activeCardIdx, laneIndex)
                 : { canPlay: true };
               const isBlocked = !laneValidation.canPlay;
+              const isSpaceBlocked = isBlocked && laneValidation.reason === '出撃スペース不足';
+              const isOtherBlocked = isBlocked && !isSpaceBlocked;
 
               const canAfford = selectedCard && playerMana >= selectedCard.manaCost;
               const isHoveredDrop = isDragging && dragOverLaneIndex === laneIndex;
@@ -573,26 +620,34 @@ export default function RealtimeDemoPage() {
                   style={{
                     ...styles.lane,
                     backgroundColor: isHoveredDrop
-                      ? isBlocked
+                      ? isOtherBlocked
                         ? 'rgba(239, 68, 68, 0.35)'
+                        : isSpaceBlocked
+                        ? 'rgba(30, 41, 59, 0.75)'
                         : 'rgba(30, 58, 138, 0.45)'
                       : isDroppableTarget
                       ? 'rgba(30, 58, 138, 0.16)'
                       : selectedCard && canAfford && !isBlocked
                       ? 'rgba(30, 58, 138, 0.28)'
-                      : selectedCard && isBlocked
+                      : selectedCard && isOtherBlocked
                       ? 'rgba(239, 68, 68, 0.12)'
+                      : selectedCard && isSpaceBlocked
+                      ? 'rgba(30, 41, 59, 0.5)'
                       : 'rgba(15, 23, 42, 0.85)',
                     borderColor: isHoveredDrop
-                      ? isBlocked
+                      ? isOtherBlocked
                         ? '#ef4444'
+                        : isSpaceBlocked
+                        ? '#f97316'
                         : '#60a5fa'
                       : isDroppableTarget
                       ? 'rgba(96, 165, 250, 0.65)'
                       : selectedCard && canAfford && !isBlocked
                       ? '#3b82f6'
-                      : selectedCard && isBlocked
+                      : selectedCard && isOtherBlocked
                       ? 'rgba(239, 68, 68, 0.5)'
+                      : selectedCard && isSpaceBlocked
+                      ? 'rgba(249, 115, 22, 0.45)'
                       : '#334155',
                     borderStyle: isDroppableTarget && !isHoveredDrop ? 'dashed' : 'solid',
                     borderWidth: isHoveredDrop ? '2px' : '1px',
@@ -604,8 +659,10 @@ export default function RealtimeDemoPage() {
                       ? 'pointer'
                       : 'default',
                     boxShadow: isHoveredDrop
-                      ? isBlocked
+                      ? isOtherBlocked
                         ? 'inset 0 0 24px rgba(239, 68, 68, 0.5), 0 0 16px rgba(239, 68, 68, 0.4)'
+                        : isSpaceBlocked
+                        ? 'inset 0 0 16px rgba(249, 115, 22, 0.35), 0 0 12px rgba(249, 115, 22, 0.3)'
                         : 'inset 0 0 24px rgba(59, 130, 246, 0.5), 0 0 16px rgba(59, 130, 246, 0.4)'
                       : isRippling
                       ? 'inset 0 0 24px rgba(34, 197, 94, 0.6), 0 0 16px rgba(34, 197, 94, 0.4)'
@@ -623,7 +680,11 @@ export default function RealtimeDemoPage() {
 
                   {/* レーン上のユニット描画 */}
                   {laneUnits.map((unit) => (
-                    <RenderUnit key={unit.id} unit={unit} />
+                    <RenderUnit
+                      key={unit.id}
+                      unit={unit}
+                      isBlockingSpawn={isSpaceBlocked && unit.owner === 'player' && unit.y > 87}
+                    />
                   ))}
 
                   {/* スペル演出 */}
@@ -644,18 +705,68 @@ export default function RealtimeDemoPage() {
                     <RenderAttackEffect key={effect.id} effect={effect} />
                   ))}
 
+                  {/* 自陣手前出撃ゾーン（モンスター選択・ドラッグ時の手前空間ビジュアル） */}
+                  {activeCard && activeCard.type === 'MONSTER' && (
+                    <>
+                      {isSpaceBlocked ? (
+                        <div className="spawn-zone-blocked">
+                          <div
+                            style={{
+                              fontSize: '9px',
+                              color: '#fee2e2',
+                              fontWeight: 'bold',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              backgroundColor: 'rgba(185, 28, 28, 0.88)',
+                              padding: '1px 5px',
+                              borderRadius: '3px',
+                              boxShadow: '0 1px 4px rgba(0,0,0,0.6)',
+                              whiteSpace: 'nowrap',
+                              border: '1px solid rgba(254, 202, 202, 0.4)',
+                            }}
+                          >
+                            <span>🚫</span>
+                            <span>手前詰まり・前進待ち</span>
+                          </div>
+                        </div>
+                      ) : (
+                        !isBlocked &&
+                        (isHoveredDrop || isDroppableTarget || (selectedCard && canAfford)) && (
+                          <div className="spawn-zone-ready">
+                            <div
+                              style={{
+                                fontSize: '9px',
+                                color: '#93c5fd',
+                                fontWeight: 'bold',
+                                opacity: 0.85,
+                                letterSpacing: '0.5px',
+                              }}
+                            >
+                              出撃エリア
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </>
+                  )}
+
                   {/* ドラッグ＆ドロップ時のターゲットガイド */}
                   {isHoveredDrop && activeDraggedCard && (
                     <div
                       style={{
                         ...styles.summonGuideBadge,
-                        backgroundColor: isBlocked
+                        backgroundColor: isOtherBlocked
                           ? '#ef4444'
+                          : isSpaceBlocked
+                          ? '#ea580c'
                           : activeDraggedCard.type === 'SPELL'
                           ? '#ea580c'
                           : '#2563eb',
-                        boxShadow: isBlocked
+                        boxShadow: isOtherBlocked
                           ? '0 0 14px rgba(239, 68, 68, 0.9)'
+                          : isSpaceBlocked
+                          ? '0 0 14px rgba(234, 88, 12, 0.9)'
                           : activeDraggedCard.type === 'SPELL'
                           ? '0 0 14px rgba(234, 88, 12, 0.9)'
                           : '0 0 14px rgba(37, 99, 235, 0.9)',
@@ -681,7 +792,11 @@ export default function RealtimeDemoPage() {
                     <div
                       style={{
                         ...styles.summonGuideBadge,
-                        backgroundColor: isBlocked ? '#ef4444' : '#2563eb',
+                        backgroundColor: isOtherBlocked
+                          ? '#ef4444'
+                          : isSpaceBlocked
+                          ? '#ea580c'
+                          : '#2563eb',
                       }}
                     >
                       {isBlocked ? `🚫 ${laneValidation.reason}` : '▲ 出撃'}
@@ -1153,7 +1268,7 @@ export default function RealtimeDemoPage() {
 }
 
 // ユニット描画サブコンポーネント
-function RenderUnit({ unit }: { unit: Unit }) {
+function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: boolean }) {
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
@@ -1196,9 +1311,15 @@ function RenderUnit({ unit }: { unit: Unit }) {
         className={attackClass}
         style={{
           ...styles.unitBody,
-          borderColor: isPlayer ? '#3b82f6' : '#ef4444',
+          borderColor: isBlockingSpawn
+            ? '#ea580c'
+            : isPlayer
+            ? '#3b82f6'
+            : '#ef4444',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
-          boxShadow: isStunned
+          boxShadow: isBlockingSpawn
+            ? '0 0 12px #ea580c'
+            : isStunned
             ? '0 0 10px #eab308'
             : isPlayer
             ? '0 2px 6px rgba(59, 130, 246, 0.4)'
@@ -1220,6 +1341,31 @@ function RenderUnit({ unit }: { unit: Unit }) {
         <span style={styles.unitAtkBadge}>{unit.attack}</span>
         <span style={styles.unitHpBadge}>{unit.hp}</span>
       </div>
+
+      {/* 出撃スペース塞ぎ中の前進待ちインジケーター */}
+      {isBlockingSpawn && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-18px',
+            fontSize: '8px',
+            backgroundColor: '#ea580c',
+            color: '#fff',
+            padding: '1px 5px',
+            borderRadius: '3px',
+            fontWeight: 'bold',
+            whiteSpace: 'nowrap',
+            boxShadow: '0 0 8px rgba(234, 88, 12, 0.9)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '2px',
+            zIndex: 30,
+          }}
+        >
+          <span>▲</span>
+          <span>前進待ち</span>
+        </div>
+      )}
     </div>
   );
 }
