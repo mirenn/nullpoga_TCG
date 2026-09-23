@@ -34,7 +34,7 @@ const loginSchema = z.object({
 });
 
 const startGameSchema = z.object({
-  deck: z.array(z.number()).optional(),
+  deck: z.array(z.number().int().positive()).optional(),
 }).optional();
 
 const routes = app

@@ -59,6 +59,8 @@ export default function DeckBuilder() {
   const [importCodeInput, setImportCodeInput] = useState('');
   const [importError, setImportError] = useState<string | null>(null);
 
+  const isLoadedRef = React.useRef(false);
+
   // 初回ロード
   useEffect(() => {
     const loaded = loadDecks();
@@ -69,7 +71,16 @@ export default function DeckBuilder() {
     const initial = loaded.find((d) => d.id === activeId) || loaded[0] || DEFAULT_DECK;
     setSelectedDeckId(initial.id);
     setCurrentDeck(initial);
+    isLoadedRef.current = true;
   }, []);
+
+  // currentDeck 変更時の自動同期（localStorage へ自動保存し、画面離脱時の編集消失を防止）
+  useEffect(() => {
+    if (!isLoadedRef.current) return;
+    saveDeck(currentDeck);
+    const updated = loadDecks();
+    setDecks(updated);
+  }, [currentDeck]);
 
   const showToast = (text: string, type: 'info' | 'success' | 'error' = 'info') => {
     setToastMessage({ text, type });
@@ -123,6 +134,7 @@ export default function DeckBuilder() {
       return;
     }
     if (confirm(`デッキ「${currentDeck.name}」を削除しますか？`)) {
+      isLoadedRef.current = false;
       deleteDeck(currentDeck.id);
       const updated = loadDecks();
       setDecks(updated);
@@ -130,6 +142,9 @@ export default function DeckBuilder() {
       setSelectedDeckId(nextDeck.id);
       setCurrentDeck(nextDeck);
       setActiveDeckIdState(getActiveDeckId());
+      setTimeout(() => {
+        isLoadedRef.current = true;
+      }, 50);
       showToast('デッキを削除しました', 'info');
     }
   };
@@ -593,12 +608,13 @@ export default function DeckBuilder() {
         </div>
       </div>
 
-      {/* メインレイアウト（左：カードカタログ 70% / 右：現在のデッキ＆マナカーブ 30%） */}
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+      {/* メインレイアウト（左：カードカタログ / 右：現在のデッキ＆マナカーブ） */}
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
         {/* 左側：カードカタログ */}
         <div
           style={{
-            flex: 1,
+            flex: '1 1 580px',
+            minWidth: '320px',
             backgroundColor: '#ffffff',
             borderRadius: '12px',
             padding: '16px',
@@ -781,10 +797,19 @@ export default function DeckBuilder() {
                           style={{ maxHeight: '100%', objectFit: 'contain' }}
                           onError={(e) => {
                             (e.currentTarget as HTMLElement).style.display = 'none';
+                            const sibling = e.currentTarget.parentElement?.querySelector('.card-emoji-icon') as HTMLElement;
+                            if (sibling) sibling.style.opacity = '1';
                           }}
                         />
                       ) : null}
-                      <span style={{ position: card.imageUrl ? 'absolute' : 'static', zIndex: 0, opacity: card.imageUrl ? 0.3 : 1 }}>
+                      <span
+                        className="card-emoji-icon"
+                        style={{
+                          position: card.imageUrl ? 'absolute' : 'static',
+                          zIndex: 0,
+                          opacity: card.imageUrl ? 0.3 : 1,
+                        }}
+                      >
                         {emoji}
                       </span>
                     </div>
@@ -876,8 +901,9 @@ export default function DeckBuilder() {
         {/* 右側：現在のデッキリスト ＆ マナカーブ */}
         <div
           style={{
-            width: '380px',
-            flexShrink: 0,
+            flex: '1 1 340px',
+            maxWidth: '100%',
+            minWidth: '300px',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',

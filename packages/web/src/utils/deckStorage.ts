@@ -91,8 +91,10 @@ export function exportDeckCode(deck: SavedDeck): string {
     cards: deck.cards,
   };
   const json = JSON.stringify(payload);
-  if (typeof window !== 'undefined' && window.btoa) {
-    return window.btoa(unescape(encodeURIComponent(json)));
+  if (typeof window !== 'undefined') {
+    const bytes = new TextEncoder().encode(json);
+    const binString = Array.from(bytes, (byte) => String.fromCharCode(byte)).join('');
+    return window.btoa(binString);
   }
   return Buffer.from(json, 'utf-8').toString('base64');
 }
@@ -104,23 +106,38 @@ export function importDeckCode(code: string): { success: boolean; deck?: SavedDe
       return { success: false, error: 'デッキコードを入力してください。' };
     }
     let json: string;
-    if (typeof window !== 'undefined' && window.atob) {
-      json = decodeURIComponent(escape(window.atob(trimmed)));
+    if (trimmed.startsWith('{')) {
+      // Direct JSON support
+      json = trimmed;
+    } else if (typeof window !== 'undefined') {
+      try {
+        const binString = window.atob(trimmed);
+        const bytes = Uint8Array.from(binString, (m) => m.charCodeAt(0));
+        json = new TextDecoder().decode(bytes);
+      } catch {
+        // Fallback for older escape-encoded strings
+        json = decodeURIComponent(escape(window.atob(trimmed)));
+      }
     } else {
       json = Buffer.from(trimmed, 'base64').toString('utf-8');
     }
+
     const parsed = JSON.parse(json);
-    if (!parsed || !Array.isArray(parsed.cards)) {
+    if (!parsed || typeof parsed !== 'object' || !Array.isArray(parsed.cards)) {
       return { success: false, error: 'デッキコードの形式が不正です。' };
     }
-    const validation = validateDeck(parsed.cards);
+
+    // Ensure all cards are integer numbers
+    const validCards = parsed.cards.map((c: any) => Number(c));
+    const validation = validateDeck(validCards);
     if (!validation.valid) {
       return { success: false, error: validation.reason || '無効なデッキ構成です。' };
     }
+
     const newDeck: SavedDeck = {
       id: `deck-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       name: typeof parsed.name === 'string' && parsed.name.trim() ? parsed.name.trim() : 'インポートデッキ',
-      cards: parsed.cards,
+      cards: validCards,
       updatedAt: Date.now(),
     };
     return { success: true, deck: newDeck };

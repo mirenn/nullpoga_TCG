@@ -17,9 +17,12 @@ import FlyingCard from './FlyingCard';
 import * as GameModels from '../types/gameModels';
 import Link from 'next/link';
 import { getActiveDeck } from '../utils/deckStorage';
+import { validateDeck } from '@nullpoga/core';
 
 interface FlyingCardState {
-  card: GameModels.MonsterCard;
+  card?: GameModels.CardData;
+  isBack?: boolean;
+  glowColor?: string;
   startRect: { top: number; left: number; width: number; height: number };
   endRect: { top: number; left: number; width: number; height: number };
 }
@@ -41,8 +44,23 @@ function GameClient() {
   const [turnMessage, setTurnMessage] = useState<string>('「Start Game」を押してゲームを開始してください');
   const [actionEffect, setActionEffect] = useState<ActionEffect | null>(null);
   const [flyingCards, setFlyingCards] = useState<FlyingCardState[]>([]);
+  const [activeDeckName, setActiveDeckName] = useState<string>('');
+  const [drawnCardIds, setDrawnCardIds] = useState<string[]>([]);
+  const [isDeckPulsing, setIsDeckPulsing] = useState<boolean>(false);
+
+  useEffect(() => {
+    const deck = getActiveDeck();
+    if (deck) {
+      setActiveDeckName(deck.name);
+    }
+  }, []);
 
   const currentGameState = extractedGameResponse?.gameRoom?.gameState;
+  const myPlayer = GameUtils.getPlayerByUserId(currentGameState, userId!);
+  const opponentPlayer = GameUtils.getPlayerExcludingUserId(currentGameState, userId!);
+  const myDeckCount = myPlayer?.deckCards?.length ?? 0;
+  const oppDeckCount = opponentPlayer?.deckCards?.length ?? 0;
+
   const { isGameOver, result: gameResult, message: gameOverMessage } = GameUtils.checkGameOver(
     currentGameState,
     userId,
@@ -148,12 +166,13 @@ function GameClient() {
 
       const finalStateResponse = res[0];
       const history = finalStateResponse.gameRoom?.gameState?.history;
+      let animRoomState: any = null;
 
       // 直近ターンの履歴を順次アニメーション再生
       if (history && history.length > 0) {
         const lastTurnSteps = history[history.length - 1];
         if (lastTurnSteps && lastTurnSteps.length > 0) {
-          const animRoomState = structuredClone(finalStateResponse);
+          animRoomState = structuredClone(finalStateResponse);
 
           // ターン開始時点（進軍完了・召喚前）のスナップショット（ステップ0）を初期盤面として設定
           const initialStep = lastTurnSteps[0];
@@ -531,9 +550,124 @@ function GameClient() {
         }
       }
 
-      // 最終状態（新ターンのドロー・マナ回復等）を反映
-      setExtractedGameResponse(finalStateResponse);
-      setGameResponse(res[1]);
+      // 新ターンのドロー判定と演出
+      const finalState = finalStateResponse.gameRoom?.gameState;
+      const finalMyPlayer = GameUtils.getPlayerByUserId(finalState, userId!);
+      const finalOppPlayer = GameUtils.getPlayerExcludingUserId(finalState, userId!);
+
+      // アニメーション再生終了時点の手札リスト
+      const lastAnimMyPlayer = GameUtils.getPlayerByUserId(animRoomState?.gameRoom?.gameState, userId!);
+      const prevHandCards = lastAnimMyPlayer?.handCards || [];
+      const drawnCards = (finalMyPlayer?.handCards || []).filter(
+        (c) => !prevHandCards.some((p) => p.uniqId === c.uniqId)
+      );
+
+      const lastAnimOppPlayer = GameUtils.getPlayerExcludingUserId(animRoomState?.gameRoom?.gameState, userId!);
+      const prevOppHandCount = lastAnimOppPlayer?.handCards?.length ?? 0;
+      const finalOppHandCount = finalOppPlayer?.handCards?.length ?? 0;
+      const oppDrew = finalOppHandCount > prevOppHandCount;
+
+      if (drawnCards.length > 0 || oppDrew) {
+        const CARD_WIDTH = 72;
+        const CARD_HEIGHT = 98;
+        const drawFlyingCards: FlyingCardState[] = [];
+
+        // プレイヤーのドローフライト
+        const deckEl = document.getElementById('player-deck-pile');
+        const handEl = document.getElementById('player-hand');
+        if (deckEl && drawnCards.length > 0) {
+          const deckRect = deckEl.getBoundingClientRect();
+          const startRect = {
+            top: deckRect.top + (deckRect.height - CARD_HEIGHT) / 2,
+            left: deckRect.left + (deckRect.width - CARD_WIDTH) / 2,
+            width: CARD_WIDTH,
+            height: CARD_HEIGHT,
+          };
+
+          let endRect = startRect;
+          if (handEl) {
+            const handRect = handEl.getBoundingClientRect();
+            endRect = {
+              top: handRect.top + (handRect.height - CARD_HEIGHT) / 2,
+              left: Math.min(handRect.right - CARD_WIDTH - 8, handRect.left + prevHandCards.length * 80 + 12),
+              width: CARD_WIDTH,
+              height: CARD_HEIGHT,
+            };
+          }
+
+          drawnCards.forEach((card) => {
+            drawFlyingCards.push({
+              card,
+              startRect,
+              endRect,
+              glowColor: 'rgba(245, 158, 11, 0.95)',
+            });
+          });
+        }
+
+        // 相手（BOT）のドローフライト
+        if (oppDrew) {
+          const oppDeckEl = document.getElementById('opponent-deck-pile') || document.getElementById('opponent-area');
+          const oppAreaEl = document.getElementById('opponent-area');
+          if (oppDeckEl && oppAreaEl) {
+            const odRect = oppDeckEl.getBoundingClientRect();
+            const oaRect = oppAreaEl.getBoundingClientRect();
+            const startRect = {
+              top: odRect.top + (odRect.height - CARD_HEIGHT) / 2,
+              left: odRect.left + (odRect.width - CARD_WIDTH) / 2,
+              width: CARD_WIDTH,
+              height: CARD_HEIGHT,
+            };
+            const endRect = {
+              top: oaRect.top + (oaRect.height - CARD_HEIGHT) / 2,
+              left: oaRect.left + (oaRect.width - CARD_WIDTH) / 2,
+              width: CARD_WIDTH,
+              height: CARD_HEIGHT,
+            };
+            drawFlyingCards.push({
+              isBack: true,
+              startRect,
+              endRect,
+              glowColor: 'rgba(148, 163, 184, 0.85)',
+            });
+          }
+        }
+
+        // バナーメッセージ設定
+        if (drawnCards.length > 0) {
+          const drawnNames = drawnCards.map((c) => `「${c.cardName}」`).join('、');
+          setTurnMessage(`【ドロー】山札から ${drawnNames} を手札に加えました！`);
+        } else if (oppDrew) {
+          setTurnMessage(`【ドロー】相手がカードを1枚ドローしました`);
+        }
+
+        setIsDeckPulsing(true);
+        if (drawFlyingCards.length > 0) {
+          setFlyingCards(drawFlyingCards);
+          await new Promise((r) => setTimeout(r, 600));
+          setFlyingCards([]);
+        }
+        setIsDeckPulsing(false);
+
+        // 着地後に最新状態をセット
+        setExtractedGameResponse(finalStateResponse);
+        setGameResponse(res[1]);
+
+        if (drawnCards.length > 0) {
+          const newDrawnIds = drawnCards.map((c) => c.uniqId);
+          setDrawnCardIds(newDrawnIds);
+          setTimeout(() => {
+            setDrawnCardIds([]);
+          }, 4500);
+        }
+
+        await new Promise((r) => setTimeout(r, 400));
+      } else {
+        // 最終状態（新ターンのドロー・マナ回復等）を反映
+        setExtractedGameResponse(finalStateResponse);
+        setGameResponse(res[1]);
+      }
+
       const checkRes = GameUtils.checkGameOver(finalStateResponse.gameRoom?.gameState, userId!);
       if (checkRes.isGameOver) {
         setTurnMessage(checkRes.message);
@@ -585,9 +719,38 @@ function GameClient() {
   const handleStartGame = async () => {
     if (token) {
       const activeDeck = getActiveDeck();
-      const success = await GameUtils.startGame(token, activeDeck?.cards);
+      if (!activeDeck || !activeDeck.cards || activeDeck.cards.length === 0) {
+        setTurnMessage('デッキが設定されていません。デッキ構築画面でデッキを設定してください。');
+        return;
+      }
+      const validation = validateDeck(activeDeck.cards);
+      if (!validation.valid) {
+        setTurnMessage(
+          `対戦開始エラー: デッキ「${activeDeck.name}」が不完全です（${validation.reason}）。デッキ構築画面で30枚に調整してください。`
+        );
+        return;
+      }
+      const success = await GameUtils.startGame(token, activeDeck.cards);
       if (success) {
-        await handleGetGameState();
+        const res = await GameUtils.getgameResponse(token);
+        if (res && res[0]) {
+          setExtractedGameResponse(res[0]);
+          setGameResponse(res[1]);
+          const myP = GameUtils.getPlayerByUserId(res[0]?.gameRoom?.gameState, userId!);
+          if (myP?.handCards && myP.handCards.length > 0) {
+            setDrawnCardIds(myP.handCards.map((c) => c.uniqId));
+            setTurnMessage('【初手ドロー】デッキから手札を5枚引きました！カードを召喚・攻撃指示して「Submit Actions」を押してください');
+            setTimeout(() => {
+              setDrawnCardIds([]);
+            }, 4500);
+          } else {
+            setTurnMessage('カードを召喚・攻撃指示して「Submit Actions」を押してください');
+          }
+        } else {
+          await handleGetGameState();
+        }
+      } else {
+        setTurnMessage('対戦の開始に失敗しました。サーバーの状態を確認してください。');
       }
     }
   };
@@ -632,6 +795,7 @@ function GameClient() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             <Link
               href="/deck"
+              title="デッキ構築画面を開く"
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -647,7 +811,7 @@ function GameClient() {
                 transition: 'all 0.15s ease',
               }}
             >
-              🃏 デッキ構築
+              🃏 デッキ構築{activeDeckName ? ` (${activeDeckName})` : ''}
             </Link>
             <span style={{ fontSize: '12px', color: '#475569', whiteSpace: 'nowrap' }}>
               <strong>{userId}</strong>
@@ -679,6 +843,7 @@ function GameClient() {
               gameState={extractedGameResponse?.gameRoom?.gameState}
               myUserId={userId}
             />
+            <div id="opponent-deck-pile" style={{ display: 'none' }} />
             <PlayerStats
               gameState={extractedGameResponse?.gameRoom?.gameState}
               myUserId={userId}
@@ -694,14 +859,30 @@ function GameClient() {
               isAnimating={isAnimating}
               isGameOver={isGameOver}
             />
-            <Hand
-              myUserId={userId}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              isAnimating={isAnimating}
-              isGameOver={isGameOver}
-              flyingCardUniqIds={flyingCards.map((fc) => fc.card.uniqId)}
-            />
+            <div className="hand-deck-container">
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <Hand
+                  myUserId={userId}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  isAnimating={isAnimating}
+                  isGameOver={isGameOver}
+                  flyingCardUniqIds={flyingCards.filter((fc) => fc.card).map((fc) => fc.card!.uniqId)}
+                  drawnCardIds={drawnCardIds}
+                />
+              </div>
+              <div
+                id="player-deck-pile"
+                className={`deck-pile ${isDeckPulsing ? 'deck-draw-pulse' : ''} ${myDeckCount === 0 ? 'is-empty' : ''}`}
+                title={`山札: 残り${myDeckCount}枚`}
+              >
+                <span className="deck-count-badge">📚 {myDeckCount}</span>
+                <div className="deck-inner">
+                  <span className="deck-card-icon">🃏</span>
+                  <span className="deck-label">山札</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* 右サイドパネル：アクション操作パネル */}
@@ -726,8 +907,10 @@ function GameClient() {
       </ArcherContainer>
       {flyingCards.map((fc, idx) => (
         <FlyingCard
-          key={fc.card.uniqId || `flying-card-${idx}`}
+          key={fc.card?.uniqId || `flying-card-${idx}`}
           card={fc.card}
+          isBack={fc.isBack}
+          glowColor={fc.glowColor}
           startRect={fc.startRect}
           endRect={fc.endRect}
           durationMs={580}

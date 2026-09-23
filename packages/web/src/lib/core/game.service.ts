@@ -2,6 +2,15 @@ import { State, Player, Action, ActionType, CardType, MonsterCard, SpellCard, DE
 import { redis } from '../redis';
 import { v4 as uuidv4 } from 'uuid';
 
+function shuffleArray<T>(array: T[]): T[] {
+    const arr = [...array];
+    for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+}
+
 export const GameService = {
     // ユーザーとルームの紐付けを管理 (Redis key: game:user:{userId} -> roomId)
     async getUserRoom(userId: string): Promise<string | null> {
@@ -16,17 +25,29 @@ export const GameService = {
     async startMatching(userId: string, deck?: number[]): Promise<{ status: 'waiting' | 'matched', roomId?: string }> {
         // Check if anyone is waiting
         // Use RPOP to get a waiting player
-        const opponent = await redis.rpop('game:waiting');
+        const opponentRaw = await redis.rpop('game:waiting');
         
-        if (opponent) {
-            if (opponent === userId) {
+        if (opponentRaw) {
+            let opponentId = opponentRaw;
+            let opponentDeck: number[] | undefined;
+            try {
+                const parsed = JSON.parse(opponentRaw);
+                if (parsed && typeof parsed.userId === 'string') {
+                    opponentId = parsed.userId;
+                    opponentDeck = parsed.deck;
+                }
+            } catch {
+                // opponentRaw is plain userId string
+            }
+
+            if (opponentId === userId) {
                 // Same user waiting? Push back
-                await redis.lpush('game:waiting', userId);
+                await redis.lpush('game:waiting', opponentRaw);
                 return { status: 'waiting' };
             }
             
             // Match found! Create Game Room
-            const roomId = await this.createGame([opponent, userId], [DECK_1, deck || DECK_2]);
+            const roomId = await this.createGame([opponentId, userId], [opponentDeck || DECK_1, deck || DECK_2]);
             return { status: 'matched', roomId };
         } else {
             // 一人プレイ（BOT対戦）として即座に対戦ルームを作成
@@ -37,14 +58,31 @@ export const GameService = {
     },
 
     async cancelMatching(userId: string): Promise<void> {
-        await redis.lrem('game:waiting', 0, userId);
+        const list = await redis.lrange('game:waiting', 0, -1);
+        for (const item of list) {
+            try {
+                const parsed = JSON.parse(item);
+                if (parsed.userId === userId) {
+                    await redis.lrem('game:waiting', 0, item);
+                }
+            } catch {
+                if (item === userId) {
+                    await redis.lrem('game:waiting', 0, item);
+                }
+            }
+        }
     },
 
     async isWaiting(userId: string): Promise<boolean> {
-        // This is expensive in Redis List (O(N)), but for small N it's fine.
-        // Alternatively use a Set for quick lookup.
         const list = await redis.lrange('game:waiting', 0, -1);
-        return list.includes(userId);
+        return list.some((item: string) => {
+            try {
+                const parsed = JSON.parse(item);
+                return parsed.userId === userId;
+            } catch {
+                return item === userId;
+            }
+        });
     },
 
     // ゲームインスタンスを作成 (Redis key: game:room:{roomId})
@@ -52,8 +90,9 @@ export const GameService = {
         const roomId = uuidv4();
         
         // Initialize State with custom deck or fallback to DECK_1 / DECK_2
-        const p1Deck = decks?.[0] || DECK_1;
-        const p2Deck = decks?.[1] || DECK_2;
+        // Shuffle decks so that cards are drawn randomly each match
+        const p1Deck = shuffleArray(decks?.[0] || DECK_1);
+        const p2Deck = shuffleArray(decks?.[1] || DECK_2);
         const player1 = new Player([...p1Deck], userIds[0]);
         const player2 = new Player([...p2Deck], userIds[1]);
         

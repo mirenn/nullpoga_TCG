@@ -27,6 +27,9 @@ const OpponentStats = ({ gameState, myUserId }: OpponentStatsProps) => {
         <p>
           <span>⏳ フェーズ:</span> <span id="player-phase" style={{ backgroundColor: '#f1f5f9', padding: '1px 6px', borderRadius: '4px', fontSize: '12px' }}>{player.phase}</span>
         </p>
+        <p>
+          <span>📚 山札:</span> <span id="opponent-deck-count" style={{ color: '#0f172a', fontWeight: 800 }}>{player.deckCards?.length ?? 0}枚</span>
+        </p>
       </div>
     );
   } catch (error) {

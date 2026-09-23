@@ -14,9 +14,19 @@ interface HandProps {
   isGameOver?: boolean;
   flyingCardUniqId?: string | null;
   flyingCardUniqIds?: string[];
+  drawnCardIds?: string[];
 }
 
-const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = false, flyingCardUniqId, flyingCardUniqIds }: HandProps) => {
+const Hand = ({
+  myUserId,
+  onDragStart,
+  onDragEnd,
+  isAnimating,
+  isGameOver = false,
+  flyingCardUniqId,
+  flyingCardUniqIds,
+  drawnCardIds = [],
+}: HandProps) => {
   const extractedGameResponse = useGameStore((s) => s.extractedGameResponse);
   const setExtractedGameResponse = useGameStore((s) => s.setExtractedGameResponse);
   const spellPhaseActions = useGameStore((s) => s.spellPhaseActions);
@@ -37,6 +47,8 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
     return (
       <div className="hand" id="player-hand">
         {myHandCds.map((card, index) => {
+          const isDrawn = Boolean(drawnCardIds?.includes(card.uniqId));
+
           if (card.cardType === GameModels.CardType.MONSTER) {
             const canAfford = card.manaCost <= currentPlanMana;
             const isFlyingThis = (flyingCardUniqId && flyingCardUniqId === card.uniqId) || Boolean(flyingCardUniqIds?.includes(card.uniqId));
@@ -70,13 +82,17 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
               >
                 <div
                   id={`player-hand-card-${card.uniqId}`}
+                  className={isDrawn ? 'card-drawn-highlight' : ''}
                   style={{
+                    position: 'relative',
                     opacity: isFlyingThis ? 0 : canAfford && !isGameOver ? 1 : 0.45,
                     cursor: canAfford && !isAnimating && !isGameOver ? 'grab' : 'not-allowed',
-                    transition: 'opacity 0.2s ease',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease',
                     flexShrink: 0,
+                    borderRadius: '8px',
                   }}
                 >
+                  {isDrawn && <span className="new-card-badge">NEW</span>}
                   <MonsterCard
                     card={card}
                     onDragStart={canAfford && !isAnimating && !isGameOver ? onDragStart : (e) => e.preventDefault()}
@@ -100,13 +116,17 @@ const Hand = ({ myUserId, onDragStart, onDragEnd, isAnimating, isGameOver = fals
               >
                 <div
                   id={`player-hand-card-${card.uniqId}`}
+                  className={isDrawn ? 'card-drawn-highlight' : ''}
                   style={{
+                    position: 'relative',
                     opacity: isFlyingThis ? 0 : canAfford && !isGameOver ? 1 : 0.45,
                     cursor: canAfford && !isAnimating && !isGameOver ? 'grab' : 'not-allowed',
-                    transition: 'opacity 0.2s ease',
+                    transition: 'opacity 0.2s ease, transform 0.2s ease',
                     flexShrink: 0,
+                    borderRadius: '8px',
                   }}
                 >
+                  {isDrawn && <span className="new-card-badge">NEW</span>}
                   <SpellCard
                     card={card as GameModels.SpellCard}
                     onDragStart={canAfford && !isAnimating && !isGameOver ? onDragStart : (e) => e.preventDefault()}

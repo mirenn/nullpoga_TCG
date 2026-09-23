@@ -103,7 +103,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 3,
     effect: '指定したゾーンのモンスターに3ダメージ。空のバトルゾーンなら荒野化する。',
-    imageUrl: '/images/101.png',
   },
   {
     cardNo: 102,
@@ -111,7 +110,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 3,
     effect: '空いているバトルゾーンに不動の岩（攻0/HP3）を配置する。',
-    imageUrl: '/images/102.png',
   },
   {
     cardNo: 103,
@@ -119,7 +117,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 7,
     effect: '指定した列の縦2マス（前線と待機ゾーン、または敵モンスター引き寄せ）の配置を入れ替える。',
-    imageUrl: '/images/103.png',
   },
   {
     cardNo: 104,
@@ -127,7 +124,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 4,
     effect: '味方モンスター1体を次のターンまで無敵にする。',
-    imageUrl: '/images/104.png',
   },
   {
     cardNo: 105,
@@ -135,7 +131,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 3,
     effect: '手札のコスト3以下のモンスターを1体直接バトルゾーンに出す。',
-    imageUrl: '/images/105.png',
   },
   {
     cardNo: 106,
@@ -143,7 +138,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 5,
     effect: '相手バトルゾーンの全モンスターに1ダメージを与え、火傷（次ターン開始時に1ダメージ）を付与する。',
-    imageUrl: '/images/106.png',
   },
   {
     cardNo: 107,
@@ -151,7 +145,6 @@ export const AVAILABLE_CARDS: CardDefinition[] = [
     cardType: CardType.SPELL,
     manaCost: 6,
     effect: 'ランダムなバトルゾーン3箇所に3ダメージを与える。',
-    imageUrl: '/images/107.png',
   },
 ];
 

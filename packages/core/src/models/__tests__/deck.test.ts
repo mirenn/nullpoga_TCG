@@ -6,7 +6,7 @@ import {
   MAX_COPIES_PER_CARD,
 } from '../card-master';
 import { DECK_1, DECK_2 } from '../state';
-import { CardType } from '../card';
+import { CardType, instanceCard } from '../card';
 import { Player } from '../player';
 
 describe('Deck Validation & Card Master', () => {
@@ -109,4 +109,50 @@ describe('Deck Validation & Card Master', () => {
     expect(player.deckCards.length).toBe(25);
     expect(player.planHandCards.length).toBe(5);
   });
+
+  it('should instantiate all 16 available cards via instanceCard without error', () => {
+    for (const cardDef of AVAILABLE_CARDS) {
+      const card = instanceCard(cardDef.cardNo);
+      expect(card).toBeDefined();
+      expect(card.cardNo).toBe(cardDef.cardNo);
+      expect(card.cardName).toBe(cardDef.cardName);
+      expect(card.manaCost).toBe(cardDef.manaCost);
+      expect(card.cardType).toBe(cardDef.cardType);
+    }
+  });
+
+  it('should reject deck containing invalid numbers such as 0, negative numbers, floats, or NaN', () => {
+    const deckWithZero = [...DECK_1];
+    deckWithZero[0] = 0;
+    expect(validateDeck(deckWithZero).valid).toBe(false);
+
+    const deckWithNegative = [...DECK_1];
+    deckWithNegative[0] = -1;
+    expect(validateDeck(deckWithNegative).valid).toBe(false);
+
+    const deckWithFloat = [...DECK_1];
+    deckWithFloat[0] = 1.5;
+    expect(validateDeck(deckWithFloat).valid).toBe(false);
+
+    const deckWithNaN = [...DECK_1];
+    deckWithNaN[0] = NaN;
+    expect(validateDeck(deckWithNaN).valid).toBe(false);
+  });
+
+  it('should validate a legal deck combining 14 two-copy cards and 2 one-copy cards', () => {
+    // 14 * 2 + 2 * 1 = 30 cards
+    const deck: number[] = [];
+    for (let i = 0; i < 14; i++) {
+      deck.push(AVAILABLE_CARDS[i].cardNo);
+      deck.push(AVAILABLE_CARDS[i].cardNo);
+    }
+    deck.push(AVAILABLE_CARDS[14].cardNo);
+    deck.push(AVAILABLE_CARDS[15].cardNo);
+    expect(deck.length).toBe(30);
+
+    const res = validateDeck(deck);
+    expect(res.valid).toBe(true);
+    expect(res.reason).toBeUndefined();
+  });
 });
+

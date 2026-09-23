@@ -752,3 +752,181 @@ button:disabled,
   transform: scale(1.15);
 }
 
+/* =========================================
+   山札（デッキ）UI & ドロー演出スタイル
+   ========================================= */
+
+/* 手札＆山札コンテナ */
+.hand-deck-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  max-width: 900px;
+  margin: 6px auto 4px auto;
+}
+
+/* 山札スロット */
+.deck-pile {
+  position: relative;
+  width: 72px;
+  height: 98px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #1e293b, #0f172a);
+  border: 1.5px solid #475569;
+  border-radius: 8px;
+  box-shadow: 2px 2px 0 #64748b, 4px 4px 0 #334155, 0 6px 12px rgba(0, 0, 0, 0.12);
+  cursor: default;
+  user-select: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.deck-pile:hover {
+  transform: translateY(-2px);
+  box-shadow: 2px 4px 0 #64748b, 4px 6px 0 #334155, 0 8px 16px rgba(0, 0, 0, 0.18);
+}
+
+.deck-pile.is-empty {
+  opacity: 0.4;
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.deck-pile.deck-draw-pulse {
+  animation: deckDrawBounce 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes deckDrawBounce {
+  0% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.08) translateY(-4px); filter: brightness(1.3) drop-shadow(0 0 10px rgba(245, 158, 11, 0.8)); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* 山札の内部デザイン */
+.deck-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+}
+
+.deck-card-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
+}
+
+.deck-label {
+  font-size: 10px;
+  font-weight: 800;
+  color: #94a3b8;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* 山札残り枚数バッジ */
+.deck-count-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  padding: 2px 6px;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid #ffffff;
+  z-index: 5;
+}
+
+/* カード裏面 */
+.card-back {
+  background: linear-gradient(145deg, #1e293b, #0f172a) !important;
+  border: 1.5px solid #64748b !important;
+  color: #ffffff !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card-back-pattern {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 82%;
+  height: 86%;
+  border: 1px dashed rgba(245, 158, 11, 0.45);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.card-back-logo {
+  font-size: 26px;
+  filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+}
+
+/* ドローされた新着カードのハイライト枠 */
+.card-drawn-highlight {
+  animation: drawGlowPulse 1.8s ease-in-out infinite alternate !important;
+  position: relative;
+}
+
+@keyframes drawGlowPulse {
+  0% {
+    box-shadow: 0 0 6px rgba(245, 158, 11, 0.5), 0 2px 6px rgba(0, 0, 0, 0.06);
+    border-color: #f59e0b !important;
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.9), inset 0 0 8px rgba(251, 191, 36, 0.35);
+    border-color: #fbbf24 !important;
+  }
+}
+
+/* NEW バッジ */
+.new-card-badge {
+  position: absolute;
+  top: -8px;
+  right: -6px;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 900;
+  padding: 1px 5px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  border: 1px solid #ffffff;
+  z-index: 10;
+  letter-spacing: 0.5px;
+  animation: newBadgeBounce 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes newBadgeBounce {
+  0% { transform: translateY(0) scale(1); }
+  100% { transform: translateY(-2px) scale(1.08); }
+}
+
+/* 相手の山札スロット */
+.opponent-deck-mini {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #475569;
+}
+
+
