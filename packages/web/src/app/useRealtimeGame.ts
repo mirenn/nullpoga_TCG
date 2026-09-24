@@ -696,10 +696,22 @@ export function useRealtimeGame() {
                   flightDuration: baseFlightMs,
                 });
 
-                if (unit.owner === 'player') {
-                  pDamageToCpu += attack;
+                if (unit.cardNo === 6 && baseFlightMs) {
+                  newPendingHits.push({
+                    id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                    targetId: unit.owner === 'player' ? 'cpu' : 'player',
+                    attackerId: unit.id,
+                    lane: unit.lane,
+                    damage: attack,
+                    stunDuration: 0,
+                    hitTime: now + baseFlightMs,
+                  });
                 } else {
-                  cpuDamageToPlayer += attack;
+                  if (unit.owner === 'player') {
+                    pDamageToCpu += attack;
+                  } else {
+                    cpuDamageToPlayer += attack;
+                  }
                 }
 
                 // 本拠地に攻撃したユニットは消滅する (HPを0にする)
@@ -862,6 +874,31 @@ export function useRealtimeGame() {
                 return unit;
               }).filter((u) => u.hp > 0);
             });
+
+            // 本拠地への遅延ダメージ適用
+            let pDmg = 0;
+            let cpuDmg = 0;
+            for (const hit of resolvedHits) {
+              if (hit.targetId === 'cpu') {
+                cpuDmg += hit.damage;
+              } else if (hit.targetId === 'player') {
+                pDmg += hit.damage;
+              }
+            }
+            if (pDmg > 0) {
+              setPlayerHp((h) => {
+                const next = Math.max(0, h - pDmg);
+                if (next === 0) setGameResult('lose');
+                return next;
+              });
+            }
+            if (cpuDmg > 0) {
+              setCpuHp((h) => {
+                const next = Math.max(0, h - cpuDmg);
+                if (next === 0) setGameResult('win');
+                return next;
+              });
+            }
           }
 
           return stillPending;

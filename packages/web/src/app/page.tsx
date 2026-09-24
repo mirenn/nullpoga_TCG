@@ -282,9 +282,8 @@ export default function RealtimeDemoPage() {
         }
 
         /* 電気クラゲ: 放電電撃弾（クラゲから相手へ飛翔するエネルギー球） */
-        @keyframes lightning-orb-fly {
+        @keyframes lightning-orb-scale {
           0% {
-            top: var(--from-y);
             opacity: 0.9;
             transform: translate(-50%, -50%) scale(0.7);
           }
@@ -297,7 +296,6 @@ export default function RealtimeDemoPage() {
             transform: translate(-50%, -50%) scale(1.15);
           }
           100% {
-            top: var(--to-y);
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.3);
           }
@@ -315,7 +313,8 @@ export default function RealtimeDemoPage() {
           box-shadow: 0 0 16px #ffffff, 0 0 28px #38bdf8, 0 0 44px #0284c7;
           pointer-events: none;
           z-index: 40;
-          animation: lightning-orb-fly var(--flight-duration, 300ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+          /* CSSではスケーリングと透明度のみ、移動はTSXのインラインスタイルで制御 */
+          animation: lightning-orb-scale var(--flight-duration, 300ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
         }
 
         /* 電撃弾のスパーク回転演出 */
@@ -1548,10 +1547,8 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             <div
               className="lightning-projectile-orb"
               style={{
-                '--from-y': `${effect.fromY}%`,
-                '--to-y': `${effect.toY}%`,
                 '--flight-duration': `${flightTime}ms`,
-                top: `${effect.fromY}%`,
+                top: `${effect.fromY + ((effect.toY - effect.fromY) * Math.min(elapsed / flightTime, 1))}%`,
               } as React.CSSProperties}
             >
               <span className="lightning-orb-spark">⚡</span>
