@@ -39,7 +39,7 @@ export interface SpellEffect {
   id: string;
   lane: number;
   y: number;
-  type: 'meteor' | 'burn' | 'haste';
+  type: 'meteor' | 'burn' | 'haste' | 'heal';
   createdAt: number;
 }
 

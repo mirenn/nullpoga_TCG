@@ -745,9 +745,16 @@ export default function RealtimeDemoPage() {
                         ...styles.spellBlast,
                         top: `${spell.y}%`,
                         ...(spell.type === 'haste' ? styles.spellHaste : {}),
+                        ...(spell.type === 'heal' ? styles.spellHeal : {}),
                       }}
                     >
-                      {spell.type === 'meteor' ? '💥 隕石着弾!!' : spell.type === 'burn' ? '🔥 烈火!!' : '💨 疾風!!'}
+                      {spell.type === 'meteor'
+                        ? '💥 隕石着弾!!'
+                        : spell.type === 'burn'
+                        ? '🔥 烈火!!'
+                        : spell.type === 'haste'
+                        ? '💨 疾風!!'
+                        : '🌧️ 癒やし!!'}
                     </div>
                   ))}
 
@@ -1140,6 +1147,13 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🌧️ 癒やしの雨</div>
+                  <div style={styles.tipText}>
+                    <strong>癒やしの雨</strong>を指定レーンに使用すると、そのレーンにいる味方ユニットすべてのHPを3回復（最大HP上限）します。前線の味方や高耐久ユニットの延命に活用しましょう。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>🎴 15枚デッキ＆NEXTサイクル</div>
                   <div style={styles.tipText}>
                     手札4枚と<strong>NEXT（次弾）</strong>でテンポよく回転！山札（計15枚）が切れると捨て札が再シャッフルされリサイクルされます。
@@ -1258,6 +1272,12 @@ export default function RealtimeDemoPage() {
                     <div style={styles.tipTitle}>💨 AAキャンセル</div>
                     <div style={styles.tipText}>
                       疾風の号令を攻撃直後の味方に使って、即座に再攻撃させるコンボが可能です。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🌧️ 癒やしの雨</div>
+                    <div style={styles.tipText}>
+                      指定レーンの味方全員を3回復。カメなどの高耐久ユニットと好相性です。
                     </div>
                   </div>
                   <div style={styles.tipBox}>
@@ -1947,6 +1967,10 @@ const styles: Record<string, React.CSSProperties> = {
   spellHaste: {
     backgroundColor: 'rgba(34, 197, 94, 0.92)',
     boxShadow: '0 0 15px #22c55e',
+  },
+  spellHeal: {
+    backgroundColor: 'rgba(14, 165, 233, 0.92)',
+    boxShadow: '0 0 15px #38bdf8',
   },
   playerCommandBar: {
     display: 'flex',

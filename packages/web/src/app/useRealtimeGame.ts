@@ -105,6 +105,15 @@ export const CARD_POOL: DemoCard[] = [
     icon: '💨',
   },
   {
+    id: 'heal_spell',
+    cardNo: 103,
+    name: '癒やしの雨',
+    type: 'SPELL',
+    manaCost: 3,
+    effectDesc: '指定したレーンの味方ユニットすべてのHPを3回復する。',
+    icon: '🌧️',
+  },
+  {
     id: 'meteor',
     cardNo: 101,
     name: '隕石落下',
@@ -164,7 +173,7 @@ export const createDefault15Deck = (): DemoCard[] => {
     cardMap['mouse'], cardMap['haste_spell'],
     cardMap['cat'], cardMap['cat'],
     cardMap['shiba'], cardMap['shiba'],
-    cardMap['turtle'], cardMap['turtle'],
+    cardMap['turtle'], cardMap['heal_spell'],
     cardMap['jellyfish'], cardMap['jellyfish'],
     cardMap['boar'], cardMap['boar'],
     cardMap['dragon'],
@@ -420,6 +429,20 @@ export function useRealtimeGame() {
             prev.map((u) => {
               if (u.owner === 'player' && u.lane === laneIndex) {
                 return { ...u, attackCooldown: 0 };
+              }
+              return u;
+            })
+          );
+        } else if (card.id === 'heal_spell') {
+          // 指定レーンの味方に3回復
+          setSpellEffects((prev) => [
+            ...prev,
+            { id: `heal_${Date.now()}`, lane: laneIndex, y: 50, type: 'heal', createdAt: Date.now() },
+          ]);
+          setUnits((prev) =>
+            prev.map((u) => {
+              if (u.owner === 'player' && u.lane === laneIndex) {
+                return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
               }
               return u;
             })
