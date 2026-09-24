@@ -655,6 +655,9 @@ export function useRealtimeGame() {
                 } else {
                   cpuDamageToPlayer += attack;
                 }
+
+                // 本拠地に攻撃したユニットは消滅する (HPを0にする)
+                return { ...unit, hp: 0, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
               }
               return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
             }
