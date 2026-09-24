@@ -226,12 +226,21 @@ export function useRealtimeGame() {
 
   // ユニット一覧
   const [units, setUnits] = useState<Unit[]>([]);
+  const unitsRef = useRef<Unit[]>([]);
+  useEffect(() => {
+    unitsRef.current = units;
+  }, [units]);
+
   // スペルエフェクト
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
   // 攻撃エフェクト（弾道・斬撃・着弾）
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   // 電気クラゲの着弾待ち雷撃
   const [pendingLightningHits, setPendingLightningHits] = useState<PendingLightningHit[]>([]);
+  const pendingHitsRef = useRef<PendingLightningHit[]>([]);
+  useEffect(() => {
+    pendingHitsRef.current = pendingLightningHits;
+  }, [pendingLightningHits]);
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -385,7 +394,11 @@ export function useRealtimeGame() {
           icon: card.icon,
           distanceTraveled: 0,
         };
-        setUnits((prev) => [...prev, newUnit]);
+        setUnits((prev) => {
+          const next = [...prev, newUnit];
+          unitsRef.current = next;
+          return next;
+        });
       } else if (card.type === 'SPELL') {
         if (card.id === 'meteor') {
           // 指定レーンの敵に3ダメージ
@@ -393,60 +406,68 @@ export function useRealtimeGame() {
             ...prev,
             { id: `meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
           ]);
-          setUnits((prev) =>
-            prev
+          setUnits((prev) => {
+            const next = prev
               .map((u) => {
                 if (u.owner === 'cpu' && u.lane === laneIndex) {
                   return { ...u, hp: u.hp - 3 };
                 }
                 return u;
               })
-              .filter((u) => u.hp > 0)
-          );
+              .filter((u) => u.hp > 0);
+            unitsRef.current = next;
+            return next;
+          });
         } else if (card.id === 'fire_spell') {
           // 全敵ユニットに2ダメージ
           setSpellEffects((prev) => [
             ...prev,
             { id: `burn_${Date.now()}`, lane: -1, y: 50, type: 'burn', createdAt: Date.now() },
           ]);
-          setUnits((prev) =>
-            prev
+          setUnits((prev) => {
+            const next = prev
               .map((u) => {
                 if (u.owner === 'cpu') {
                   return { ...u, hp: u.hp - 2 };
                 }
                 return u;
               })
-              .filter((u) => u.hp > 0)
-          );
+              .filter((u) => u.hp > 0);
+            unitsRef.current = next;
+            return next;
+          });
         } else if (card.id === 'haste_spell') {
           // 味方ユニットの攻撃クールダウンをリセット
           setSpellEffects((prev) => [
             ...prev,
             { id: `haste_${Date.now()}`, lane: laneIndex, y: 75, type: 'haste', createdAt: Date.now() },
           ]);
-          setUnits((prev) =>
-            prev.map((u) => {
+          setUnits((prev) => {
+            const next = prev.map((u) => {
               if (u.owner === 'player' && u.lane === laneIndex) {
                 return { ...u, attackCooldown: 0 };
               }
               return u;
-            })
-          );
+            });
+            unitsRef.current = next;
+            return next;
+          });
         } else if (card.id === 'heal_spell') {
           // 指定レーンの味方に3回復
           setSpellEffects((prev) => [
             ...prev,
             { id: `heal_${Date.now()}`, lane: laneIndex, y: 50, type: 'heal', createdAt: Date.now() },
           ]);
-          setUnits((prev) =>
-            prev.map((u) => {
+          setUnits((prev) => {
+            const next = prev.map((u) => {
               if (u.owner === 'player' && u.lane === laneIndex) {
                 return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
               }
               return u;
-            })
-          );
+            });
+            unitsRef.current = next;
+            return next;
+          });
         }
       }
 
@@ -524,7 +545,11 @@ export function useRealtimeGame() {
         icon: chosenCard.icon,
         distanceTraveled: 0,
       };
-      setUnits((prev) => [...prev, cpuUnit]);
+      setUnits((prev) => {
+        const next = [...prev, cpuUnit];
+        unitsRef.current = next;
+        return next;
+      });
     }
   }, []);
 
@@ -552,357 +577,322 @@ export function useRealtimeGame() {
         // 2. CPU AI実行
         handleCpuAi(dt);
 
-        // 3. ユニット更新
+        // 3. ユニット更新＆エフェクト・着弾計算
         const now = Date.now();
-        const newAttackEffects: AttackEffect[] = [];
-        const newPendingHits: PendingLightningHit[] = [];
+        const currentUnits = unitsRef.current;
+        const currentPendingHits = pendingHitsRef.current;
 
-        setUnits((prevUnits) => {
-          let pDamageToCpu = 0;
-          let cpuDamageToPlayer = 0;
+        // A. 着弾時刻に達した雷撃の解決
+        const stillPendingHits: PendingLightningHit[] = [];
+        const resolvedHits: PendingLightningHit[] = [];
+        for (const hit of currentPendingHits) {
+          if (now >= hit.hitTime) {
+            resolvedHits.push(hit);
+          } else {
+            stillPendingHits.push(hit);
+          }
+        }
 
-          const updated = prevUnits.map((unit) => {
-            const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
-            let cooldown = Math.max(0, unit.attackCooldown - dt);
-            let y = unit.y;
-            let distance = unit.distanceTraveled || 0;
-            let attack = unit.cardNo === 2
-              ? 1 + Math.min(4, Math.floor(distance / 20))
-              : unit.attack;
-            let lastAttack = unit.lastAttackEffectTime;
-
-            if (isStunned) {
-              return { ...unit, attackCooldown: cooldown };
-            }
-
-            // 同一レーン内の対向敵を探す
-            const enemiesInLane = prevUnits.filter(
-              (u) => u.lane === unit.lane && u.owner !== unit.owner && u.hp > 0
-            );
-
-            // 進行方向の前方にいる最も近い敵を探す
-            let targetEnemy: Unit | null = null;
-            let minDistance = 999;
-
-            enemiesInLane.forEach((enemy) => {
-              const dist = unit.owner === 'player' ? unit.y - enemy.y : enemy.y - unit.y;
-              // わずかな重なり（-2%まで）も含めて正面交戦対象とする
-              if (dist >= -2 && dist < minDistance) {
-                minDistance = Math.max(0, dist);
-                targetEnemy = enemy;
-              }
-            });
-
-            // 同一レーン内の前方にいる味方を探す（追い越し防止）
-            const alliesInLane = prevUnits.filter(
-              (u) => u.lane === unit.lane && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
-            );
-            let targetAlly: Unit | null = null;
-            let minAllyDist = 999;
-            alliesInLane.forEach((ally) => {
-              const dist = unit.owner === 'player' ? unit.y - ally.y : ally.y - unit.y;
-              if (dist > 0 && dist < minAllyDist) {
-                minAllyDist = dist;
-                targetAlly = ally;
-              }
-            });
-
-            // 敵が射程内にいる場合：停止して攻撃
-            if (targetEnemy && minDistance <= unit.range) {
-              if (cooldown <= 0) {
-                cooldown = unit.attackInterval;
-                lastAttack = now;
-
-                // 攻撃種別に応じたエフェクト種別と継続時間を設定
-                let effectType: AttackEffectType = 'slash';
-                let duration = 300;
-                let flightMs: number | undefined;
-
-                if (unit.cardNo === 11) {
-                  // 炎のドラゴン: 長距離火炎ブレス
-                  effectType = 'fireball';
-                  duration = 550;
-                } else if (unit.cardNo === 6) {
-                  // 電気クラゲ: 電撃弾プロジェクタイル飛行 ＆ 着弾放電スパーク
-                  effectType = 'lightning';
-                  const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
-                  flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
-                  duration = flightMs + 450; // 飛行時間 + 着弾余韻
-                }
-
-                newAttackEffects.push({
-                  id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                  attackerId: unit.id,
-                  lane: unit.lane,
-                  fromY: unit.y,
-                  toY: (targetEnemy as Unit).y,
-                  owner: unit.owner,
-                  effectType,
-                  damage: attack,
-                  createdAt: now,
-                  duration,
-                  flightDuration: flightMs,
-                });
-
-                // 電気クラゲ: ダメージ+スタンは着弾時に遅延適用
-                if (unit.cardNo === 6 && flightMs) {
-                  newPendingHits.push({
-                    id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                    targetId: (targetEnemy as Unit).id,
-                    attackerId: unit.id,
-                    lane: unit.lane,
-                    damage: attack,
-                    stunDuration: 1200,
-                    hitTime: now + flightMs,
-                  });
-                }
-              }
-              return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
-            }
-
-            // 敵陣最奥に到達しているか？
-            const isAtBase = unit.owner === 'player' ? y <= 6 : y >= 94;
-            if (isAtBase) {
-              if (cooldown <= 0) {
-                cooldown = unit.attackInterval;
-                lastAttack = now;
-                const targetBaseY = unit.owner === 'player' ? 2 : 98;
-                let effectType: AttackEffectType = 'base_hit';
-                let duration = 320;
-                let baseFlightMs: number | undefined;
-
-                if (unit.cardNo === 11) {
-                  effectType = 'fireball';
-                  duration = 550;
-                } else if (unit.cardNo === 6) {
-                  effectType = 'lightning';
-                  const baseDist = Math.abs(unit.y - targetBaseY);
-                  const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
-                  baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
-                  duration = baseFlightMs + 450;
-                }
-
-                newAttackEffects.push({
-                  id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                  attackerId: unit.id,
-                  lane: unit.lane,
-                  fromY: unit.y,
-                  toY: targetBaseY,
-                  owner: unit.owner,
-                  effectType,
-                  damage: attack,
-                  createdAt: now,
-                  duration,
-                  flightDuration: baseFlightMs,
-                });
-
-                if (unit.cardNo === 6 && baseFlightMs) {
-                  newPendingHits.push({
-                    id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                    targetId: unit.owner === 'player' ? 'cpu' : 'player',
-                    attackerId: unit.id,
-                    lane: unit.lane,
-                    damage: attack,
-                    stunDuration: 0,
-                    hitTime: now + baseFlightMs,
-                  });
-                } else {
-                  if (unit.owner === 'player') {
-                    pDamageToCpu += attack;
-                  } else {
-                    cpuDamageToPlayer += attack;
-                  }
-                }
-
-                // 本拠地に攻撃したユニットは消滅する (HPを0にする)
-                return { ...unit, hp: 0, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
-              }
-              return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
-            }
-
-            // 移動計算（すれ違い防止＆味方追い越し防止の物理壁）
-            const moveDelta = unit.speed * MOVE_SPEED_SCALE * dt;
-            if (unit.owner === 'player') {
-              // プレイヤーユニットは上向き（y減少）
-              let maxYMove = y - moveDelta;
-              // 敵の接触限界（敵の8%手前）
-              if (targetEnemy) {
-                const enemyWall = (targetEnemy as Unit).y + 7.5;
-                maxYMove = Math.max(maxYMove, enemyWall);
-              }
-              // 前方の味方の接触限界（味方の8%手前で追従）
-              if (targetAlly) {
-                const allyWall = (targetAlly as Unit).y + 8.0;
-                maxYMove = Math.max(maxYMove, allyWall);
-              }
-              y = Math.max(5, maxYMove);
-            } else {
-              // CPUユニットは下向き（y増加）
-              let maxYMove = y + moveDelta;
-              // 敵の接触限界（敵の8%手前）
-              if (targetEnemy) {
-                const enemyWall = (targetEnemy as Unit).y - 7.5;
-                maxYMove = Math.min(maxYMove, enemyWall);
-              }
-              // 前方の味方の接触限界（味方の8%手前で追従）
-              if (targetAlly) {
-                const allyWall = (targetAlly as Unit).y - 8.0;
-                maxYMove = Math.min(maxYMove, allyWall);
-              }
-              y = Math.min(95, maxYMove);
-            }
-            distance += moveDelta;
-
-            // 柴犬ラン丸の特性：移動距離に応じて攻撃力UP（20%進むごとに+1、最大+4）
-            if (unit.cardNo === 2) {
-              const bonus = Math.min(4, Math.floor(distance / 20));
-              attack = 1 + bonus;
-            }
-
-            return {
-              ...unit,
-              y,
-              attack,
-              distanceTraveled: distance,
-              attackCooldown: cooldown,
-            };
+        // 着弾による本拠地ダメージ適用
+        let delayedBaseCpuDmg = 0;
+        let delayedBasePlayerDmg = 0;
+        for (const hit of resolvedHits) {
+          if (hit.targetId === 'cpu') {
+            delayedBaseCpuDmg += hit.damage;
+          } else if (hit.targetId === 'player') {
+            delayedBasePlayerDmg += hit.damage;
+          }
+        }
+        if (delayedBasePlayerDmg > 0) {
+          setPlayerHp((h) => {
+            const next = Math.max(0, h - delayedBasePlayerDmg);
+            if (next === 0) setGameResult('lose');
+            return next;
           });
+        }
+        if (delayedBaseCpuDmg > 0) {
+          setCpuHp((h) => {
+            const next = Math.max(0, h - delayedBaseCpuDmg);
+            if (next === 0) setGameResult('win');
+            return next;
+          });
+        }
 
-          // ユニット同士の攻撃解決（ダメージ反映とスタン付与）
-          const finalUnits = updated.map((unit) => {
+        // B. 着弾によるユニットダメージ＆スタン適用
+        const unitsAfterHits = currentUnits
+          .map((unit) => {
             let hp = unit.hp;
             let stunnedUntil = unit.isStunnedUntil;
-            let y = unit.y;
-
-            // このユニットを攻撃している敵をすべて探す
-            updated.forEach((attacker) => {
-              if (
-                attacker.lane === unit.lane &&
-                attacker.owner !== unit.owner &&
-                attacker.lastAttackEffectTime === now
-              ) {
-                // 電気クラゲ(cardNo:6)はダメージ+スタンを着弾時に遅延適用するのでスキップ
-                if (attacker.cardNo === 6) return;
-
-                const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
-                if (dist >= -2 && dist <= attacker.range + 2) {
-                  hp -= attacker.attack;
-
-                  // イノシシ (cardNo: 7) のノックバック効果
-                  if (attacker.cardNo === 7) {
-                    const pushBackAmount = 8 + Math.random() * 2; // 8%〜10%
-                    if (attacker.owner === 'player') {
-                      // プレイヤー攻撃時は敵を奥（y減少方向だが、CPUベースはy=5なのでyを減らす）
-                      y = Math.max(5, y - pushBackAmount);
-                    } else {
-                      // CPU攻撃時は敵を手前（y増加方向、プレイヤーベースはy=95なのでyを増やす）
-                      y = Math.min(95, y + pushBackAmount);
-                    }
-                    // ノックバック時0.3秒スタン
-                    stunnedUntil = now + 300;
-                  }
-                }
+            for (const hit of resolvedHits) {
+              if (hit.targetId === unit.id && hp > 0) {
+                hp -= hit.damage;
+                stunnedUntil = now + hit.stunDuration;
               }
-            });
+            }
+            if (hp !== unit.hp || stunnedUntil !== unit.isStunnedUntil) {
+              const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
+              return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+            }
+            return unit;
+          })
+          .filter((u) => u.hp > 0);
 
-            const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-            return { ...unit, hp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+        // C. 各ユニットの移動・攻撃・クールダウン更新
+        const newAttackEffects: AttackEffect[] = [];
+        const newPendingHits: PendingLightningHit[] = [];
+        let pDamageToCpu = 0;
+        let cpuDamageToPlayer = 0;
+
+        const updatedUnits = unitsAfterHits.map((unit) => {
+          const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
+          let cooldown = Math.max(0, unit.attackCooldown - dt);
+          let y = unit.y;
+          let distance = unit.distanceTraveled || 0;
+          let attack = unit.cardNo === 2
+            ? 1 + Math.min(4, Math.floor(distance / 20))
+            : unit.attack;
+          let lastAttack = unit.lastAttackEffectTime;
+
+          if (isStunned) {
+            return { ...unit, attackCooldown: cooldown };
+          }
+
+          // 同一レーン内の対向敵を探す
+          const enemiesInLane = unitsAfterHits.filter(
+            (u) => u.lane === unit.lane && u.owner !== unit.owner && u.hp > 0
+          );
+
+          // 進行方向の前方にいる最も近い敵を探す
+          let targetEnemy: Unit | null = null;
+          let minDistance = 999;
+          enemiesInLane.forEach((enemy) => {
+            const dist = unit.owner === 'player' ? unit.y - enemy.y : enemy.y - unit.y;
+            if (dist >= -2 && dist < minDistance) {
+              minDistance = Math.max(0, dist);
+              targetEnemy = enemy;
+            }
           });
 
-          // 拠点ダメージ反映
-          if (pDamageToCpu > 0) {
-            setCpuHp((h) => {
-              const next = Math.max(0, h - pDamageToCpu);
-              if (next === 0) setGameResult('win');
-              return next;
-            });
-          }
-          if (cpuDamageToPlayer > 0) {
-            setPlayerHp((h) => {
-              const next = Math.max(0, h - cpuDamageToPlayer);
-              if (next === 0) setGameResult('lose');
-              return next;
-            });
-          }
-
-          // HPが0以下のユニットを退場
-          return finalUnits.filter((u) => u.hp > 0);
-        });
-
-        // 攻撃エフェクトの反映とクリーンアップ（duration+300ms経過で消去）
-        if (newAttackEffects.length > 0) {
-          setAttackEffects((prev) => [...prev, ...newAttackEffects]);
-        }
-        setAttackEffects((prev) => prev.filter((e) => now - e.createdAt < e.duration + 300));
-
-        // 電気クラゲの着弾予約をキューに追加
-        if (newPendingHits.length > 0) {
-          setPendingLightningHits((prev) => [...prev, ...newPendingHits]);
-        }
-
-        // 着弾時刻に達した雷撃を解決（ダメージ+スタン適用）
-        setPendingLightningHits((prev) => {
-          const stillPending: PendingLightningHit[] = [];
-          const resolvedHits: PendingLightningHit[] = [];
-
-          for (const hit of prev) {
-            if (now >= hit.hitTime) {
-              resolvedHits.push(hit);
-            } else {
-              stillPending.push(hit);
+          // 同一レーン内の前方にいる味方を探す（追い越し防止）
+          const alliesInLane = unitsAfterHits.filter(
+            (u) => u.lane === unit.lane && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
+          );
+          let targetAlly: Unit | null = null;
+          let minAllyDist = 999;
+          alliesInLane.forEach((ally) => {
+            const dist = unit.owner === 'player' ? unit.y - ally.y : ally.y - unit.y;
+            if (dist > 0 && dist < minAllyDist) {
+              minAllyDist = dist;
+              targetAlly = ally;
             }
-          }
+          });
 
-          // 着弾したヒットをユニットに反映
-          if (resolvedHits.length > 0) {
-            setUnits((prevUnits) => {
-              return prevUnits.map((unit) => {
-                let hp = unit.hp;
-                let stunnedUntil = unit.isStunnedUntil;
+          // 敵が射程内にいる場合：停止して攻撃
+          if (targetEnemy && minDistance <= unit.range) {
+            if (cooldown <= 0) {
+              cooldown = unit.attackInterval;
+              lastAttack = now;
 
-                for (const hit of resolvedHits) {
-                  if (hit.targetId === unit.id && unit.hp > 0) {
-                    hp -= hit.damage;
-                    stunnedUntil = now + hit.stunDuration;
-                  }
-                }
+              let effectType: AttackEffectType = 'slash';
+              let duration = 300;
+              let flightMs: number | undefined;
 
-                if (hp !== unit.hp || stunnedUntil !== unit.isStunnedUntil) {
-                  const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-                  return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
-                }
-                return unit;
-              }).filter((u) => u.hp > 0);
-            });
+              if (unit.cardNo === 11) {
+                effectType = 'fireball';
+                duration = 550;
+              } else if (unit.cardNo === 6) {
+                effectType = 'lightning';
+                const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
+                flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                duration = flightMs + 450;
+              }
 
-            // 本拠地への遅延ダメージ適用
-            let pDmg = 0;
-            let cpuDmg = 0;
-            for (const hit of resolvedHits) {
-              if (hit.targetId === 'cpu') {
-                cpuDmg += hit.damage;
-              } else if (hit.targetId === 'player') {
-                pDmg += hit.damage;
+              newAttackEffects.push({
+                id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                attackerId: unit.id,
+                lane: unit.lane,
+                fromY: unit.y,
+                toY: (targetEnemy as Unit).y,
+                owner: unit.owner,
+                effectType,
+                damage: attack,
+                createdAt: now,
+                duration,
+                flightDuration: flightMs,
+              });
+
+              if (unit.cardNo === 6 && flightMs) {
+                newPendingHits.push({
+                  id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                  targetId: (targetEnemy as Unit).id,
+                  attackerId: unit.id,
+                  lane: unit.lane,
+                  damage: attack,
+                  stunDuration: 1200,
+                  hitTime: now + flightMs,
+                });
               }
             }
-            if (pDmg > 0) {
-              setPlayerHp((h) => {
-                const next = Math.max(0, h - pDmg);
-                if (next === 0) setGameResult('lose');
-                return next;
-              });
-            }
-            if (cpuDmg > 0) {
-              setCpuHp((h) => {
-                const next = Math.max(0, h - cpuDmg);
-                if (next === 0) setGameResult('win');
-                return next;
-              });
-            }
+            return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
           }
 
-          return stillPending;
+          // 敵陣最奥に到達しているか？
+          const isAtBase = unit.owner === 'player' ? y <= 6 : y >= 94;
+          if (isAtBase) {
+            if (cooldown <= 0) {
+              cooldown = unit.attackInterval;
+              lastAttack = now;
+              const targetBaseY = unit.owner === 'player' ? 2 : 98;
+              let effectType: AttackEffectType = 'base_hit';
+              let duration = 320;
+              let baseFlightMs: number | undefined;
+
+              if (unit.cardNo === 11) {
+                effectType = 'fireball';
+                duration = 550;
+              } else if (unit.cardNo === 6) {
+                effectType = 'lightning';
+                const baseDist = Math.abs(unit.y - targetBaseY);
+                const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
+                baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                duration = baseFlightMs + 450;
+              }
+
+              newAttackEffects.push({
+                id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                attackerId: unit.id,
+                lane: unit.lane,
+                fromY: unit.y,
+                toY: targetBaseY,
+                owner: unit.owner,
+                effectType,
+                damage: attack,
+                createdAt: now,
+                duration,
+                flightDuration: baseFlightMs,
+              });
+
+              if (unit.cardNo === 6 && baseFlightMs) {
+                newPendingHits.push({
+                  id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                  targetId: unit.owner === 'player' ? 'cpu' : 'player',
+                  attackerId: unit.id,
+                  lane: unit.lane,
+                  damage: attack,
+                  stunDuration: 0,
+                  hitTime: now + baseFlightMs,
+                });
+              } else {
+                if (unit.owner === 'player') {
+                  pDamageToCpu += attack;
+                } else {
+                  cpuDamageToPlayer += attack;
+                }
+              }
+
+              return { ...unit, hp: 0, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
+            }
+            return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
+          }
+
+          // 移動計算
+          const moveDelta = unit.speed * MOVE_SPEED_SCALE * dt;
+          if (unit.owner === 'player') {
+            let maxYMove = y - moveDelta;
+            if (targetEnemy) {
+              const enemyWall = (targetEnemy as Unit).y + 7.5;
+              maxYMove = Math.max(maxYMove, enemyWall);
+            }
+            if (targetAlly) {
+              const allyWall = (targetAlly as Unit).y + 8.0;
+              maxYMove = Math.max(maxYMove, allyWall);
+            }
+            y = Math.max(5, maxYMove);
+          } else {
+            let maxYMove = y + moveDelta;
+            if (targetEnemy) {
+              const enemyWall = (targetEnemy as Unit).y - 7.5;
+              maxYMove = Math.min(maxYMove, enemyWall);
+            }
+            if (targetAlly) {
+              const allyWall = (targetAlly as Unit).y - 8.0;
+              maxYMove = Math.min(maxYMove, allyWall);
+            }
+            y = Math.min(95, maxYMove);
+          }
+          distance += moveDelta;
+
+          if (unit.cardNo === 2) {
+            const bonus = Math.min(4, Math.floor(distance / 20));
+            attack = 1 + bonus;
+          }
+
+          return { ...unit, y, attack, distanceTraveled: distance, attackCooldown: cooldown };
         });
+
+        // D. ユニット同士の近接攻撃解決（通常ユニット用）
+        const finalUnits = updatedUnits.map((unit) => {
+          let hp = unit.hp;
+          let stunnedUntil = unit.isStunnedUntil;
+          let y = unit.y;
+
+          updatedUnits.forEach((attacker) => {
+            if (
+              attacker.lane === unit.lane &&
+              attacker.owner !== unit.owner &&
+              attacker.lastAttackEffectTime === now
+            ) {
+              if (attacker.cardNo === 6) return; // クラゲは遅延着弾なのでスキップ
+
+              const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
+              if (dist >= -2 && dist <= attacker.range + 2) {
+                hp -= attacker.attack;
+                if (attacker.cardNo === 7) {
+                  const pushBackAmount = 8 + Math.random() * 2;
+                  if (attacker.owner === 'player') {
+                    y = Math.max(5, y - pushBackAmount);
+                  } else {
+                    y = Math.min(95, y + pushBackAmount);
+                  }
+                  stunnedUntil = now + 300;
+                }
+              }
+            }
+          });
+
+          const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
+          return { ...unit, hp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+        }).filter((u) => u.hp > 0);
+
+        // E. 状態の一括反映
+        unitsRef.current = finalUnits;
+        setUnits(finalUnits);
+
+        if (pDamageToCpu > 0) {
+          setCpuHp((h) => {
+            const next = Math.max(0, h - pDamageToCpu);
+            if (next === 0) setGameResult('win');
+            return next;
+          });
+        }
+        if (cpuDamageToPlayer > 0) {
+          setPlayerHp((h) => {
+            const next = Math.max(0, h - cpuDamageToPlayer);
+            if (next === 0) setGameResult('lose');
+            return next;
+          });
+        }
+
+        // 攻撃エフェクトの反映とクリーンアップ（duration+300ms経過で消去）
+        setAttackEffects((prev) => {
+          const alive = prev.filter((e) => now - e.createdAt < e.duration + 300);
+          return newAttackEffects.length > 0 ? [...alive, ...newAttackEffects] : alive;
+        });
+
+        // 着弾待ち雷撃のキュー更新
+        const nextPendingHits = [...stillPendingHits, ...newPendingHits];
+        pendingHitsRef.current = nextPendingHits;
+        setPendingLightningHits(nextPendingHits);
 
         // スペルエフェクトの掃除（1秒以上経過したものを除去）
         setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1000));
@@ -922,9 +912,11 @@ export function useRealtimeGame() {
     setPlayerMana(INITIAL_MANA);
     setCpuMana(INITIAL_MANA);
     setUnits([]);
+    unitsRef.current = [];
     setSpellEffects([]);
     setAttackEffects([]);
     setPendingLightningHits([]);
+    pendingHitsRef.current = [];
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;
