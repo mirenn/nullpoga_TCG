@@ -96,6 +96,15 @@ export const CARD_POOL: DemoCard[] = [
     icon: '🐉',
   },
   {
+    id: 'haste_spell',
+    cardNo: 102,
+    name: '疾風の号令',
+    type: 'SPELL',
+    manaCost: 1,
+    effectDesc: '指定レーンの味方の攻撃クールダウンをリセットし、即座に攻撃させる（AAキャンセル）。',
+    icon: '💨',
+  },
+  {
     id: 'meteor',
     cardNo: 101,
     name: '隕石落下',
@@ -152,7 +161,7 @@ export const createDefault15Deck = (): DemoCard[] => {
     cardMap[c.id] = c;
   });
   return [
-    cardMap['mouse'], cardMap['mouse'],
+    cardMap['mouse'], cardMap['haste_spell'],
     cardMap['cat'], cardMap['cat'],
     cardMap['shiba'], cardMap['shiba'],
     cardMap['turtle'], cardMap['turtle'],
@@ -400,6 +409,20 @@ export function useRealtimeGame() {
                 return u;
               })
               .filter((u) => u.hp > 0)
+          );
+        } else if (card.id === 'haste_spell') {
+          // 味方ユニットの攻撃クールダウンをリセット
+          setSpellEffects((prev) => [
+            ...prev,
+            { id: `haste_${Date.now()}`, lane: laneIndex, y: 75, type: 'haste', createdAt: Date.now() },
+          ]);
+          setUnits((prev) =>
+            prev.map((u) => {
+              if (u.owner === 'player' && u.lane === laneIndex) {
+                return { ...u, attackCooldown: 0 };
+              }
+              return u;
+            })
           );
         }
       }
