@@ -11,6 +11,7 @@ export default function RealtimeDemoPage() {
     playerHp,
     cpuHp,
     playerMana,
+    cpuMana,
     maxMana,
     manaRegenRate,
     setManaRegenRate,
@@ -606,16 +607,39 @@ export default function RealtimeDemoPage() {
         <div style={styles.arenaColumn} className="arena-column">
           {/* 1. CPU陣地ステータスバー & コントロール (モバイル時のみアリーナ上部に表示、デスクトップは右パネルに集約) */}
           <div style={styles.cpuHeader} className="mobile-cpu-header">
-            <div style={styles.playerInfo}>
-              <span style={styles.playerName}>🤖 相手（CPU）</span>
-              <div style={styles.hpBarBg}>
-                <div
-                  style={{
-                    ...styles.hpBarFillCpu,
-                    width: `${Math.max(0, (cpuHp / 20) * 100)}%`,
-                  }}
-                />
-                <span style={styles.hpText}>{cpuHp} / 20 HP</span>
+            <div style={styles.mobileCpuStatusGroup}>
+              {/* CPU HP */}
+              <div style={styles.mobileCpuHpSection}>
+                <span style={styles.mobileCpuName}>🤖 相手</span>
+                <div style={styles.mobileCpuHpBarBg}>
+                  <div
+                    style={{
+                      ...styles.hpBarFillCpu,
+                      width: `${Math.max(0, (cpuHp / 20) * 100)}%`,
+                    }}
+                  />
+                  <span style={styles.hpText}>{cpuHp} HP</span>
+                </div>
+              </div>
+
+              {/* CPU マナ */}
+              <div style={styles.mobileCpuManaSection}>
+                <span style={styles.mobileCpuManaCount}>
+                  ⚡<strong>{cpuMana.toFixed(1)}</strong>
+                </span>
+                <div style={styles.mobileCpuManaBarBg}>
+                  <div
+                    style={{
+                      ...styles.cpuManaBarFill,
+                      width: `${(cpuMana / maxMana) * 100}%`,
+                    }}
+                  />
+                  <div style={styles.manaTicks}>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((tick) => (
+                      <div key={tick} style={styles.manaTick} />
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1076,6 +1100,29 @@ export default function RealtimeDemoPage() {
               </div>
             </div>
 
+            {/* 相手CPUマナゲージ行 */}
+            <div style={styles.sideCpuManaRow}>
+              <div style={styles.manaInfo}>
+                <span style={styles.cpuManaTitle}>⚡ マナ</span>
+                <span style={styles.cpuManaCount}>
+                  <strong>{cpuMana.toFixed(1)}</strong> / {maxMana}
+                </span>
+              </div>
+              <div style={styles.sideCpuManaBarBg}>
+                <div
+                  style={{
+                    ...styles.cpuManaBarFill,
+                    width: `${(cpuMana / maxMana) * 100}%`,
+                  }}
+                />
+                <div style={styles.manaTicks}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((tick) => (
+                    <div key={tick} style={styles.manaTick} />
+                  ))}
+                </div>
+              </div>
+            </div>
+
             <div style={styles.sideControlRow}>
               {/* マナ回復速度セレクター */}
               <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
@@ -1125,6 +1172,13 @@ export default function RealtimeDemoPage() {
           <div style={styles.sidePanelContent}>
             {activeTab === 'tips' ? (
               <div style={styles.tipsSection}>
+                <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>⚡ CPUマナの読み合いとカウンター</div>
+                  <div style={styles.tipText}>
+                    相手（CPU）もプレイヤーと同条件でマナ（最大10）を蓄積・消費します。相手が大型ユニット（ドラゴン等）を出して<strong>マナが枯渇した直後</strong>は絶好のカウンターチャンスです！
+                  </div>
+                </div>
+
                 <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>🐢 隊列と前線維持</div>
                   <div style={styles.tipText}>
@@ -1765,6 +1819,59 @@ const styles: Record<string, React.CSSProperties> = {
     gap: '6px',
     flexShrink: 0,
   },
+  mobileCpuStatusGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    flex: 1,
+    minWidth: 0,
+  },
+  mobileCpuHpSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    flex: '1 1 auto',
+    minWidth: 0,
+    maxWidth: '120px',
+  },
+  mobileCpuName: {
+    fontWeight: 'bold',
+    fontSize: '11px',
+    color: '#cbd5e1',
+    whiteSpace: 'nowrap',
+  },
+  mobileCpuHpBarBg: {
+    flex: 1,
+    height: '14px',
+    backgroundColor: '#030712',
+    borderRadius: '7px',
+    overflow: 'hidden',
+    position: 'relative',
+    border: '1px solid #374151',
+  },
+  mobileCpuManaSection: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '4px',
+    flex: '1 1 auto',
+    minWidth: 0,
+    maxWidth: '120px',
+  },
+  mobileCpuManaCount: {
+    color: '#c084fc',
+    fontSize: '11px',
+    fontWeight: '600',
+    whiteSpace: 'nowrap',
+  },
+  mobileCpuManaBarBg: {
+    flex: 1,
+    height: '14px',
+    backgroundColor: '#030712',
+    borderRadius: '7px',
+    overflow: 'hidden',
+    position: 'relative',
+    border: '1px solid #7c3aed',
+  },
   playerInfo: {
     display: 'flex',
     alignItems: 'center',
@@ -2049,6 +2156,12 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     backgroundColor: '#3b82f6',
     boxShadow: '0 0 8px rgba(59, 130, 246, 0.8)',
+    transition: 'width 0.08s linear',
+  },
+  cpuManaBarFill: {
+    height: '100%',
+    backgroundColor: '#a855f7',
+    boxShadow: '0 0 8px rgba(168, 85, 247, 0.8)',
     transition: 'width 0.08s linear',
   },
   manaTicks: {
@@ -2341,6 +2454,34 @@ const styles: Record<string, React.CSSProperties> = {
     overflow: 'hidden',
     position: 'relative',
     border: '1px solid #374151',
+  },
+  sideCpuManaRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+    gap: '8px',
+  },
+  cpuManaTitle: {
+    color: '#cbd5e1',
+    fontWeight: '500',
+    fontSize: '11px',
+  },
+  cpuManaCount: {
+    color: '#c084fc',
+    fontSize: '12px',
+    whiteSpace: 'nowrap',
+  },
+  sideCpuManaBarBg: {
+    flex: 1,
+    maxWidth: '160px',
+    minWidth: '70px',
+    height: '14px',
+    backgroundColor: '#030712',
+    borderRadius: '7px',
+    overflow: 'hidden',
+    position: 'relative',
+    border: '1px solid #7c3aed',
   },
   sideControlRow: {
     display: 'flex',
