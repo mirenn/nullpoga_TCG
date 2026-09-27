@@ -40,6 +40,7 @@ export interface Unit {
   lastAttackEffectTime?: number; // エフェクト描画用
   isCounterDeploy?: boolean; // カウンターデプロイバフ適用中
   comboCount?: number; // コンボボーナス段階 (2=2コンボ, 3=3コンボ)
+  isSprinting?: boolean; // 敵不在レーン疾走中（3倍速）
 }
 
 export interface SpellEffect {

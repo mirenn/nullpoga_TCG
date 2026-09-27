@@ -1371,6 +1371,13 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🥷 忍びアサシンの無人レーン急襲</div>
+                  <div style={styles.tipText}>
+                    敵がいないレーンでは<strong>移動速度が3倍（超高速）</strong>に跳ね上がります！相手が他レーンに夢中になっている隙に拠点を急襲しましょう。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>☄️ 迎撃スペルの使いどころ</div>
                   <div style={styles.tipText}>
                     迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン3ダメ）で迎撃しましょう。
@@ -1734,6 +1741,9 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 
 // ユニット描画サブコンポーネント
 function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: boolean }) {
+  if (unit.attackCooldown > 0) {
+    console.log(`[RENDER] ${unit.name} (${unit.owner}) attackCooldown = ${unit.attackCooldown}`);
+  }
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
@@ -1756,6 +1766,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
     <div
       data-unit-id={unit.id}
       data-card-no={unit.cardNo}
+      data-cooldown={unit.attackCooldown}
+      data-interval={unit.attackInterval}
       style={{
         ...styles.unitWrapper,
         top: `${unit.y}%`,
@@ -1784,6 +1796,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
             ? '0 0 12px #ea580c'
             : isStunned
             ? '0 0 10px #eab308'
+            : unit.isSprinting
+            ? '0 0 14px #06b6d4, 0 0 20px #0284c7'
             : unit.isCharging
             ? '0 0 14px #38bdf8, 0 0 20px #facc15'
             : isPlayer
@@ -1806,6 +1820,7 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
 
         {/* 状態異常・バフ表示 */}
         {isStunned && <span style={styles.statusStun}>⚡麻痺</span>}
+        {unit.isSprinting && !isStunned && <span style={styles.statusSprint}>💨3x速</span>}
         {hasBuff && <span style={styles.statusBuff}>⚔️+{unit.attack - 1}</span>}
       </div>
 
@@ -1813,6 +1828,9 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
       <div style={styles.unitBadges}>
         <span style={styles.unitAtkBadge}>{unit.attack}</span>
         <span style={styles.unitHpBadge}>{unit.hp}</span>
+        {unit.isSprinting && (
+          <span style={{ fontSize: '9px', backgroundColor: '#06b6d4', color: '#fff', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title="敵不在レーン3倍速疾走！">💨</span>
+        )}
         {unit.isCounterDeploy && (
           <span style={{ fontSize: '9px', backgroundColor: '#6366f1', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title="カウンターデプロイ">⚔️</span>
         )}
@@ -2401,6 +2419,16 @@ const styles: Record<string, React.CSSProperties> = {
     top: '-11px',
     fontSize: '8px',
     backgroundColor: '#eab308',
+    color: '#000',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    fontWeight: 'bold',
+  },
+  statusSprint: {
+    position: 'absolute',
+    top: '-11px',
+    fontSize: '8px',
+    backgroundColor: '#06b6d4',
     color: '#000',
     padding: '1px 3px',
     borderRadius: '2px',

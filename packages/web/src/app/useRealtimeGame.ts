@@ -90,6 +90,20 @@ export const CARD_POOL: DemoCard[] = [
     icon: '🐗',
   },
   {
+    id: 'assassin',
+    cardNo: 8,
+    name: '忍びアサシン',
+    type: 'MONSTER',
+    manaCost: 2,
+    attack: 2,
+    life: 2,
+    speed: 5, // 通常速度5（敵不在時は3倍速の15）
+    range: 9, // 近接接触
+    attackInterval: 1.0,
+    effectDesc: '敵がいないレーンを走ると移動速度が3倍（超高速）になる。奇襲やスプリットプッシュに特化。',
+    icon: '🥷',
+  },
+  {
     id: 'dragon',
     cardNo: 11,
     name: '炎のドラゴン',
@@ -179,11 +193,12 @@ export const createDefault15Deck = (): DemoCard[] => {
   });
   return [
     cardMap['mouse'], cardMap['haste_spell'],
-    cardMap['cat'], cardMap['cat'],
+    cardMap['cat'],
     cardMap['shiba'], cardMap['shiba'],
     cardMap['turtle'], cardMap['heal_spell'],
     cardMap['jellyfish'], cardMap['jellyfish'],
-    cardMap['boar'], cardMap['boar'],
+    cardMap['assassin'], cardMap['assassin'],
+    cardMap['boar'],
     cardMap['dragon'],
     cardMap['meteor'],
     cardMap['fire_spell'],
@@ -645,11 +660,29 @@ export function useRealtimeGame() {
         // レーンごとにスコア付け
         validMonsterLanes.forEach((lane) => {
           let score = 5;
-          // 敵が多いレーンは迎撃として高評価
-          score += lanePlayerCounts[lane] * 4;
-          // 敵が自陣に迫っているレーンは緊急迎撃
-          const closeCount = lanePlayerCloseUnits[lane].count;
-          score += closeCount * 5;
+
+          if (card.cardNo === 8) {
+            // 忍びアサシン: 敵がいないレーンを最優先で狙う（奇襲・スプリットプッシュ）
+            if (lanePlayerCounts[lane] === 0) {
+              score += 18; // ガラ空きレーンへの奇襲特大ボーナス！
+            } else {
+              score -= 8; // 敵がいるレーンへは出撃を避ける
+            }
+          } else {
+            // 通常ユニット: 敵が多いレーンは迎撃として高評価
+            score += lanePlayerCounts[lane] * 4;
+            // 敵が自陣に迫っているレーンは緊急迎撃
+            const closeCount = lanePlayerCloseUnits[lane].count;
+            score += closeCount * 5;
+
+            // プレイヤーの忍びアサシンが走っているレーンがあれば最優先で迎撃を試みる
+            const hasEnemyAssassin = unitsRef.current.some(
+              (u) => u.owner === 'player' && u.lane === lane && u.cardNo === 8 && u.hp > 0
+            );
+            if (hasEnemyAssassin) {
+              score += 12; // アサシンを迎撃して阻止！
+            }
+          }
 
           // ランダム性を少し付与して展開を多様化
           score += Math.random() * 3;
@@ -1170,8 +1203,12 @@ export function useRealtimeGame() {
             return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
           }
 
+          // 忍びアサシン（cardNo: 8）：同一レーンに対向敵がいない場合は移動速度が3倍（超高速疾走）
+          const isSprinting = unit.cardNo === 8 && enemiesInLane.length === 0;
+
           // 移動計算
-          const moveDelta = unit.speed * MOVE_SPEED_SCALE * dt;
+          const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
+          const moveDelta = currentSpeed * MOVE_SPEED_SCALE * dt;
           if (unit.owner === 'player') {
             let maxYMove = y - moveDelta;
             if (targetEnemy) {
@@ -1210,6 +1247,7 @@ export function useRealtimeGame() {
             attackCooldown: cooldown,
             isCharging: false,
             chargeStartTime: undefined,
+            isSprinting,
           };
         });
 
