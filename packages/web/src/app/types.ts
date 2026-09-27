@@ -11,7 +11,7 @@ export interface DemoCard {
   speed?: number; // 前進速度 (レーン全体の% / 秒)
   range?: number; // 射程 (%単位)
   attackInterval?: number; // 攻撃間隔・クールダウン (秒)
-  attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 0.1)
+  attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 0.4)
   effectDesc: string;
   icon: string;
 }

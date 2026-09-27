@@ -783,6 +783,7 @@ export default function RealtimeDemoPage() {
               return (
                 <div
                   key={laneIndex}
+                  data-lane-index={laneIndex}
                   onClick={() => playCardOnLane(laneIndex)}
                   onDragOver={(e) => handleLaneDragOver(e, laneIndex)}
                   onDragEnter={(e) => {
@@ -1332,6 +1333,16 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>⏱️ 円形リロードリング（攻撃の隙を突く）</div>
+                  <div style={styles.tipText}>
+                    各ユニットの周囲の円形枠は<strong>攻撃クールダウン（リロード時間）</strong>を示しています。<br />
+                    ・<strong>時計回りにチャージ中</strong>：攻撃後の隙（リロード中）<br />
+                    ・<strong>リングが発光（満タン）</strong>：攻撃可能（Ready状態）<br />
+                    敵のユニットが攻撃を放った<strong>直後の隙（ゲージが空の瞬間）</strong>を狙ってカウンターを差し込みましょう！
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>🐢 隊列と前線維持</div>
                   <div style={styles.tipText}>
                     耐久7の<strong>亀吉</strong>を壁にし、後ろから<strong>猫</strong>や<strong>クラゲ</strong>を流すと前線が崩れません。
@@ -1584,6 +1595,143 @@ export default function RealtimeDemoPage() {
   );
 }
 
+const COOLDOWN_RING_RADIUS = 16.5;
+const COOLDOWN_RING_CIRCUMFERENCE = 2 * Math.PI * COOLDOWN_RING_RADIUS; // ~103.67
+
+interface UnitCooldownRingProps {
+  unit: Unit;
+  isPlayer: boolean;
+  isStunned: boolean;
+  isBlockingSpawn?: boolean;
+}
+
+/**
+ * ユニットの攻撃クールダウン（リロード時間）を円形枠のプログレスリングとして可視化する
+ */
+function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCooldownRingProps) {
+  // 攻撃力0のユニット（亀など盾役）は専用の防御フレーム（リロードゲージ不要）
+  if (unit.attack === 0) {
+    const shieldColor = isBlockingSpawn ? '#ea580c' : isPlayer ? '#10b981' : '#f59e0b';
+    return (
+      <svg
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '36px',
+          height: '36px',
+          pointerEvents: 'none',
+          overflow: 'visible',
+          zIndex: 2,
+        }}
+        viewBox="0 0 36 36"
+      >
+        <circle
+          cx="18"
+          cy="18"
+          r={COOLDOWN_RING_RADIUS}
+          fill="none"
+          stroke={shieldColor}
+          strokeWidth="2.5"
+          style={{
+            filter: `drop-shadow(0 0 3px ${shieldColor})`,
+          }}
+        />
+      </svg>
+    );
+  }
+
+  const interval = unit.attackInterval || 1.0;
+  const cooldown = Math.max(0, unit.attackCooldown || 0);
+  // 0 (攻撃直後) 〜 1 (Ready)
+  const progress = interval > 0 ? Math.min(1, Math.max(0, 1 - cooldown / interval)) : 1;
+  const isReady = progress >= 0.999;
+  const isCharging = Boolean(unit.isCharging);
+
+  // トラック（未チャージ・下地）の色
+  let trackColor = isPlayer ? 'rgba(59, 130, 246, 0.22)' : 'rgba(239, 68, 68, 0.22)';
+  if (isBlockingSpawn) trackColor = 'rgba(234, 88, 12, 0.25)';
+  if (isStunned) trackColor = 'rgba(234, 179, 8, 0.2)';
+
+  // ゲージの色
+  let gaugeColor = isPlayer ? '#60a5fa' : '#f87171';
+  let glowColor = isPlayer ? 'rgba(56, 189, 248, 0.9)' : 'rgba(239, 68, 68, 0.9)';
+
+  if (isBlockingSpawn) {
+    gaugeColor = '#ea580c';
+    glowColor = '#ea580c';
+  } else if (isStunned) {
+    gaugeColor = '#eab308';
+    glowColor = '#eab308';
+  } else if (isCharging) {
+    gaugeColor = '#facc15';
+    glowColor = '#facc15';
+  } else if (isReady) {
+    gaugeColor = isPlayer ? '#38bdf8' : '#ef4444';
+  }
+
+  const strokeDashoffset = COOLDOWN_RING_CIRCUMFERENCE * (1 - progress);
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '36px',
+        height: '36px',
+        pointerEvents: 'none',
+        overflow: 'visible',
+        zIndex: 2,
+      }}
+      viewBox="0 0 36 36"
+    >
+      {/* ベース下地リング（円形の輪郭を常に保持） */}
+      <circle
+        cx="18"
+        cy="18"
+        r={COOLDOWN_RING_RADIUS}
+        fill="none"
+        stroke={trackColor}
+        strokeWidth="2.5"
+      />
+
+      {/* 状態に応じたゲージ表示 */}
+      {isStunned ? (
+        // 麻痺中は破線で停止を表現
+        <circle
+          cx="18"
+          cy="18"
+          r={COOLDOWN_RING_RADIUS}
+          fill="none"
+          stroke={gaugeColor}
+          strokeWidth="2.5"
+          strokeDasharray="4 3"
+          style={{ filter: `drop-shadow(0 0 4px ${glowColor})` }}
+        />
+      ) : (
+        // クールダウン進行ゲージ（上部12時から時計回りに満ちる）
+        <circle
+          cx="18"
+          cy="18"
+          r={COOLDOWN_RING_RADIUS}
+          fill="none"
+          stroke={gaugeColor}
+          strokeWidth={isReady || isCharging ? 2.8 : 2.5}
+          strokeDasharray={COOLDOWN_RING_CIRCUMFERENCE}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform="rotate(-90 18 18)"
+          style={{
+            filter: (isReady || isCharging || isBlockingSpawn) ? `drop-shadow(0 0 4px ${glowColor})` : undefined,
+            transition: 'stroke-dashoffset 0.05s linear',
+          }}
+        />
+      )}
+    </svg>
+  );
+}
+
 // ユニット描画サブコンポーネント
 function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: boolean }) {
   const isPlayer = unit.owner === 'player';
@@ -1630,11 +1778,7 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
         className={attackClass}
         style={{
           ...styles.unitBody,
-          borderColor: isBlockingSpawn
-            ? '#ea580c'
-            : isPlayer
-            ? '#3b82f6'
-            : '#ef4444',
+          border: 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
           boxShadow: isBlockingSpawn
             ? '0 0 12px #ea580c'
@@ -1649,6 +1793,14 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
           overflow: hasSvg ? 'visible' : undefined,
         }}
       >
+        {/* 円形攻撃クールダウンゲージ（リロードリング） */}
+        <UnitCooldownRing
+          unit={unit}
+          isPlayer={isPlayer}
+          isStunned={isStunned}
+          isBlockingSpawn={isBlockingSpawn}
+        />
+
         {/* SVG コンポーネント or 絵文字フォールバック */}
         {svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>}
 
@@ -2234,7 +2386,7 @@ const styles: Record<string, React.CSSProperties> = {
     width: '36px',
     height: '36px',
     borderRadius: '50%',
-    border: '2px solid',
+    border: 'none',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
