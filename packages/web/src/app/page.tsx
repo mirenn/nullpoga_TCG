@@ -32,6 +32,8 @@ export default function RealtimeDemoPage() {
     checkCanPlayCard,
     playCardOnLane,
     resetGame,
+    comboCount,
+    lastComboTime,
   } = useRealtimeGame();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -42,6 +44,20 @@ export default function RealtimeDemoPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverLaneIndex, setDragOverLaneIndex] = useState<number | null>(null);
   const [spawnRippleLane, setSpawnRippleLane] = useState<number | null>(null);
+
+  const [displayCombo, setDisplayCombo] = useState<{ count: number; visible: boolean }>({ count: 0, visible: false });
+
+  useEffect(() => {
+    if (comboCount > 1) {
+      setDisplayCombo({ count: comboCount, visible: true });
+      const timer = setTimeout(() => {
+        setDisplayCombo((prev) => ({ ...prev, visible: false }));
+      }, 2000);
+      return () => clearTimeout(timer);
+    } else {
+      setDisplayCombo((prev) => ({ ...prev, visible: false }));
+    }
+  }, [comboCount, lastComboTime]);
 
   const selectedCard = selectedCardIndex !== null ? hand[selectedCardIndex] : null;
   const activeDraggedCard = draggedCardIndex !== null ? hand[draggedCardIndex] : null;
@@ -1028,6 +1044,25 @@ export default function RealtimeDemoPage() {
                 <span style={styles.manaCount}>
                   <strong>{playerMana.toFixed(1)}</strong> / {maxMana}
                 </span>
+                {/* コンボ表示 */}
+                <div
+                  style={{
+                    marginLeft: '12px',
+                    color: '#f97316',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    textShadow: '0 0 8px #ea580c, 0 0 16px #f97316',
+                    opacity: displayCombo.visible ? 1 : 0,
+                    transform: displayCombo.visible ? 'scale(1)' : 'scale(0.8)',
+                    transition: 'all 0.2s ease-out',
+                    pointerEvents: 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                  }}
+                >
+                  {displayCombo.count >= 3 ? '🔥🔥 ' : '🔥 '}
+                  {displayCombo.count} COMBO!
+                </div>
               </div>
               <div style={styles.manaBarBg}>
                 <div
@@ -1626,6 +1661,12 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
       <div style={styles.unitBadges}>
         <span style={styles.unitAtkBadge}>{unit.attack}</span>
         <span style={styles.unitHpBadge}>{unit.hp}</span>
+        {unit.isCounterDeploy && (
+          <span style={{ fontSize: '9px', backgroundColor: '#6366f1', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title="カウンターデプロイ">⚔️</span>
+        )}
+        {unit.comboCount && unit.comboCount > 1 && (
+          <span style={{ fontSize: '9px', backgroundColor: '#ea580c', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title={`${unit.comboCount}コンボボーナス`}>🔥</span>
+        )}
       </div>
 
       {/* 出撃スペース塞ぎ中の前進待ちインジケーター */}

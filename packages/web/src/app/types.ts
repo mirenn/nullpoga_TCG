@@ -38,6 +38,8 @@ export interface Unit {
   isStunned?: boolean;
   distanceTraveled?: number; // 移動距離（柴犬のバフ用）
   lastAttackEffectTime?: number; // エフェクト描画用
+  isCounterDeploy?: boolean; // カウンターデプロイバフ適用中
+  comboCount?: number; // コンボボーナス段階 (2=2コンボ, 3=3コンボ)
 }
 
 export interface SpellEffect {
@@ -70,5 +72,6 @@ export interface CpuSpawnWarning {
   card: DemoCard;
   startTime: number;
   durationMs: number;
+  comboCount?: number;
 }
 

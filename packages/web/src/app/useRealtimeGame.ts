@@ -272,6 +272,14 @@ export function useRealtimeGame() {
   const manaTimerRef = useRef<number>(0);
   const manaRegenRateRef = useRef<number>(manaRegenRate);
 
+  // コンボ・カウンターデプロイ用
+  const cpuSpawnTimestampsRef = useRef<{ lane: number; time: number }[]>([]);
+  const playerSpawnTimestampsRef = useRef<{ lane: number; time: number }[]>([]);
+  
+  const [playerCombo, setPlayerCombo] = useState<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
+  const playerComboRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
+  const cpuComboRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
+
   useEffect(() => {
     manaRegenRateRef.current = manaRegenRate;
   }, [manaRegenRate]);
@@ -431,7 +439,42 @@ export function useRealtimeGame() {
       // マナ消費
       setPlayerMana((m) => Math.max(0, m - card.manaCost));
 
+      const now = Date.now();
+      // コンボ判定 (Player)
+      let newComboCount = 1;
+      if (now - playerComboRef.current.lastTime <= 2000) {
+        newComboCount = playerComboRef.current.count + 1;
+      }
+      const newCombo = { count: newComboCount, lastTime: now };
+      playerComboRef.current = newCombo;
+      setPlayerCombo(newCombo);
+
       if (card.type === 'MONSTER') {
+        // カウンターデプロイ判定 (Player)
+        let isCounterDeploy = false;
+        const recentCpuSpawn = cpuSpawnTimestampsRef.current.find(
+          (s) => s.lane === laneIndex && now - s.time <= 1500
+        );
+        if (recentCpuSpawn) {
+          isCounterDeploy = true;
+        }
+
+        let comboBonusHp = 0;
+        let comboBonusAtk = 0;
+        if (newComboCount >= 2) comboBonusHp += 1;
+        if (newComboCount >= 3) comboBonusAtk += 1;
+
+        let counterBonusAtk = 0;
+        let counterBonusInterval = 0;
+        if (isCounterDeploy) {
+          counterBonusAtk += 1;
+          counterBonusInterval = 0.2;
+        }
+
+        // スポーン記録
+        playerSpawnTimestampsRef.current.push({ lane: laneIndex, time: now });
+        playerSpawnTimestampsRef.current = playerSpawnTimestampsRef.current.filter(s => now - s.time <= 3000);
+
         // 自陣最奥（y=95）にユニット召喚
         const newUnit: Unit = {
           id: `player_${Date.now()}_${Math.random()}`,
@@ -440,18 +483,20 @@ export function useRealtimeGame() {
           owner: 'player',
           lane: laneIndex,
           y: 95,
-          maxHp: card.life || 1,
-          hp: card.life || 1,
-          attack: card.attack || 1,
+          maxHp: (card.life || 1) + comboBonusHp,
+          hp: (card.life || 1) + comboBonusHp,
+          attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk,
           speed: card.speed || 10,
           range: card.range || 3,
           attackCooldown: 0,
-          attackInterval: card.attackInterval ?? 1.0,
+          attackInterval: Math.max(0.1, (card.attackInterval ?? 1.0) - counterBonusInterval),
           attackWindup: card.attackWindup ?? 0,
           isCharging: false,
           chargeStartTime: undefined,
           icon: card.icon,
           distanceTraveled: 0,
+          isCounterDeploy: isCounterDeploy,
+          comboCount: newComboCount > 1 ? newComboCount : undefined,
         };
         const next = [...unitsRef.current, newUnit];
         unitsRef.current = next;
@@ -693,6 +738,13 @@ export function useRealtimeGame() {
     cpuDrawCardAfterPlay(chosen.handIndex, chosen.card);
 
     // 3. アクション実行
+    const now = Date.now();
+    let newComboCount = 1;
+    if (now - cpuComboRef.current.lastTime <= 2000) {
+      newComboCount = cpuComboRef.current.count + 1;
+    }
+    cpuComboRef.current = { count: newComboCount, lastTime: now };
+
     if (chosen.card.type === 'MONSTER' && chosen.targetLane !== undefined) {
       // 召喚予兆（0.65秒の詠唱インジケーター）
       const warning: CpuSpawnWarning = {
@@ -701,6 +753,7 @@ export function useRealtimeGame() {
         card: chosen.card,
         startTime: Date.now(),
         durationMs: 650,
+        comboCount: newComboCount,
       };
       setCpuSpawnWarnings((prev) => [...prev, warning]);
     } else if (chosen.card.type === 'SPELL') {
@@ -810,26 +863,57 @@ export function useRealtimeGame() {
             }
           }
           if (spawningWarnings.length > 0) {
-            spawnedCpuUnits = spawningWarnings.map((w) => ({
-              id: `cpu_${Date.now()}_${Math.random()}`,
-              cardNo: w.card.cardNo,
-              name: w.card.name,
-              owner: 'cpu' as const,
-              lane: w.lane,
-              y: 5, // CPU最奥からスタート
-              maxHp: w.card.life || 1,
-              hp: w.card.life || 1,
-              attack: w.card.attack || 1,
-              speed: w.card.speed || 10,
-              range: w.card.range || 3,
-              attackCooldown: 0,
-              attackInterval: w.card.attackInterval ?? 1.0,
-              attackWindup: w.card.attackWindup ?? 0,
-              isCharging: false,
-              chargeStartTime: undefined,
-              icon: w.card.icon,
-              distanceTraveled: 0,
-            }));
+            spawnedCpuUnits = spawningWarnings.map((w) => {
+              // カウンターデプロイ判定 (CPU)
+              let isCounterDeploy = false;
+              const recentPlayerSpawn = playerSpawnTimestampsRef.current.find(
+                (s) => s.lane === w.lane && now - s.time <= 1500
+              );
+              if (recentPlayerSpawn) {
+                isCounterDeploy = true;
+              }
+
+              const comboCount = w.comboCount || 1;
+              let comboBonusHp = 0;
+              let comboBonusAtk = 0;
+              if (comboCount >= 2) comboBonusHp += 1;
+              if (comboCount >= 3) comboBonusAtk += 1;
+
+              let counterBonusAtk = 0;
+              let counterBonusInterval = 0;
+              if (isCounterDeploy) {
+                counterBonusAtk += 1;
+                counterBonusInterval = 0.2;
+              }
+
+              // スポーン記録
+              cpuSpawnTimestampsRef.current.push({ lane: w.lane, time: now });
+              
+              return {
+                id: `cpu_${Date.now()}_${Math.random()}`,
+                cardNo: w.card.cardNo,
+                name: w.card.name,
+                owner: 'cpu' as const,
+                lane: w.lane,
+                y: 5, // CPU最奥からスタート
+                maxHp: (w.card.life || 1) + comboBonusHp,
+                hp: (w.card.life || 1) + comboBonusHp,
+                attack: (w.card.attack || 1) + comboBonusAtk + counterBonusAtk,
+                speed: w.card.speed || 10,
+                range: w.card.range || 3,
+                attackCooldown: 0,
+                attackInterval: Math.max(0.1, (w.card.attackInterval ?? 1.0) - counterBonusInterval),
+                attackWindup: w.card.attackWindup ?? 0,
+                isCharging: false,
+                chargeStartTime: undefined,
+                icon: w.card.icon,
+                distanceTraveled: 0,
+                isCounterDeploy: isCounterDeploy,
+                comboCount: comboCount > 1 ? comboCount : undefined,
+              };
+            });
+            // クリーンアップ
+            cpuSpawnTimestampsRef.current = cpuSpawnTimestampsRef.current.filter(s => now - s.time <= 3000);
           }
           if (stillWarnings.length !== currentWarnings.length) {
             cpuSpawnWarningsRef.current = stillWarnings;
@@ -1223,6 +1307,11 @@ export function useRealtimeGame() {
     setCpuDeckState(initDeckState());
     setCpuSpawnWarnings([]);
     cpuSpawnWarningsRef.current = [];
+    cpuSpawnTimestampsRef.current = [];
+    playerSpawnTimestampsRef.current = [];
+    playerComboRef.current = { count: 0, lastTime: 0 };
+    cpuComboRef.current = { count: 0, lastTime: 0 };
+    setPlayerCombo({ count: 0, lastTime: 0 });
   }, []);
 
   return {
@@ -1251,5 +1340,7 @@ export function useRealtimeGame() {
     checkCanPlayCard,
     playCardOnLane,
     resetGame,
+    comboCount: playerCombo.count,
+    lastComboTime: playerCombo.lastTime,
   };
 }
