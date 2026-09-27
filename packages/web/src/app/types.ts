@@ -10,6 +10,7 @@ export interface DemoCard {
   life?: number;
   speed?: number; // 前進速度 (レーン全体の% / 秒)
   range?: number; // 射程 (%単位)
+  attackInterval?: number; // 攻撃間隔・クールダウン (秒)
   effectDesc: string;
   icon: string;
 }

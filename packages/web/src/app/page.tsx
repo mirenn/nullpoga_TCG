@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
 import { Unit, AttackEffect } from './types';
 import { UnitSvgRenderer, deriveAnimationState } from '../components/units/UnitSvgRenderer';
+import { LightningImpactSvg } from '../components/effects/LightningImpactSvg';
 
 export default function RealtimeDemoPage() {
   const {
@@ -384,50 +385,52 @@ export default function RealtimeDemoPage() {
           animation: fire-stream-flicker 0.5s ease-out forwards;
         }
 
-        /* 電気クラゲ: 着弾地点のバチバチ放電スパーク */
+        /* 電気クラゲ: 着弾地点のバチバチ放電スパーク（ユニットサイズにフィットし、レーン枠をはみ出さない） */
         @keyframes lightning-impact-anim {
           0% {
-            transform: translate(-50%, -50%) scale(0.3) rotate(0deg);
+            transform: translate(-50%, -50%) scale(0.35) rotate(-10deg);
             opacity: 0;
           }
-          20% {
-            transform: translate(-50%, -50%) scale(1.6) rotate(-20deg);
+          15% {
+            transform: translate(-50%, -50%) scale(1.15) rotate(6deg);
             opacity: 1;
-            filter: drop-shadow(0 0 20px #38bdf8);
+            filter: drop-shadow(0 0 10px #38bdf8) drop-shadow(0 0 14px #facc15);
           }
-          50% {
-            transform: translate(-50%, -50%) scale(2.0) rotate(15deg);
+          40% {
+            transform: translate(-50%, -50%) scale(1.0) rotate(-4deg);
             opacity: 1;
-            filter: drop-shadow(0 0 28px #eab308);
+            filter: drop-shadow(0 0 12px #38bdf8) drop-shadow(0 0 16px #facc15);
           }
-          80% {
-            transform: translate(-50%, -50%) scale(1.7) rotate(-10deg);
-            opacity: 0.9;
+          70% {
+            transform: translate(-50%, -50%) scale(1.05) rotate(3deg);
+            opacity: 0.85;
           }
           100% {
-            transform: translate(-50%, -50%) scale(2.4) rotate(30deg);
+            transform: translate(-50%, -50%) scale(0.7) rotate(-5deg);
             opacity: 0;
           }
         }
         .lightning-impact-effect {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
           opacity: 0;
-          animation: lightning-impact-anim 0.5s ease-out var(--impact-delay, 0s) forwards;
+          pointer-events: none;
+          animation: lightning-impact-anim 0.38s ease-out var(--impact-delay, 0s) forwards;
         }
         @keyframes shockwave-pulse-cyan {
           0% {
-            width: 10px;
-            height: 10px;
-            opacity: 0;
-            border-width: 4px;
-          }
-          1% {
-            opacity: 1;
+            width: 8px;
+            height: 8px;
+            opacity: 0.9;
+            border-width: 3px;
           }
           100% {
-            width: 72px;
-            height: 72px;
+            width: 50px;
+            height: 50px;
             opacity: 0;
-            border-width: 1px;
+            border-width: 1.5px;
           }
         }
         .shockwave-ring-cyan {
@@ -436,11 +439,11 @@ export default function RealtimeDemoPage() {
           left: 50%;
           transform: translate(-50%, -50%);
           border-radius: 50%;
-          border: 3px solid #38bdf8;
-          box-shadow: 0 0 16px #38bdf8;
+          border: 2px solid #38bdf8;
+          box-shadow: 0 0 12px #38bdf8;
           pointer-events: none;
           opacity: 0;
-          animation: shockwave-pulse-cyan 0.45s ease-out var(--impact-delay, 0s) forwards;
+          animation: shockwave-pulse-cyan 0.38s ease-out var(--impact-delay, 0s) forwards;
         }
 
         /* 近接攻撃: 斬撃・爪痕・打撃 */
@@ -1024,7 +1027,7 @@ export default function RealtimeDemoPage() {
                     {/* カード下部：攻防ステータス / スペル表記 */}
                     <div style={styles.cardFooter}>
                       {card.type === 'MONSTER' ? (
-                        <div style={styles.cardStats}>
+                        <div style={styles.cardStats} title={`攻撃力: ${card.attack} / HP: ${card.life} / 移動速度: ${card.speed} / 攻撃間隔: ${card.attackInterval ?? 1.0}s`}>
                           <span style={styles.cardAtk} title="攻撃力">⚔️{card.attack}</span>
                           <span style={styles.cardHp} title="HP">❤️{card.life}</span>
                           <span style={styles.cardSpeed} className="card-speed-badge" title="移動速度">🏃{card.speed}</span>
@@ -1211,6 +1214,7 @@ export default function RealtimeDemoPage() {
                             <span>❤️ {c.life}</span>
                             <span>🏃 {c.speed}</span>
                             <span>🎯 {c.range}%</span>
+                            <span title="攻撃間隔">⏱️ {c.attackInterval ?? 1.0}s</span>
                           </>
                         ) : (
                           <span style={{ color: '#f97316' }}>スペル（呪文）</span>
@@ -1327,6 +1331,7 @@ export default function RealtimeDemoPage() {
                             <span>❤️ {c.life}</span>
                             <span>🏃 {c.speed}</span>
                             <span>🎯 {c.range}%</span>
+                            <span title="攻撃間隔">⏱️ {c.attackInterval ?? 1.0}s</span>
                           </div>
                         )}
                         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
@@ -1594,9 +1599,7 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
           >
             <div className="shockwave-ring-cyan" />
             <div className="lightning-impact-effect">
-              <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
-                ⚡💥⚡
-              </span>
+              <LightningImpactSvg size={44} />
             </div>
           </div>
         </>

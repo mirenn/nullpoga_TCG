@@ -14,6 +14,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 1,
     speed: 8, // 高速ダッシュ型アタッカー（旧16から調整）
     range: 9, // 近接接触
+    attackInterval: 1.0,
     effectDesc: '足が速い低コストアタッカー。奇襲や時間稼ぎに。',
     icon: '🐭',
   },
@@ -27,6 +28,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 5, // 標準歩兵ペース（旧10から調整）
     range: 9,
+    attackInterval: 1.0,
     effectDesc: 'バランスの取れた標準的な歩兵ユニット。',
     icon: '🐱',
   },
@@ -40,6 +42,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 5, // じっくり前進（旧10から調整）
     range: 9,
+    attackInterval: 1.0,
     effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。',
     icon: '🐕',
   },
@@ -53,6 +56,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 7,
     speed: 2.5, // 重装タンク歩行（旧4から調整）
     range: 8,
+    attackInterval: 1.0,
     effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。',
     icon: '🐢',
   },
@@ -66,6 +70,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 3.5, // 後方支援ペース
     range: 28, // 長距離放電（旧12から大幅拡大：遠くから雷撃）
+    attackInterval: 1.7, // 攻撃間隔1.7秒（スタン1.2秒との間に隙を作りバランス調整）
     effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。',
     icon: '🪼',
   },
@@ -79,6 +84,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 7, // 突破突進（旧13から調整）
     range: 9,
+    attackInterval: 1.0,
     effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。攻撃ヒット時に相手をノックバックさせる。',
     icon: '🐗',
   },
@@ -92,6 +98,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 8,
     speed: 3.5, // 重量級ボス
     range: 32, // 長距離火炎ブレス（旧15から大幅拡大）
+    attackInterval: 1.0,
     effectDesc: '遠距離から強烈な火炎ブレスを浴びせ、大ダメージを与える。',
     icon: '🐉',
   },
@@ -390,7 +397,7 @@ export function useRealtimeGame() {
           speed: card.speed || 10,
           range: card.range || 3,
           attackCooldown: 0,
-          attackInterval: 1.0,
+          attackInterval: card.attackInterval ?? 1.0,
           icon: card.icon,
           distanceTraveled: 0,
         };
@@ -531,7 +538,7 @@ export function useRealtimeGame() {
         speed: chosenCard.speed || 10,
         range: chosenCard.range || 3,
         attackCooldown: 0,
-        attackInterval: 1.0,
+        attackInterval: chosenCard.attackInterval ?? 1.0,
         icon: chosenCard.icon,
         distanceTraveled: 0,
       };
