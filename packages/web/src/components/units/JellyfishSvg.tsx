@@ -32,22 +32,28 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
 
   // 状態判定
   const isSwimming = state === 'idle' || state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
   const rootClass = [
     isStunned ? 'unit-svg-stunned' : '',
     isStunned ? 'jelly-stunned-glow' : '',
+    isCharging ? 'jelly-charging-root' : '',
   ].filter(Boolean).join(' ');
 
   const floatClass = isSwimming ? 'jelly-swim-float' : '';
   const bellClass = isSwimming
     ? 'jelly-swim-bell'
+    : isCharging
+    ? 'jelly-charge-bell'
     : isAttacking
     ? 'jelly-attack-bell'
     : '';
   const tentacleBaseClass = isSwimming
     ? 'jelly-swim-tentacle'
+    : isCharging
+    ? 'jelly-charge-tentacles'
     : isAttacking
     ? 'jelly-attack-tentacles'
     : '';
@@ -154,6 +160,16 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
           fill="none"
           opacity="0.5"
         />
+
+        {/* === チャージエフェクト（攻撃前隙0.1秒のエネルギー凝縮） === */}
+        {isCharging && (
+          <g className="jelly-charge-zap" filter="url(#zap-glow)">
+            {/* 傘周辺に収束する青・黄のスパーク */}
+            <circle cx="18" cy="11" r="3.5" fill="none" stroke="#38bdf8" strokeWidth="1" opacity="0.9" />
+            <path d="M12,7 L15,10 M24,7 L21,10 M18,3 L18,7" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
+            <circle cx="18" cy="11" r="1.8" fill={zapColor} opacity="0.95" />
+          </g>
+        )}
 
         {/* === 放電エフェクト（攻撃時のみ） === */}
         {isAttacking && (

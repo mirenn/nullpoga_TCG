@@ -11,6 +11,7 @@ export interface DemoCard {
   speed?: number; // 前進速度 (レーン全体の% / 秒)
   range?: number; // 射程 (%単位)
   attackInterval?: number; // 攻撃間隔・クールダウン (秒)
+  attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 0.1)
   effectDesc: string;
   icon: string;
 }
@@ -29,6 +30,9 @@ export interface Unit {
   range: number; // 射程 (%)
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
+  attackWindup?: number; // 攻撃前隙・チャージ時間 (秒)
+  isCharging?: boolean; // チャージ中か
+  chargeStartTime?: number; // チャージ開始時刻 (ms)
   icon: string;
   isStunnedUntil?: number; // タイムスタンプ
   isStunned?: boolean;

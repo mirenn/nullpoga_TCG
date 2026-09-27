@@ -1,4 +1,4 @@
-export type UnitAnimationState = 'idle' | 'walking' | 'attacking' | 'stunned';
+export type UnitAnimationState = 'idle' | 'walking' | 'charging' | 'attacking' | 'stunned';
 
 export interface UnitSvgProps {
   /** アニメーション状態 */

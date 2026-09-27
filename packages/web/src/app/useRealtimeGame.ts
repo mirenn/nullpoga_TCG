@@ -71,7 +71,8 @@ export const CARD_POOL: DemoCard[] = [
     speed: 3.5, // 後方支援ペース
     range: 28, // 長距離放電（旧12から大幅拡大：遠くから雷撃）
     attackInterval: 1.7, // 攻撃間隔1.7秒（スタン1.2秒との間に隙を作りバランス調整）
-    effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。',
+    attackWindup: 0.1, // 攻撃前隙（チャージモーション0.1秒）
+    effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。0.1秒のチャージ後に雷撃を放つ。',
     icon: '🪼',
   },
   {
@@ -398,6 +399,9 @@ export function useRealtimeGame() {
           range: card.range || 3,
           attackCooldown: 0,
           attackInterval: card.attackInterval ?? 1.0,
+          attackWindup: card.attackWindup ?? 0,
+          isCharging: false,
+          chargeStartTime: undefined,
           icon: card.icon,
           distanceTraveled: 0,
         };
@@ -539,6 +543,9 @@ export function useRealtimeGame() {
         range: chosenCard.range || 3,
         attackCooldown: 0,
         attackInterval: chosenCard.attackInterval ?? 1.0,
+        attackWindup: chosenCard.attackWindup ?? 0,
+        isCharging: false,
+        chargeStartTime: undefined,
         icon: chosenCard.icon,
         distanceTraveled: 0,
       };
@@ -649,7 +656,13 @@ export function useRealtimeGame() {
           let lastAttack = unit.lastAttackEffectTime;
 
           if (isStunned) {
-            return { ...unit, attackCooldown: cooldown };
+            return {
+              ...unit,
+              attackCooldown: cooldown,
+              isCharging: false,
+              chargeStartTime: undefined,
+              isStunned: true,
+            };
           }
 
           // 同一レーン内の対向敵を探す
@@ -684,51 +697,76 @@ export function useRealtimeGame() {
 
           // 敵が射程内にいる場合：停止して攻撃
           if (targetEnemy && minDistance <= unit.range) {
+            const windup = unit.attackWindup || 0;
+            let isCharging = unit.isCharging || false;
+            let chargeStartTime = unit.chargeStartTime;
+
             if (cooldown <= 0) {
-              cooldown = unit.attackInterval;
-              lastAttack = now;
+              if (windup > 0 && !isCharging) {
+                // AAチャージモーション開始
+                isCharging = true;
+                chargeStartTime = now;
+              } else {
+                const chargeElapsed = isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
+                if (windup === 0 || chargeElapsed >= windup) {
+                  // チャージ完了 -> 従来の攻撃・弾発射モーションへ移行
+                  isCharging = false;
+                  chargeStartTime = undefined;
+                  cooldown = unit.attackInterval;
+                  lastAttack = now;
 
-              let effectType: AttackEffectType = 'slash';
-              let duration = 300;
-              let flightMs: number | undefined;
+                  let effectType: AttackEffectType = 'slash';
+                  let duration = 300;
+                  let flightMs: number | undefined;
 
-              if (unit.cardNo === 11) {
-                effectType = 'fireball';
-                duration = 550;
-              } else if (unit.cardNo === 6) {
-                effectType = 'lightning';
-                const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
-                flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
-                duration = flightMs + 450;
+                  if (unit.cardNo === 11) {
+                    effectType = 'fireball';
+                    duration = 550;
+                  } else if (unit.cardNo === 6) {
+                    effectType = 'lightning';
+                    const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
+                    flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                    duration = flightMs + 450;
+                  }
+
+                  newAttackEffects.push({
+                    id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                    attackerId: unit.id,
+                    lane: unit.lane,
+                    fromY: unit.y,
+                    toY: (targetEnemy as Unit).y,
+                    owner: unit.owner,
+                    effectType,
+                    damage: attack,
+                    createdAt: now,
+                    duration,
+                    flightDuration: flightMs,
+                  });
+
+                  if (unit.cardNo === 6 && flightMs) {
+                    newPendingHits.push({
+                      id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                      targetId: (targetEnemy as Unit).id,
+                      attackerId: unit.id,
+                      lane: unit.lane,
+                      damage: attack,
+                      stunDuration: 1200,
+                      hitTime: now + flightMs,
+                    });
+                  }
+                }
               }
-
-              newAttackEffects.push({
-                id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                attackerId: unit.id,
-                lane: unit.lane,
-                fromY: unit.y,
-                toY: (targetEnemy as Unit).y,
-                owner: unit.owner,
-                effectType,
-                damage: attack,
-                createdAt: now,
-                duration,
-                flightDuration: flightMs,
-              });
-
-              if (unit.cardNo === 6 && flightMs) {
-                newPendingHits.push({
-                  id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                  targetId: (targetEnemy as Unit).id,
-                  attackerId: unit.id,
-                  lane: unit.lane,
-                  damage: attack,
-                  stunDuration: 1200,
-                  hitTime: now + flightMs,
-                });
-              }
+            } else {
+              isCharging = false;
+              chargeStartTime = undefined;
             }
-            return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
+            return {
+              ...unit,
+              attackCooldown: cooldown,
+              lastAttackEffectTime: lastAttack,
+              isCharging,
+              chargeStartTime,
+            };
           }
 
           // 敵陣最奥に到達しているか？
@@ -822,7 +860,15 @@ export function useRealtimeGame() {
             attack = 1 + bonus;
           }
 
-          return { ...unit, y, attack, distanceTraveled: distance, attackCooldown: cooldown };
+          return {
+            ...unit,
+            y,
+            attack,
+            distanceTraveled: distance,
+            attackCooldown: cooldown,
+            isCharging: false,
+            chargeStartTime: undefined,
+          };
         });
 
         // D. ユニット同士の近接攻撃解決（通常ユニット用）

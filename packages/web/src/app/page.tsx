@@ -1027,7 +1027,7 @@ export default function RealtimeDemoPage() {
                     {/* カード下部：攻防ステータス / スペル表記 */}
                     <div style={styles.cardFooter}>
                       {card.type === 'MONSTER' ? (
-                        <div style={styles.cardStats} title={`攻撃力: ${card.attack} / HP: ${card.life} / 移動速度: ${card.speed} / 攻撃間隔: ${card.attackInterval ?? 1.0}s`}>
+                        <div style={styles.cardStats} title={`攻撃力: ${card.attack} / HP: ${card.life} / 移動速度: ${card.speed} / 攻撃間隔: ${card.attackInterval ?? 1.0}s${card.attackWindup ? ` (溜め${card.attackWindup}s)` : ''}`}>
                           <span style={styles.cardAtk} title="攻撃力">⚔️{card.attack}</span>
                           <span style={styles.cardHp} title="HP">❤️{card.life}</span>
                           <span style={styles.cardSpeed} className="card-speed-badge" title="移動速度">🏃{card.speed}</span>
@@ -1214,7 +1214,9 @@ export default function RealtimeDemoPage() {
                             <span>❤️ {c.life}</span>
                             <span>🏃 {c.speed}</span>
                             <span>🎯 {c.range}%</span>
-                            <span title="攻撃間隔">⏱️ {c.attackInterval ?? 1.0}s</span>
+                            <span title={c.attackWindup ? `攻撃間隔: ${c.attackInterval ?? 1.0}s / チャージ(前隙): ${c.attackWindup}s` : '攻撃間隔'}>
+                              ⏱️ {c.attackInterval ?? 1.0}s{c.attackWindup ? ` (溜め${c.attackWindup}s)` : ''}
+                            </span>
                           </>
                         ) : (
                           <span style={{ color: '#f97316' }}>スペル（呪文）</span>
@@ -1331,7 +1333,9 @@ export default function RealtimeDemoPage() {
                             <span>❤️ {c.life}</span>
                             <span>🏃 {c.speed}</span>
                             <span>🎯 {c.range}%</span>
-                            <span title="攻撃間隔">⏱️ {c.attackInterval ?? 1.0}s</span>
+                            <span title={c.attackWindup ? `攻撃間隔: ${c.attackInterval ?? 1.0}s / チャージ(前隙): ${c.attackWindup}s` : '攻撃間隔'}>
+                              ⏱️ {c.attackInterval ?? 1.0}s{c.attackWindup ? ` (溜め${c.attackWindup}s)` : ''}
+                            </span>
                           </div>
                         )}
                         <div style={{ color: '#94a3b8', fontSize: '11px', marginTop: '2px' }}>
@@ -1430,6 +1434,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
             ? '0 0 12px #ea580c'
             : isStunned
             ? '0 0 10px #eab308'
+            : unit.isCharging
+            ? '0 0 14px #38bdf8, 0 0 20px #facc15'
             : isPlayer
             ? '0 2px 6px rgba(59, 130, 246, 0.4)'
             : '0 2px 6px rgba(239, 68, 68, 0.4)',

@@ -11,6 +11,7 @@ import './unit-animations.css';
  */
 export function deriveAnimationState(unit: Unit): UnitAnimationState {
   if (unit.isStunned) return 'stunned';
+  if (unit.isCharging) return 'charging';
   if (
     unit.lastAttackEffectTime &&
     Date.now() - unit.lastAttackEffectTime < 240
