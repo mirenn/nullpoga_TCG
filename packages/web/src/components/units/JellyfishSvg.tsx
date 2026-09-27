@@ -161,7 +161,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
           opacity="0.5"
         />
 
-        {/* === チャージエフェクト（攻撃前隙0.4秒のエネルギー凝縮） === */}
+        {/* === チャージエフェクト（攻撃前隙1.0秒のエネルギー凝縮） === */}
         {isCharging && (
           <g className="jelly-charge-zap" filter="url(#zap-glow)">
             {/* 傘周辺に収束する青・黄のスパーク */}
