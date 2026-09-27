@@ -177,7 +177,7 @@ export const MANA_SPEED_PRESETS = [
 ] as const;
 
 export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1マナ（クラロワ風バランス）
-export const MOVE_SPEED_SCALE = 1.0; // ユニット移動速度の全体スケーラー（調整用）
+export const MOVE_SPEED_SCALE = 0.75; // ユニット移動速度の全体スケーラー（25%減速・標準歩兵走破約23.7秒）
 export const PLAY_CARD_COOLDOWN_MS = 120; // カード使用時の誤爆・連打防止デバウンス（約0.12秒）
 export const SPAWN_MIN_SPACE = 8.0; // 召喚時の最小専有空間（%単位：味方の前進待ちスペース）
 const INITIAL_LIFE = 20;
