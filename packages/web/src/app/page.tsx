@@ -230,6 +230,14 @@ export default function RealtimeDemoPage() {
           animation: unit-attack-cpu 0.22s ease-out;
         }
 
+        /* 撃破・吸血成長フロート演出 */
+        @keyframes unit-kill-float {
+          0% { transform: translate(-50%, 0) scale(0.8); opacity: 0; }
+          20% { transform: translate(-50%, -4px) scale(1.1); opacity: 1; }
+          70% { transform: translate(-50%, -8px) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -14px) scale(0.9); opacity: 0; }
+        }
+
         /* 炎のドラゴン: 火炎弾グロー */
         .fireball-glow {
           display: flex;
@@ -1153,6 +1161,8 @@ export default function RealtimeDemoPage() {
                         : 'none',
                     }}
                     className="card-item"
+                    data-card-id={card.id}
+                    data-card-no={card.cardNo}
                   >
                     {/* カード上部：コスト・タイプ・ショートカットキー */}
                     <div style={styles.cardHeader}>
@@ -1378,6 +1388,13 @@ export default function RealtimeDemoPage() {
                 </div>
 
                 <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🦇 吸血コウモリのキル成長</div>
+                  <div style={styles.tipText}>
+                    相手ユニットにとどめを刺すたびに吸血し、<strong>攻撃力+1・最大HP+1・HP+1</strong>と永続成長！手負いの敵がいるレーンへ差し込んで仕留めましょう。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>☄️ 迎撃スペルの使いどころ</div>
                   <div style={styles.tipText}>
                     迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン3ダメ）で迎撃しましょう。
@@ -1508,6 +1525,12 @@ export default function RealtimeDemoPage() {
                     <div style={styles.tipTitle}>🐕 柴犬の長距離バフ</div>
                     <div style={styles.tipText}>
                       走るほど攻撃力が上がる柴犬ラン丸で敵本拠地の一撃粉砕を狙えます。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🦇 吸血コウモリのキル成長</div>
+                    <div style={styles.tipText}>
+                      敵にとどめを刺すたびに吸血し、攻撃力+1・最大HP+1・HP+1と成長します。
                     </div>
                   </div>
                   <div style={styles.tipBox}>
@@ -1744,6 +1767,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
+  const hasBatBuff = unit.cardNo === 9 && (unit.killCount || 0) > 0; // 吸血コウモリ撃破バフ
+  const isRecentKill = Boolean(unit.lastKillTime && Date.now() - unit.lastKillTime < 800);
   const isAttacking = unit.lastAttackEffectTime && (Date.now() - unit.lastAttackEffectTime < 240);
   const attackClass = isAttacking
     ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
@@ -1770,12 +1795,20 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
       data-card-no={unit.cardNo}
       data-cooldown={unit.attackCooldown}
       data-interval={unit.attackInterval}
+      data-kill-count={unit.killCount || 0}
       style={{
         ...styles.unitWrapper,
         top: `${unit.y}%`,
         transform: 'translate(-50%, -50%)',
       }}
     >
+      {/* 吸血・撃破フロートポップアップ */}
+      {isRecentKill && (
+        <div style={styles.unitKillPopup}>
+          🩸 吸血 +1/+1!
+        </div>
+      )}
+
       {/* HPバー */}
       <div style={styles.unitHpBarBg}>
         <div
@@ -1798,6 +1831,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
             ? '0 0 12px #ea580c'
             : isStunned
             ? '0 0 10px #eab308'
+            : hasBatBuff
+            ? '0 0 14px #a855f7, 0 0 20px #7e22ce'
             : unit.isSprinting
             ? '0 0 14px #06b6d4, 0 0 20px #0284c7'
             : unit.isCharging
@@ -1824,12 +1859,16 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
         {isStunned && <span style={styles.statusStun}>⚡麻痺</span>}
         {unit.isSprinting && !isStunned && <span style={styles.statusSprint}>💨3x速</span>}
         {hasBuff && <span style={styles.statusBuff}>⚔️+{unit.attack - 1}</span>}
+        {hasBatBuff && <span style={styles.statusBatBuff}>🩸+{unit.killCount}</span>}
       </div>
 
       {/* 攻撃力 / HP バッジ */}
       <div style={styles.unitBadges}>
-        <span style={styles.unitAtkBadge}>{unit.attack}</span>
-        <span style={styles.unitHpBadge}>{unit.hp}</span>
+        <span data-badge="atk" style={styles.unitAtkBadge}>{unit.attack}</span>
+        <span data-badge="hp" style={styles.unitHpBadge}>{unit.hp}</span>
+        {hasBatBuff && (
+          <span data-badge="kill" style={{ fontSize: '9px', backgroundColor: '#9333ea', color: '#fff', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title={`吸血成長: 撃破${unit.killCount}体 (+${unit.killCount}/+${unit.killCount})`}>🩸x{unit.killCount}</span>
+        )}
         {unit.isSprinting && (
           <span style={{ fontSize: '9px', backgroundColor: '#06b6d4', color: '#fff', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title="敵不在レーン3倍速疾走！">💨</span>
         )}
@@ -2445,6 +2484,35 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '1px 3px',
     borderRadius: '2px',
     fontWeight: 'bold',
+  },
+  statusBatBuff: {
+    position: 'absolute',
+    bottom: '-9px',
+    fontSize: '8px',
+    backgroundColor: '#9333ea',
+    color: '#fff',
+    padding: '1px 3px',
+    borderRadius: '2px',
+    fontWeight: 'bold',
+    boxShadow: '0 0 6px rgba(147, 51, 234, 0.8)',
+  },
+  unitKillPopup: {
+    position: 'absolute',
+    top: '-24px',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    fontSize: '9px',
+    fontWeight: 'bold',
+    color: '#f43f5e',
+    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+    border: '1px solid #f43f5e',
+    borderRadius: '3px',
+    padding: '1px 4px',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+    boxShadow: '0 0 8px rgba(244, 63, 94, 0.8)',
+    animation: 'unit-kill-float 0.8s ease-out forwards',
+    zIndex: 25,
   },
   unitBadges: {
     display: 'flex',

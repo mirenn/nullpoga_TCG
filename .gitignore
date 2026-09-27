@@ -56,3 +56,5 @@ packages/frontend/.turbo/turbo-build.log
 screenshot-*.png
 test_layout.cjs
 test_play.cjs
+test-results/
+*.png

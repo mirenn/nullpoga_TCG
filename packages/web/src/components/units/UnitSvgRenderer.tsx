@@ -8,6 +8,7 @@ import { TurtleSvg } from './TurtleSvg';
 import { JellyfishSvg } from './JellyfishSvg';
 import { BoarSvg } from './BoarSvg';
 import { DragonSvg } from './DragonSvg';
+import { BatSvg } from './BatSvg';
 import './unit-animations.css';
 
 /**
@@ -47,6 +48,8 @@ export function UnitSvgRenderer({
       return <JellyfishSvg {...svgProps} />;
     case 7:
       return <BoarSvg {...svgProps} />;
+    case 9:
+      return <BatSvg {...svgProps} />;
     case 11:
       return <DragonSvg {...svgProps} />;
     default:
