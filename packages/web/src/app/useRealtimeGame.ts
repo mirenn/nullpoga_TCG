@@ -104,6 +104,20 @@ export const CARD_POOL: DemoCard[] = [
     icon: '🥷',
   },
   {
+    id: 'vampire_bat',
+    cardNo: 9,
+    name: '吸血コウモリ',
+    type: 'MONSTER',
+    manaCost: 2,
+    attack: 2,
+    life: 2,
+    speed: 6, // 飛行による素早い前進
+    range: 9, // 近接接触
+    attackInterval: 1.0,
+    effectDesc: '相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
+    icon: '🦇',
+  },
+  {
     id: 'dragon',
     cardNo: 11,
     name: '炎のドラゴン',
@@ -194,10 +208,11 @@ export const createDefault15Deck = (): DemoCard[] => {
   return [
     cardMap['mouse'], cardMap['haste_spell'],
     cardMap['cat'],
-    cardMap['shiba'], cardMap['shiba'],
+    cardMap['shiba'],
     cardMap['turtle'], cardMap['heal_spell'],
+    cardMap['vampire_bat'], cardMap['vampire_bat'],
     cardMap['jellyfish'], cardMap['jellyfish'],
-    cardMap['assassin'], cardMap['assassin'],
+    cardMap['assassin'],
     cardMap['boar'],
     cardMap['dragon'],
     cardMap['meteor'],
@@ -512,6 +527,7 @@ export function useRealtimeGame() {
           distanceTraveled: 0,
           isCounterDeploy: isCounterDeploy,
           comboCount: newComboCount > 1 ? newComboCount : undefined,
+          killCount: 0,
         };
         const next = [...unitsRef.current, newUnit];
         unitsRef.current = next;
@@ -667,6 +683,22 @@ export function useRealtimeGame() {
               score += 18; // ガラ空きレーンへの奇襲特大ボーナス！
             } else {
               score -= 8; // 敵がいるレーンへは出撃を避ける
+            }
+          } else if (card.cardNo === 9) {
+            // 吸血コウモリ: 相手ユニットを撃破して成長を狙う
+            // 敵ユニットが存在するレーンを優先、特にHPが削れている敵がいるレーンで高評価
+            const enemies = unitsRef.current.filter(
+              (u) => u.owner === 'player' && u.lane === lane && u.hp > 0
+            );
+            if (enemies.length > 0) {
+              score += 10;
+              // 撃破圏内（HP2以下）の敵がいれば特大ボーナス！
+              const killableEnemies = enemies.filter((e) => e.hp <= 2);
+              if (killableEnemies.length > 0) {
+                score += 15; // ラストヒット狙いの出撃！
+              }
+            } else {
+              score -= 3; // 敵がいないレーンは優先度低
             }
           } else {
             // 通常ユニット: 敵が多いレーンは迎撃として高評価
@@ -943,6 +975,7 @@ export function useRealtimeGame() {
                 distanceTraveled: 0,
                 isCounterDeploy: isCounterDeploy,
                 comboCount: comboCount > 1 ? comboCount : undefined,
+                killCount: 0,
               };
             });
             // クリーンアップ
@@ -1252,8 +1285,11 @@ export function useRealtimeGame() {
         });
 
         // D. ユニット同士の近接攻撃解決（通常ユニット用）
-        const finalUnits = updatedUnits.map((unit) => {
-          let hp = unit.hp;
+        // 撃破（ラストヒット）を達成した攻撃者IDを記録
+        const killCountMap = new Map<string, number>();
+
+        const unitsAfterDamage = updatedUnits.map((unit) => {
+          let currentHp = unit.hp;
           let stunnedUntil = unit.isStunnedUntil;
           let y = unit.y;
 
@@ -1267,7 +1303,13 @@ export function useRealtimeGame() {
 
               const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
               if (dist >= -2 && dist <= attacker.range + 2) {
-                hp -= attacker.attack;
+                const hadHp = currentHp > 0;
+                currentHp -= attacker.attack;
+                if (hadHp && currentHp <= 0) {
+                  // attacker が unit にとどめを刺した！
+                  killCountMap.set(attacker.id, (killCountMap.get(attacker.id) || 0) + 1);
+                }
+
                 if (attacker.cardNo === 7) {
                   const pushBackAmount = 8 + Math.random() * 2;
                   if (attacker.owner === 'player') {
@@ -1282,8 +1324,39 @@ export function useRealtimeGame() {
           });
 
           const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-          return { ...unit, hp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
-        }).filter((u) => u.hp > 0);
+          return { ...unit, hp: currentHp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+        });
+
+        // 生存ユニットにキルボーナス（ステータス向上）を適用
+        const finalUnits = unitsAfterDamage
+          .filter((u) => u.hp > 0)
+          .map((unit) => {
+            const kills = killCountMap.get(unit.id) || 0;
+            if (kills > 0) {
+              const newKillCount = (unit.killCount || 0) + kills;
+              // 吸血コウモリ（cardNo: 9）：相手ユニットにとどめを刺した時に吸血成長（攻撃力+1、最大HP+1、HP+1）
+              if (unit.cardNo === 9) {
+                const bonusAtk = kills * 1;
+                const bonusHp = kills * 1;
+                const nextMaxHp = unit.maxHp + bonusHp;
+                const nextHp = Math.min(nextMaxHp, unit.hp + bonusHp);
+                return {
+                  ...unit,
+                  killCount: newKillCount,
+                  attack: unit.attack + bonusAtk,
+                  maxHp: nextMaxHp,
+                  hp: nextHp,
+                  lastKillTime: now,
+                };
+              }
+              return {
+                ...unit,
+                killCount: newKillCount,
+                lastKillTime: now,
+              };
+            }
+            return unit;
+          });
 
         // E. 状態の一括反映
         unitsRef.current = finalUnits;

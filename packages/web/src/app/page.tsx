@@ -1655,14 +1655,14 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
   const isReady = progress >= 0.999;
   const isCharging = Boolean(unit.isCharging);
 
-  // トラック（未チャージ・下地）の色
-  let trackColor = isPlayer ? 'rgba(59, 130, 246, 0.22)' : 'rgba(239, 68, 68, 0.22)';
+  // トラック（未チャージ・下地の溝）の色: 極めて薄い暗色にしてゲージの欠け（未チャージ部分）を明確にする
+  let trackColor = 'rgba(0, 0, 0, 0.45)';
   if (isBlockingSpawn) trackColor = 'rgba(234, 88, 12, 0.25)';
-  if (isStunned) trackColor = 'rgba(234, 179, 8, 0.2)';
+  if (isStunned) trackColor = 'rgba(234, 179, 8, 0.15)';
 
   // ゲージの色
-  let gaugeColor = isPlayer ? '#60a5fa' : '#f87171';
-  let glowColor = isPlayer ? 'rgba(56, 189, 248, 0.9)' : 'rgba(239, 68, 68, 0.9)';
+  let gaugeColor = isPlayer ? '#38bdf8' : '#f43f5e';
+  let glowColor = isPlayer ? 'rgba(56, 189, 248, 0.95)' : 'rgba(244, 63, 94, 0.95)';
 
   if (isBlockingSpawn) {
     gaugeColor = '#ea580c';
@@ -1674,7 +1674,7 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
     gaugeColor = '#facc15';
     glowColor = '#facc15';
   } else if (isReady) {
-    gaugeColor = isPlayer ? '#38bdf8' : '#ef4444';
+    gaugeColor = isPlayer ? '#00f0ff' : '#ff1744';
   }
 
   const strokeDashoffset = COOLDOWN_RING_CIRCUMFERENCE * (1 - progress);
@@ -1693,14 +1693,14 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
       }}
       viewBox="0 0 36 36"
     >
-      {/* ベース下地リング（円形の輪郭を常に保持） */}
+      {/* ベース下地の溝（未チャージ部分: 暗いレール） */}
       <circle
         cx="18"
         cy="18"
         r={COOLDOWN_RING_RADIUS}
         fill="none"
         stroke={trackColor}
-        strokeWidth="2.5"
+        strokeWidth="1.8"
       />
 
       {/* 状態に応じたゲージ表示 */}
@@ -1712,26 +1712,26 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={gaugeColor}
-          strokeWidth="2.5"
+          strokeWidth="3.2"
           strokeDasharray="4 3"
           style={{ filter: `drop-shadow(0 0 4px ${glowColor})` }}
         />
       ) : (
-        // クールダウン進行ゲージ（上部12時から時計回りに満ちる）
+        // クールダウン進行ゲージ（上部12時から時計回りに満ちる。太く鮮やかにして欠けを一目で分かるように）
         <circle
           cx="18"
           cy="18"
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={gaugeColor}
-          strokeWidth={isReady || isCharging ? 2.8 : 2.5}
+          strokeWidth={isReady || isCharging ? 3.4 : 3.0}
           strokeDasharray={COOLDOWN_RING_CIRCUMFERENCE}
           strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
+          strokeLinecap={progress > 0.05 ? 'round' : 'butt'}
           transform="rotate(-90 18 18)"
           style={{
-            filter: (isReady || isCharging || isBlockingSpawn) ? `drop-shadow(0 0 4px ${glowColor})` : undefined,
-            transition: 'stroke-dashoffset 0.05s linear',
+            filter: `drop-shadow(0 0 ${isReady ? '5px' : '2.5px'} ${glowColor})`,
+            transition: 'stroke-dashoffset 0.04s linear',
           }}
         />
       )}
@@ -1741,9 +1741,6 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 
 // ユニット描画サブコンポーネント
 function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: boolean }) {
-  if (unit.attackCooldown > 0) {
-    console.log(`[RENDER] ${unit.name} (${unit.owner}) attackCooldown = ${unit.attackCooldown}`);
-  }
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
@@ -1751,6 +1748,11 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
   const attackClass = isAttacking
     ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
     : '';
+
+  // クールダウン完了状態（攻撃可能）かどうか
+  const interval = unit.attackInterval || 1.0;
+  const cooldown = Math.max(0, unit.attackCooldown || 0);
+  const isReady = interval > 0 ? (cooldown / interval) <= 0.001 : true;
 
   // SVG アニメーション状態を算出
   const animState = deriveAnimationState(unit);
@@ -1800,9 +1802,9 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
             ? '0 0 14px #06b6d4, 0 0 20px #0284c7'
             : unit.isCharging
             ? '0 0 14px #38bdf8, 0 0 20px #facc15'
-            : isPlayer
-            ? '0 2px 6px rgba(59, 130, 246, 0.4)'
-            : '0 2px 6px rgba(239, 68, 68, 0.4)',
+            : isReady
+            ? (isPlayer ? '0 0 8px rgba(56, 189, 248, 0.6)' : '0 0 8px rgba(244, 63, 94, 0.6)')
+            : '0 2px 4px rgba(0,0,0,0.5)',
           // SVG の尻尾・触手がはみ出せるように
           overflow: hasSvg ? 'visible' : undefined,
         }}
