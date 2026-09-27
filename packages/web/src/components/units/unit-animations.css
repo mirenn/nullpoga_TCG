@@ -334,3 +334,160 @@
   transform-origin: center;
   animation: boar-dizzy-eyes 0.8s linear infinite;
 }
+
+/* ─── ネズミ (Mouse) ─── */
+@keyframes mouse-idle-body {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.5px); }
+}
+@keyframes mouse-idle-tail {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(5deg); }
+  75% { transform: rotate(-5deg); }
+}
+@keyframes mouse-walk-body {
+  0%, 100% { transform: translateY(0) rotate(5deg); }
+  50% { transform: translateY(-1.5px) rotate(8deg); }
+}
+@keyframes mouse-walk-legs {
+  0% { transform: rotate(40deg); }
+  100% { transform: rotate(-40deg); }
+}
+@keyframes mouse-walk-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(15deg); }
+}
+@keyframes mouse-attack-body {
+  0% { transform: translateX(0) scale(1); }
+  30% { transform: translateX(4px) scale(1.1); }
+  100% { transform: translateX(0) scale(1); }
+}
+.mouse-idle-body { animation: mouse-idle-body 0.8s ease-in-out infinite; }
+.mouse-idle-tail { transform-origin: 5px 17px; animation: mouse-idle-tail 0.5s ease-in-out infinite; }
+.mouse-walk-body { transform-box: fill-box; transform-origin: center; animation: mouse-walk-body 0.15s ease-in-out infinite; }
+.mouse-walk-legs { transform-box: fill-box; transform-origin: top center; animation: mouse-walk-legs 0.15s linear infinite alternate; }
+.mouse-walk-tail { transform-origin: 5px 17px; animation: mouse-walk-tail 0.15s ease-in-out infinite alternate; }
+.mouse-attack-body { transform-box: fill-box; transform-origin: center; animation: mouse-attack-body 0.2s ease-out forwards; }
+
+/* ─── 柴犬 (Shiba) ─── */
+@keyframes shiba-idle-body {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.5px); }
+}
+@keyframes shiba-idle-tail {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(10deg); }
+}
+@keyframes shiba-walk-body {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1px); }
+}
+@keyframes shiba-walk-leg-f {
+  0% { transform: rotate(25deg); }
+  100% { transform: rotate(-25deg); }
+}
+@keyframes shiba-walk-leg-b {
+  0% { transform: rotate(-20deg); }
+  100% { transform: rotate(20deg); }
+}
+@keyframes shiba-walk-tail {
+  0%, 100% { transform: rotate(-5deg); }
+  50% { transform: rotate(15deg); }
+}
+@keyframes shiba-attack-body {
+  0% { transform: translateY(0) rotate(0deg); }
+  30% { transform: translateY(-4px) rotate(-10deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+.shiba-idle-body { animation: shiba-idle-body 1s ease-in-out infinite; }
+.shiba-idle-tail { animation: shiba-idle-tail 0.4s ease-in-out infinite alternate; }
+.shiba-walk-body { transform-box: fill-box; transform-origin: center; animation: shiba-walk-body 0.3s ease-in-out infinite; }
+.shiba-walk-leg-f-l { animation: shiba-walk-leg-f 0.3s ease-in-out infinite alternate; }
+.shiba-walk-leg-f-r { animation: shiba-walk-leg-f 0.3s ease-in-out infinite alternate-reverse; }
+.shiba-walk-leg-b-l { animation: shiba-walk-leg-b 0.3s ease-in-out infinite alternate-reverse; }
+.shiba-walk-leg-b-r { animation: shiba-walk-leg-b 0.3s ease-in-out infinite alternate; }
+.shiba-walk-tail { animation: shiba-walk-tail 0.25s ease-in-out infinite alternate; }
+.shiba-attack-body { transform-box: fill-box; transform-origin: center; animation: shiba-attack-body 0.3s ease-out forwards; }
+
+/* ─── 亀吉 (Turtle) ─── */
+@keyframes turtle-idle-body {
+  0%, 100% { transform: translateY(0) scaleY(1); }
+  50% { transform: translateY(0.5px) scaleY(0.98); }
+}
+@keyframes turtle-walk-body {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-0.5px) rotate(1deg); }
+  75% { transform: translateY(-0.5px) rotate(-1deg); }
+}
+@keyframes turtle-walk-head {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(1px); }
+}
+@keyframes turtle-walk-leg {
+  0% { transform: rotate(15deg); }
+  100% { transform: rotate(-15deg); }
+}
+@keyframes turtle-attack-body {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(-2px); }
+  60% { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+@keyframes turtle-stunned-head {
+  0%, 100% { transform: translateX(-4px); }
+}
+@keyframes turtle-stunned-leg {
+  0%, 100% { transform: scaleY(0.6) translateY(-2px); }
+}
+.turtle-idle-body { animation: turtle-idle-body 2s ease-in-out infinite; }
+.turtle-walk-body { transform-box: fill-box; transform-origin: center; animation: turtle-walk-body 1s ease-in-out infinite; }
+.turtle-walk-head { transform-box: fill-box; transform-origin: center left; animation: turtle-walk-head 1s ease-in-out infinite; }
+.turtle-walk-leg-l { animation: turtle-walk-leg 0.6s ease-in-out infinite alternate; }
+.turtle-walk-leg-r { animation: turtle-walk-leg 0.6s ease-in-out infinite alternate-reverse; }
+.turtle-attack-body { transform-box: fill-box; transform-origin: center; animation: turtle-attack-body 0.4s ease-out forwards; }
+.turtle-stunned-head { animation: turtle-stunned-head 0.1s forwards; }
+.turtle-stunned-leg { animation: turtle-stunned-leg 0.1s forwards; }
+
+/* ─── 炎のドラゴン (Dragon) ─── */
+@keyframes dragon-idle-body {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.5px); }
+}
+@keyframes dragon-idle-wing {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(15deg); }
+}
+@keyframes dragon-walk-body {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-1px) rotate(1deg); }
+  75% { transform: translateY(-1px) rotate(-1deg); }
+}
+@keyframes dragon-walk-wing {
+  0%, 100% { transform: rotate(-10deg); }
+  50% { transform: rotate(20deg); }
+}
+@keyframes dragon-walk-leg {
+  0% { transform: rotate(20deg); }
+  100% { transform: rotate(-20deg); }
+}
+@keyframes dragon-attack-body {
+  0% { transform: translateY(0) rotate(0deg); }
+  20% { transform: translateY(-2px) rotate(-5deg); }
+  40% { transform: translateY(2px) rotate(5deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes dragon-breath {
+  0% { transform: scaleX(0); opacity: 0; }
+  30% { transform: scaleX(1); opacity: 1; }
+  80% { transform: scaleX(1); opacity: 1; }
+  100% { transform: scaleX(1.2); opacity: 0; }
+}
+.dragon-idle-body { animation: dragon-idle-body 1.5s ease-in-out infinite; }
+.dragon-idle-wing-l { animation: dragon-idle-wing 1.5s ease-in-out infinite alternate; }
+.dragon-idle-wing-r { animation: dragon-idle-wing 1.5s ease-in-out infinite alternate-reverse; }
+.dragon-walk-body { transform-box: fill-box; transform-origin: center; animation: dragon-walk-body 0.6s ease-in-out infinite; }
+.dragon-walk-wing-l { animation: dragon-walk-wing 0.4s ease-in-out infinite alternate; }
+.dragon-walk-wing-r { animation: dragon-walk-wing 0.4s ease-in-out infinite alternate-reverse; }
+.dragon-walk-leg-l { animation: dragon-walk-leg 0.3s ease-in-out infinite alternate; }
+.dragon-walk-leg-r { animation: dragon-walk-leg 0.3s ease-in-out infinite alternate-reverse; }
+.dragon-attack-body { transform-box: fill-box; transform-origin: center left; animation: dragon-attack-body 0.5s ease-out forwards; }
