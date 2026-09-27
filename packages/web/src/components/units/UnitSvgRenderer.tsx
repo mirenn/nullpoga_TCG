@@ -3,6 +3,7 @@ import { Unit } from '../../app/types';
 import { UnitAnimationState, UnitSvgProps } from './types';
 import { CatSvg } from './CatSvg';
 import { JellyfishSvg } from './JellyfishSvg';
+import { BoarSvg } from './BoarSvg';
 import './unit-animations.css';
 
 /**
@@ -33,6 +34,8 @@ export function UnitSvgRenderer({
       return <CatSvg {...svgProps} />;
     case 6:
       return <JellyfishSvg {...svgProps} />;
+    case 7:
+      return <BoarSvg {...svgProps} />;
     default:
       return null;
   }

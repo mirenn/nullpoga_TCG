@@ -269,7 +269,12 @@ export default function RealtimeDemoPage() {
           animation: shockwave-pulse-orange 0.4s ease-out forwards;
         }
 
-        /* 電気クラゲ: 放電電撃弾グロー */
+        /* 電気クラゲ: 放電電撃弾グロー（発射元の閃光） */
+        @keyframes lightning-source-glow {
+          0% { transform: scale(0.6); opacity: 0.2; }
+          30% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 16px #38bdf8); }
+          100% { transform: scale(0.8); opacity: 0; }
+        }
         .lightning-glow {
           display: flex;
           align-items: center;
@@ -279,32 +284,40 @@ export default function RealtimeDemoPage() {
           border-radius: 50%;
           background: radial-gradient(circle, #38bdf8 0%, rgba(2, 132, 199, 0.6) 60%, transparent 100%);
           box-shadow: 0 0 16px #38bdf8, 0 0 28px #0284c7;
+          animation: lightning-source-glow 0.3s ease-out forwards;
         }
 
-        /* 電気クラゲ: 放電電撃弾（クラゲから相手へ飛翔するエネルギー球） */
-        @keyframes lightning-orb-scale {
+        /* 電気クラゲ: 放電電撃弾（クラゲから標的へ高速飛翔するエネルギー球） */
+        @keyframes lightning-orb-fly {
           0% {
-            opacity: 0.9;
-            transform: translate(-50%, -50%) scale(0.7);
-          }
-          15% {
+            top: var(--from-y);
             opacity: 1;
-            transform: translate(-50%, -50%) scale(1.15);
+            transform: translate(-50%, -50%) scale(0.9);
           }
-          85% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.15);
-          }
-          100% {
+          20% {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.3);
+          }
+          80% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+          }
+          98% {
+            top: var(--to-y);
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.4);
+          }
+          100% {
+            top: var(--to-y);
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.1);
           }
         }
         .lightning-projectile-orb {
           position: absolute;
           left: 50%;
-          width: 26px;
-          height: 26px;
+          width: 28px;
+          height: 28px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -313,8 +326,7 @@ export default function RealtimeDemoPage() {
           box-shadow: 0 0 16px #ffffff, 0 0 28px #38bdf8, 0 0 44px #0284c7;
           pointer-events: none;
           z-index: 40;
-          /* CSSではスケーリングと透明度のみ、移動はTSXのインラインスタイルで制御 */
-          animation: lightning-orb-scale var(--flight-duration, 300ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+          animation: lightning-orb-fly var(--flight-duration, 280ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
         }
 
         /* 電撃弾のスパーク回転演出 */
@@ -348,7 +360,8 @@ export default function RealtimeDemoPage() {
           border-radius: 4px;
           pointer-events: none;
           z-index: 35;
-          animation: lightning-beam-flicker 0.35s ease-out forwards;
+          opacity: 0;
+          animation: lightning-beam-flicker 0.35s ease-out var(--impact-delay, 0s) forwards;
         }
 
         /* 炎のドラゴン: 火炎ブレス流線（口から標的へ噴射される火炎） */
@@ -397,14 +410,18 @@ export default function RealtimeDemoPage() {
           }
         }
         .lightning-impact-effect {
-          animation: lightning-impact-anim 0.5s ease-out forwards;
+          opacity: 0;
+          animation: lightning-impact-anim 0.5s ease-out var(--impact-delay, 0s) forwards;
         }
         @keyframes shockwave-pulse-cyan {
           0% {
             width: 10px;
             height: 10px;
-            opacity: 1;
+            opacity: 0;
             border-width: 4px;
+          }
+          1% {
+            opacity: 1;
           }
           100% {
             width: 72px;
@@ -422,7 +439,8 @@ export default function RealtimeDemoPage() {
           border: 3px solid #38bdf8;
           box-shadow: 0 0 16px #38bdf8;
           pointer-events: none;
-          animation: shockwave-pulse-cyan 0.45s ease-out forwards;
+          opacity: 0;
+          animation: shockwave-pulse-cyan 0.45s ease-out var(--impact-delay, 0s) forwards;
         }
 
         /* 近接攻撃: 斬撃・爪痕・打撃 */
@@ -485,7 +503,8 @@ export default function RealtimeDemoPage() {
           }
         }
         .damage-popup-text {
-          animation: damage-popup-anim 0.48s ease-out forwards;
+          opacity: 0;
+          animation: damage-popup-anim 0.48s ease-out var(--impact-delay, 0s) forwards;
           color: #ff3344;
           font-weight: 900;
           font-size: 16px;
@@ -743,9 +762,17 @@ export default function RealtimeDemoPage() {
                       style={{
                         ...styles.spellBlast,
                         top: `${spell.y}%`,
+                        ...(spell.type === 'haste' ? styles.spellHaste : {}),
+                        ...(spell.type === 'heal' ? styles.spellHeal : {}),
                       }}
                     >
-                      {spell.type === 'meteor' ? '💥 隕石着弾!!' : '🔥 烈火!!'}
+                      {spell.type === 'meteor'
+                        ? '💥 隕石着弾!!'
+                        : spell.type === 'burn'
+                        ? '🔥 烈火!!'
+                        : spell.type === 'haste'
+                        ? '💨 疾風!!'
+                        : '🌧️ 癒やし!!'}
                     </div>
                   ))}
 
@@ -1126,7 +1153,21 @@ export default function RealtimeDemoPage() {
                 <div style={styles.tipBox}>
                   <div style={styles.tipTitle}>☄️ 迎撃スペルの使いどころ</div>
                   <div style={styles.tipText}>
-                    迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン4ダメ）で迎撃しましょう。
+                    迫る敵の群れには<strong>烈火の呪文</strong>（全体2ダメ）、高HPのドラゴンや密集部隊には<strong>隕石落下</strong>（単一レーン3ダメ）で迎撃しましょう。
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>💨 AAキャンセル（疾風の号令）</div>
+                  <div style={styles.tipText}>
+                    <strong>疾風の号令</strong>を指定レーンに使用すると、そのレーンにいる味方ユニットの攻撃クールダウンが即座にリセットされます。味方が攻撃した直後に使うことで、連続攻撃（AAキャンセル）を叩き込むことができます！
+                  </div>
+                </div>
+
+                <div style={styles.tipBox}>
+                  <div style={styles.tipTitle}>🌧️ 癒やしの雨</div>
+                  <div style={styles.tipText}>
+                    <strong>癒やしの雨</strong>を指定レーンに使用すると、そのレーンにいる味方ユニットすべてのHPを3回復（最大HP上限）します。前線の味方や高耐久ユニットの延命に活用しましょう。
                   </div>
                 </div>
 
@@ -1246,6 +1287,18 @@ export default function RealtimeDemoPage() {
                     </div>
                   </div>
                   <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>💨 AAキャンセル</div>
+                    <div style={styles.tipText}>
+                      疾風の号令を攻撃直後の味方に使って、即座に再攻撃させるコンボが可能です。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
+                    <div style={styles.tipTitle}>🌧️ 癒やしの雨</div>
+                    <div style={styles.tipText}>
+                      指定レーンの味方全員を3回復。カメなどの高耐久ユニットと好相性です。
+                    </div>
+                  </div>
+                  <div style={styles.tipBox}>
                     <div style={styles.tipTitle}>🎴 15枚デッキ＆NEXTサイクル</div>
                     <div style={styles.tipText}>
                       手札4枚＋NEXT1枚の合計15枚デッキ。使い切ると自動リサイクル！
@@ -1338,6 +1391,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
 
   return (
     <div
+      data-unit-id={unit.id}
+      data-card-no={unit.cardNo}
       style={{
         ...styles.unitWrapper,
         top: `${unit.y}%`,
@@ -1422,13 +1477,8 @@ function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: b
 
 // 攻撃エフェクト（電撃ビーム・火炎ブレス・着弾放電スパーク・火炎爆発・ダメージポップアップ）描画サブコンポーネント
 function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
-  const now = Date.now();
-  const elapsed = now - effect.createdAt;
-
-  // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら120ms）
-  const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 120);
-  const isHit = elapsed >= flightTime;
-  const showDamage = isHit;
+  // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら0ms）
+  const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 0);
 
   // ビーム・流線用の垂直範囲
   const minY = Math.min(effect.fromY, effect.toY);
@@ -1508,51 +1558,47 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             </div>
           </div>
 
-          {/* クラゲから相手へ高速飛翔する電撃弾（オーブ） - 着弾前のみ表示 */}
-          {!isHit && (
-            <div
-              className="lightning-projectile-orb"
-              style={{
-                '--flight-duration': `${flightTime}ms`,
-                top: `${effect.fromY + ((effect.toY - effect.fromY) * Math.min(elapsed / flightTime, 1))}%`,
-              } as React.CSSProperties}
-            >
-              <span className="lightning-orb-spark">⚡</span>
+          {/* クラゲから相手へ高速飛翔する電撃弾（オーブ） - CSS keyframesで完全GPU補間 */}
+          <div
+            className="lightning-projectile-orb"
+            style={{
+              '--from-y': `${effect.fromY}%`,
+              '--to-y': `${effect.toY}%`,
+              '--flight-duration': `${flightTime}ms`,
+            } as React.CSSProperties}
+          >
+            <span className="lightning-orb-spark">⚡</span>
+          </div>
+
+          {/* クラゲから標的へ一瞬走る稲妻放電ライン（着弾時刻に発火） */}
+          <div
+            className="lightning-beam-line"
+            style={{
+              top: `${minY}%`,
+              height: `${heightY}%`,
+              '--impact-delay': `${flightTime}ms`,
+            } as React.CSSProperties}
+          />
+
+          {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング（着弾時刻に発火） */}
+          <div
+            style={{
+              position: 'absolute',
+              top: `${effect.toY}%`,
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              pointerEvents: 'none',
+              zIndex: 39,
+              '--impact-delay': `${flightTime}ms`,
+            } as React.CSSProperties}
+          >
+            <div className="shockwave-ring-cyan" />
+            <div className="lightning-impact-effect">
+              <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
+                ⚡💥⚡
+              </span>
             </div>
-          )}
-
-          {/* 着弾後の演出（着弾時刻に達した瞬間に発火！） */}
-          {isHit && (
-            <>
-              {/* クラゲから標的へ一瞬走る稲妻放電ライン */}
-              <div
-                className="lightning-beam-line"
-                style={{
-                  top: `${minY}%`,
-                  height: `${heightY}%`,
-                }}
-              />
-
-              {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: `${effect.toY}%`,
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  pointerEvents: 'none',
-                  zIndex: 39,
-                }}
-              >
-                <div className="shockwave-ring-cyan" />
-                <div className="lightning-impact-effect">
-                  <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 16px #38bdf8, 0 0 28px #eab308' }}>
-                    ⚡💥⚡
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
+          </div>
         </>
       )}
 
@@ -1588,21 +1634,20 @@ function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         </div>
       )}
 
-      {/* 5. 着弾時のダメージ数値ポップアップ */}
-      {showDamage && (
-        <div
-          className="damage-popup-text"
-          style={{
-            position: 'absolute',
-            top: `${effect.toY}%`,
-            left: '50%',
-            pointerEvents: 'none',
-            zIndex: 42,
-          }}
-        >
-          -{effect.damage}
-        </div>
-      )}
+      {/* 5. 着弾時のダメージ数値ポップアップ（着弾時刻に発火） */}
+      <div
+        className="damage-popup-text"
+        style={{
+          position: 'absolute',
+          top: `${effect.toY}%`,
+          left: '50%',
+          pointerEvents: 'none',
+          zIndex: 42,
+          '--impact-delay': `${flightTime}ms`,
+        } as React.CSSProperties}
+      >
+        -{effect.damage}
+      </div>
     </>
   );
 }
@@ -1926,6 +1971,14 @@ const styles: Record<string, React.CSSProperties> = {
     zIndex: 20,
     boxShadow: '0 0 15px #ef4444',
     whiteSpace: 'nowrap',
+  },
+  spellHaste: {
+    backgroundColor: 'rgba(34, 197, 94, 0.92)',
+    boxShadow: '0 0 15px #22c55e',
+  },
+  spellHeal: {
+    backgroundColor: 'rgba(14, 165, 233, 0.92)',
+    boxShadow: '0 0 15px #38bdf8',
   },
   playerCommandBar: {
     display: 'flex',
