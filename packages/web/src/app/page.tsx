@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useRealtimeGame, CARD_POOL, MANA_SPEED_PRESETS } from './useRealtimeGame';
+import { useRealtimeGame } from './useRealtimeGame';
+import { CARD_POOL, MANA_SPEED_PRESETS } from './cards';
 import { Unit, AttackEffect } from './types';
 import { UnitSvgRenderer, deriveAnimationState } from '../components/units/UnitSvgRenderer';
 import { LightningImpactSvg } from '../components/effects/LightningImpactSvg';
