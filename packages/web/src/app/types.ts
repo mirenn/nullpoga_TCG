@@ -63,3 +63,12 @@ export interface AttackEffect {
   duration: number; // アニメーション時間 (ms)
   flightDuration?: number; // 弾が飛ぶ時間 (ms)
 }
+
+export interface CpuSpawnWarning {
+  id: string;
+  lane: number;
+  card: DemoCard;
+  startTime: number;
+  durationMs: number;
+}
+

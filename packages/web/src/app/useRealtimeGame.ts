@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType } from './types';
+import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning } from './types';
 
 export const CARD_POOL: DemoCard[] = [
   {
@@ -65,7 +65,7 @@ export const CARD_POOL: DemoCard[] = [
     cardNo: 6,
     name: '電気クラゲ',
     type: 'MONSTER',
-    manaCost: 2,
+    manaCost: 3,
     attack: 1,
     life: 2,
     speed: 3.5, // 後方支援ペース
@@ -226,11 +226,25 @@ export function useRealtimeGame() {
   const [cpuMana, setCpuMana] = useState(INITIAL_MANA);
   const [manaRegenRate, setManaRegenRate] = useState<number>(DEFAULT_MANA_REGEN_PER_SEC);
 
-  // 15枚デッキ・手札・NEXT・山札・捨て札管理
+  // 15枚デッキ・手札・NEXT・山札・捨て札管理 (プレイヤー側)
   const [deckState, setDeckState] = useState<DeckState>(initDeckState);
   const { hand, nextCard, deck, discardPile } = deckState;
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const cooldownRef = useRef<number>(0);
+
+  // 15枚デッキ・手札・NEXT・山札・捨て札管理 (CPU側)
+  const [cpuDeckState, setCpuDeckState] = useState<DeckState>(initDeckState);
+  const cpuDeckStateRef = useRef<DeckState>(cpuDeckState);
+  useEffect(() => {
+    cpuDeckStateRef.current = cpuDeckState;
+  }, [cpuDeckState]);
+
+  // CPU召喚予兆（詠唱エフェクト）
+  const [cpuSpawnWarnings, setCpuSpawnWarnings] = useState<CpuSpawnWarning[]>([]);
+  const cpuSpawnWarningsRef = useRef<CpuSpawnWarning[]>([]);
+  useEffect(() => {
+    cpuSpawnWarningsRef.current = cpuSpawnWarnings;
+  }, [cpuSpawnWarnings]);
 
   // ユニット一覧
   const [units, setUnits] = useState<Unit[]>([]);
@@ -366,6 +380,40 @@ export function useRealtimeGame() {
     });
   }, []);
 
+  // CPUがカードをプレイした後の手札補充（NEXTカードを使用枠へ移動＋山札からNEXT補充＋捨て札リサイクル）
+  const cpuDrawCardAfterPlay = useCallback((replaceIndex: number, playedCard: DemoCard) => {
+    setCpuDeckState((prev) => {
+      const nextCardToPlace = prev.nextCard;
+      const newHand = [...prev.hand];
+      newHand[replaceIndex] = nextCardToPlace as DemoCard;
+
+      const newDiscard = [...prev.discardPile, playedCard];
+      let newDeck = [...prev.deck];
+      let newNextCard: DemoCard | null = null;
+
+      if (newDeck.length > 0) {
+        newNextCard = newDeck[0];
+        newDeck = newDeck.slice(1);
+        return {
+          hand: newHand,
+          nextCard: newNextCard,
+          deck: newDeck,
+          discardPile: newDiscard,
+        };
+      } else {
+        const recycled = shuffleCards(newDiscard);
+        newNextCard = recycled[0] || null;
+        newDeck = recycled.slice(1);
+        return {
+          hand: newHand,
+          nextCard: newNextCard,
+          deck: newDeck,
+          discardPile: [],
+        };
+      }
+    });
+  }, []);
+
   // プレイヤーがレーンを指定してカードを使用（ドラッグ＆ドロップ時はcardIndexOverrideを渡す）
   const playCardOnLane = useCallback(
     (laneIndex: number, cardIndexOverride?: number) => {
@@ -479,81 +527,247 @@ export function useRealtimeGame() {
     [selectedCardIndex, hand, checkCanPlayCard, drawCardAfterPlay]
   );
 
-  // CPU思考ロジック
+  // CPU思考ロジック（手札サイクル＆戦況評価・出撃予兆）
   const handleCpuAi = useCallback((dt: number) => {
     cpuActionTimerRef.current += dt;
-    // 2.5秒ごとにCPUが召喚を検討
-    if (cpuActionTimerRef.current >= 2.5) {
-      cpuActionTimerRef.current = 0;
-      const currentCpuMana = stateRef.current.cpuMana;
-      if (currentCpuMana < 1) return;
+    // 約1.2秒ごとにCPUが手札と戦況を評価
+    if (cpuActionTimerRef.current < 1.2) return;
 
-      // 召喚可能なモンスターカードをフィルタ
-      const availableCards = CARD_POOL.filter(
-        (c) => c.type === 'MONSTER' && c.manaCost <= currentCpuMana
+    const currentCpuMana = stateRef.current.cpuMana;
+    if (currentCpuMana < 1) return;
+
+    const cpuHand = cpuDeckStateRef.current.hand;
+    if (!cpuHand || cpuHand.length === 0) return;
+
+    // 現在出撃可能なレーン（味方3体未満 かつ 出撃スペース空き かつ 現在召喚詠唱中でないレーン）
+    const validMonsterLanes = [0, 1, 2, 3, 4].filter((lane) => {
+      // 召喚詠唱中なら除外
+      if (cpuSpawnWarningsRef.current.some((w) => w.lane === lane)) return false;
+      const cpuUnitsInLane = unitsRef.current.filter(
+        (u) => u.owner === 'cpu' && u.lane === lane && u.hp > 0
       );
-      if (availableCards.length === 0) return;
+      if (cpuUnitsInLane.length >= 3) return false;
+      const hasBlockingAlly = cpuUnitsInLane.some((u) => u.y < 5 + SPAWN_MIN_SPACE);
+      return !hasBlockingAlly;
+    });
 
-      const chosenCard = availableCards[Math.floor(Math.random() * availableCards.length)];
-      // ユニーク制限: 炎のドラゴン（cardNo: 11）はCPU側も場に1体まで
-      if (chosenCard.cardNo === 11) {
-        const hasDragon = unitsRef.current.some(
-          (u) => u.owner === 'cpu' && u.cardNo === 11 && u.hp > 0
-        );
-        if (hasDragon) return;
+    // プレイヤーユニットが攻めてきているレーンの集計
+    const lanePlayerCounts = [0, 0, 0, 0, 0];
+    const lanePlayerCloseUnits: { lane: number; count: number }[] = [0, 1, 2, 3, 4].map((lane) => ({
+      lane,
+      count: 0,
+    }));
+    let totalPlayerUnits = 0;
+
+    unitsRef.current.forEach((u) => {
+      if (u.owner === 'player' && u.hp > 0) {
+        lanePlayerCounts[u.lane]++;
+        totalPlayerUnits++;
+        if (u.y < 55) {
+          // 自陣半分より深く侵入している敵
+          lanePlayerCloseUnits[u.lane].count++;
+        }
       }
+    });
 
-      // 出撃可能なレーンをフィルタ（味方3体未満 かつ 出撃スペース y >= 5 + SPAWN_MIN_SPACE が空いているレーン）
-      const validLanes = [0, 1, 2, 3, 4].filter((lane) => {
-        const cpuUnitsInLane = unitsRef.current.filter(
-          (u) => u.owner === 'cpu' && u.lane === lane && u.hp > 0
-        );
-        if (cpuUnitsInLane.length >= 3) return false;
-        const hasBlockingAlly = cpuUnitsInLane.some((u) => u.y < 5 + SPAWN_MIN_SPACE);
-        return !hasBlockingAlly;
-      });
-      if (validLanes.length === 0) return;
+    // 手札から使用可能なカード（マナが足りる）を評価
+    type PlayableOption = {
+      handIndex: number;
+      card: DemoCard;
+      targetLane?: number;
+      score: number;
+    };
 
-      // プレイヤーユニットが多く攻めてきているレーンを優先、または出撃可能レーンから選択
-      const lanePlayerCounts = [0, 0, 0, 0, 0];
-      unitsRef.current.forEach((u) => {
-        if (u.owner === 'player' && u.hp > 0) lanePlayerCounts[u.lane]++;
-      });
+    const options: PlayableOption[] = [];
 
-      const candidateLanes = [...validLanes].sort(
-        (a, b) => lanePlayerCounts[b] - lanePlayerCounts[a]
-      );
-      const chosenLane =
-        Math.random() < 0.65
-          ? candidateLanes[0]
-          : validLanes[Math.floor(Math.random() * validLanes.length)];
+    cpuHand.forEach((card, idx) => {
+      if (!card || card.manaCost > currentCpuMana) return;
 
-      setCpuMana((m) => Math.max(0, m - chosenCard.manaCost));
-      const cpuUnit: Unit = {
-        id: `cpu_${Date.now()}_${Math.random()}`,
-        cardNo: chosenCard.cardNo,
-        name: chosenCard.name,
-        owner: 'cpu',
-        lane: chosenLane,
-        y: 5, // CPU最奥からスタート
-        maxHp: chosenCard.life || 1,
-        hp: chosenCard.life || 1,
-        attack: chosenCard.attack || 1,
-        speed: chosenCard.speed || 10,
-        range: chosenCard.range || 3,
-        attackCooldown: 0,
-        attackInterval: chosenCard.attackInterval ?? 1.0,
-        attackWindup: chosenCard.attackWindup ?? 0,
-        isCharging: false,
-        chargeStartTime: undefined,
-        icon: chosenCard.icon,
-        distanceTraveled: 0,
+      if (card.type === 'MONSTER') {
+        // ドラゴンユニーク制限
+        if (card.cardNo === 11) {
+          const hasDragon = unitsRef.current.some(
+            (u) => u.owner === 'cpu' && u.cardNo === 11 && u.hp > 0
+          );
+          const isWarningDragon = cpuSpawnWarningsRef.current.some(
+            (w) => w.card.cardNo === 11
+          );
+          if (hasDragon || isWarningDragon) return;
+        }
+
+        if (validMonsterLanes.length === 0) return;
+
+        // レーンごとにスコア付け
+        validMonsterLanes.forEach((lane) => {
+          let score = 5;
+          // 敵が多いレーンは迎撃として高評価
+          score += lanePlayerCounts[lane] * 4;
+          // 敵が自陣に迫っているレーンは緊急迎撃
+          const closeCount = lanePlayerCloseUnits[lane].count;
+          score += closeCount * 5;
+
+          // ランダム性を少し付与して展開を多様化
+          score += Math.random() * 3;
+
+          options.push({
+            handIndex: idx,
+            card,
+            targetLane: lane,
+            score,
+          });
+        });
+      } else if (card.type === 'SPELL') {
+        if (card.id === 'meteor') {
+          // 隕石: プレイヤーユニットがいるレーン（特に迫っている or 複数いるレーン）
+          for (let lane = 0; lane < 5; lane++) {
+            const count = lanePlayerCounts[lane];
+            if (count > 0) {
+              const closeCount = lanePlayerCloseUnits[lane].count;
+              const score = 10 + count * 5 + closeCount * 8 + Math.random() * 2;
+              options.push({
+                handIndex: idx,
+                card,
+                targetLane: lane,
+                score,
+              });
+            }
+          }
+        } else if (card.id === 'fire_spell') {
+          // 烈火: プレイヤーユニット全体が2体以上いれば使用検討
+          if (totalPlayerUnits >= 2) {
+            options.push({
+              handIndex: idx,
+              card,
+              score: 12 + totalPlayerUnits * 4 + Math.random() * 3,
+            });
+          }
+        } else if (card.id === 'heal_spell') {
+          // 癒やしの雨: 自軍ユニットのHPが減っているレーンがあれば検討
+          for (let lane = 0; lane < 5; lane++) {
+            const woundedAllies = unitsRef.current.filter(
+              (u) => u.owner === 'cpu' && u.lane === lane && u.hp < u.maxHp
+            );
+            if (woundedAllies.length > 0) {
+              options.push({
+                handIndex: idx,
+                card,
+                targetLane: lane,
+                score: 8 + woundedAllies.length * 5 + Math.random() * 2,
+              });
+            }
+          }
+        } else if (card.id === 'haste_spell') {
+          // 疾風の号令: 自軍ユニットが交戦中のレーンがあれば検討
+          for (let lane = 0; lane < 5; lane++) {
+            const hasCpuInLane = unitsRef.current.some(
+              (u) => u.owner === 'cpu' && u.lane === lane && u.hp > 0
+            );
+            const hasPlayerInLane = lanePlayerCounts[lane] > 0;
+            if (hasCpuInLane && hasPlayerInLane) {
+              options.push({
+                handIndex: idx,
+                card,
+                targetLane: lane,
+                score: 7 + Math.random() * 3,
+              });
+            }
+          }
+        }
+      }
+    });
+
+    if (options.length === 0) return;
+
+    // スコア順にソートして候補を選択
+    options.sort((a, b) => b.score - a.score);
+    const topCandidates = options.slice(0, Math.min(3, options.length));
+    const chosen = topCandidates[Math.floor(Math.random() * topCandidates.length)];
+
+    // タイマーをリセット
+    cpuActionTimerRef.current = 0;
+
+    // 1. マナ消費
+    setCpuMana((m) => Math.max(0, m - chosen.card.manaCost));
+
+    // 2. CPU手札を補充
+    cpuDrawCardAfterPlay(chosen.handIndex, chosen.card);
+
+    // 3. アクション実行
+    if (chosen.card.type === 'MONSTER' && chosen.targetLane !== undefined) {
+      // 召喚予兆（0.65秒の詠唱インジケーター）
+      const warning: CpuSpawnWarning = {
+        id: `warn_${Date.now()}_${Math.random()}`,
+        lane: chosen.targetLane,
+        card: chosen.card,
+        startTime: Date.now(),
+        durationMs: 650,
       };
-      const next = [...unitsRef.current, cpuUnit];
-      unitsRef.current = next;
-      setUnits(next);
+      setCpuSpawnWarnings((prev) => [...prev, warning]);
+    } else if (chosen.card.type === 'SPELL') {
+      const laneIndex = chosen.targetLane ?? 0;
+      if (chosen.card.id === 'meteor') {
+        // 隕石落下（指定レーンのプレイヤーユニットに3ダメージ）
+        setSpellEffects((prev) => [
+          ...prev,
+          { id: `cpu_meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
+        ]);
+        const next = unitsRef.current
+          .map((u) => {
+            if (u.owner === 'player' && u.lane === laneIndex) {
+              return { ...u, hp: u.hp - 3 };
+            }
+            return u;
+          })
+          .filter((u) => u.hp > 0);
+        unitsRef.current = next;
+        setUnits(next);
+      } else if (chosen.card.id === 'fire_spell') {
+        // 烈火の呪文（全プレイヤーユニットに2ダメージ）
+        setSpellEffects((prev) => [
+          ...prev,
+          { id: `cpu_burn_${Date.now()}`, lane: -1, y: 50, type: 'burn', createdAt: Date.now() },
+        ]);
+        const next = unitsRef.current
+          .map((u) => {
+            if (u.owner === 'player') {
+              return { ...u, hp: u.hp - 2 };
+            }
+            return u;
+          })
+          .filter((u) => u.hp > 0);
+        unitsRef.current = next;
+        setUnits(next);
+      } else if (chosen.card.id === 'haste_spell') {
+        // 疾風の号令（指定レーンのCPUユニットのクールダウンリセット）
+        setSpellEffects((prev) => [
+          ...prev,
+          { id: `cpu_haste_${Date.now()}`, lane: laneIndex, y: 25, type: 'haste', createdAt: Date.now() },
+        ]);
+        const next = unitsRef.current.map((u) => {
+          if (u.owner === 'cpu' && u.lane === laneIndex) {
+            return { ...u, attackCooldown: 0 };
+          }
+          return u;
+        });
+        unitsRef.current = next;
+        setUnits(next);
+      } else if (chosen.card.id === 'heal_spell') {
+        // 癒やしの雨（指定レーンのCPUユニットHP3回復）
+        setSpellEffects((prev) => [
+          ...prev,
+          { id: `cpu_heal_${Date.now()}`, lane: laneIndex, y: 25, type: 'heal', createdAt: Date.now() },
+        ]);
+        const next = unitsRef.current.map((u) => {
+          if (u.owner === 'cpu' && u.lane === laneIndex) {
+            return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
+          }
+          return u;
+        });
+        unitsRef.current = next;
+        setUnits(next);
+      }
     }
-  }, []);
+  }, [cpuDrawCardAfterPlay]);
 
   // メインゲームループ（毎フレーム実行）
   useEffect(() => {
@@ -581,7 +795,51 @@ export function useRealtimeGame() {
 
         // 3. ユニット更新＆エフェクト・着弾計算
         const now = Date.now();
-        const currentUnits = unitsRef.current;
+
+        // CPU召喚予兆の解決（詠唱時間0.65秒経過したモンスターをフィールドにスポーン）
+        const currentWarnings = cpuSpawnWarningsRef.current;
+        let spawnedCpuUnits: Unit[] = [];
+        if (currentWarnings.length > 0) {
+          const stillWarnings: CpuSpawnWarning[] = [];
+          const spawningWarnings: CpuSpawnWarning[] = [];
+          for (const w of currentWarnings) {
+            if (now >= w.startTime + w.durationMs) {
+              spawningWarnings.push(w);
+            } else {
+              stillWarnings.push(w);
+            }
+          }
+          if (spawningWarnings.length > 0) {
+            spawnedCpuUnits = spawningWarnings.map((w) => ({
+              id: `cpu_${Date.now()}_${Math.random()}`,
+              cardNo: w.card.cardNo,
+              name: w.card.name,
+              owner: 'cpu' as const,
+              lane: w.lane,
+              y: 5, // CPU最奥からスタート
+              maxHp: w.card.life || 1,
+              hp: w.card.life || 1,
+              attack: w.card.attack || 1,
+              speed: w.card.speed || 10,
+              range: w.card.range || 3,
+              attackCooldown: 0,
+              attackInterval: w.card.attackInterval ?? 1.0,
+              attackWindup: w.card.attackWindup ?? 0,
+              isCharging: false,
+              chargeStartTime: undefined,
+              icon: w.card.icon,
+              distanceTraveled: 0,
+            }));
+          }
+          if (stillWarnings.length !== currentWarnings.length) {
+            cpuSpawnWarningsRef.current = stillWarnings;
+            setCpuSpawnWarnings(stillWarnings);
+          }
+        }
+
+        const currentUnits = spawnedCpuUnits.length > 0
+          ? [...unitsRef.current, ...spawnedCpuUnits]
+          : unitsRef.current;
         const currentPendingHits = pendingHitsRef.current;
 
         // A. 着弾時刻に達した雷撃の解決
@@ -962,6 +1220,9 @@ export function useRealtimeGame() {
     setSelectedCardIndex(null);
     cooldownRef.current = 0;
     setDeckState(initDeckState());
+    setCpuDeckState(initDeckState());
+    setCpuSpawnWarnings([]);
+    cpuSpawnWarningsRef.current = [];
   }, []);
 
   return {
@@ -976,6 +1237,11 @@ export function useRealtimeGame() {
     nextCard,
     deckCount: deck.length,
     discardCount: discardPile.length,
+    cpuHand: cpuDeckState.hand,
+    cpuNextCard: cpuDeckState.nextCard,
+    cpuDeckCount: cpuDeckState.deck.length,
+    cpuDiscardCount: cpuDeckState.discardPile.length,
+    cpuSpawnWarnings,
     selectedCardIndex,
     setSelectedCardIndex,
     units,

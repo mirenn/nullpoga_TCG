@@ -19,6 +19,10 @@ export default function RealtimeDemoPage() {
     nextCard,
     deckCount,
     discardCount,
+    cpuHand,
+    cpuNextCard,
+    cpuDeckCount,
+    cpuSpawnWarnings,
     selectedCardIndex,
     setSelectedCardIndex,
     units,
@@ -599,6 +603,25 @@ export default function RealtimeDemoPage() {
           0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.95; }
           50% { transform: translate(-50%, 0) scale(1.05); opacity: 1; }
         }
+        @keyframes cpuSpawnPulse {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.2;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.9), inset 0 0 12px rgba(192, 132, 252, 0.8);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(0.95);
+            opacity: 0.9;
+          }
+        }
+        @keyframes cpuRuneRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
       `}</style>
 
       {/* メインゲーム領域 (100vh収容・レスポンシブ2カラム) */}
@@ -640,6 +663,12 @@ export default function RealtimeDemoPage() {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* CPU 手札・山札残数 */}
+              <div style={styles.mobileCpuDeckSection} title={`相手手札: ${cpuHand.length}枚 / 山札: ${cpuDeckCount}枚`}>
+                <span style={styles.mobileCpuDeckBadge}>🎴{cpuHand.length}</span>
+                <span style={styles.mobileCpuDeckBadge}>📚{cpuDeckCount}</span>
               </div>
             </div>
 
@@ -772,6 +801,25 @@ export default function RealtimeDemoPage() {
 
                   {/* レーン中央ガイドライン */}
                   <div style={styles.laneTrackLine} />
+
+                  {/* CPU召喚予兆（詠唱魔方陣・インジケーター） */}
+                  {cpuSpawnWarnings
+                    .filter((w) => w.lane === laneIndex)
+                    .map((w) => (
+                      <div
+                        key={w.id}
+                        style={{
+                          ...styles.cpuSpawnCircle,
+                          top: '5%',
+                        }}
+                        className="cpu-spawn-pulse"
+                        title={`相手の召喚予告: ${w.card.name}`}
+                      >
+                        <div style={styles.cpuSpawnRing} />
+                        <span style={styles.cpuSpawnIcon}>{w.card.icon}</span>
+                        <div style={styles.cpuSpawnBadge}>召喚予兆</div>
+                      </div>
+                    ))}
 
                   {/* レーン上のユニット描画 */}
                   {laneUnits.map((unit) => (
@@ -1123,6 +1171,29 @@ export default function RealtimeDemoPage() {
               </div>
             </div>
 
+            {/* 相手CPU手札・山札枠 */}
+            <div style={styles.sideCpuHandRow}>
+              <div style={styles.sideCpuHandHeader}>
+                <span style={styles.sideCpuHandTitle}>🎴 相手手札 ({cpuHand.length}/4)</span>
+                <span style={styles.sideCpuDeckCount} title="相手の山札残数">
+                  📚 山札 {cpuDeckCount}枚
+                </span>
+              </div>
+              <div style={styles.sideCpuHandCards}>
+                {cpuHand.map((card, idx) => (
+                  <div
+                    key={idx}
+                    style={styles.sideCpuCardSlot}
+                    title="相手の手札（裏向き）"
+                  >
+                    <div style={styles.cpuCardBack}>
+                      <span style={styles.cpuCardBackPattern}>✦</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={styles.sideControlRow}>
               {/* マナ回復速度セレクター */}
               <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
@@ -1173,9 +1244,11 @@ export default function RealtimeDemoPage() {
             {activeTab === 'tips' ? (
               <div style={styles.tipsSection}>
                 <div style={styles.tipBox}>
-                  <div style={styles.tipTitle}>⚡ CPUマナの読み合いとカウンター</div>
+                  <div style={styles.tipTitle}>⚡ CPUマナ・手札・召喚予兆の読み合い</div>
                   <div style={styles.tipText}>
-                    相手（CPU）もプレイヤーと同条件でマナ（最大10）を蓄積・消費します。相手が大型ユニット（ドラゴン等）を出して<strong>マナが枯渇した直後</strong>は絶好のカウンターチャンスです！
+                    ・<strong>完全同条件の15枚デッキ＆手札4枚</strong>：相手が使ったカード（隕石やドラゴン等）は山札が巡るまで再使用できません。<br />
+                    ・<strong>召喚予兆（詠唱魔方陣）</strong>：CPUがモンスターを出す際、出撃地点に0.65秒間の予兆が出ます。見てからの迎撃や逆サイド奇襲に即応しましょう！<br />
+                    ・<strong>マナ枯渇カウンター</strong>：相手が大型を出してマナが切れた瞬間は最大の攻め時です。
                   </div>
                 </div>
 
