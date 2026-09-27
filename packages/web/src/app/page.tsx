@@ -519,6 +519,40 @@ export default function RealtimeDemoPage() {
           text-shadow: 0 0 4px #000, 0 0 8px #7f1d1d, 1px 1px 2px #000;
           letter-spacing: -0.5px;
         }
+
+        /* スペル演出: 隕石着弾 */
+        @keyframes meteor-spell-anim {
+          0% { transform: translate(-50%, -150%) scale(0.5); opacity: 0; }
+          40% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
+          50% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); opacity: 1; }
+          60% { transform: translate(-50%, -50%) scale(1.4) rotate(5deg); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* スペル演出: 烈火の炎 (Burn) */
+        @keyframes burn-spell-anim {
+          0% { transform: translate(-50%, 50%) scale(0.8); opacity: 0; }
+          30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; filter: drop-shadow(0 0 25px #ea580c); }
+          70% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; filter: drop-shadow(0 0 15px #f97316); }
+          100% { transform: translate(-50%, -80%) scale(1.8); opacity: 0; }
+        }
+
+        /* スペル演出: 疾風の号令 (Haste) */
+        @keyframes haste-spell-anim {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          20% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; filter: drop-shadow(0 0 20px #22c55e); }
+          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          80% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* スペル演出: 癒やしの雨 (Heal) */
+        @keyframes heal-spell-anim {
+          0% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
+          30% { transform: translate(-50%, -40%) scale(1.3); opacity: 1; filter: drop-shadow(0 0 20px #38bdf8); }
+          60% { transform: translate(-50%, -30%) scale(1.1); opacity: 0.9; }
+          100% { transform: translate(-50%, 20%) scale(1.5); opacity: 0; }
+        }
         @media (max-width: 959px) {
           .desktop-side-panel {
             display: none !important;
@@ -837,8 +871,18 @@ export default function RealtimeDemoPage() {
                       style={{
                         ...styles.spellBlast,
                         top: `${spell.y}%`,
+                        ...(spell.type === 'burn' ? styles.spellBurn : {}),
                         ...(spell.type === 'haste' ? styles.spellHaste : {}),
                         ...(spell.type === 'heal' ? styles.spellHeal : {}),
+                        animation: spell.type === 'meteor'
+                          ? 'meteor-spell-anim 0.8s ease-out forwards'
+                          : spell.type === 'burn'
+                          ? 'burn-spell-anim 1s ease-out forwards'
+                          : spell.type === 'haste'
+                          ? 'haste-spell-anim 0.6s ease-out forwards'
+                          : spell.type === 'heal'
+                          ? 'heal-spell-anim 1s ease-out forwards'
+                          : undefined,
                       }}
                     >
                       {spell.type === 'meteor'
@@ -2223,6 +2267,10 @@ const styles: Record<string, React.CSSProperties> = {
   spellHeal: {
     backgroundColor: 'rgba(14, 165, 233, 0.92)',
     boxShadow: '0 0 15px #38bdf8',
+  },
+  spellBurn: {
+    backgroundColor: 'rgba(249, 115, 22, 0.92)',
+    boxShadow: '0 0 15px #ea580c',
   },
   playerCommandBar: {
     display: 'flex',
