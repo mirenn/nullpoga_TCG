@@ -650,10 +650,22 @@ export function useRealtimeGame() {
                   flightDuration: baseFlightMs,
                 });
 
-                if (unit.owner === 'player') {
-                  pDamageToCpu += attack;
+                if (unit.cardNo === 6 && baseFlightMs) {
+                  newPendingHits.push({
+                    id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                    targetId: unit.owner === 'player' ? 'cpu' : 'player',
+                    attackerId: unit.id,
+                    lane: unit.lane,
+                    damage: attack,
+                    stunDuration: 0,
+                    hitTime: now + baseFlightMs,
+                  });
                 } else {
-                  cpuDamageToPlayer += attack;
+                  if (unit.owner === 'player') {
+                    pDamageToCpu += attack;
+                  } else {
+                    cpuDamageToPlayer += attack;
+                  }
                 }
               }
               return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
@@ -798,6 +810,19 @@ export function useRealtimeGame() {
                 return unit;
               }).filter((u) => u.hp > 0);
             });
+
+            // Base hits tracking delayed application
+            let pDmg = 0;
+            let cpuDmg = 0;
+            for (const hit of resolvedHits) {
+              if (hit.targetId === 'cpu') {
+                cpuDmg += hit.damage;
+              } else if (hit.targetId === 'player') {
+                pDmg += hit.damage;
+              }
+            }
+            if (pDmg > 0) setPlayerHp((prev) => Math.max(0, prev - pDmg));
+            if (cpuDmg > 0) setCpuHp((prev) => Math.max(0, prev - cpuDmg));
           }
 
           return stillPending;
