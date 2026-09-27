@@ -1090,11 +1090,12 @@ export default function RealtimeDemoPage() {
           </div>
 
           {/* 4. 手札カードリスト & NEXTドック */}
-          <div style={styles.dockContainer} className="dock-container">
+          <div style={styles.dockContainer} className="dock-container" suppressHydrationWarning>
             {/* NEXTカードスロット */}
             <div
               style={styles.nextCardSlot}
               className="next-card-slot"
+              suppressHydrationWarning
               title={nextCard ? `次に引くカード: ${nextCard.name} (⚡${nextCard.manaCost})` : '山札なし'}
             >
               <div style={styles.nextBadge}>NEXT</div>

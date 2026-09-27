@@ -236,15 +236,22 @@ interface DeckState {
   discardPile: DemoCard[];
 }
 
-const initDeckState = (): DeckState => {
-  const shuffled = shuffleCards(createDefault15Deck());
-  const initialHand = shuffled.slice(0, 4);
-  const next = shuffled[4] || null;
-  const initialDrawPile = shuffled.slice(5);
+const createDeterministicDeckState = (): DeckState => {
+  const cards = createDefault15Deck();
   return {
-    hand: initialHand,
-    nextCard: next,
-    deck: initialDrawPile,
+    hand: cards.slice(0, 4),
+    nextCard: cards[4] || null,
+    deck: cards.slice(5),
+    discardPile: [],
+  };
+};
+
+export const createRandomDeckState = (): DeckState => {
+  const shuffled = shuffleCards(createDefault15Deck());
+  return {
+    hand: shuffled.slice(0, 4),
+    nextCard: shuffled[4] || null,
+    deck: shuffled.slice(5),
     discardPile: [],
   };
 };
@@ -257,17 +264,24 @@ export function useRealtimeGame() {
   const [manaRegenRate, setManaRegenRate] = useState<number>(DEFAULT_MANA_REGEN_PER_SEC);
 
   // 15枚デッキ・手札・NEXT・山札・捨て札管理 (プレイヤー側)
-  const [deckState, setDeckState] = useState<DeckState>(initDeckState);
+  // SSRハイドレーションエラー防止のため初期値は固定順とし、クライアントマウント時にランダムシャッフル
+  const [deckState, setDeckState] = useState<DeckState>(createDeterministicDeckState);
   const { hand, nextCard, deck, discardPile } = deckState;
   const [selectedCardIndex, setSelectedCardIndex] = useState<number | null>(null);
   const cooldownRef = useRef<number>(0);
 
   // 15枚デッキ・手札・NEXT・山札・捨て札管理 (CPU側)
-  const [cpuDeckState, setCpuDeckState] = useState<DeckState>(initDeckState);
+  const [cpuDeckState, setCpuDeckState] = useState<DeckState>(createDeterministicDeckState);
   const cpuDeckStateRef = useRef<DeckState>(cpuDeckState);
   useEffect(() => {
     cpuDeckStateRef.current = cpuDeckState;
   }, [cpuDeckState]);
+
+  // クライアント初回マウント時にプレイヤーとCPUのデッキをランダムシャッフル
+  useEffect(() => {
+    setDeckState(createRandomDeckState());
+    setCpuDeckState(createRandomDeckState());
+  }, []);
 
   // CPU召喚予兆（詠唱エフェクト）
   const [cpuSpawnWarnings, setCpuSpawnWarnings] = useState<CpuSpawnWarning[]>([]);
@@ -1414,8 +1428,8 @@ export function useRealtimeGame() {
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;
-    setDeckState(initDeckState());
-    setCpuDeckState(initDeckState());
+    setDeckState(createRandomDeckState());
+    setCpuDeckState(createRandomDeckState());
     setCpuSpawnWarnings([]);
     cpuSpawnWarningsRef.current = [];
     cpuSpawnTimestampsRef.current = [];
