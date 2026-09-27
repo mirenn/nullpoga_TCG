@@ -293,7 +293,7 @@ export function useRealtimeGame() {
       }
       // ユニーク制限: 炎のドラゴン（cardNo: 11）は場に1体まで
       if (card.cardNo === 11) {
-        const hasDragon = stateRef.current.units.some(
+        const hasDragon = unitsRef.current.some(
           (u) => u.owner === 'player' && u.cardNo === 11 && u.hp > 0
         );
         if (hasDragon) {
@@ -302,7 +302,7 @@ export function useRealtimeGame() {
       }
       // レーン過密制限: モンスターは1レーンあたり自軍最大3体まで
       if (laneIndex !== undefined && card.type === 'MONSTER') {
-        const unitsInLane = stateRef.current.units.filter(
+        const unitsInLane = unitsRef.current.filter(
           (u) => u.owner === 'player' && u.lane === laneIndex && u.hp > 0
         );
         if (unitsInLane.length >= 3) {
@@ -394,11 +394,9 @@ export function useRealtimeGame() {
           icon: card.icon,
           distanceTraveled: 0,
         };
-        setUnits((prev) => {
-          const next = [...prev, newUnit];
-          unitsRef.current = next;
-          return next;
-        });
+        const next = [...unitsRef.current, newUnit];
+        unitsRef.current = next;
+        setUnits(next);
       } else if (card.type === 'SPELL') {
         if (card.id === 'meteor') {
           // 指定レーンの敵に3ダメージ
@@ -406,68 +404,60 @@ export function useRealtimeGame() {
             ...prev,
             { id: `meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
           ]);
-          setUnits((prev) => {
-            const next = prev
-              .map((u) => {
-                if (u.owner === 'cpu' && u.lane === laneIndex) {
-                  return { ...u, hp: u.hp - 3 };
-                }
-                return u;
-              })
-              .filter((u) => u.hp > 0);
-            unitsRef.current = next;
-            return next;
-          });
+          const next = unitsRef.current
+            .map((u) => {
+              if (u.owner === 'cpu' && u.lane === laneIndex) {
+                return { ...u, hp: u.hp - 3 };
+              }
+              return u;
+            })
+            .filter((u) => u.hp > 0);
+          unitsRef.current = next;
+          setUnits(next);
         } else if (card.id === 'fire_spell') {
           // 全敵ユニットに2ダメージ
           setSpellEffects((prev) => [
             ...prev,
             { id: `burn_${Date.now()}`, lane: -1, y: 50, type: 'burn', createdAt: Date.now() },
           ]);
-          setUnits((prev) => {
-            const next = prev
-              .map((u) => {
-                if (u.owner === 'cpu') {
-                  return { ...u, hp: u.hp - 2 };
-                }
-                return u;
-              })
-              .filter((u) => u.hp > 0);
-            unitsRef.current = next;
-            return next;
-          });
+          const next = unitsRef.current
+            .map((u) => {
+              if (u.owner === 'cpu') {
+                return { ...u, hp: u.hp - 2 };
+              }
+              return u;
+            })
+            .filter((u) => u.hp > 0);
+          unitsRef.current = next;
+          setUnits(next);
         } else if (card.id === 'haste_spell') {
           // 味方ユニットの攻撃クールダウンをリセット
           setSpellEffects((prev) => [
             ...prev,
             { id: `haste_${Date.now()}`, lane: laneIndex, y: 75, type: 'haste', createdAt: Date.now() },
           ]);
-          setUnits((prev) => {
-            const next = prev.map((u) => {
-              if (u.owner === 'player' && u.lane === laneIndex) {
-                return { ...u, attackCooldown: 0 };
-              }
-              return u;
-            });
-            unitsRef.current = next;
-            return next;
+          const next = unitsRef.current.map((u) => {
+            if (u.owner === 'player' && u.lane === laneIndex) {
+              return { ...u, attackCooldown: 0 };
+            }
+            return u;
           });
+          unitsRef.current = next;
+          setUnits(next);
         } else if (card.id === 'heal_spell') {
           // 指定レーンの味方に3回復
           setSpellEffects((prev) => [
             ...prev,
             { id: `heal_${Date.now()}`, lane: laneIndex, y: 50, type: 'heal', createdAt: Date.now() },
           ]);
-          setUnits((prev) => {
-            const next = prev.map((u) => {
-              if (u.owner === 'player' && u.lane === laneIndex) {
-                return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
-              }
-              return u;
-            });
-            unitsRef.current = next;
-            return next;
+          const next = unitsRef.current.map((u) => {
+            if (u.owner === 'player' && u.lane === laneIndex) {
+              return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
+            }
+            return u;
           });
+          unitsRef.current = next;
+          setUnits(next);
         }
       }
 
@@ -496,7 +486,7 @@ export function useRealtimeGame() {
       const chosenCard = availableCards[Math.floor(Math.random() * availableCards.length)];
       // ユニーク制限: 炎のドラゴン（cardNo: 11）はCPU側も場に1体まで
       if (chosenCard.cardNo === 11) {
-        const hasDragon = stateRef.current.units.some(
+        const hasDragon = unitsRef.current.some(
           (u) => u.owner === 'cpu' && u.cardNo === 11 && u.hp > 0
         );
         if (hasDragon) return;
@@ -504,7 +494,7 @@ export function useRealtimeGame() {
 
       // 出撃可能なレーンをフィルタ（味方3体未満 かつ 出撃スペース y >= 5 + SPAWN_MIN_SPACE が空いているレーン）
       const validLanes = [0, 1, 2, 3, 4].filter((lane) => {
-        const cpuUnitsInLane = stateRef.current.units.filter(
+        const cpuUnitsInLane = unitsRef.current.filter(
           (u) => u.owner === 'cpu' && u.lane === lane && u.hp > 0
         );
         if (cpuUnitsInLane.length >= 3) return false;
@@ -515,7 +505,7 @@ export function useRealtimeGame() {
 
       // プレイヤーユニットが多く攻めてきているレーンを優先、または出撃可能レーンから選択
       const lanePlayerCounts = [0, 0, 0, 0, 0];
-      stateRef.current.units.forEach((u) => {
+      unitsRef.current.forEach((u) => {
         if (u.owner === 'player' && u.hp > 0) lanePlayerCounts[u.lane]++;
       });
 
@@ -545,11 +535,9 @@ export function useRealtimeGame() {
         icon: chosenCard.icon,
         distanceTraveled: 0,
       };
-      setUnits((prev) => {
-        const next = [...prev, cpuUnit];
-        unitsRef.current = next;
-        return next;
-      });
+      const next = [...unitsRef.current, cpuUnit];
+      unitsRef.current = next;
+      setUnits(next);
     }
   }, []);
 
