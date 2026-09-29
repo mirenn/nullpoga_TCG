@@ -344,14 +344,14 @@ export function useRealtimeGame() {
         setUnits(next);
       } else if (card.type === 'SPELL') {
         if (card.id === 'meteor') {
-          // 指定レーンの敵に3ダメージ
+          // 指定レーンの中央付近（y=50±20）の敵に3ダメージ
           setSpellEffects((prev) => [
             ...prev,
             { id: `meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
           ]);
           const next = unitsRef.current
             .map((u) => {
-              if (u.owner === 'cpu' && u.lane === laneIndex) {
+              if (u.owner === 'cpu' && u.lane === laneIndex && Math.abs(u.y - 50) <= 20) {
                 return { ...u, hp: u.hp - 3 };
               }
               return u;
@@ -462,14 +462,14 @@ export function useRealtimeGame() {
     } else if (chosen.card.type === 'SPELL') {
       const laneIndex = chosen.targetLane ?? 0;
       if (chosen.card.id === 'meteor') {
-        // 隕石落下（指定レーンのプレイヤーユニットに3ダメージ）
+        // 隕石落下（指定レーンの中央付近（y=50±20）のプレイヤーユニットに3ダメージ）
         setSpellEffects((prev) => [
           ...prev,
           { id: `cpu_meteor_${Date.now()}`, lane: laneIndex, y: 50, type: 'meteor', createdAt: Date.now() },
         ]);
         const next = unitsRef.current
           .map((u) => {
-            if (u.owner === 'player' && u.lane === laneIndex) {
+            if (u.owner === 'player' && u.lane === laneIndex && Math.abs(u.y - 50) <= 20) {
               return { ...u, hp: u.hp - 3 };
             }
             return u;

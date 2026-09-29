@@ -545,13 +545,25 @@ export default function RealtimeDemoPage() {
           letter-spacing: -0.5px;
         }
 
-        /* スペル演出: 隕石着弾 */
-        @keyframes meteor-spell-anim {
-          0% { transform: translate(-50%, -150%) scale(0.5); opacity: 0; }
-          40% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
-          50% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); opacity: 1; }
-          60% { transform: translate(-50%, -50%) scale(1.4) rotate(5deg); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
-          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        /* スペル演出: 隕石落下・着弾 (Meteor) */
+        @keyframes meteor-indicator-anim {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+          20% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+          80% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes meteor-falling-anim {
+          0% { transform: translate(150%, -250%) scale(1.5) rotate(-45deg); opacity: 0; }
+          20% { opacity: 1; }
+          80% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 1; }
+          100% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 0; }
+        }
+        @keyframes meteor-explosion-anim {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          75% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          80% { transform: translate(-50%, -50%) scale(2); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
+          90% { transform: translate(-50%, -50%) scale(2.5); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
+          100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
         }
 
         /* スペル演出: 烈火の炎 (Burn) */
@@ -891,35 +903,74 @@ export default function RealtimeDemoPage() {
                   ))}
 
                   {/* スペル演出 */}
-                  {laneSpells.map((spell) => (
-                    <div
-                      key={spell.id}
-                      style={{
-                        ...styles.spellBlast,
-                        top: `${spell.y}%`,
-                        ...(spell.type === 'burn' ? styles.spellBurn : {}),
-                        ...(spell.type === 'haste' ? styles.spellHaste : {}),
-                        ...(spell.type === 'heal' ? styles.spellHeal : {}),
-                        animation: spell.type === 'meteor'
-                          ? 'meteor-spell-anim 0.8s ease-out forwards'
-                          : spell.type === 'burn'
-                          ? 'burn-spell-anim 1s ease-out forwards'
+                  {laneSpells.map((spell) => {
+                    if (spell.type === 'meteor') {
+                      return (
+                        <div key={spell.id} style={{ position: 'absolute', top: `${spell.y}%`, left: '50%', zIndex: 30 }}>
+                          {/* 予告円 */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              width: '80px',
+                              height: '160px', /* ±20% (40% of lane length) */
+                              backgroundColor: 'rgba(239, 68, 68, 0.3)',
+                              border: '2px solid rgba(239, 68, 68, 0.8)',
+                              borderRadius: '50%',
+                              animation: 'meteor-indicator-anim 1s ease-out forwards',
+                            }}
+                          />
+                          {/* 降ってくる隕石 */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              fontSize: '32px',
+                              animation: 'meteor-falling-anim 1s ease-in forwards',
+                              zIndex: 31,
+                            }}
+                          >
+                            ☄️
+                          </div>
+                          {/* 爆発 */}
+                          <div
+                            style={{
+                              position: 'absolute',
+                              fontSize: '40px',
+                              animation: 'meteor-explosion-anim 1s ease-out forwards',
+                              zIndex: 32,
+                            }}
+                          >
+                            💥
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <div
+                        key={spell.id}
+                        style={{
+                          ...styles.spellBlast,
+                          top: `${spell.y}%`,
+                          ...(spell.type === 'burn' ? styles.spellBurn : {}),
+                          ...(spell.type === 'haste' ? styles.spellHaste : {}),
+                          ...(spell.type === 'heal' ? styles.spellHeal : {}),
+                          animation: spell.type === 'burn'
+                            ? 'burn-spell-anim 1s ease-out forwards'
+                            : spell.type === 'haste'
+                            ? 'haste-spell-anim 0.6s ease-out forwards'
+                            : spell.type === 'heal'
+                            ? 'heal-spell-anim 1s ease-out forwards'
+                            : undefined,
+                        }}
+                      >
+                        {spell.type === 'burn'
+                          ? '🔥 烈火!!'
                           : spell.type === 'haste'
-                          ? 'haste-spell-anim 0.6s ease-out forwards'
-                          : spell.type === 'heal'
-                          ? 'heal-spell-anim 1s ease-out forwards'
-                          : undefined,
-                      }}
-                    >
-                      {spell.type === 'meteor'
-                        ? '💥 隕石着弾!!'
-                        : spell.type === 'burn'
-                        ? '🔥 烈火!!'
-                        : spell.type === 'haste'
-                        ? '💨 疾風!!'
-                        : '🌧️ 癒やし!!'}
-                    </div>
-                  ))}
+                          ? '💨 疾風!!'
+                          : '🌧️ 癒やし!!'}
+                      </div>
+                    );
+                  })}
 
                   {/* 攻撃エフェクト（弾道・斬撃・着弾・ダメージポップアップ） */}
                   {laneAttackEffects.map((effect) => (
