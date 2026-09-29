@@ -1,0 +1,517 @@
+        .realtime-demo-container {
+          box-sizing: border-box;
+        }
+
+        /* 出撃ゾーン: ハザード斜線ストライプ（出撃スペース不足時） */
+        @keyframes hazard-stripe-scroll {
+          0% { background-position: 0 0; }
+          100% { background-position: 28px 0; }
+        }
+        .spawn-zone-blocked {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 14%;
+          background: repeating-linear-gradient(
+            -45deg,
+            rgba(239, 68, 68, 0.22),
+            rgba(239, 68, 68, 0.22) 10px,
+            rgba(185, 28, 28, 0.45) 10px,
+            rgba(185, 28, 28, 0.45) 20px
+          );
+          background-size: 28px 28px;
+          animation: hazard-stripe-scroll 1.2s linear infinite;
+          border-top: 2px dashed #ef4444;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 12;
+          box-shadow: inset 0 4px 12px rgba(239, 68, 68, 0.35), 0 -2px 8px rgba(239, 68, 68, 0.25);
+        }
+        .spawn-zone-ready {
+          position: absolute;
+          bottom: 0;
+          left: 0;
+          right: 0;
+          height: 14%;
+          background: rgba(37, 99, 235, 0.12);
+          border-top: 1.5px dashed rgba(96, 165, 250, 0.6);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 12;
+          transition: all 0.15s ease;
+        }
+
+        /* ユニット攻撃時の一瞬の踏み込みバンプ */
+        @keyframes unit-attack-player {
+          0% { transform: translateY(0); }
+          35% { transform: translateY(-8px) scale(1.1); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        @keyframes unit-attack-cpu {
+          0% { transform: translateY(0); }
+          35% { transform: translateY(8px) scale(1.1); }
+          100% { transform: translateY(0) scale(1); }
+        }
+        .unit-attacking-player {
+          animation: unit-attack-player 0.22s ease-out;
+        }
+        .unit-attacking-cpu {
+          animation: unit-attack-cpu 0.22s ease-out;
+        }
+
+        /* 撃破・吸血成長フロート演出 */
+        @keyframes unit-kill-float {
+          0% { transform: translate(-50%, 0) scale(0.8); opacity: 0; }
+          20% { transform: translate(-50%, -4px) scale(1.1); opacity: 1; }
+          70% { transform: translate(-50%, -8px) scale(1); opacity: 1; }
+          100% { transform: translate(-50%, -14px) scale(0.9); opacity: 0; }
+        }
+
+        /* 炎のドラゴン: 火炎弾グロー */
+        .fireball-glow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #ea580c 0%, rgba(239, 68, 68, 0.7) 60%, transparent 100%);
+          box-shadow: 0 0 18px #f97316, 0 0 32px #ea580c;
+        }
+
+        /* 炎のドラゴン: 着弾火炎大爆発 */
+        @keyframes fireball-impact-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5);
+            opacity: 0;
+          }
+          35% {
+            transform: translate(-50%, -50%) scale(1.7);
+            opacity: 1;
+            filter: drop-shadow(0 0 20px #f97316);
+          }
+          70% {
+            transform: translate(-50%, -50%) scale(2.2);
+            opacity: 0.9;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.8);
+            opacity: 0;
+          }
+        }
+        .fireball-impact-effect {
+          animation: fireball-impact-anim 0.42s ease-out forwards;
+        }
+        @keyframes shockwave-pulse-orange {
+          0% {
+            width: 12px;
+            height: 12px;
+            opacity: 1;
+            border-width: 3px;
+          }
+          100% {
+            width: 72px;
+            height: 72px;
+            opacity: 0;
+            border-width: 1px;
+          }
+        }
+        .shockwave-ring-orange {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          border: 2px solid #ea580c;
+          box-shadow: 0 0 16px #f97316;
+          pointer-events: none;
+          animation: shockwave-pulse-orange 0.4s ease-out forwards;
+        }
+
+        /* 電気クラゲ: 放電電撃弾グロー（発射元の閃光） */
+        @keyframes lightning-source-glow {
+          0% { transform: scale(0.6); opacity: 0.2; }
+          30% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 16px #38bdf8); }
+          100% { transform: scale(0.8); opacity: 0; }
+        }
+        .lightning-glow {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          background: radial-gradient(circle, #38bdf8 0%, rgba(2, 132, 199, 0.6) 60%, transparent 100%);
+          box-shadow: 0 0 16px #38bdf8, 0 0 28px #0284c7;
+          animation: lightning-source-glow 0.3s ease-out forwards;
+        }
+
+        /* 電気クラゲ: 放電電撃弾（クラゲから標的へ高速飛翔するエネルギー球） */
+        @keyframes lightning-orb-fly {
+          0% {
+            top: var(--from-y);
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(0.9);
+          }
+          20% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.3);
+          }
+          80% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.2);
+          }
+          98% {
+            top: var(--to-y);
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.4);
+          }
+          100% {
+            top: var(--to-y);
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.1);
+          }
+        }
+        .lightning-projectile-orb {
+          position: absolute;
+          left: 50%;
+          width: 28px;
+          height: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border-radius: 50%;
+          background: radial-gradient(circle, #ffffff 0%, #38bdf8 40%, rgba(2, 132, 199, 0.8) 70%, transparent 100%);
+          box-shadow: 0 0 16px #ffffff, 0 0 28px #38bdf8, 0 0 44px #0284c7;
+          pointer-events: none;
+          z-index: 40;
+          animation: lightning-orb-fly var(--flight-duration, 280ms) cubic-bezier(0.2, 0.7, 0.3, 1) forwards;
+        }
+
+        /* 電撃弾のスパーク回転演出 */
+        @keyframes lightning-trail-pulse {
+          0% { transform: scale(1) rotate(0deg); }
+          50% { transform: scale(1.25) rotate(180deg); }
+          100% { transform: scale(1) rotate(360deg); }
+        }
+        .lightning-orb-spark {
+          font-size: 16px;
+          line-height: 1;
+          filter: drop-shadow(0 0 6px #ffffff);
+          animation: lightning-trail-pulse 0.15s linear infinite;
+        }
+
+        /* 電気クラゲ: 放電電撃ビームライン（着弾瞬間に走る稲妻フラッシュ） */
+        @keyframes lightning-beam-flicker {
+          0% { opacity: 0; transform: translateX(-50%) scaleX(0.4); }
+          20% { opacity: 1; transform: translateX(-50%) scaleX(1.6); }
+          40% { opacity: 0.7; transform: translateX(-50%) scaleX(1.0); }
+          60% { opacity: 1; transform: translateX(-50%) scaleX(1.8); }
+          80% { opacity: 0.8; transform: translateX(-50%) scaleX(1.2); }
+          100% { opacity: 0; transform: translateX(-50%) scaleX(0.2); }
+        }
+        .lightning-beam-line {
+          position: absolute;
+          left: 50%;
+          width: 8px;
+          background: linear-gradient(to bottom, #ffffff, #38bdf8 30%, #e0f2fe 50%, #0284c7 70%, #ffffff);
+          box-shadow: 0 0 14px #38bdf8, 0 0 28px #0284c7, 0 0 42px #ffffff;
+          border-radius: 4px;
+          pointer-events: none;
+          z-index: 35;
+          opacity: 0;
+          animation: lightning-beam-flicker 0.35s ease-out var(--impact-delay, 0s) forwards;
+        }
+
+        /* 炎のドラゴン: 火炎ブレス流線（口から標的へ噴射される火炎） */
+        @keyframes fire-stream-flicker {
+          0% { opacity: 0; transform: translateX(-50%) scaleX(0.3); }
+          20% { opacity: 1; transform: translateX(-50%) scaleX(1.5); }
+          50% { opacity: 0.85; transform: translateX(-50%) scaleX(1.1); }
+          75% { opacity: 1; transform: translateX(-50%) scaleX(1.8); }
+          100% { opacity: 0; transform: translateX(-50%) scaleX(0.2); }
+        }
+        .fire-breath-stream {
+          position: absolute;
+          left: 50%;
+          width: 12px;
+          background: linear-gradient(to bottom, #fef08a, #f97316 25%, #ea580c 50%, #dc2626 75%, #fef08a);
+          box-shadow: 0 0 16px #f97316, 0 0 32px #ea580c, 0 0 48px #fef08a;
+          border-radius: 6px;
+          pointer-events: none;
+          z-index: 35;
+          animation: fire-stream-flicker 0.5s ease-out forwards;
+        }
+
+        /* 電気クラゲ: 着弾地点のバチバチ放電スパーク（ユニットサイズにフィットし、レーン枠をはみ出さない） */
+        @keyframes lightning-impact-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.35) rotate(-10deg);
+            opacity: 0;
+          }
+          15% {
+            transform: translate(-50%, -50%) scale(1.15) rotate(6deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 10px #38bdf8) drop-shadow(0 0 14px #facc15);
+          }
+          40% {
+            transform: translate(-50%, -50%) scale(1.0) rotate(-4deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 12px #38bdf8) drop-shadow(0 0 16px #facc15);
+          }
+          70% {
+            transform: translate(-50%, -50%) scale(1.05) rotate(3deg);
+            opacity: 0.85;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(0.7) rotate(-5deg);
+            opacity: 0;
+          }
+        }
+        .lightning-impact-effect {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          opacity: 0;
+          pointer-events: none;
+          animation: lightning-impact-anim 0.38s ease-out var(--impact-delay, 0s) forwards;
+        }
+        @keyframes shockwave-pulse-cyan {
+          0% {
+            width: 8px;
+            height: 8px;
+            opacity: 0.9;
+            border-width: 3px;
+          }
+          100% {
+            width: 50px;
+            height: 50px;
+            opacity: 0;
+            border-width: 1.5px;
+          }
+        }
+        .shockwave-ring-cyan {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          border: 2px solid #38bdf8;
+          box-shadow: 0 0 12px #38bdf8;
+          pointer-events: none;
+          opacity: 0;
+          animation: shockwave-pulse-cyan 0.38s ease-out var(--impact-delay, 0s) forwards;
+        }
+
+        /* 近接攻撃: 斬撃・爪痕・打撃 */
+        @keyframes melee-slash-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5) rotate(-25deg);
+            opacity: 0.2;
+          }
+          35% {
+            transform: translate(-50%, -50%) scale(1.5) rotate(10deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 10px #f59e0b);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.8) rotate(35deg);
+            opacity: 0;
+          }
+        }
+        .melee-slash-effect {
+          animation: melee-slash-anim 0.22s ease-out forwards;
+        }
+
+        /* 拠点ヒット衝撃 */
+        @keyframes base-hit-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 1;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.6);
+            opacity: 1;
+            filter: drop-shadow(0 0 14px #ef4444);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.2);
+            opacity: 0;
+          }
+        }
+        .base-hit-effect {
+          animation: base-hit-anim 0.28s ease-out forwards;
+        }
+
+        /* 着弾時のダメージ数値ポップアップ */
+        @keyframes damage-popup-anim {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, 0) scale(0.6);
+          }
+          25% {
+            opacity: 1;
+            transform: translate(-50%, -16px) scale(1.35);
+          }
+          70% {
+            opacity: 1;
+            transform: translate(-50%, -28px) scale(1.1);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -40px) scale(0.8);
+          }
+        }
+        .damage-popup-text {
+          opacity: 0;
+          animation: damage-popup-anim 0.48s ease-out var(--impact-delay, 0s) forwards;
+          color: #ff3344;
+          font-weight: 900;
+          font-size: 16px;
+          text-shadow: 0 0 4px #000, 0 0 8px #7f1d1d, 1px 1px 2px #000;
+          letter-spacing: -0.5px;
+        }
+
+        /* スペル演出: 隕石着弾 */
+        @keyframes meteor-spell-anim {
+          0% { transform: translate(-50%, -150%) scale(0.5); opacity: 0; }
+          40% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
+          50% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); opacity: 1; }
+          60% { transform: translate(-50%, -50%) scale(1.4) rotate(5deg); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* スペル演出: 烈火の炎 (Burn) */
+        @keyframes burn-spell-anim {
+          0% { transform: translate(-50%, 50%) scale(0.8); opacity: 0; }
+          30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; filter: drop-shadow(0 0 25px #ea580c); }
+          70% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; filter: drop-shadow(0 0 15px #f97316); }
+          100% { transform: translate(-50%, -80%) scale(1.8); opacity: 0; }
+        }
+
+        /* スペル演出: 疾風の号令 (Haste) */
+        @keyframes haste-spell-anim {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          20% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; filter: drop-shadow(0 0 20px #22c55e); }
+          50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+          80% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
+          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* スペル演出: 癒やしの雨 (Heal) */
+        @keyframes heal-spell-anim {
+          0% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
+          30% { transform: translate(-50%, -40%) scale(1.3); opacity: 1; filter: drop-shadow(0 0 20px #38bdf8); }
+          60% { transform: translate(-50%, -30%) scale(1.1); opacity: 0.9; }
+          100% { transform: translate(-50%, 20%) scale(1.5); opacity: 0; }
+        }
+        @media (max-width: 959px) {
+          .desktop-side-panel {
+            display: none !important;
+          }
+          .mobile-guide-btn {
+            display: inline-flex !important;
+          }
+          .mobile-cpu-header {
+            display: flex !important;
+          }
+        }
+        @media (min-width: 960px) {
+          .desktop-side-panel {
+            display: flex !important;
+          }
+          .mobile-guide-btn {
+            display: none !important;
+          }
+          .mobile-cpu-header {
+            display: none !important;
+          }
+        }
+        @media (max-width: 640px) {
+          .mana-speed-label-full {
+            display: none !important;
+          }
+          .mana-speed-label-short {
+            display: inline !important;
+          }
+          .btn-text-desktop {
+            display: none !important;
+          }
+          .btn-text-mobile {
+            display: inline !important;
+          }
+        }
+        @media (min-width: 641px) {
+          .mana-speed-label-short {
+            display: none !important;
+          }
+          .btn-text-mobile {
+            display: none !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .card-name {
+            font-size: 11px !important;
+            max-width: 52px !important;
+          }
+          .card-icon {
+            font-size: 17px !important;
+          }
+          .card-desc-snippet {
+            display: none !important;
+          }
+          .card-speed-badge {
+            display: none !important;
+          }
+          .next-card-slot {
+            width: 48px !important;
+            padding: 3px 1px !important;
+          }
+          .next-card-name {
+            display: none !important;
+          }
+          .next-card-icon {
+            font-size: 16px !important;
+          }
+        }
+        @media (max-height: 520px) {
+          .realtime-demo-container {
+            overflow-y: auto !important;
+            height: auto !important;
+            min-height: 100vh !important;
+          }
+        }
+        @keyframes pulseGlow {
+          0%, 100% { box-shadow: 0 0 8px rgba(59, 130, 246, 0.4); }
+          50% { box-shadow: 0 0 16px rgba(59, 130, 246, 0.85); }
+        }
+        @keyframes pulseSummonBadge {
+          0%, 100% { transform: translate(-50%, 0) scale(1); opacity: 0.95; }
+          50% { transform: translate(-50%, 0) scale(1.05); opacity: 1; }
+        }
+        @keyframes cpuSpawnPulse {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.2;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.1);
+            opacity: 1;
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.9), inset 0 0 12px rgba(192, 132, 252, 0.8);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(0.95);
+            opacity: 0.9;
+          }
+        }
+        @keyframes cpuRuneRotate {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
