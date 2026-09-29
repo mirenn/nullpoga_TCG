@@ -152,7 +152,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '隕石落下',
     type: 'SPELL',
     manaCost: 3,
-    effectDesc: '指定したレーンに隕石を落とし、範囲内の敵に3ダメージ。',
+    effectDesc: '指定したレーンの中央付近に隕石を落とし、範囲内の敵に3ダメージ。',
     icon: '☄️',
   },
   {

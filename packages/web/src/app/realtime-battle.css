@@ -379,13 +379,25 @@
           letter-spacing: -0.5px;
         }
 
-        /* スペル演出: 隕石着弾 */
-        @keyframes meteor-spell-anim {
-          0% { transform: translate(-50%, -150%) scale(0.5); opacity: 0; }
-          40% { transform: translate(-50%, -50%) scale(1.5); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
-          50% { transform: translate(-50%, -50%) scale(1.2) rotate(-5deg); opacity: 1; }
-          60% { transform: translate(-50%, -50%) scale(1.4) rotate(5deg); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
-          100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        /* スペル演出: 隕石落下・着弾 (Meteor) */
+        @keyframes meteor-indicator-anim {
+          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+          20% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
+          80% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
+          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+        }
+        @keyframes meteor-falling-anim {
+          0% { transform: translate(150%, -250%) scale(1.5) rotate(-45deg); opacity: 0; }
+          20% { opacity: 1; }
+          80% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 1; }
+          100% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 0; }
+        }
+        @keyframes meteor-explosion-anim {
+          0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          75% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+          80% { transform: translate(-50%, -50%) scale(2); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
+          90% { transform: translate(-50%, -50%) scale(2.5); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
+          100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
         }
 
         /* スペル演出: 烈火の炎 (Burn) */
