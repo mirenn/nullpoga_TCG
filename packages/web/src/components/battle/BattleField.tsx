@@ -1,11 +1,15 @@
 import React from 'react';
-import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard } from '../../app/types';
+import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor } from '../../app/types';
 import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
+import { RenderInhibitor } from './RenderInhibitor';
+import { COLUMNS, COLUMN_COUNT, COLUMN_GAP_PX, SPELL_WIDTH, columnLabel } from '../../app/board';
+import { INHIBITOR_COLUMNS } from '../../app/inhibitors';
 
 interface BattleFieldProps {
   units: Unit[];
+  inhibitors: Inhibitor[];
   spellEffects: SpellEffect[];
   attackEffects: AttackEffect[];
   cpuSpawnWarnings: CpuSpawnWarning[];
@@ -25,8 +29,12 @@ interface BattleFieldProps {
   setDragOverLaneIndex: (laneIndex: number | null) => void;
 }
 
+/** スペル効果範囲（列数）に応じた横幅CSS（中心列 ± SPELL_WIDTH） */
+const SPELL_AREA_WIDTH_CSS = `calc(${SPELL_WIDTH * 2 + 1} * 100% + ${SPELL_WIDTH * 2 * COLUMN_GAP_PX}px)`;
+
 export function BattleField({
   units,
+  inhibitors,
   spellEffects,
   attackEffects,
   cpuSpawnWarnings,
@@ -46,11 +54,19 @@ export function BattleField({
   setDragOverLaneIndex,
 }: BattleFieldProps) {
   return (
-            <div style={styles.fieldGrid}>
-              {[0, 1, 2, 3, 4].map((laneIndex) => {
+            <div
+              style={{
+                ...styles.fieldGrid,
+                gridTemplateColumns: `repeat(${COLUMN_COUNT}, 1fr)`,
+                gap: `${COLUMN_GAP_PX}px`,
+              }}
+            >
+              {COLUMNS.map((laneIndex) => {
                 const laneUnits = units.filter((u) => u.lane === laneIndex);
+                const laneInhibitors = inhibitors.filter((i) => i.lane === laneIndex);
+                const isInhibitorColumn = INHIBITOR_COLUMNS.includes(laneIndex);
                 const laneSpells = spellEffects.filter(
-                  (e) => e.lane === laneIndex || e.lane === -1
+                  (e) => e.lane === laneIndex || (e.lane === -1 && laneIndex % 3 === 1)
                 );
                 const laneAttackEffects = attackEffects.filter((e) => e.lane === laneIndex);
                 const activeCard = isDragging ? activeDraggedCard : selectedCard;
@@ -95,6 +111,8 @@ export function BattleField({
                         ? 'rgba(239, 68, 68, 0.12)'
                         : selectedCard && isSpaceBlocked
                         ? 'rgba(30, 41, 59, 0.5)'
+                        : isInhibitorColumn
+                        ? 'rgba(30, 27, 60, 0.88)'
                         : 'rgba(15, 23, 42, 0.85)',
                       borderColor: isHoveredDrop
                         ? isOtherBlocked
@@ -132,13 +150,20 @@ export function BattleField({
                         ? 'inset 0 0 16px rgba(59, 130, 246, 0.25)'
                         : 'none',
                       transition: 'all 0.12s ease',
+                      // 隣接列への攻撃エフェクトやユニットのバッジがはみ出せるように
+                      overflow: 'visible',
                     }}
                   >
-                    {/* レーン番号（上部） */}
-                    <div style={styles.laneNumberTop}>L{laneIndex + 1}</div>
+                    {/* 列番号（上部） */}
+                    <div style={styles.laneNumberTop}>{columnLabel(laneIndex)}</div>
   
-                    {/* レーン中央ガイドライン */}
+                    {/* 列中央ガイドライン */}
                     <div style={styles.laneTrackLine} />
+
+                    {/* インヒビター */}
+                    {laneInhibitors.map((inhib) => (
+                      <RenderInhibitor key={inhib.id} inhibitor={inhib} />
+                    ))}
   
                     {/* CPU召喚予兆（詠唱魔方陣・インジケーター） */}
                     {cpuSpawnWarnings
@@ -187,7 +212,7 @@ export function BattleField({
                                 position: 'absolute',
                                 top: `${spell.y}%`,
                                 left: '50%',
-                                width: '84px',
+                                width: SPELL_AREA_WIDTH_CSS,
                                 height: '40%',
                                 backgroundColor: 'rgba(239, 68, 68, 0.3)',
                                 border: '2px solid rgba(239, 68, 68, 0.8)',
@@ -360,7 +385,7 @@ export function BattleField({
                     )}
   
                     {/* レーン番号（下部） */}
-                    <div style={styles.laneNumberBottom}>L{laneIndex + 1}</div>
+                    <div style={styles.laneNumberBottom}>{columnLabel(laneIndex)}</div>
                   </div>
                 );
               })}

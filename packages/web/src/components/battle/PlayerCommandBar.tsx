@@ -6,6 +6,7 @@ interface PlayerCommandBarProps {
   playerHp: number;
   playerMana: number;
   maxMana: number;
+  manaRegenMultiplier?: number;
   displayCombo: { count: number; visible: boolean };
   nextCard: DemoCard | null;
   deckCount: number;
@@ -25,6 +26,7 @@ export function PlayerCommandBar({
   playerHp,
   playerMana,
   maxMana,
+  manaRegenMultiplier = 1,
   displayCombo,
   nextCard,
   deckCount,
@@ -39,6 +41,9 @@ export function PlayerCommandBar({
   handleDragStart,
   handleDragEnd,
 }: PlayerCommandBarProps) {
+  const isBoosted = manaRegenMultiplier > 1;
+  const boostPercent = Math.round((manaRegenMultiplier - 1) * 100);
+
   return (
     <>
                 <div style={styles.playerCommandBar}>
@@ -55,7 +60,7 @@ export function PlayerCommandBar({
                       <span style={styles.hpText}>{playerHp} / 20 HP</span>
                     </div>
                   </div>
-      
+       
                   {/* マナゲージ */}
                   <div style={styles.playerManaSection}>
                     <div style={styles.manaInfo}>
@@ -63,6 +68,23 @@ export function PlayerCommandBar({
                       <span style={styles.manaCount}>
                         <strong>{playerMana.toFixed(1)}</strong> / {maxMana}
                       </span>
+                      {isBoosted && (
+                        <span
+                          style={{
+                            marginLeft: '6px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            color: '#38bdf8',
+                            backgroundColor: 'rgba(2, 132, 199, 0.25)',
+                            border: '1px solid #38bdf8',
+                            padding: '1px 5px',
+                            borderRadius: '3px',
+                          }}
+                          title={`敵インヒビター破壊ボーナス: マナ回復速度 +${boostPercent}%`}
+                        >
+                          ⚡+{boostPercent}%
+                        </span>
+                      )}
                       {/* コンボ表示 */}
                       <div
                         style={{

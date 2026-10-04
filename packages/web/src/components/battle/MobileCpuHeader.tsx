@@ -6,6 +6,7 @@ interface MobileCpuHeaderProps {
   cpuHp: number;
   cpuMana: number;
   maxMana: number;
+  cpuManaRegenMultiplier?: number;
   cpuHandCount: number;
   cpuDeckCount: number;
   manaRegenRate: number;
@@ -18,6 +19,7 @@ export function MobileCpuHeader({
   cpuHp,
   cpuMana,
   maxMana,
+  cpuManaRegenMultiplier = 1,
   cpuHandCount,
   cpuDeckCount,
   manaRegenRate,
@@ -25,6 +27,9 @@ export function MobileCpuHeader({
   onReset,
   onOpenGuide,
 }: MobileCpuHeaderProps) {
+  const isCpuBoosted = cpuManaRegenMultiplier > 1;
+  const cpuBoostPercent = Math.round((cpuManaRegenMultiplier - 1) * 100);
+
   return (
     <div style={styles.cpuHeader} className="mobile-cpu-header">
       <div style={styles.mobileCpuStatusGroup}>
@@ -44,9 +49,27 @@ export function MobileCpuHeader({
 
         {/* CPU マナ */}
         <div style={styles.mobileCpuManaSection}>
-          <span style={styles.mobileCpuManaCount}>
-            ⚡<strong>{cpuMana.toFixed(1)}</strong>
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span style={styles.mobileCpuManaCount}>
+              ⚡<strong>{cpuMana.toFixed(1)}</strong>
+            </span>
+            {isCpuBoosted && (
+              <span
+                style={{
+                  fontSize: '9px',
+                  fontWeight: 'bold',
+                  color: '#f43f5e',
+                  backgroundColor: 'rgba(225, 29, 72, 0.25)',
+                  border: '1px solid #f43f5e',
+                  padding: '0 3px',
+                  borderRadius: '2px',
+                }}
+                title={`相手マナ回復 +${cpuBoostPercent}%`}
+              >
+                +{cpuBoostPercent}%
+              </span>
+            )}
+          </div>
           <div style={styles.mobileCpuManaBarBg}>
             <div
               style={{

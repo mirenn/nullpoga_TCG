@@ -31,6 +31,9 @@ export default function RealtimeDemoPage() {
     selectedCardIndex,
     setSelectedCardIndex,
     units,
+    inhibitors,
+    playerManaRegenMultiplier,
+    cpuManaRegenMultiplier,
     spellEffects,
     attackEffects,
     gameResult,
@@ -176,6 +179,7 @@ export default function RealtimeDemoPage() {
             cpuHp={cpuHp}
             cpuMana={cpuMana}
             maxMana={maxMana}
+            cpuManaRegenMultiplier={cpuManaRegenMultiplier}
             cpuHandCount={cpuHand.length}
             cpuDeckCount={cpuDeckCount}
             manaRegenRate={manaRegenRate}
@@ -184,9 +188,10 @@ export default function RealtimeDemoPage() {
             onOpenGuide={() => setShowGuideModal(true)}
           />
 
-          {/* 2. 5レーン戦場フィールド (flex: 1 で全画面収容) */}
+          {/* 2. 9グリッド戦場フィールド (flex: 1 で全画面収容) */}
           <BattleField
             units={units}
+            inhibitors={inhibitors}
             spellEffects={spellEffects}
             attackEffects={attackEffects}
             cpuSpawnWarnings={cpuSpawnWarnings}
@@ -211,6 +216,7 @@ export default function RealtimeDemoPage() {
             playerHp={playerHp}
             playerMana={playerMana}
             maxMana={maxMana}
+            manaRegenMultiplier={playerManaRegenMultiplier}
             displayCombo={displayCombo}
             nextCard={nextCard}
             deckCount={deckCount}
@@ -232,6 +238,7 @@ export default function RealtimeDemoPage() {
           cpuHp={cpuHp}
           cpuMana={cpuMana}
           maxMana={maxMana}
+          cpuManaRegenMultiplier={cpuManaRegenMultiplier}
           cpuHand={cpuHand}
           cpuDeckCount={cpuDeckCount}
           manaRegenRate={manaRegenRate}

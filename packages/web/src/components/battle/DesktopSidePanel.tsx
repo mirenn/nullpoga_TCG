@@ -8,6 +8,7 @@ interface DesktopSidePanelProps {
   cpuHp: number;
   cpuMana: number;
   maxMana: number;
+  cpuManaRegenMultiplier?: number;
   cpuHand: DemoCard[];
   cpuDeckCount: number;
   manaRegenRate: number;
@@ -19,18 +20,22 @@ export function DesktopSidePanel({
   cpuHp,
   cpuMana,
   maxMana,
+  cpuManaRegenMultiplier = 1,
   cpuHand,
   cpuDeckCount,
   manaRegenRate,
   setManaRegenRate,
   onReset,
 }: DesktopSidePanelProps) {
+  const isCpuBoosted = cpuManaRegenMultiplier > 1;
+  const cpuBoostPercent = Math.round((cpuManaRegenMultiplier - 1) * 100);
+
   return (
     <div style={styles.sidePanel} className="desktop-side-panel">
       {/* パネル上部タイトル */}
       <div style={styles.sidePanelTitleRow}>
         <span style={styles.sidePanelTitle}>Nullpoga RTS</span>
-        <span style={styles.sidePanelBadge}>5レーン検証</span>
+        <span style={styles.sidePanelBadge}>9グリッド・インヒビター検証</span>
       </div>
 
       {/* 対戦相手（CPU）ステータス ＆ バトル操作カード */}
@@ -57,6 +62,23 @@ export function DesktopSidePanel({
             <span style={styles.cpuManaCount}>
               <strong>{cpuMana.toFixed(1)}</strong> / {maxMana}
             </span>
+            {isCpuBoosted && (
+              <span
+                style={{
+                  marginLeft: '6px',
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  color: '#f43f5e',
+                  backgroundColor: 'rgba(225, 29, 72, 0.25)',
+                  border: '1px solid #f43f5e',
+                  padding: '1px 5px',
+                  borderRadius: '3px',
+                }}
+                title={`プレイヤーインヒビター破壊ボーナス: 相手マナ回復 +${cpuBoostPercent}%`}
+              >
+                ⚡+{cpuBoostPercent}%
+              </span>
+            )}
           </div>
           <div style={styles.sideCpuManaBarBg}>
             <div

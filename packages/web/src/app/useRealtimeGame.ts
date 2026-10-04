@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning } from './types';
+import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning, Inhibitor, Owner } from './types';
 import {
   CARD_POOL,
   MANA_SPEED_PRESETS,
@@ -16,6 +16,13 @@ import {
   createRandomDeckState,
 } from './cards';
 import { computeCpuAction } from './cpuAi';
+import { isWithinEngage, SPELL_WIDTH } from './board';
+import {
+  createInitialInhibitors,
+  inhibitorCoversColumn,
+  manaRegenMultiplier,
+  INHIBITOR_DESTROY_MANA_BONUS,
+} from './inhibitors';
 
 // re-export for external consumers
 export {
@@ -50,6 +57,14 @@ interface PendingLightningHit {
   damage: number;
   stunDuration: number;   // ms (1200)
   hitTime: number;        // 着弾予定時刻 (Date.now() + 飛行時間)
+}
+
+/** 索敵対象（敵ユニット or 敵インヒビター） */
+interface CombatTarget {
+  id: string;
+  y: number;
+  lane: number;
+  isStructure: boolean;
 }
 
 export function useRealtimeGame() {
@@ -92,6 +107,10 @@ export function useRealtimeGame() {
   useEffect(() => {
     unitsRef.current = units;
   }, [units]);
+
+  // インヒビター（左・中・右 × 両陣営）
+  const [inhibitors, setInhibitors] = useState<Inhibitor[]>(createInitialInhibitors);
+  const inhibitorsRef = useRef<Inhibitor[]>(inhibitors);
 
   // スペルエフェクト
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
@@ -293,7 +312,7 @@ export function useRealtimeGame() {
         // カウンターデプロイ判定 (Player)
         let isCounterDeploy = false;
         const recentCpuSpawn = cpuSpawnTimestampsRef.current.find(
-          (s) => s.lane === laneIndex && now - s.time <= 1500
+          (s) => isWithinEngage(s.lane, laneIndex) && now - s.time <= 1500
         );
         if (recentCpuSpawn) {
           isCounterDeploy = true;
@@ -351,7 +370,7 @@ export function useRealtimeGame() {
           ]);
           const next = unitsRef.current
             .map((u) => {
-              if (u.owner === 'cpu' && u.lane === laneIndex && Math.abs(u.y - 50) <= 20) {
+              if (u.owner === 'cpu' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH) && Math.abs(u.y - 50) <= 20) {
                 return { ...u, hp: u.hp - 3 };
               }
               return u;
@@ -382,7 +401,7 @@ export function useRealtimeGame() {
             { id: `haste_${Date.now()}`, lane: laneIndex, y: 75, type: 'haste', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
-            if (u.owner === 'player' && u.lane === laneIndex) {
+            if (u.owner === 'player' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH)) {
               return { ...u, attackCooldown: 0 };
             }
             return u;
@@ -396,7 +415,7 @@ export function useRealtimeGame() {
             { id: `heal_${Date.now()}`, lane: laneIndex, y: 50, type: 'heal', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
-            if (u.owner === 'player' && u.lane === laneIndex) {
+            if (u.owner === 'player' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH)) {
               return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
             }
             return u;
@@ -426,7 +445,8 @@ export function useRealtimeGame() {
       currentCpuMana,
       cpuHand,
       unitsRef.current,
-      cpuSpawnWarningsRef.current
+      cpuSpawnWarningsRef.current,
+      inhibitorsRef.current
     );
 
     if (!chosen) return;
@@ -469,7 +489,7 @@ export function useRealtimeGame() {
         ]);
         const next = unitsRef.current
           .map((u) => {
-            if (u.owner === 'player' && u.lane === laneIndex && Math.abs(u.y - 50) <= 20) {
+            if (u.owner === 'player' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH) && Math.abs(u.y - 50) <= 20) {
               return { ...u, hp: u.hp - 3 };
             }
             return u;
@@ -500,7 +520,7 @@ export function useRealtimeGame() {
           { id: `cpu_haste_${Date.now()}`, lane: laneIndex, y: 25, type: 'haste', createdAt: Date.now() },
         ]);
         const next = unitsRef.current.map((u) => {
-          if (u.owner === 'cpu' && u.lane === laneIndex) {
+          if (u.owner === 'cpu' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH)) {
             return { ...u, attackCooldown: 0 };
           }
           return u;
@@ -514,7 +534,7 @@ export function useRealtimeGame() {
           { id: `cpu_heal_${Date.now()}`, lane: laneIndex, y: 25, type: 'heal', createdAt: Date.now() },
         ]);
         const next = unitsRef.current.map((u) => {
-          if (u.owner === 'cpu' && u.lane === laneIndex) {
+          if (u.owner === 'cpu' && isWithinEngage(u.lane, laneIndex, SPELL_WIDTH)) {
             return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
           }
           return u;
@@ -542,8 +562,11 @@ export function useRealtimeGame() {
         if (manaTimerRef.current >= 0.08) {
           const deltaMana = manaRegenRateRef.current * manaTimerRef.current;
           manaTimerRef.current = 0;
-          setPlayerMana((m) => Math.min(MAX_MANA, m + deltaMana));
-          setCpuMana((m) => Math.min(MAX_MANA, m + deltaMana));
+          // 相手インヒビターを破壊した数に応じてマナ回復速度がアップ
+          const playerMul = manaRegenMultiplier(inhibitorsRef.current, 'player');
+          const cpuMul = manaRegenMultiplier(inhibitorsRef.current, 'cpu');
+          setPlayerMana((m) => Math.min(MAX_MANA, m + deltaMana * playerMul));
+          setCpuMana((m) => Math.min(MAX_MANA, m + deltaMana * cpuMul));
         }
 
         // 2. CPU AI実行
@@ -570,7 +593,7 @@ export function useRealtimeGame() {
               // カウンターデプロイ判定 (CPU)
               let isCounterDeploy = false;
               const recentPlayerSpawn = playerSpawnTimestampsRef.current.find(
-                (s) => s.lane === w.lane && now - s.time <= 1500
+                (s) => isWithinEngage(s.lane, w.lane) && now - s.time <= 1500
               );
               if (recentPlayerSpawn) {
                 isCounterDeploy = true;
@@ -690,6 +713,8 @@ export function useRealtimeGame() {
         const newPendingHits: PendingLightningHit[] = [];
         let pDamageToCpu = 0;
         let cpuDamageToPlayer = 0;
+        // このフレームで攻撃を放ったユニット → 主標的
+        const attackTargets = new Map<string, CombatTarget>();
 
         const updatedUnits = unitsAfterHits.map((unit) => {
           const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
@@ -711,21 +736,42 @@ export function useRealtimeGame() {
             };
           }
 
-          // 同一レーン内の対向敵を探す
+          // 交戦範囲（横のずれ ENGAGE_WIDTH 列以内）の対向敵を探す
           const enemiesInLane = unitsAfterHits.filter(
-            (u) => u.lane === unit.lane && u.owner !== unit.owner && u.hp > 0
+            (u) => isWithinEngage(u.lane, unit.lane) && u.owner !== unit.owner && u.hp > 0
           );
+          // 進路・交戦範囲の敵インヒビター（攻撃対象 兼 壁）
+          const enemyInhibitorsInPath = inhibitorsRef.current.filter(
+            (i) => i.owner !== unit.owner && isWithinEngage(i.lane, unit.lane) && i.hp > 0
+          );
+          const targetCandidates: CombatTarget[] = [
+            ...enemiesInLane.map((e) => ({ id: e.id, y: e.y, lane: e.lane, isStructure: false })),
+            ...enemyInhibitorsInPath.map((i) => ({ id: i.id, y: i.y, lane: i.lane, isStructure: true })),
+          ];
 
-          // 進行方向の前方にいる最も近い敵を探す
-          let targetEnemy: Unit | null = null;
+          // 進行方向の前方にいる最も近い敵を探す（攻撃対象）
+          let targetEnemy: CombatTarget | null = null;
           let minDistance = 999;
-          enemiesInLane.forEach((enemy) => {
+          targetCandidates.forEach((enemy) => {
             const dist = unit.owner === 'player' ? unit.y - enemy.y : enemy.y - unit.y;
             if (dist >= -2 && dist < minDistance) {
               minDistance = Math.max(0, dist);
               targetEnemy = enemy;
             }
           });
+
+          // 同一列内の前方にいる敵またはインヒビター（物理衝突・前進ストップ壁）
+          let blockingObstacle: CombatTarget | null = null;
+          let minBlockDist = 999;
+          targetCandidates
+            .filter((t) => t.lane === unit.lane)
+            .forEach((obs) => {
+              const dist = unit.owner === 'player' ? unit.y - obs.y : obs.y - unit.y;
+              if (dist >= -1 && dist < minBlockDist) {
+                minBlockDist = Math.max(0, dist);
+                blockingObstacle = obs;
+              }
+            });
 
           // 同一レーン内の前方にいる味方を探す（追い越し防止）
           const alliesInLane = unitsAfterHits.filter(
@@ -775,12 +821,16 @@ export function useRealtimeGame() {
                     duration = flightMs + 450;
                   }
 
+                  const primaryTarget = targetEnemy as CombatTarget;
+                  attackTargets.set(unit.id, primaryTarget);
+
                   newAttackEffects.push({
                     id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
                     attackerId: unit.id,
                     lane: unit.lane,
+                    toLane: primaryTarget.lane,
                     fromY: unit.y,
-                    toY: (targetEnemy as Unit).y,
+                    toY: primaryTarget.y,
                     owner: unit.owner,
                     effectType,
                     damage: attack,
@@ -792,7 +842,7 @@ export function useRealtimeGame() {
                   if (unit.cardNo === 6 && flightMs) {
                     newPendingHits.push({
                       id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                      targetId: (targetEnemy as Unit).id,
+                      targetId: primaryTarget.id,
                       attackerId: unit.id,
                       lane: unit.lane,
                       damage: attack,
@@ -882,8 +932,8 @@ export function useRealtimeGame() {
           const moveDelta = currentSpeed * MOVE_SPEED_SCALE * dt;
           if (unit.owner === 'player') {
             let maxYMove = y - moveDelta;
-            if (targetEnemy) {
-              const enemyWall = (targetEnemy as Unit).y + 7.5;
+            if (blockingObstacle) {
+              const enemyWall = (blockingObstacle as CombatTarget).y + 7.5;
               maxYMove = Math.max(maxYMove, enemyWall);
             }
             if (targetAlly) {
@@ -893,8 +943,8 @@ export function useRealtimeGame() {
             y = Math.max(5, maxYMove);
           } else {
             let maxYMove = y + moveDelta;
-            if (targetEnemy) {
-              const enemyWall = (targetEnemy as Unit).y - 7.5;
+            if (blockingObstacle) {
+              const enemyWall = (blockingObstacle as CombatTarget).y - 7.5;
               maxYMove = Math.min(maxYMove, enemyWall);
             }
             if (targetAlly) {
@@ -932,31 +982,31 @@ export function useRealtimeGame() {
           let y = unit.y;
 
           updatedUnits.forEach((attacker) => {
-            if (
-              attacker.lane === unit.lane &&
-              attacker.owner !== unit.owner &&
-              attacker.lastAttackEffectTime === now
-            ) {
-              if (attacker.cardNo === 6) return; // クラゲは遅延着弾なのでスキップ
+            if (attacker.owner === unit.owner || attacker.lastAttackEffectTime !== now) return;
+            if (attacker.cardNo === 6) return; // クラゲは遅延着弾なのでスキップ
+            const primary = attackTargets.get(attacker.id);
+            if (!primary || primary.isStructure) return;
 
-              const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
-              if (dist >= -2 && dist <= attacker.range + 2) {
-                const hadHp = currentHp > 0;
-                currentHp -= attacker.attack;
-                if (hadHp && currentHp <= 0) {
-                  // attacker が unit にとどめを刺した！
-                  killCountMap.set(attacker.id, (killCountMap.get(attacker.id) || 0) + 1);
-                }
+            // 主標的は必ず命中。それ以外は「主標的と同じ列」で射程内の敵にも巻き込みヒット（旧レーン仕様の範囲攻撃を踏襲）
+            const isPrimary = primary.id === unit.id;
+            const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
+            const isSplash = unit.lane === primary.lane && dist >= -2 && dist <= attacker.range + 2;
+            if (isPrimary || isSplash) {
+              const hadHp = currentHp > 0;
+              currentHp -= attacker.attack;
+              if (hadHp && currentHp <= 0) {
+                // attacker が unit にとどめを刺した！
+                killCountMap.set(attacker.id, (killCountMap.get(attacker.id) || 0) + 1);
+              }
 
-                if (attacker.cardNo === 7) {
-                  const pushBackAmount = 8 + Math.random() * 2;
-                  if (attacker.owner === 'player') {
-                    y = Math.max(5, y - pushBackAmount);
-                  } else {
-                    y = Math.min(95, y + pushBackAmount);
-                  }
-                  stunnedUntil = now + 300;
+              if (attacker.cardNo === 7) {
+                const pushBackAmount = 8 + Math.random() * 2;
+                if (attacker.owner === 'player') {
+                  y = Math.max(5, y - pushBackAmount);
+                } else {
+                  y = Math.min(95, y + pushBackAmount);
                 }
+                stunnedUntil = now + 300;
               }
             }
           });
@@ -964,6 +1014,43 @@ export function useRealtimeGame() {
           const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
           return { ...unit, hp: currentHp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
         });
+
+        // D'. インヒビターへのダメージ（近接・火炎ブレス＝即時、電撃＝着弾時）
+        const inhibitorDamage = new Map<string, number>();
+        updatedUnits.forEach((attacker) => {
+          if (attacker.lastAttackEffectTime !== now || attacker.cardNo === 6) return;
+          const primary = attackTargets.get(attacker.id);
+          if (primary && primary.isStructure) {
+            inhibitorDamage.set(primary.id, (inhibitorDamage.get(primary.id) || 0) + attacker.attack);
+          }
+        });
+        for (const hit of resolvedHits) {
+          if (hit.targetId.startsWith('inhib_')) {
+            inhibitorDamage.set(hit.targetId, (inhibitorDamage.get(hit.targetId) || 0) + hit.damage);
+          }
+        }
+        if (inhibitorDamage.size > 0) {
+          const destroyedBy: Owner[] = [];
+          const nextInhibitors = inhibitorsRef.current.map((inhib) => {
+            const dmg = inhibitorDamage.get(inhib.id);
+            if (!dmg || inhib.hp <= 0) return inhib;
+            const hp = Math.max(0, inhib.hp - dmg);
+            if (hp === 0) {
+              destroyedBy.push(inhib.owner === 'player' ? 'cpu' : 'player');
+            }
+            return { ...inhib, hp, lastHitTime: now };
+          });
+          inhibitorsRef.current = nextInhibitors;
+          setInhibitors(nextInhibitors);
+          // 破壊ボーナス: 即時マナ獲得（回復速度アップは manaRegenMultiplier で永続適用）
+          destroyedBy.forEach((side) => {
+            if (side === 'player') {
+              setPlayerMana((m) => Math.min(MAX_MANA, m + INHIBITOR_DESTROY_MANA_BONUS));
+            } else {
+              setCpuMana((m) => Math.min(MAX_MANA, m + INHIBITOR_DESTROY_MANA_BONUS));
+            }
+          });
+        }
 
         // 生存ユニットにキルボーナス（ステータス向上）を適用
         const finalUnits = unitsAfterDamage
@@ -1045,6 +1132,9 @@ export function useRealtimeGame() {
     setCpuMana(INITIAL_MANA);
     setUnits([]);
     unitsRef.current = [];
+    const freshInhibitors = createInitialInhibitors();
+    inhibitorsRef.current = freshInhibitors;
+    setInhibitors(freshInhibitors);
     setSpellEffects([]);
     setAttackEffects([]);
     setPendingLightningHits([]);
@@ -1083,6 +1173,9 @@ export function useRealtimeGame() {
     selectedCardIndex,
     setSelectedCardIndex,
     units,
+    inhibitors,
+    playerManaRegenMultiplier: manaRegenMultiplier(inhibitors, 'player'),
+    cpuManaRegenMultiplier: manaRegenMultiplier(inhibitors, 'cpu'),
     spellEffects,
     attackEffects,
     gameResult,

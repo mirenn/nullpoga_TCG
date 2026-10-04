@@ -32,6 +32,18 @@ export function GuideContent() {
         {activeTab === 'tips' ? (
           <div style={styles.tipsSection}>
             <div style={styles.tipBox}>
+              <div style={styles.tipTitle}>🏰 インヒビター攻略とマナボーナス</div>
+              <div style={styles.tipText}>
+                左端・中央・右端に佇むインヒビターは進路を塞ぐ壁です。破壊すると即座にマナ+2、さらに以後のマナ回復速度が永続で+20%（最大+60%）強化されます！
+              </div>
+            </div>
+            <div style={styles.tipBox}>
+              <div style={styles.tipTitle}>📐 9列グリッドと隣接交戦</div>
+              <div style={styles.tipText}>
+                戦場は9列に細分化！ユニットは直進しますが、横のずれ±1列以内の敵を索敵・攻撃します。インヒビターのない隙間（列2〜4、6〜8など）を突くか、正面から破壊するかの駆け引きが重要です。
+              </div>
+            </div>
+            <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🐢 戦線維持</div>
               <div style={styles.tipText}>
                 カメなどで耐えて後方から遠距離や範囲攻撃で支援するのが戦闘の基本です。

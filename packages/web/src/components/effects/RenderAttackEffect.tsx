@@ -1,7 +1,13 @@
 import React from 'react';
 import type { AttackEffect } from '../../app/types';
 import { LightningImpactSvg } from './LightningImpactSvg';
-import { styles } from '../../app/page.styles';
+import { COLUMN_GAP_PX } from '../../app/board';
+
+/** 発射元の列中心から dxCols 列ずれた位置の left 値（列ボックス幅=100% 基準） */
+function columnOffsetLeft(dxCols: number): string {
+  if (dxCols === 0) return '50%';
+  return `calc(50% + ${dxCols} * (100% + ${COLUMN_GAP_PX}px))`;
+}
 
 export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら0ms）
@@ -10,6 +16,11 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   // ビーム・流線用の垂直範囲
   const minY = Math.min(effect.fromY, effect.toY);
   const heightY = Math.max(5, Math.abs(effect.toY - effect.fromY));
+
+  // 隣接列への攻撃時の横方向オフセット
+  const dx = (effect.toLane ?? effect.lane) - effect.lane;
+  const targetLeft = columnOffsetLeft(dx);
+  const beamLeft = columnOffsetLeft(dx / 2); // 隣接列への流線・稲妻は2列の中間に描画
 
   return (
     <>
@@ -22,6 +33,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             style={{
               top: `${minY}%`,
               height: `${heightY}%`,
+              left: beamLeft,
             }}
           />
 
@@ -48,7 +60,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             style={{
               position: 'absolute',
               top: `${effect.toY}%`,
-              left: '50%',
+              left: targetLeft,
               transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
               zIndex: 38,
@@ -91,6 +103,8 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             style={{
               '--from-y': `${effect.fromY}%`,
               '--to-y': `${effect.toY}%`,
+              '--from-x': '50%',
+              '--to-x': targetLeft,
               '--flight-duration': `${flightTime}ms`,
             } as React.CSSProperties}
           >
@@ -103,6 +117,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             style={{
               top: `${minY}%`,
               height: `${heightY}%`,
+              left: beamLeft,
               '--impact-delay': `${flightTime}ms`,
             } as React.CSSProperties}
           />
@@ -112,7 +127,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             style={{
               position: 'absolute',
               top: `${effect.toY}%`,
-              left: '50%',
+              left: targetLeft,
               transform: 'translate(-50%, -50%)',
               pointerEvents: 'none',
               zIndex: 39,
@@ -134,7 +149,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
           style={{
             position: 'absolute',
             top: `${effect.toY}%`,
-            left: '50%',
+            left: targetLeft,
             pointerEvents: 'none',
             zIndex: 36,
           }}
@@ -150,7 +165,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
           style={{
             position: 'absolute',
             top: `${effect.toY}%`,
-            left: '50%',
+            left: targetLeft,
             pointerEvents: 'none',
             zIndex: 36,
           }}
@@ -165,7 +180,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         style={{
           position: 'absolute',
           top: `${effect.toY}%`,
-          left: '50%',
+          left: targetLeft,
           pointerEvents: 'none',
           zIndex: 42,
           '--impact-delay': `${flightTime}ms`,
@@ -176,6 +191,3 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
     </>
   );
 }
-
-
-

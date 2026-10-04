@@ -16,12 +16,25 @@ export interface DemoCard {
   icon: string;
 }
 
+export type Owner = 'player' | 'cpu';
+
+/** インヒビター（破壊可能な非攻撃オブジェクト） */
+export interface Inhibitor {
+  id: string;
+  owner: Owner;
+  lane: number; // 列インデックス (0〜COLUMN_COUNT-1)
+  y: number;
+  hp: number;
+  maxHp: number;
+  lastHitTime?: number; // 被弾演出用
+}
+
 export interface Unit {
   id: string;
   cardNo: number;
   name: string;
-  owner: 'player' | 'cpu';
-  lane: number; // 0〜4
+  owner: Owner;
+  lane: number; // 列インデックス (0〜COLUMN_COUNT-1, board.ts 参照)
   y: number; // 0(CPU最奥/拠点) 〜 100(プレイヤー最奥/拠点)
   maxHp: number;
   hp: number;
@@ -59,6 +72,7 @@ export interface AttackEffect {
   id: string;
   attackerId: string;
   lane: number;
+  toLane?: number; // 標的の列（隣接列への攻撃時。未指定なら lane と同じ）
   fromY: number;
   toY: number;
   owner: 'player' | 'cpu';
