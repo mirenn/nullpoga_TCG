@@ -1,19 +1,27 @@
 import type { Inhibitor, Owner } from './types';
-import { COLUMN_COUNT } from './board';
 
 /**
  * インヒビター（LoL風の破壊可能オブジェクト）
  *
- * - 両陣営の自陣側、左端・中央・右端の列に1つずつ配置（計6個）
- * - 自らは攻撃しない「壁役」。同じ列の敵ユニットは破壊するまで前進できない
- * - 破壊した側はマナを獲得（即時ボーナス ＋ マナ回復速度の永続アップ）
+ * - 両陣営の自陣側、左(x=18%)・中央(x=50%)・右(x=82%)に配置（計6基）
+ * - 自らは攻撃しない「防壁」。その横幅(±5.5%)の範囲を通るユニットを足止めする
+ * - その隙間（x=34% や x=66% など）を通過するユニットは素通り可能！
+ * - 破壊した側はマナを獲得（即時マナ+2 ＋ マナ回復速度+20%永続アップ）
  */
 
-/** インヒビターを置く列（左端・中央・右端） */
-export const INHIBITOR_COLUMNS: number[] = [0, Math.floor(COLUMN_COUNT / 2), COLUMN_COUNT - 1];
+export interface InhibitorSlot {
+  key: 'left' | 'center' | 'right';
+  x: number;
+}
 
-/** 進路を塞ぐ横幅（|列差| がこの値以下のユニットを足止めし、攻撃対象になる） */
-export const INHIBITOR_HALF_WIDTH = 0;
+export const INHIBITOR_SLOTS: InhibitorSlot[] = [
+  { key: 'left', x: 18 },
+  { key: 'center', x: 50 },
+  { key: 'right', x: 82 },
+];
+
+/** インヒビターの進路妨害・被弾横幅 (半径) */
+export const INHIBITOR_RADIUS_X = 6.0;
 
 /** インヒビターの耐久値 */
 export const INHIBITOR_MAX_HP = 12;
@@ -31,11 +39,12 @@ export const INHIBITOR_REGEN_BONUS_PER_KILL = 0.2;
 export function createInitialInhibitors(): Inhibitor[] {
   const list: Inhibitor[] = [];
   for (const owner of ['cpu', 'player'] as Owner[]) {
-    for (const col of INHIBITOR_COLUMNS) {
+    for (const slot of INHIBITOR_SLOTS) {
       list.push({
-        id: `inhib_${owner}_${col}`,
+        id: `inhib_${owner}_${slot.key}`,
         owner,
-        lane: col,
+        lane: slot.x, // 互換性のためのエイリアス
+        x: slot.x,
         y: owner === 'cpu' ? CPU_INHIBITOR_Y : PLAYER_INHIBITOR_Y,
         hp: INHIBITOR_MAX_HP,
         maxHp: INHIBITOR_MAX_HP,
@@ -45,9 +54,14 @@ export function createInitialInhibitors(): Inhibitor[] {
   return list;
 }
 
-/** 指定列のユニットを塞ぐ/攻撃対象となるか */
-export function inhibitorCoversColumn(inhib: Inhibitor, col: number): boolean {
-  return inhib.hp > 0 && Math.abs(inhib.lane - col) <= INHIBITOR_HALF_WIDTH;
+/** 指定のX位置を進むユニットを足止め（前進ストップ）するか */
+export function inhibitorBlocksX(inhib: Inhibitor, unitX: number): boolean {
+  return inhib.hp > 0 && Math.abs(inhib.x - unitX) <= INHIBITOR_RADIUS_X;
+}
+
+/** 指定のX位置からインヒビターを攻撃・交戦できるか */
+export function inhibitorEngageableX(inhib: Inhibitor, unitX: number): boolean {
+  return inhib.hp > 0 && Math.abs(inhib.x - unitX) <= INHIBITOR_RADIUS_X + 2.0;
 }
 
 /** `side` が破壊した相手インヒビター数 */

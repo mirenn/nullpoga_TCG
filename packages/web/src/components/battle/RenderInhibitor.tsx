@@ -27,7 +27,7 @@ export function RenderInhibitor({ inhibitor }: { inhibitor: Inhibitor }) {
       style={{
         position: 'absolute',
         top: `${inhibitor.y}%`,
-        left: '50%',
+        left: `${inhibitor.x}%`,
         transform: 'translate(-50%, -50%)',
         display: 'flex',
         flexDirection: 'column',

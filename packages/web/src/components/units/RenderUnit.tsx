@@ -176,6 +176,7 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
       data-kill-count={unit.killCount || 0}
       style={{
         ...styles.unitWrapper,
+        left: `${unit.x}%`,
         top: `${unit.y}%`,
         transform: 'translate(-50%, -50%)',
       }}

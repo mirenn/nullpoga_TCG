@@ -39,6 +39,7 @@ export default function RealtimeDemoPage() {
     gameResult,
     checkCanPlayCard,
     playCardOnLane,
+    playCardAtX,
     resetGame,
     comboCount,
     lastComboTime,
@@ -188,7 +189,7 @@ export default function RealtimeDemoPage() {
             onOpenGuide={() => setShowGuideModal(true)}
           />
 
-          {/* 2. 9グリッド戦場フィールド (flex: 1 で全画面収容) */}
+          {/* 2. オープンフィールド戦場アリーナ (flex: 1 で全画面収容) */}
           <BattleField
             units={units}
             inhibitors={inhibitors}
@@ -204,6 +205,7 @@ export default function RealtimeDemoPage() {
             spawnRippleLane={spawnRippleLane}
             playerMana={playerMana}
             checkCanPlayCard={checkCanPlayCard}
+            playCardAtX={playCardAtX}
             playCardOnLane={playCardOnLane}
             handleLaneDragOver={handleLaneDragOver}
             handleLaneDragLeave={handleLaneDragLeave}

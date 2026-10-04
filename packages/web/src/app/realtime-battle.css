@@ -156,6 +156,7 @@
         @keyframes lightning-orb-fly {
           0% {
             top: var(--from-y);
+            left: var(--from-x, 50%);
             opacity: 1;
             transform: translate(-50%, -50%) scale(0.9);
           }
@@ -169,13 +170,25 @@
           }
           98% {
             top: var(--to-y);
+            left: var(--to-x, 50%);
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.4);
           }
           100% {
             top: var(--to-y);
+            left: var(--to-x, 50%);
             opacity: 0;
             transform: translate(-50%, -50%) scale(0.1);
+          }
+        }
+        @keyframes shockwavePing {
+          0% {
+            transform: translate(-50%, 50%) scale(0.2);
+            opacity: 0.9;
+          }
+          100% {
+            transform: translate(-50%, 50%) scale(2.2);
+            opacity: 0;
           }
         }
         .lightning-projectile-orb {
