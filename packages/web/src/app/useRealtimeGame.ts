@@ -21,6 +21,11 @@ import {
   isWithinCollisionX,
   SPELL_RADIUS_X,
   clampSpawnX,
+  clampPlayerSpawnY,
+  clampSpawnY,
+  PLAYER_SPAWN_Y_MIN,
+  PLAYER_SPAWN_Y_MAX,
+  PLAYER_DEFAULT_SPAWN_Y,
 } from './board';
 import {
   createInitialInhibitors,
@@ -172,9 +177,9 @@ export function useRealtimeGame() {
     };
   }, [playerHp, cpuHp, playerMana, cpuMana, units, gameResult]);
 
-  // カードをプレイ可能かどうかのバリデーション (spawnX: 0〜100%)
+  // カードをプレイ可能かどうかのバリデーション (spawnX: 0〜100%, spawnY: 0〜100%)
   const checkCanPlayCard = useCallback(
-    (cardIndex: number, spawnX?: number): { canPlay: boolean; reason?: string } => {
+    (cardIndex: number, spawnX?: number, spawnY?: number): { canPlay: boolean; reason?: string } => {
       if (gameResult !== 'playing') {
         return { canPlay: false, reason: 'ゲーム終了' };
       }
@@ -197,18 +202,40 @@ export function useRealtimeGame() {
           return { canPlay: false, reason: '炎のドラゴンは場に1体まで' };
         }
       }
-      // 出撃スペース制限: 指定X座標の直前に味方モンスターがいる場合は前進するまで待機
-      if (spawnX !== undefined && card.type === 'MONSTER') {
-        const targetX = clampSpawnX(spawnX);
-        const hasBlockingAlly = unitsRef.current.some(
-          (u) =>
-            u.owner === 'player' &&
-            u.hp > 0 &&
-            isWithinCollisionX(u.x, targetX) &&
-            u.y > 95 - SPAWN_MIN_SPACE
-        );
-        if (hasBlockingAlly) {
-          return { canPlay: false, reason: '出撃スペース不足' };
+      // モンスターの出撃エリア＆出撃スペース制限 (縦・横)
+      if (card.type === 'MONSTER') {
+        if (spawnY !== undefined && spawnY < PLAYER_SPAWN_Y_MIN) {
+          return { canPlay: false, reason: '自陣エリア外' };
+        }
+        if (spawnX !== undefined || spawnY !== undefined) {
+          const targetX = spawnX !== undefined ? clampSpawnX(spawnX) : 50;
+          const targetY = spawnY !== undefined ? clampPlayerSpawnY(spawnY) : PLAYER_DEFAULT_SPAWN_Y;
+
+          // インヒビター（防壁障害物）との重複を防止
+          const hasBlockingInhibitor = inhibitorsRef.current.some(
+            (i) =>
+              i.hp > 0 &&
+              Math.abs(i.x - targetX) <= 6.0 &&
+              Math.abs(i.y - targetY) <= 5.5
+          );
+          if (hasBlockingInhibitor) {
+            return { canPlay: false, reason: '障害物と重複' };
+          }
+
+          // 出撃スペース制限: 指定(X, Y)座標の直前・至近に味方モンスターがいる場合は前進するまで待機
+          const hasBlockingAlly = unitsRef.current.some((u) => {
+            if (u.owner !== 'player' || u.hp <= 0 || !isWithinCollisionX(u.x, targetX)) {
+              return false;
+            }
+            if (spawnY !== undefined) {
+              return Math.abs(u.y - targetY) < SPAWN_MIN_SPACE;
+            } else {
+              return u.y > 95 - SPAWN_MIN_SPACE;
+            }
+          });
+          if (hasBlockingAlly) {
+            return { canPlay: false, reason: '出撃スペース不足' };
+          }
         }
       }
       return { canPlay: true };
@@ -285,16 +312,20 @@ export function useRealtimeGame() {
     });
   }, []);
 
-  // プレイヤーがフィールド上の横位置 X (0〜100%) を指定してカードを使用
-  const playCardAtX = useCallback(
-    (rawX: number, cardIndexOverride?: number) => {
+  // プレイヤーがフィールド上の座標 (X, Y) を指定してカードを使用
+  const playCardAt = useCallback(
+    (rawX: number, rawY?: number, cardIndexOverride?: number) => {
       const cardIdx = cardIndexOverride !== undefined ? cardIndexOverride : selectedCardIndex;
       if (cardIdx === null || cardIdx === undefined) return;
       const card = hand[cardIdx];
       if (!card) return;
 
       const spawnX = clampSpawnX(rawX);
-      const validation = checkCanPlayCard(cardIdx, spawnX);
+      const spawnY = rawY !== undefined
+        ? (card.type === 'MONSTER' ? clampPlayerSpawnY(rawY) : clampSpawnY(rawY, 15, 85))
+        : PLAYER_DEFAULT_SPAWN_Y;
+
+      const validation = checkCanPlayCard(cardIdx, spawnX, rawY);
       if (!validation.canPlay) return;
 
       // 連打誤爆防止デバウンス（約0.12秒）
@@ -341,7 +372,7 @@ export function useRealtimeGame() {
           (s) => now - s.time <= 3000
         );
 
-        // 自陣最奥（y=95）の指定X座標にユニット召喚
+        // 指定の座標 (spawnX, spawnY) にユニット召喚
         const newUnit: Unit = {
           id: `player_${Date.now()}_${Math.random()}`,
           cardNo: card.cardNo,
@@ -349,7 +380,7 @@ export function useRealtimeGame() {
           owner: 'player',
           x: spawnX,
           lane: spawnX,
-          y: 95,
+          y: spawnY,
           maxHp: (card.life || 1) + comboBonusHp,
           hp: (card.life || 1) + comboBonusHp,
           attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk,
@@ -370,18 +401,19 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (card.type === 'SPELL') {
+        const spellY = rawY !== undefined ? clampSpawnY(rawY, 15, 85) : 50;
         if (card.id === 'meteor') {
-          // 指定X座標の中央付近（y=50±20, 半径 SPELL_RADIUS_X）の敵に3ダメージ
+          // 指定座標（x: spawnX, y: spellY, 半径 SPELL_RADIUS_X, 縦20%）の敵に3ダメージ
           setSpellEffects((prev) => [
             ...prev,
-            { id: `meteor_${Date.now()}`, x: spawnX, y: 50, type: 'meteor', createdAt: Date.now() },
+            { id: `meteor_${Date.now()}`, x: spawnX, y: spellY, type: 'meteor', createdAt: Date.now() },
           ]);
           const next = unitsRef.current
             .map((u) => {
               if (
                 u.owner === 'cpu' &&
                 isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X) &&
-                Math.abs(u.y - 50) <= 20
+                Math.abs(u.y - spellY) <= 20
               ) {
                 return { ...u, hp: u.hp - 3 };
               }
@@ -408,9 +440,10 @@ export function useRealtimeGame() {
           setUnits(next);
         } else if (card.id === 'haste_spell') {
           // 指定X付近の味方ユニットの攻撃クールダウンをリセット
+          const hasteY = rawY !== undefined ? clampPlayerSpawnY(rawY) : 75;
           setSpellEffects((prev) => [
             ...prev,
-            { id: `haste_${Date.now()}`, x: spawnX, y: 75, type: 'haste', createdAt: Date.now() },
+            { id: `haste_${Date.now()}`, x: spawnX, y: hasteY, type: 'haste', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
             if (u.owner === 'player' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
@@ -422,9 +455,10 @@ export function useRealtimeGame() {
           setUnits(next);
         } else if (card.id === 'heal_spell') {
           // 指定X付近の味方に3回復
+          const healY = rawY !== undefined ? clampPlayerSpawnY(rawY) : 50;
           setSpellEffects((prev) => [
             ...prev,
-            { id: `heal_${Date.now()}`, x: spawnX, y: 50, type: 'heal', createdAt: Date.now() },
+            { id: `heal_${Date.now()}`, x: spawnX, y: healY, type: 'heal', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
             if (u.owner === 'player' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
@@ -444,13 +478,21 @@ export function useRealtimeGame() {
     [selectedCardIndex, hand, checkCanPlayCard, drawCardAfterPlay]
   );
 
+  // 互換用ラッパー (X座標のみ指定)
+  const playCardAtX = useCallback(
+    (rawX: number, cardIndexOverride?: number) => {
+      playCardAt(rawX, undefined, cardIndexOverride);
+    },
+    [playCardAt]
+  );
+
   // レーン番号またはX座標を受け取る汎用ラッパー
   const playCardOnLane = useCallback(
     (laneOrX: number, cardIndexOverride?: number) => {
       const targetX = laneOrX <= 8 ? 10 + laneOrX * 10 : laneOrX;
-      playCardAtX(targetX, cardIndexOverride);
+      playCardAt(targetX, undefined, cardIndexOverride);
     },
-    [playCardAtX]
+    [playCardAt]
   );
 
   // CPU思考ロジック（手札サイクル＆戦況評価・出撃予兆）
@@ -1220,8 +1262,9 @@ export function useRealtimeGame() {
     attackEffects,
     gameResult,
     checkCanPlayCard,
-    playCardOnLane,
+    playCardAt,
     playCardAtX,
+    playCardOnLane,
     resetGame,
     comboCount: playerCombo.count,
     lastComboTime: playerCombo.lastTime,

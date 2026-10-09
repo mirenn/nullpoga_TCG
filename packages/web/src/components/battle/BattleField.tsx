@@ -4,7 +4,19 @@ import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
-import { clampSpawnX, SPELL_RADIUS_X, SPAWN_X_MIN, SPAWN_X_MAX } from '../../app/board';
+import {
+  clampSpawnX,
+  clampPlayerSpawnY,
+  clampSpawnY,
+  getSpawnDepthRole,
+  isWithinCollisionX,
+  SPELL_RADIUS_X,
+  SPAWN_X_MIN,
+  SPAWN_X_MAX,
+  PLAYER_SPAWN_Y_MIN,
+  PLAYER_SPAWN_Y_MAX,
+} from '../../app/board';
+import { SPAWN_MIN_SPACE } from '../../app/cards';
 import { INHIBITOR_SLOTS } from '../../app/inhibitors';
 
 export interface BattleFieldProps {
@@ -19,8 +31,9 @@ export interface BattleFieldProps {
   draggedCardIndex: number | null;
   isDragging: boolean;
   playerMana: number;
-  checkCanPlayCard: (idx: number, spawnX?: number) => { canPlay: boolean; reason?: string };
-  playCardAtX: (spawnX: number, cardIndexOverride?: number) => void;
+  checkCanPlayCard: (idx: number, spawnX?: number, spawnY?: number) => { canPlay: boolean; reason?: string };
+  playCardAt?: (spawnX: number, spawnY: number, cardIndexOverride?: number) => void;
+  playCardAtX?: (spawnX: number, cardIndexOverride?: number) => void;
   // 互換用（オプショナル）
   playCardOnLane?: (laneIndex: number, cardIndexOverride?: number) => void;
   dragOverLaneIndex?: number | null;
@@ -44,11 +57,12 @@ export function BattleField({
   isDragging,
   playerMana,
   checkCanPlayCard,
+  playCardAt,
   playCardAtX,
 }: BattleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [hoverX, setHoverX] = useState<number | null>(null);
-  const [rippleX, setRippleX] = useState<number | null>(null);
+  const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
+  const [ripplePos, setRipplePos] = useState<{ x: number; y: number } | null>(null);
 
   // マウス/タッチ座標からフィールドの横パーセント (SPAWN_X_MIN〜SPAWN_X_MAX) を算出
   const calculateXPercent = useCallback((clientX: number): number => {
@@ -59,14 +73,47 @@ export function BattleField({
     return clampSpawnX(rawPct);
   }, []);
 
-  // ホバー追従
+  // マウス/タッチ座標からフィールドの縦パーセント (0〜100%) を算出
+  const calculateYPercent = useCallback((clientY: number): number => {
+    if (!containerRef.current) return 95;
+    const rect = containerRef.current.getBoundingClientRect();
+    if (rect.height <= 0) return 95;
+    const rawPct = ((clientY - rect.top) / rect.height) * 100;
+    return Math.round(rawPct * 10) / 10;
+  }, []);
+
+  const triggerRipple = (x: number, y: number) => {
+    setRipplePos({ x, y });
+    setTimeout(() => setRipplePos(null), 500);
+  };
+
+  const executePlay = useCallback(
+    (x: number, rawY: number, cardIdx: number, card: DemoCard) => {
+      const y = card.type === 'MONSTER'
+        ? clampPlayerSpawnY(rawY)
+        : clampSpawnY(rawY, 15, 85);
+      const validation = checkCanPlayCard(cardIdx, x, rawY);
+      if (validation.canPlay) {
+        if (playCardAt) {
+          playCardAt(x, y, cardIdx);
+        } else if (playCardAtX) {
+          playCardAtX(x, cardIdx);
+        }
+        triggerRipple(x, y);
+      }
+    },
+    [checkCanPlayCard, playCardAt, playCardAtX]
+  );
+
+  // ホバー追従 (X, Y)
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const x = calculateXPercent(e.clientX);
-    setHoverX(x);
+    const y = calculateYPercent(e.clientY);
+    setHoverPos({ x, y });
   };
 
   const handlePointerLeave = () => {
-    setHoverX(null);
+    setHoverPos(null);
   };
 
   // フィールドクリック時の出撃
@@ -74,11 +121,8 @@ export function BattleField({
     if (isDragging) return;
     if (selectedCardIndex === null || !selectedCard) return;
     const x = calculateXPercent(e.clientX);
-    const validation = checkCanPlayCard(selectedCardIndex, x);
-    if (validation.canPlay) {
-      playCardAtX(x, selectedCardIndex);
-      triggerRipple(x);
-    }
+    const y = calculateYPercent(e.clientY);
+    executePlay(x, y, selectedCardIndex, selectedCard);
   };
 
   // ドラッグオーバー
@@ -86,12 +130,13 @@ export function BattleField({
     e.preventDefault();
     e.dataTransfer.dropEffect = 'copy';
     const x = calculateXPercent(e.clientX);
-    setHoverX(x);
+    const y = calculateYPercent(e.clientY);
+    setHoverPos({ x, y });
   };
 
   const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
     if (!containerRef.current?.contains(e.relatedTarget as Node)) {
-      setHoverX(null);
+      setHoverPos(null);
     }
   };
 
@@ -101,26 +146,31 @@ export function BattleField({
     const data = e.dataTransfer.getData('text/plain');
     const cardIdx = data !== '' ? parseInt(data, 10) : draggedCardIndex;
     if (cardIdx !== null && cardIdx !== undefined && !isNaN(cardIdx)) {
-      const x = calculateXPercent(e.clientX);
-      const validation = checkCanPlayCard(cardIdx, x);
-      if (validation.canPlay) {
-        playCardAtX(x, cardIdx);
-        triggerRipple(x);
+      const card = isDragging ? activeDraggedCard : selectedCard;
+      if (card) {
+        const x = calculateXPercent(e.clientX);
+        const y = calculateYPercent(e.clientY);
+        executePlay(x, y, cardIdx, card);
       }
     }
-    setHoverX(null);
-  };
-
-  const triggerRipple = (x: number) => {
-    setRippleX(x);
-    setTimeout(() => setRippleX(null), 500);
+    setHoverPos(null);
   };
 
   const activeCard = isDragging ? activeDraggedCard : selectedCard;
   const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
+  const hoverX = hoverPos?.x ?? null;
+  const hoverY = hoverPos?.y ?? null;
   const currentTargetX = hoverX ?? 50;
+  const rawTargetY = hoverY ?? (activeCard?.type === 'SPELL' ? 50 : 95);
+
+  const currentTargetY = activeCard?.type === 'MONSTER'
+    ? (hoverY !== null ? clampPlayerSpawnY(hoverY) : 95)
+    : clampSpawnY(rawTargetY, 15, 85);
+
+  const depthRole = getSpawnDepthRole(currentTargetY);
+
   const validation = activeCard && activeCardIdx !== null
-    ? checkCanPlayCard(activeCardIdx, currentTargetX)
+    ? checkCanPlayCard(activeCardIdx, currentTargetX, rawTargetY)
     : { canPlay: true };
   const canAfford = activeCard ? playerMana >= activeCard.manaCost : false;
   const isTargetBlocked = !validation.canPlay;
@@ -292,7 +342,12 @@ export function BattleField({
         <RenderUnit
           key={unit.id}
           unit={unit}
-          isBlockingSpawn={isSpaceBlocked && unit.owner === 'player' && unit.y > 87}
+          isBlockingSpawn={
+            isSpaceBlocked &&
+            unit.owner === 'player' &&
+            isWithinCollisionX(unit.x, currentTargetX) &&
+            Math.abs(unit.y - currentTargetY) < SPAWN_MIN_SPACE
+          }
         />
       ))}
 
@@ -393,15 +448,15 @@ export function BattleField({
       ))}
 
       {/* 7. 出撃波紋エフェクト */}
-      {rippleX !== null && (
+      {ripplePos !== null && (
         <div
           style={{
             position: 'absolute',
-            bottom: '5%',
-            left: `${rippleX}%`,
-            transform: 'translate(-50%, 50%)',
-            width: '60px',
-            height: '60px',
+            top: `${ripplePos.y}%`,
+            left: `${ripplePos.x}%`,
+            transform: 'translate(-50%, -50%)',
+            width: '64px',
+            height: '64px',
             borderRadius: '50%',
             border: '2px solid #38bdf8',
             backgroundColor: 'rgba(56, 189, 248, 0.25)',
@@ -412,66 +467,148 @@ export function BattleField({
         />
       )}
 
-      {/* 8. 自陣手前出撃ゾーン（アクティブカード選択中・ドラッグ中の下部発光） */}
-      {activeCard && (
+      {/* 8. 自陣出撃ゾーン（奥行き・前後対応：前衛〜後衛の奥行き領域可視化） */}
+      {activeCard && activeCard.type === 'MONSTER' && (
         <div
           style={{
             position: 'absolute',
-            bottom: 0,
+            top: `${PLAYER_SPAWN_Y_MIN}%`,
+            bottom: '4%',
             left: `${SPAWN_X_MIN}%`,
             right: `${100 - SPAWN_X_MAX}%`,
-            height: '18%',
             backgroundColor: 'rgba(30, 58, 138, 0.08)',
-            borderTop: '1px dashed rgba(59, 130, 246, 0.35)',
+            border: '1px dashed rgba(59, 130, 246, 0.45)',
+            borderRadius: '6px',
             pointerEvents: 'none',
             zIndex: 12,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
+            overflow: 'hidden',
           }}
         >
-          <span
+          {/* 前衛・中衛境界線 (y=65%) */}
+          <div
             style={{
-              fontSize: '9px',
-              color: 'rgba(147, 197, 253, 0.5)',
+              position: 'absolute',
+              top: `${((65 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
+              left: 0,
+              right: 0,
+              borderTop: '1px dotted rgba(59, 130, 246, 0.3)',
+            }}
+          />
+          {/* 中衛・後衛境界線 (y=80%) */}
+          <div
+            style={{
+              position: 'absolute',
+              top: `${((80 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
+              left: 0,
+              right: 0,
+              borderTop: '1px dotted rgba(59, 130, 246, 0.3)',
+            }}
+          />
+
+          {/* ゾーンラベル表示 */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '4px',
+              left: '8px',
+              fontSize: '8.5px',
+              color: 'rgba(147, 197, 253, 0.75)',
               fontWeight: 'bold',
               letterSpacing: '1px',
             }}
           >
-            DEPLOY ZONE (クリック / ドロップで出撃)
-          </span>
+            ⚔️ 前衛エリア (VANGUARD)
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              top: `${((72 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
+              left: '8px',
+              transform: 'translateY(-50%)',
+              fontSize: '8.5px',
+              color: 'rgba(147, 197, 253, 0.75)',
+              fontWeight: 'bold',
+              letterSpacing: '1px',
+            }}
+          >
+            🛡️ 中衛エリア (MIDGUARD)
+          </div>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '4px',
+              left: '8px',
+              fontSize: '8.5px',
+              color: 'rgba(147, 197, 253, 0.75)',
+              fontWeight: 'bold',
+              letterSpacing: '1px',
+            }}
+          >
+            🏹 後衛エリア (REARGUARD)
+          </div>
+
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '4px',
+              right: '8px',
+              fontSize: '8px',
+              color: 'rgba(147, 197, 253, 0.5)',
+              fontWeight: 'bold',
+            }}
+          >
+            DEPLOY ZONE (奥行き・縦横クリック/ドロップで出撃)
+          </div>
         </div>
       )}
 
-      {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従） */}
-      {hoverX !== null && activeCard && (
+      {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
+      {hoverX !== null && hoverY !== null && activeCard && (
         <>
-          {/* 垂直照準ライン */}
+          {/* 垂直照準ライン (X座標) */}
           <div
             style={{
               position: 'absolute',
               top: 0,
               bottom: 0,
-              left: `${hoverX}%`,
-              width: '2px',
+              left: `${currentTargetX}%`,
+              width: '1px',
               transform: 'translateX(-50%)',
               backgroundColor: isTargetBlocked
                 ? 'rgba(239, 68, 68, 0.65)'
                 : 'rgba(56, 189, 248, 0.65)',
               boxShadow: isTargetBlocked
-                ? '0 0 10px rgba(239, 68, 68, 0.8)'
-                : '0 0 10px rgba(56, 189, 248, 0.8)',
+                ? '0 0 8px rgba(239, 68, 68, 0.8)'
+                : '0 0 8px rgba(56, 189, 248, 0.8)',
               pointerEvents: 'none',
               zIndex: 20,
             }}
           />
 
-          {/* 出撃位置の照準ターゲットサークル (y=95% = 自陣ベース) */}
+          {/* 水平照準ライン (Y座標 / 奥行き深さ) */}
           <div
             style={{
               position: 'absolute',
-              top: activeCard.type === 'SPELL' ? '50%' : '95%',
-              left: `${hoverX}%`,
+              left: 0,
+              right: 0,
+              top: `${currentTargetY}%`,
+              height: '1px',
+              transform: 'translateY(-50%)',
+              backgroundColor: isTargetBlocked
+                ? 'rgba(239, 68, 68, 0.45)'
+                : 'rgba(56, 189, 248, 0.45)',
+              borderBottom: `1px dashed ${isTargetBlocked ? 'rgba(239, 68, 68, 0.8)' : 'rgba(56, 189, 248, 0.8)'}`,
+              pointerEvents: 'none',
+              zIndex: 20,
+            }}
+          />
+
+          {/* 出撃位置の照準ターゲットサークル (X, Y) */}
+          <div
+            style={{
+              position: 'absolute',
+              top: `${currentTargetY}%`,
+              left: `${currentTargetX}%`,
               transform: 'translate(-50%, -50%)',
               width: '42px',
               height: '42px',
@@ -493,12 +630,12 @@ export function BattleField({
             <span style={{ fontSize: '18px' }}>{activeCard.icon}</span>
           </div>
 
-          {/* ガイドバッジ（出撃可能 / 理由表示） */}
+          {/* ガイドバッジ（出撃可能 / 理由表示 ＆ 奥行きロール [前衛/中衛/後衛]） */}
           <div
             style={{
               position: 'absolute',
-              top: activeCard.type === 'SPELL' ? '40%' : '86%',
-              left: `${hoverX}%`,
+              top: currentTargetY > 70 ? `${currentTargetY - 8}%` : `${currentTargetY + 8}%`,
+              left: `${currentTargetX}%`,
               transform: 'translateX(-50%)',
               backgroundColor: isTargetBlocked
                 ? isSpaceBlocked
@@ -523,10 +660,10 @@ export function BattleField({
               : isDragging
               ? activeCard.type === 'SPELL'
                 ? '✨ ドロップ発動'
-                : '🎯 ドロップ出撃'
+                : `🎯 ドロップ出撃 [${depthRole.label}]`
               : activeCard.type === 'SPELL'
               ? '✨ クリック発動'
-              : '🎯 クリック出撃'}
+              : `🎯 クリック出撃 [${depthRole.label}]`}
           </div>
         </>
       )}

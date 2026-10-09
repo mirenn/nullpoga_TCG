@@ -7,6 +7,12 @@ import {
   clampSpawnX,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
+  PLAYER_SPAWN_Y_MIN,
+  PLAYER_SPAWN_Y_MAX,
+  PLAYER_DEFAULT_SPAWN_Y,
+  clampPlayerSpawnY,
+  clampSpawnY,
+  getSpawnDepthRole,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
@@ -97,7 +103,7 @@ assert(Math.abs(manaRegenMultiplier(allCpuDestroyed, 'player') - 1.6) < 0.001, '
 console.log('  -> Inhibitor specs & rewards: PASSED');
 
 // 3. CPU AI open field decisions
-console.log('[3/3] Testing CPU AI continuous X coordinate decisions...');
+console.log('[3/4] Testing CPU AI continuous X coordinate decisions...');
 const cpuHand = [CARD_POOL[0], CARD_POOL[1]]; // ネズミ (cost 1), 柴犬 (cost 2)
 const action = computeCpuAction(5, cpuHand, [], [], initialInhibitors);
 assert(action !== null, 'CPU should choose an action when mana is available');
@@ -109,4 +115,18 @@ assert(
 console.log(`  -> CPU selected card "${action!.card.name}" at X=${action!.targetX}%`);
 console.log('  -> CPU AI continuous X decisions: PASSED');
 
-console.log('=== All 3 Test Suites PASSED Successfully! ===');
+// 4. Vertical depth coordinate & role classification tests
+console.log('[4/4] Testing depth / vertical coordinate ranges and roles...');
+assert(PLAYER_SPAWN_Y_MIN === 52 && PLAYER_SPAWN_Y_MAX === 95, 'Player depth range must be 52% to 95%');
+assert(PLAYER_DEFAULT_SPAWN_Y === 95, 'Default spawn Y must be 95%');
+assert(clampPlayerSpawnY(30) === PLAYER_SPAWN_Y_MIN, 'Clamping 30% (enemy area) should return PLAYER_SPAWN_Y_MIN (52%)');
+assert(clampPlayerSpawnY(100) === PLAYER_SPAWN_Y_MAX, 'Clamping 100% should return PLAYER_SPAWN_Y_MAX (95%)');
+assert(clampPlayerSpawnY(70.45) === 70.5, 'Clamping should round to 1 decimal place');
+
+// Role classification
+assert(getSpawnDepthRole(55).key === 'vanguard' && getSpawnDepthRole(55).label === '前衛', 'Y=55% should be vanguard');
+assert(getSpawnDepthRole(72).key === 'midguard' && getSpawnDepthRole(72).label === '中衛', 'Y=72% should be midguard');
+assert(getSpawnDepthRole(90).key === 'rearguard' && getSpawnDepthRole(90).label === '後衛', 'Y=90% should be rearguard');
+console.log('  -> Depth & vertical coordinates: PASSED');
+
+console.log('=== All 4 Test Suites PASSED Successfully! ===');

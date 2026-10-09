@@ -38,8 +38,9 @@ export default function RealtimeDemoPage() {
     attackEffects,
     gameResult,
     checkCanPlayCard,
-    playCardOnLane,
+    playCardAt,
     playCardAtX,
+    playCardOnLane,
     resetGame,
     comboCount,
     lastComboTime,
@@ -205,6 +206,7 @@ export default function RealtimeDemoPage() {
             spawnRippleLane={spawnRippleLane}
             playerMana={playerMana}
             checkCanPlayCard={checkCanPlayCard}
+            playCardAt={playCardAt}
             playCardAtX={playCardAtX}
             playCardOnLane={playCardOnLane}
             handleLaneDragOver={handleLaneDragOver}

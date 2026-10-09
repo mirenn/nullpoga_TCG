@@ -96,9 +96,15 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 </div>
               </div>
               <div style={styles.tipBox}>
+                <div style={styles.tipTitle}>🎯 奥行き配置（前衛・中衛・後衛）</div>
+                <div style={styles.tipText}>
+                  自陣エリア（ミッドライン〜最奥）の任意位置をクリック/ドロップで出撃可能！前衛で即座に敵を迎撃したり、後衛に遠距離・回復役を配置して戦術的な布陣を敷くことができます。
+                </div>
+              </div>
+              <div style={styles.tipBox}>
                 <div style={styles.tipTitle}>🛡️ 出撃レギュレーション</div>
                 <div style={styles.tipText}>
-                  1レーン最大3体、直前の味方ユニットがある程度前進するまでの出撃スペース確保、ドラゴン1体制限、連続召喚誤爆防止（約0.12秒）の制限があります。
+                  障害物・直前味方ユニットとの出撃スペース確保、ドラゴン1体制限、連続召喚誤爆防止（約0.12秒）の制限があります。
                 </div>
               </div>
             </div>
