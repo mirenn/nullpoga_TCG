@@ -96,11 +96,22 @@ export default function RealtimeDemoPage() {
   };
 
   // ドラッグ終了
-  const handleDragEnd = () => {
+  const handleDragEnd = useCallback(() => {
     setDraggedCardIndex(null);
     setIsDragging(false);
     setDragOverLaneIndex(null);
-  };
+  }, []);
+
+  // ブラウザ外ドロップやドラッグ中断時にも確実に状態をリセット
+  useEffect(() => {
+    const handleGlobalDragEnd = () => {
+      handleDragEnd();
+    };
+    window.addEventListener('dragend', handleGlobalDragEnd);
+    return () => {
+      window.removeEventListener('dragend', handleGlobalDragEnd);
+    };
+  }, [handleDragEnd]);
 
   // レーン上のドラッグオーバー
   const handleLaneDragOver = (e: React.DragEvent, laneIndex: number) => {
@@ -283,6 +294,7 @@ export default function RealtimeDemoPage() {
             handleLaneDragLeave={handleLaneDragLeave}
             handleLaneDrop={handleLaneDrop}
             setDragOverLaneIndex={setDragOverLaneIndex}
+            handleDragEnd={handleDragEnd}
           />
 
           {/* 3. 統合プレイヤー司令バー (自軍HP & マナゲージ) & 手札ドック */}

@@ -12,6 +12,8 @@ import {
   isWithinCollisionY,
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
+  FIRE_SPELL_SPREAD_SPEED_Y,
+  generateFirePillars,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
   SPAWN_X_MIN,
@@ -47,6 +49,7 @@ export interface BattleFieldProps {
   handleLaneDragLeave?: (e: React.DragEvent, laneIndex: number) => void;
   handleLaneDrop?: (e: React.DragEvent, laneIndex: number) => void;
   setDragOverLaneIndex?: (laneIndex: number | null) => void;
+  handleDragEnd?: () => void;
 }
 
 export function BattleField({
@@ -67,6 +70,7 @@ export function BattleField({
   checkCanPlayCard,
   playCardAt,
   playCardAtX,
+  handleDragEnd,
 }: BattleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
@@ -163,6 +167,9 @@ export function BattleField({
       }
     }
     setHoverPos(null);
+    if (handleDragEnd) {
+      handleDragEnd();
+    }
   };
 
   const activeCard = isDragging ? activeDraggedCard : selectedCard;
@@ -567,9 +574,13 @@ export function BattleField({
           );
         }
 
-        // 烈火の呪文: ドロップ地点起点で上下に広がる火柱バースト
+        // 烈火の呪文: ドロップ地点起点で上下に火柱が順番に吹き上がる演出
         if (spell.type === 'burn') {
           const originY = spell.originY ?? spell.y ?? 50;
+          const pillars = generateFirePillars(originY);
+          const upDurationSec = (originY / FIRE_SPELL_SPREAD_SPEED_Y).toFixed(2);
+          const downDurationSec = ((100 - originY) / FIRE_SPELL_SPREAD_SPEED_Y).toFixed(2);
+
           return (
             <div
               key={spell.id}
@@ -584,87 +595,109 @@ export function BattleField({
                 zIndex: 35,
               }}
             >
-              {/* 1. 起点から上方向への火柱展開 (originY -> 上端 0%) */}
+              {/* 1. 起点から上方向への地割れマグマライン */}
               <div
                 style={{
                   position: 'absolute',
                   top: 0,
                   bottom: `${100 - originY}%`,
-                  left: 0,
-                  right: 0,
+                  left: '50%',
+                  width: '6px',
+                  transform: 'translateX(-50%)',
                   transformOrigin: 'bottom',
-                  background: 'linear-gradient(to top, rgba(251, 146, 60, 0.95), rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.5))',
-                  borderLeft: '2px solid #ef4444',
-                  borderRight: '2px solid #ef4444',
-                  boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
-                  animation: 'fire-expand-up 1.1s ease-out forwards',
+                  background: 'linear-gradient(to top, rgba(254, 240, 138, 0.95), rgba(249, 115, 22, 0.9), rgba(239, 68, 68, 0.5))',
+                  boxShadow: '0 0 16px #f97316, 0 0 28px #ef4444',
+                  animation: `fire-fissure-expand-up ${upDurationSec}s ease-out forwards`,
+                  pointerEvents: 'none',
+                  zIndex: 34,
                 }}
               />
 
-              {/* 2. 起点から下方向への火柱展開 (originY -> 下端 100%) */}
+              {/* 2. 起点から下方向への地割れマグマライン */}
               <div
                 style={{
                   position: 'absolute',
                   top: `${originY}%`,
                   bottom: 0,
-                  left: 0,
-                  right: 0,
+                  left: '50%',
+                  width: '6px',
+                  transform: 'translateX(-50%)',
                   transformOrigin: 'top',
-                  background: 'linear-gradient(to bottom, rgba(251, 146, 60, 0.95), rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.5))',
-                  borderLeft: '2px solid #ef4444',
-                  borderRight: '2px solid #ef4444',
-                  boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
-                  animation: 'fire-expand-down 1.1s ease-out forwards',
+                  background: 'linear-gradient(to bottom, rgba(254, 240, 138, 0.95), rgba(249, 115, 22, 0.9), rgba(239, 68, 68, 0.5))',
+                  boxShadow: '0 0 16px #f97316, 0 0 28px #ef4444',
+                  animation: `fire-fissure-expand-down ${downDurationSec}s ease-out forwards`,
+                  pointerEvents: 'none',
+                  zIndex: 34,
                 }}
               />
 
-              {/* 3. 上向き疾走火炎ヘッド (火球先頭波) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  '--origin-y': `${originY}%`,
-                  animation: 'fire-lead-up 0.55s ease-out forwards',
-                  fontSize: '28px',
-                  pointerEvents: 'none',
-                  zIndex: 37,
-                } as React.CSSProperties}
-              >
-                🔥
-              </div>
+              {/* 3. 起点から上下へ順番に吹き上がる炎の柱たち */}
+              {pillars.map((p) => {
+                const heightPercent = p.isOrigin ? 18 : 15;
+                return (
+                  <div
+                    key={p.id}
+                    style={{
+                      position: 'absolute',
+                      top: `${p.y}%`,
+                      left: '50%',
+                      transform: 'translate(-50%, -50%)',
+                      width: '100%',
+                      height: `${heightPercent}%`,
+                      pointerEvents: 'none',
+                      zIndex: p.isOrigin ? 40 : 36,
+                    }}
+                  >
+                    {/* 地面のマグマ噴出孔光輪 */}
+                    <div
+                      className="fire-ground-vent"
+                      style={{
+                        animation: 'fire-ground-vent-pulse 0.95s ease-out forwards',
+                        animationDelay: `${p.delayMs}ms`,
+                      }}
+                    />
 
-              {/* 4. 下向き疾走火炎ヘッド (火球先頭波) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  '--origin-y': `${originY}%`,
-                  animation: 'fire-lead-down 0.55s ease-out forwards',
-                  fontSize: '28px',
-                  pointerEvents: 'none',
-                  zIndex: 37,
-                } as React.CSSProperties}
-              >
-                🔥
-              </div>
+                    {/* 吹き上がる火柱本体 */}
+                    <div
+                      className="fire-pillar-body"
+                      style={{
+                        animation: 'fire-pillar-erupt 0.85s cubic-bezier(0.12, 0.9, 0.25, 1) forwards',
+                        animationDelay: `${p.delayMs}ms`,
+                        transform: p.isOrigin ? 'translate(-50%, -50%) scale(1.15)' : undefined,
+                      }}
+                    >
+                      {/* 高温の白熱芯 */}
+                      <div className="fire-pillar-inner-core" />
+                      {/* 火柱頂点/内部の炎 */}
+                      <div
+                        style={{
+                          fontSize: p.isOrigin ? '28px' : '22px',
+                          filter: 'drop-shadow(0 0 12px #f97316)',
+                          zIndex: 2,
+                        }}
+                      >
+                        🔥
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
 
-              {/* 5. ドロップ起点(originY)の爆心地バースト */}
+              {/* 4. 起点(originY)の着弾テキスト・バースト */}
               <div
                 style={{
                   position: 'absolute',
                   top: `${originY}%`,
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  animation: 'fire-origin-burst 1.1s ease-out forwards',
-                  zIndex: 38,
+                  animation: 'fire-origin-burst 1.2s ease-out forwards',
+                  zIndex: 42,
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                 }}
               >
-                <div style={{ fontSize: '36px', filter: 'drop-shadow(0 0 16px #f97316)' }}>💥🔥</div>
+                <div style={{ fontSize: '38px', filter: 'drop-shadow(0 0 20px #f97316)' }}>💥🔥</div>
                 <div
                   style={{
                     backgroundColor: 'rgba(185, 28, 28, 0.95)',
@@ -675,12 +708,12 @@ export function BattleField({
                     fontSize: '12px',
                     letterSpacing: '1px',
                     border: '1px solid #fca5a5',
-                    boxShadow: '0 0 16px #ef4444',
+                    boxShadow: '0 0 18px #ef4444',
                     whiteSpace: 'nowrap',
                     marginTop: '-4px',
                   }}
                 >
-                  🔥 業火延焼!! 💥
+                  🔥 業火噴出!! 💥
                 </div>
               </div>
             </div>
@@ -836,114 +869,138 @@ export function BattleField({
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
       {hoverX !== null && hoverY !== null && activeCard && (
         <>
-          {/* 烈火の呪文: 縦一列プレビュー帯（ドロップ起点から上下へ延焼） */}
-          {activeCard.id === 'fire_spell' && (
-            <>
-              {/* 縦一列の延焼予測エリア */}
-              <div
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  bottom: 0,
-                  left: `${currentTargetX}%`,
-                  width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
-                  transform: 'translateX(-50%)',
-                  background: 'linear-gradient(to right, rgba(239,68,68,0.18), rgba(249,115,22,0.38), rgba(239,68,68,0.18))',
-                  borderLeft: '2px dashed #f97316',
-                  borderRight: '2px dashed #f97316',
-                  pointerEvents: 'none',
-                  zIndex: 18,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '8px 0',
-                  animation: 'fire-column-pulse 1.2s infinite ease-in-out',
-                }}
-              >
+          {/* 烈火の呪文: 縦一列プレビュー帯（ドロップ起点から上下へ火柱が順次吹き上がる） */}
+          {activeCard.id === 'fire_spell' && (() => {
+            const previewPillars = generateFirePillars(currentTargetY);
+            return (
+              <>
+                {/* 縦一列の延焼予測エリア */}
                 <div
                   style={{
-                    backgroundColor: 'rgba(234, 88, 12, 0.95)',
-                    color: '#ffffff',
-                    fontSize: '9.5px',
-                    fontWeight: 'bold',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    border: '1px solid #fed7aa',
-                    boxShadow: '0 0 10px rgba(249,115,22,0.8)',
-                    whiteSpace: 'nowrap',
-                    animation: 'fire-preview-arrow-up 0.9s infinite ease-in-out',
-                  }}
-                >
-                  ⬆️ 上方へ延焼
-                </div>
-                <div
-                  style={{
-                    backgroundColor: 'rgba(234, 88, 12, 0.95)',
-                    color: '#ffffff',
-                    fontSize: '9.5px',
-                    fontWeight: 'bold',
-                    padding: '2px 8px',
-                    borderRadius: '10px',
-                    border: '1px solid #fed7aa',
-                    boxShadow: '0 0 10px rgba(249,115,22,0.8)',
-                    whiteSpace: 'nowrap',
-                    animation: 'fire-preview-arrow-down 0.9s infinite ease-in-out',
-                  }}
-                >
-                  ⬇️ 下方へ延焼
-                </div>
-              </div>
-
-              {/* ドロップ起点マーカー (ここから上下に延焼スタート) */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: `${currentTargetX}%`,
-                  top: `${currentTargetY}%`,
-                  transform: 'translate(-50%, -50%)',
-                  pointerEvents: 'none',
-                  zIndex: 22,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                }}
-              >
-                <div
-                  style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '50%',
-                    border: '2px solid #fef08a',
-                    backgroundColor: 'rgba(249, 115, 22, 0.45)',
-                    boxShadow: '0 0 18px #f97316, inset 0 0 10px #ef4444',
+                    position: 'absolute',
+                    top: 0,
+                    bottom: 0,
+                    left: `${currentTargetX}%`,
+                    width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
+                    transform: 'translateX(-50%)',
+                    background: 'linear-gradient(to right, rgba(239,68,68,0.18), rgba(249,115,22,0.38), rgba(239,68,68,0.18))',
+                    borderLeft: '2px dashed #f97316',
+                    borderRight: '2px dashed #f97316',
+                    pointerEvents: 'none',
+                    zIndex: 18,
                     display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
                     alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '18px',
+                    padding: '8px 0',
+                    animation: 'fire-column-pulse 1.2s infinite ease-in-out',
                   }}
                 >
-                  🔥
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                      color: '#ffffff',
+                      fontSize: '9.5px',
+                      fontWeight: 'bold',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      border: '1px solid #fed7aa',
+                      boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                      whiteSpace: 'nowrap',
+                      animation: 'fire-preview-arrow-up 0.9s infinite ease-in-out',
+                    }}
+                  >
+                    🔥 上方へ火柱が順次噴出 ⬆️
+                  </div>
+
+                  {/* 火柱が吹き上がる予想ポイントのガイド */}
+                  {previewPillars.map((p) => (
+                    <div
+                      key={p.id}
+                      style={{
+                        position: 'absolute',
+                        top: `${p.y}%`,
+                        left: '50%',
+                        transform: 'translate(-50%, -50%)',
+                        fontSize: p.isOrigin ? '18px' : '14px',
+                        opacity: 0.65,
+                        animation: 'fire-preview-dot-pulse 1.0s infinite ease-in-out',
+                        animationDelay: `${p.delayMs}ms`,
+                        pointerEvents: 'none',
+                      }}
+                    >
+                      {p.isOrigin ? '🎯' : '🔥'}
+                    </div>
+                  ))}
+
+                  <div
+                    style={{
+                      backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                      color: '#ffffff',
+                      fontSize: '9.5px',
+                      fontWeight: 'bold',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      border: '1px solid #fed7aa',
+                      boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                      whiteSpace: 'nowrap',
+                      animation: 'fire-preview-arrow-down 0.9s infinite ease-in-out',
+                    }}
+                  >
+                    🔥 下方へ火柱が順次噴出 ⬇️
+                  </div>
                 </div>
+
+                {/* ドロップ起点マーカー (ここから上下に順次火柱噴出) */}
                 <div
                   style={{
-                    marginTop: '2px',
-                    backgroundColor: 'rgba(185, 28, 28, 0.95)',
-                    color: '#ffffff',
-                    fontSize: '9.5px',
-                    fontWeight: 'bold',
-                    padding: '2px 8px',
-                    borderRadius: '8px',
-                    border: '1px solid #fca5a5',
-                    boxShadow: '0 0 10px rgba(239,68,68,0.8)',
-                    whiteSpace: 'nowrap',
+                    position: 'absolute',
+                    left: `${currentTargetX}%`,
+                    top: `${currentTargetY}%`,
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: 'none',
+                    zIndex: 22,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
                   }}
                 >
-                  🎯 延焼の起点 (上下へ3ダメージ)
+                  <div
+                    style={{
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: '50%',
+                      border: '2px solid #fef08a',
+                      backgroundColor: 'rgba(249, 115, 22, 0.45)',
+                      boxShadow: '0 0 18px #f97316, inset 0 0 10px #ef4444',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: '18px',
+                    }}
+                  >
+                    🔥
+                  </div>
+                  <div
+                    style={{
+                      marginTop: '2px',
+                      backgroundColor: 'rgba(185, 28, 28, 0.95)',
+                      color: '#ffffff',
+                      fontSize: '9.5px',
+                      fontWeight: 'bold',
+                      padding: '2px 8px',
+                      borderRadius: '8px',
+                      border: '1px solid #fca5a5',
+                      boxShadow: '0 0 10px rgba(239,68,68,0.8)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🎯 火柱噴出の起点 (上下へ順次3ダメージ)
+                  </div>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            );
+          })()}
 
           {/* 隕石: 範囲円プレビュー */}
           {activeCard.id === 'meteor' && (

@@ -157,7 +157,7 @@ export function PlayerCommandBar({
       
                       return (
                         <div
-                          key={`${card.id}_${idx}`}
+                          key={`hand_slot_${idx}`}
                           draggable={canPlay && gameResult === 'playing'}
                           onDragStart={(e) => handleDragStart(e, idx)}
                           onDragEnd={handleDragEnd}

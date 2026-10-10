@@ -457,120 +457,134 @@
           }
         }
 
+        /* 烈火の呪文: 各地点で地面から吹き上がる火柱 (Fire Pillar Eruption) */
+        @keyframes fire-pillar-erupt {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, 20%) scaleY(0.05) scaleX(0.4);
+            filter: brightness(3.5) drop-shadow(0 0 10px #ffffff);
+          }
+          12% {
+            opacity: 1;
+            transform: translate(-50%, -30%) scaleY(1.4) scaleX(1.2);
+            filter: brightness(2.8) drop-shadow(0 0 35px #fef08a) drop-shadow(0 0 55px #f97316);
+          }
+          28% {
+            opacity: 1;
+            transform: translate(-50%, -20%) scaleY(1.18) scaleX(1.05);
+            filter: brightness(2.2) drop-shadow(0 0 30px #f97316);
+          }
+          55% {
+            opacity: 0.95;
+            transform: translate(-50%, -15%) scaleY(1.0) scaleX(0.95);
+            filter: brightness(1.7) drop-shadow(0 0 22px #ea580c);
+          }
+          75% {
+            opacity: 0.7;
+            transform: translate(-50%, -25%) scaleY(0.9) scaleX(0.85);
+            filter: brightness(1.3) drop-shadow(0 0 14px #dc2626);
+          }
+          90% {
+            opacity: 0.3;
+            transform: translate(-50%, -40%) scaleY(0.7) scaleX(0.7);
+            filter: brightness(1.0);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -55%) scaleY(0.3) scaleX(0.5);
+            filter: brightness(0.6);
+          }
+        }
+
+        /* 烈火の呪文: 地面の噴出マグマ光輪 (Ground Vent Pulse) */
+        @keyframes fire-ground-vent-pulse {
+          0% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.2);
+          }
+          15% {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1.3);
+            filter: drop-shadow(0 0 20px #fef08a) drop-shadow(0 0 35px #f97316);
+          }
+          50% {
+            opacity: 0.85;
+            transform: translate(-50%, -50%) scale(1.05);
+          }
+          85% {
+            opacity: 0.3;
+            transform: translate(-50%, -50%) scale(0.85);
+          }
+          100% {
+            opacity: 0;
+            transform: translate(-50%, -50%) scale(0.5);
+          }
+        }
+
+        /* 烈火の呪文: 起点から上下へ伝播する灼熱の地割れライン (Lava Fissure) */
+        @keyframes fire-fissure-expand-up {
+          0% { transform: scaleY(0); opacity: 0.5; }
+          25% { opacity: 1; filter: brightness(2.5) drop-shadow(0 0 20px #f97316); }
+          60% { transform: scaleY(1); opacity: 0.9; }
+          100% { transform: scaleY(1); opacity: 0; filter: brightness(1); }
+        }
+
+        @keyframes fire-fissure-expand-down {
+          0% { transform: scaleY(0); opacity: 0.5; }
+          25% { opacity: 1; filter: brightness(2.5) drop-shadow(0 0 20px #f97316); }
+          60% { transform: scaleY(1); opacity: 0.9; }
+          100% { transform: scaleY(1); opacity: 0; filter: brightness(1); }
+        }
+
+        /* 烈火の火柱クラス定義 */
+        .fire-pillar-body {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 95%;
+          height: 100%;
+          transform-origin: center bottom;
+          opacity: 0;
+          background: radial-gradient(ellipse at 50% 90%, #ffffff 0%, #fef08a 22%, #f97316 52%, #ef4444 80%, rgba(220, 38, 38, 0) 100%);
+          border-radius: 50% 50% 25% 25% / 70% 70% 30% 30%;
+          box-shadow: 0 0 35px rgba(249, 115, 22, 0.9), inset 0 0 20px rgba(254, 240, 138, 0.85);
+          border: 1px solid rgba(254, 240, 138, 0.65);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+        }
+
+        .fire-pillar-inner-core {
+          position: absolute;
+          width: 42%;
+          height: 85%;
+          bottom: 8%;
+          background: linear-gradient(to top, #ffffff 0%, #fef08a 50%, rgba(249, 115, 22, 0) 100%);
+          border-radius: 50% 50% 20% 20%;
+          filter: blur(2px);
+          pointer-events: none;
+        }
+
+        .fire-ground-vent {
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          width: 115%;
+          height: 42%;
+          transform: translate(-50%, -50%);
+          border-radius: 50%;
+          background: radial-gradient(ellipse, #ffffff 0%, #fef08a 35%, #ea580c 75%, transparent 100%);
+          opacity: 0;
+          pointer-events: none;
+        }
+
         /* 烈火の呪文: 起点インパクトバースト */
         @keyframes fire-origin-burst {
           0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
           15% { transform: translate(-50%, -50%) scale(1.45); opacity: 1; filter: drop-shadow(0 0 32px #f59e0b) brightness(2.2); }
           50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.95; filter: drop-shadow(0 0 22px #ea580c) brightness(1.6); }
           100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; filter: drop-shadow(0 0 10px transparent); }
-        }
-
-        /* 烈火の呪文: 起点から上方向への火柱展開 */
-        @keyframes fire-expand-up {
-          0% {
-            transform: scaleY(0);
-            opacity: 0.3;
-            filter: brightness(2.5) drop-shadow(0 0 25px #ef4444);
-          }
-          35% {
-            transform: scaleY(1);
-            opacity: 1;
-            filter: brightness(2) drop-shadow(0 0 35px #f97316);
-          }
-          70% {
-            transform: scaleY(1);
-            opacity: 0.85;
-            filter: brightness(1.5) drop-shadow(0 0 20px #ea580c);
-          }
-          100% {
-            transform: scaleY(1.02);
-            opacity: 0;
-            filter: brightness(1) drop-shadow(0 0 8px transparent);
-          }
-        }
-
-        /* 烈火の呪文: 起点から下方向への火柱展開 */
-        @keyframes fire-expand-down {
-          0% {
-            transform: scaleY(0);
-            opacity: 0.3;
-            filter: brightness(2.5) drop-shadow(0 0 25px #ef4444);
-          }
-          35% {
-            transform: scaleY(1);
-            opacity: 1;
-            filter: brightness(2) drop-shadow(0 0 35px #f97316);
-          }
-          70% {
-            transform: scaleY(1);
-            opacity: 0.85;
-            filter: brightness(1.5) drop-shadow(0 0 20px #ea580c);
-          }
-          100% {
-            transform: scaleY(1.02);
-            opacity: 0;
-            filter: brightness(1) drop-shadow(0 0 8px transparent);
-          }
-        }
-
-        /* 烈火の呪文: 上向き先頭火球 */
-        @keyframes fire-lead-up {
-          0% {
-            top: var(--origin-y, 50%);
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.6);
-          }
-          15% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.4);
-            filter: drop-shadow(0 0 24px #f59e0b) brightness(2.4);
-          }
-          40% {
-            top: 0%;
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.55);
-            filter: drop-shadow(0 0 28px #ef4444) brightness(2.1);
-          }
-          65% {
-            top: -4%;
-            opacity: 0.8;
-            transform: translate(-50%, -50%) scale(1.2);
-          }
-          100% {
-            top: -8%;
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.7);
-          }
-        }
-
-        /* 烈火の呪文: 下向き先頭火球 */
-        @keyframes fire-lead-down {
-          0% {
-            top: var(--origin-y, 50%);
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.6);
-          }
-          15% {
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.4);
-            filter: drop-shadow(0 0 24px #f59e0b) brightness(2.4);
-          }
-          40% {
-            top: 100%;
-            opacity: 1;
-            transform: translate(-50%, -50%) scale(1.55);
-            filter: drop-shadow(0 0 28px #ef4444) brightness(2.1);
-          }
-          65% {
-            top: 104%;
-            opacity: 0.8;
-            transform: translate(-50%, -50%) scale(1.2);
-          }
-          100% {
-            top: 108%;
-            opacity: 0;
-            transform: translate(-50%, -50%) scale(0.7);
-          }
         }
 
         /* 烈火の呪文: プレビュー時の上下矢印パルス */
@@ -581,6 +595,12 @@
         @keyframes fire-preview-arrow-down {
           0%, 100% { transform: translateY(0); opacity: 0.45; }
           50% { transform: translateY(7px); opacity: 1; }
+        }
+
+        /* 烈火の呪文: プレビュー時の予想火柱ノード点滅 */
+        @keyframes fire-preview-dot-pulse {
+          0%, 100% { opacity: 0.35; transform: translate(-50%, -50%) scale(0.8); }
+          50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.2); }
         }
 
         /* 烈火の呪文: 上昇する炎パーティクル */

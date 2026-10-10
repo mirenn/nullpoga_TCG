@@ -45,8 +45,75 @@ export const SPELL_RADIUS = 14.0;
 /** 烈火の呪文（縦一列範囲攻撃）のX軸効果半幅 (%) - 左右各9%で全レーン貫通の縦一列 */
 export const FIRE_SPELL_HALF_WIDTH_X = 9.0;
 
-/** 烈火の呪文のY軸（上下方向）への延焼伝播速度 (%/秒) - ドロップ地点を中心に上下へ広がる */
-export const FIRE_SPELL_SPREAD_SPEED_Y = 160;
+/** 烈火の呪文のY軸（上下方向）への延焼伝播速度 (%/秒) - ドロップ地点を中心に上下へ火柱が順番に吹き上がる速度 */
+export const FIRE_SPELL_SPREAD_SPEED_Y = 60;
+
+/** 烈火の呪文の炎の柱の間隔 (%) */
+export const FIRE_SPELL_PILLAR_STEP_Y = 7.5;
+
+/** 烈火の呪文の炎の柱の情報 */
+export interface FirePillarInfo {
+  id: string;
+  y: number;
+  offsetY: number;
+  delayMs: number;
+  isOrigin: boolean;
+}
+
+/** ドロップ起点から上下へ順次吹き上がる炎の柱のリストを生成 */
+export function generateFirePillars(
+  originY: number,
+  stepY: number = FIRE_SPELL_PILLAR_STEP_Y,
+  minY: number = 3,
+  maxY: number = 97,
+  speed: number = FIRE_SPELL_SPREAD_SPEED_Y
+): FirePillarInfo[] {
+  const pillars: FirePillarInfo[] = [];
+
+  // 1. 起点（ドロップ位置）
+  pillars.push({
+    id: 'pillar_origin',
+    y: Math.max(minY, Math.min(maxY, originY)),
+    offsetY: 0,
+    delayMs: 0,
+    isOrigin: true,
+  });
+
+  // 2. 上方向への火柱
+  let upOffset = -stepY;
+  let upIndex = 1;
+  while (originY + upOffset >= minY - stepY * 0.4) {
+    const y = Math.max(minY, originY + upOffset);
+    pillars.push({
+      id: `pillar_up_${upIndex}`,
+      y,
+      offsetY: upOffset,
+      delayMs: Math.round((Math.abs(upOffset) / speed) * 1000),
+      isOrigin: false,
+    });
+    upOffset -= stepY;
+    upIndex++;
+  }
+
+  // 3. 下方向への火柱
+  let downOffset = stepY;
+  let downIndex = 1;
+  while (originY + downOffset <= maxY + stepY * 0.4) {
+    const y = Math.min(maxY, originY + downOffset);
+    pillars.push({
+      id: `pillar_down_${downIndex}`,
+      y,
+      offsetY: downOffset,
+      delayMs: Math.round((Math.abs(downOffset) / speed) * 1000),
+      isOrigin: false,
+    });
+    downOffset += stepY;
+    downIndex++;
+  }
+
+  // 吹き上がりディレイ順にソート
+  return pillars.sort((a, b) => a.delayMs - b.delayMs);
+}
 
 /** 2つのオブジェクト/座標が烈火の呪文（縦一列範囲）内にあるか */
 export function isWithinFireSpellColumn(unitX: number, targetX: number, halfWidth: number = FIRE_SPELL_HALF_WIDTH_X): boolean {

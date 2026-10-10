@@ -3,6 +3,7 @@ import {
   COLLISION_HALF_WIDTH_Y,
   SPELL_RADIUS,
   FIRE_SPELL_SPREAD_SPEED_Y,
+  generateFirePillars,
   isWithinFireSpellColumn,
   calculateFireSpreadDelayMs,
   isFireWaveReached,
@@ -70,18 +71,27 @@ assert(isWithinFireSpellColumn(58, 50), 'X diff 8% should be within column range
 assert(isWithinFireSpellColumn(42, 50), 'X diff -8% should be within column range (half width 9.0%)');
 assert(!isWithinFireSpellColumn(60, 50), 'X diff 10% should NOT be within column range (half width 9.0%)');
 
-// 烈火の呪文: 起点からの上下延焼ディレイ＆波面到達テスト
+// 烈火の呪文: 起点からの上下延焼ディレイ＆波面到達テスト (速度 60%/秒)
 assert(calculateFireSpreadDelayMs(50, 50) === 0, 'Same Y should have 0ms delay (instant impact at drop point)');
-// 160%/s = 16%につき100ms
-assert(calculateFireSpreadDelayMs(50, 66) === 100, 'Distance 16% should take exactly 100ms');
-assert(calculateFireSpreadDelayMs(50, 34) === 100, 'Upward distance 16% should also take exactly 100ms');
-assert(calculateFireSpreadDelayMs(50, 90) === 250, 'Distance 40% should take 250ms');
+// 60%/秒 = 15%につき250ms
+assert(calculateFireSpreadDelayMs(50, 65) === 250, 'Distance 15% should take exactly 250ms');
+assert(calculateFireSpreadDelayMs(50, 35) === 250, 'Upward distance 15% should also take exactly 250ms');
+assert(calculateFireSpreadDelayMs(50, 20) === 500, 'Distance 30% should take 500ms');
 // 波面到達判定 (elapsedMs)
-assert(isFireWaveReached(50, 66, 100), 'At 100ms, wave should reach dist 16%');
-assert(isFireWaveReached(50, 66, 150), 'At 150ms, wave should have passed dist 16%');
-assert(!isFireWaveReached(50, 66, 50), 'At 50ms, wave should NOT yet reach dist 16%');
-assert(isFireWaveReached(50, 20, 200), 'Upward dist 30% at 200ms should be reached (30 <= 32)');
-assert(!isFireWaveReached(50, 20, 150), 'Upward dist 30% at 150ms should NOT be reached (30 > 24)');
+assert(isFireWaveReached(50, 65, 250), 'At 250ms, wave should reach dist 15%');
+assert(isFireWaveReached(50, 65, 300), 'At 300ms, wave should have passed dist 15%');
+assert(!isFireWaveReached(50, 65, 200), 'At 200ms, wave should NOT yet reach dist 15%');
+assert(isFireWaveReached(50, 20, 500), 'Upward dist 30% at 500ms should be reached');
+assert(!isFireWaveReached(50, 20, 400), 'Upward dist 30% at 400ms should NOT be reached');
+
+// 烈火の呪文: 炎の柱生成ヘルパーテスト (generateFirePillars)
+const pillars = generateFirePillars(50);
+assert(pillars.length >= 10, 'Should generate multiple pillars covering vertical field');
+assert(pillars[0].isOrigin && pillars[0].y === 50 && pillars[0].delayMs === 0, 'First pillar should be origin with 0ms delay');
+assert(pillars.every((p, idx) => idx === 0 || p.delayMs >= pillars[idx - 1].delayMs), 'Pillars should be sorted by ascending delayMs');
+const hasUpperPillar = pillars.some((p) => p.y < 30);
+const hasLowerPillar = pillars.some((p) => p.y > 70);
+assert(hasUpperPillar && hasLowerPillar, 'Pillars should spread both upwards and downwards from origin');
 
 // 隕石（メテオ・円形ユークリッド範囲）効果範囲テスト
 assert(isWithinMeteorRange(50, 50, 50, 50), 'Same point should be within meteor range');

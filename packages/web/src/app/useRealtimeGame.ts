@@ -469,7 +469,7 @@ export function useRealtimeGame() {
             startTime: Date.now(),
             damage: 3,
             hitUnitIds: new Set<string>(),
-            durationMs: 1200,
+            durationMs: 2000,
           });
         } else if (card.id === 'haste_spell') {
           // 指定位置付近の味方ユニットの攻撃クールダウンをリセット
@@ -615,7 +615,7 @@ export function useRealtimeGame() {
           startTime: Date.now(),
           damage: 3,
           hitUnitIds: new Set<string>(),
-          durationMs: 1200,
+          durationMs: 2000,
         });
       } else if (chosen.card.id === 'haste_spell') {
         // 疾風の号令（指定位置付近のCPUユニットのクールダウンリセット）
@@ -1269,8 +1269,8 @@ export function useRealtimeGame() {
         pendingHitsRef.current = nextPendingHits;
         setPendingLightningHits(nextPendingHits);
 
-        // スペルエフェクトの掃除（1.2秒以上経過したものを除去）
-        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1200));
+        // スペルエフェクトの掃除（烈火の炎は火柱噴出完了まで2.0秒、その他は1.2秒）
+        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < (e.type === 'burn' ? 2000 : 1200)));
       }
 
       animId = requestAnimationFrame(gameLoop);
