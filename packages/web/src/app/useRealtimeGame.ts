@@ -20,6 +20,8 @@ import {
   isWithinEngageY,
   isWithinCollisionY,
   SPELL_RADIUS,
+  FIRE_SPELL_HALF_WIDTH_X,
+  isWithinFireSpellColumn,
   clampSpawnX,
   clampSpawnY,
   clampPlayerSpawnX,
@@ -437,15 +439,15 @@ export function useRealtimeGame() {
           unitsRef.current = next;
           setUnits(next);
         } else if (card.id === 'fire_spell') {
-          // 全敵ユニットに2ダメージ
+          // 指定したX座標の縦一列（全レーン貫通）に3ダメージ
           setSpellEffects((prev) => [
             ...prev,
-            { id: `burn_${Date.now()}`, x: 50, y: 50, type: 'burn', createdAt: Date.now() },
+            { id: `burn_${Date.now()}`, x: spawnX, y: 50, type: 'burn', createdAt: Date.now() },
           ]);
           const next = unitsRef.current
             .map((u) => {
-              if (u.owner === 'cpu') {
-                return { ...u, hp: u.hp - 2 };
+              if (u.owner === 'cpu' && isWithinFireSpellColumn(u.x, spawnX)) {
+                return { ...u, hp: u.hp - 3 };
               }
               return u;
             })
@@ -582,15 +584,15 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (chosen.card.id === 'fire_spell') {
-        // 烈火の呪文（全プレイヤーユニットに2ダメージ）
+        // 烈火の呪文（指定X座標の縦一列の全プレイヤーユニットに3ダメージ）
         setSpellEffects((prev) => [
           ...prev,
-          { id: `cpu_burn_${Date.now()}`, x: 50, y: 50, type: 'burn', createdAt: Date.now() },
+          { id: `cpu_burn_${Date.now()}`, x: spellX, y: 50, type: 'burn', createdAt: Date.now() },
         ]);
         const next = unitsRef.current
           .map((u) => {
-            if (u.owner === 'player') {
-              return { ...u, hp: u.hp - 2 };
+            if (u.owner === 'player' && isWithinFireSpellColumn(u.x, spellX)) {
+              return { ...u, hp: u.hp - 3 };
             }
             return u;
           })

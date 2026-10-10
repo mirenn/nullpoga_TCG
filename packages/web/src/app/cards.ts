@@ -161,7 +161,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '烈火の呪文',
     type: 'SPELL',
     manaCost: 4,
-    effectDesc: '戦場全体を炎で包み、全レーンの敵ユニットに2ダメージ。',
+    effectDesc: '指定した縦一列（全レーン貫通）に業火を放ち、範囲内の敵に3ダメージ。',
     icon: '🔥',
   },
 ];

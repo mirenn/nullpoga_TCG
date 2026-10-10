@@ -2,6 +2,7 @@ import {
   ENGAGE_HALF_WIDTH_Y,
   COLLISION_HALF_WIDTH_Y,
   SPELL_RADIUS,
+  isWithinFireSpellColumn,
   isWithinEngageY,
   isWithinCollisionY,
   isWithinEngageX,
@@ -58,7 +59,13 @@ assert(!isWithinEngageY(50, 60), 'Y diff 10% should NOT be within engage range')
 assert(isWithinCollisionY(50, 50), 'Same Y should collide');
 assert(isWithinCollisionY(50, 54), 'Y diff 4% should collide (half width 5.0%)');
 assert(!isWithinCollisionY(50, 57), 'Y diff 7% should NOT collide (past half width 5.0%)');
-console.log('  -> Horizontal coordinates & geometry: PASSED');
+
+// 烈火の呪文（縦一列・全レーン貫通）効果範囲テスト
+assert(isWithinFireSpellColumn(50, 50), 'Targeting same X should be within column range');
+assert(isWithinFireSpellColumn(58, 50), 'X diff 8% should be within column range (half width 9.0%)');
+assert(isWithinFireSpellColumn(42, 50), 'X diff -8% should be within column range (half width 9.0%)');
+assert(!isWithinFireSpellColumn(60, 50), 'X diff 10% should NOT be within column range (half width 9.0%)');
+console.log('  -> Horizontal coordinates & geometry & fire column: PASSED');
 
 // 2. Inhibitor tests (Horizontal layout: Player at Left x=22, CPU at Right x=78)
 console.log('[2/4] Testing horizontal inhibitor configuration & mana rewards...');

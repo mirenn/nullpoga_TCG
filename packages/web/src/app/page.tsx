@@ -10,6 +10,7 @@ import { MobileCpuHeader } from '../components/battle/MobileCpuHeader';
 import { BattleField } from '../components/battle/BattleField';
 import { PlayerCommandBar } from '../components/battle/PlayerCommandBar';
 import { GameResultModal } from '../components/modals/GameResultModal';
+import { MANA_SPEED_PRESETS } from './cards';
 
 export default function RealtimeDemoPage() {
   const {
@@ -47,6 +48,7 @@ export default function RealtimeDemoPage() {
   } = useRealtimeGame();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
+  const [showDesktopSidePanel, setShowDesktopSidePanel] = useState(true);
   
   // ドラッグ＆ドロップ用ステート
   const [draggedCardIndex, setDraggedCardIndex] = useState<number | null>(null);
@@ -176,7 +178,72 @@ export default function RealtimeDemoPage() {
       <div style={styles.mainLayout}>
         {/* 左／中央：バトルアリーナ */}
         <div style={styles.arenaColumn} className="arena-column">
-          {/* 1. CPU陣地ステータスバー & コントロール (モバイル時のみアリーナ上部に表示、デスクトップは右パネルに集約) */}
+          {/* デスクトップ用アリーナヘッダーバー（左右対戦タイトル & 速度/リセット/ワイド化トグル） */}
+          <div style={styles.desktopArenaHeader} className="desktop-arena-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#f8fafc' }}>
+                ⚔️ Nullpoga RTS (左右ワイド対戦)
+              </span>
+              <span style={{ fontSize: '10px', color: '#94a3b8' }}>
+                自軍(左) ➔ 敵軍(右)
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              {/* マナ速度設定 */}
+              <div style={styles.manaSpeedSelector}>
+                <span style={styles.manaSpeedLabel}>⚡速度:</span>
+                <select
+                  style={styles.manaSpeedSelect}
+                  value={manaRegenRate}
+                  onChange={(e) => setManaRegenRate(Number(e.target.value))}
+                >
+                  {MANA_SPEED_PRESETS.map((preset) => (
+                    <option key={preset.value} value={preset.value}>
+                      {preset.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* やり直すボタン */}
+              <button
+                type="button"
+                onClick={handleReset}
+                style={styles.resetButton}
+                title="ゲームを初期状態にリセット"
+              >
+                🔄 やり直す
+              </button>
+
+              {/* ガイドモーダルボタン */}
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(true)}
+                style={styles.guideToggleButton}
+                title="攻略ガイド・カード図鑑モーダルを表示"
+              >
+                📖 ガイド・図鑑
+              </button>
+
+              {/* サイドパネル折りたたみ / 展開トグル */}
+              <button
+                type="button"
+                onClick={() => setShowDesktopSidePanel(!showDesktopSidePanel)}
+                style={{
+                  ...styles.guideToggleButton,
+                  backgroundColor: showDesktopSidePanel ? '#1e293b' : '#2563eb',
+                  border: `1px solid ${showDesktopSidePanel ? '#475569' : '#60a5fa'}`,
+                  color: '#ffffff',
+                }}
+                title={showDesktopSidePanel ? 'サイドパネルを収納してフィールドを超ワイド表示' : 'サイドパネル（攻略ガイド）を表示'}
+              >
+                {showDesktopSidePanel ? '◀ パネル収納 (ワイド化)' : '▶ パネル表示'}
+              </button>
+            </div>
+          </div>
+
+          {/* 1. CPU陣地ステータスバー & コントロール (モバイル時のみアリーナ上部に表示) */}
           <MobileCpuHeader
             cpuHp={cpuHp}
             cpuMana={cpuMana}
@@ -205,6 +272,9 @@ export default function RealtimeDemoPage() {
             dragOverLaneIndex={dragOverLaneIndex}
             spawnRippleLane={spawnRippleLane}
             playerMana={playerMana}
+            playerHp={playerHp}
+            cpuHp={cpuHp}
+            cpuMana={cpuMana}
             checkCanPlayCard={checkCanPlayCard}
             playCardAt={playCardAt}
             playCardAtX={playCardAtX}
@@ -237,18 +307,20 @@ export default function RealtimeDemoPage() {
           />
         </div>
 
-        {/* 右：攻略ガイド & カード図鑑パネル (デスクトップ専用表示) */}
-        <DesktopSidePanel
-          cpuHp={cpuHp}
-          cpuMana={cpuMana}
-          maxMana={maxMana}
-          cpuManaRegenMultiplier={cpuManaRegenMultiplier}
-          cpuHand={cpuHand}
-          cpuDeckCount={cpuDeckCount}
-          manaRegenRate={manaRegenRate}
-          setManaRegenRate={setManaRegenRate}
-          onReset={handleReset}
-        />
+        {/* 右：攻略ガイド & カード図鑑パネル (デスクトップ専用表示・トグル可能) */}
+        {showDesktopSidePanel && (
+          <DesktopSidePanel
+            cpuHp={cpuHp}
+            cpuMana={cpuMana}
+            maxMana={maxMana}
+            cpuManaRegenMultiplier={cpuManaRegenMultiplier}
+            cpuHand={cpuHand}
+            cpuDeckCount={cpuDeckCount}
+            manaRegenRate={manaRegenRate}
+            setManaRegenRate={setManaRegenRate}
+            onReset={handleReset}
+          />
+        )}
       </div>
 
       {/* モバイル用ガイドモーダル */}

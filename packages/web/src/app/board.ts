@@ -42,6 +42,14 @@ export const COLLISION_HALF_WIDTH_Y = 5.0;
 /** スペル（隕石など）の効果半径 (%) */
 export const SPELL_RADIUS = 14.0;
 
+/** 烈火の呪文（縦一列範囲攻撃）のX軸効果半幅 (%) - 左右各9%で全レーン貫通の縦一列 */
+export const FIRE_SPELL_HALF_WIDTH_X = 9.0;
+
+/** 2つのオブジェクト/座標が烈火の呪文（縦一列範囲）内にあるか */
+export function isWithinFireSpellColumn(unitX: number, targetX: number, halfWidth: number = FIRE_SPELL_HALF_WIDTH_X): boolean {
+  return Math.abs(unitX - targetX) <= halfWidth;
+}
+
 // === 互換性エイリアス ===
 export const ENGAGE_HALF_WIDTH_X = ENGAGE_HALF_WIDTH_Y;
 export const COLLISION_HALF_WIDTH_X = COLLISION_HALF_WIDTH_Y;

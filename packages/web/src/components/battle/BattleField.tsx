@@ -11,6 +11,8 @@ import {
   getSpawnDepthRole,
   isWithinCollisionY,
   SPELL_RADIUS,
+  FIRE_SPELL_HALF_WIDTH_X,
+  isWithinFireSpellColumn,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
   PLAYER_SPAWN_X_MIN,
@@ -34,7 +36,9 @@ export interface BattleFieldProps {
   checkCanPlayCard: (idx: number, spawnX?: number, spawnY?: number) => { canPlay: boolean; reason?: string };
   playCardAt?: (spawnX: number, spawnY: number, cardIndexOverride?: number) => void;
   playCardAtX?: (spawnX: number, cardIndexOverride?: number) => void;
-  // 互換用（オプショナル）
+  playerHp?: number;
+  cpuHp?: number;
+  cpuMana?: number;
   playCardOnLane?: (laneIndex: number, cardIndexOverride?: number) => void;
   dragOverLaneIndex?: number | null;
   spawnRippleLane?: number | null;
@@ -56,6 +60,9 @@ export function BattleField({
   draggedCardIndex,
   isDragging,
   playerMana,
+  playerHp,
+  cpuHp,
+  cpuMana,
   checkCanPlayCard,
   playCardAt,
   playCardAtX,
@@ -245,20 +252,28 @@ export function BattleField({
           zIndex: 4,
         }}
       >
-        <span
+        <div
           style={{
             position: 'absolute',
-            top: '8px',
+            top: '6px',
             left: '6px',
-            fontSize: '9.5px',
-            color: 'rgba(147, 197, 253, 0.85)',
-            fontWeight: 'bold',
-            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            backgroundColor: 'rgba(15, 23, 42, 0.88)',
+            border: '1px solid rgba(59, 130, 246, 0.5)',
+            borderRadius: '6px',
+            padding: '2px 7px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap',
           }}
         >
-          🛡️ 自軍 (PLAYER)
-        </span>
+          <span style={{ fontSize: '10px', color: '#93c5fd', fontWeight: 'bold' }}>🛡️ 自軍</span>
+          {playerHp !== undefined && (
+            <span style={{ fontSize: '10px', color: '#4ade80', fontWeight: 'bold' }}>❤️{playerHp}</span>
+          )}
+          <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold' }}>⚡{playerMana.toFixed(1)}</span>
+        </div>
       </div>
 
       {/* 中央境界ライン (x=50%) */}
@@ -305,20 +320,30 @@ export function BattleField({
           zIndex: 4,
         }}
       >
-        <span
+        <div
           style={{
             position: 'absolute',
-            top: '8px',
+            top: '6px',
             right: '6px',
-            fontSize: '9.5px',
-            color: 'rgba(252, 165, 165, 0.85)',
-            fontWeight: 'bold',
-            letterSpacing: '1px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            backgroundColor: 'rgba(15, 23, 42, 0.88)',
+            border: '1px solid rgba(239, 68, 68, 0.5)',
+            borderRadius: '6px',
+            padding: '2px 7px',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.6)',
             whiteSpace: 'nowrap',
           }}
         >
-          🤖 敵軍 (CPU)
-        </span>
+          {cpuMana !== undefined && (
+            <span style={{ fontSize: '10px', color: '#c084fc', fontWeight: 'bold' }}>⚡{cpuMana.toFixed(1)}</span>
+          )}
+          {cpuHp !== undefined && (
+            <span style={{ fontSize: '10px', color: '#f87171', fontWeight: 'bold' }}>❤️{cpuHp}</span>
+          )}
+          <span style={{ fontSize: '10px', color: '#fca5a5', fontWeight: 'bold' }}>🤖 敵軍</span>
+        </div>
       </div>
 
       {/* 3本の水平レーン進軍ガイドライン（TOP=20%, MID=50%, BOT=80%） */}
@@ -381,18 +406,105 @@ export function BattleField({
       ))}
 
       {/* 4. フィールド上のユニット描画 */}
-      {units.map((unit) => (
-        <RenderUnit
-          key={unit.id}
-          unit={unit}
-          isBlockingSpawn={
-            isSpaceBlocked &&
-            unit.owner === 'player' &&
-            isWithinCollisionY(unit.y, currentTargetY) &&
-            Math.abs(unit.x - currentTargetX) < SPAWN_MIN_SPACE
-          }
-        />
-      ))}
+      {units.map((unit) => {
+        const isFireTargeted =
+          activeCard?.id === 'fire_spell' &&
+          unit.owner === 'cpu' &&
+          isWithinFireSpellColumn(unit.x, currentTargetX);
+        const isMeteorTargeted =
+          activeCard?.id === 'meteor' &&
+          unit.owner === 'cpu' &&
+          Math.hypot(unit.x - currentTargetX, unit.y - currentTargetY) <= SPELL_RADIUS;
+
+        return (
+          <React.Fragment key={unit.id}>
+            <RenderUnit
+              unit={unit}
+              isBlockingSpawn={
+                isSpaceBlocked &&
+                unit.owner === 'player' &&
+                isWithinCollisionY(unit.y, currentTargetY) &&
+                Math.abs(unit.x - currentTargetX) < SPAWN_MIN_SPACE
+              }
+            />
+            {/* 烈火の呪文: 縦一列ターゲットロックオン表示 */}
+            {isFireTargeted && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${unit.x}%`,
+                  top: `${unit.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: '46px',
+                  height: '46px',
+                  borderRadius: '50%',
+                  border: '2px solid #ef4444',
+                  boxShadow: '0 0 14px #f97316, inset 0 0 8px #ef4444',
+                  pointerEvents: 'none',
+                  zIndex: 26,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-14px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    backgroundColor: '#dc2626',
+                    color: '#ffffff',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.6)',
+                  }}
+                >
+                  🔥 範囲内
+                </span>
+              </div>
+            )}
+            {/* 隕石: 範囲内ターゲット表示 */}
+            {isMeteorTargeted && (
+              <div
+                style={{
+                  position: 'absolute',
+                  left: `${unit.x}%`,
+                  top: `${unit.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '50%',
+                  border: '2px solid #f97316',
+                  boxShadow: '0 0 10px #f97316',
+                  pointerEvents: 'none',
+                  zIndex: 26,
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'center',
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '-14px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    backgroundColor: '#ea580c',
+                    color: '#ffffff',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  ☄️ 範囲内
+                </span>
+              </div>
+            )}
+          </React.Fragment>
+        );
+      })}
 
       {/* 5. スペル演出 */}
       {spellEffects.map((spell) => {
@@ -454,6 +566,53 @@ export function BattleField({
           );
         }
 
+        // 烈火の呪文: 縦一列火柱バースト (全レーン業火)
+        if (spell.type === 'burn') {
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: `${spell.x}%`,
+                width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
+                transform: 'translateX(-50%)',
+                pointerEvents: 'none',
+                zIndex: 35,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-around',
+                alignItems: 'center',
+                background: 'linear-gradient(to right, rgba(239, 68, 68, 0.25), rgba(249, 115, 22, 0.85), rgba(239, 68, 68, 0.25))',
+                borderLeft: '2px solid #ef4444',
+                borderRight: '2px solid #ef4444',
+                boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
+                animation: 'fire-column-burst 1.1s ease-out forwards',
+              }}
+            >
+              <div style={{ fontSize: '28px', animation: 'fire-flame-rise 1s ease-out forwards' }}>🔥</div>
+              <div
+                style={{
+                  backgroundColor: 'rgba(185, 28, 28, 0.95)',
+                  color: '#fff',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 'bold',
+                  fontSize: '13px',
+                  letterSpacing: '1px',
+                  border: '1px solid #fca5a5',
+                  boxShadow: '0 0 15px #ef4444',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🔥 烈火の業火柱!! 💥
+              </div>
+              <div style={{ fontSize: '28px', animation: 'fire-flame-rise 1s ease-out forwards', animationDelay: '0.15s' }}>🔥</div>
+            </div>
+          );
+        }
+
         return (
           <div
             key={spell.id}
@@ -462,12 +621,9 @@ export function BattleField({
               left: `${spell.x}%`,
               top: `${spell.y}%`,
               transform: 'translate(-50%, -50%)',
-              ...(spell.type === 'burn' ? styles.spellBurn : {}),
               ...(spell.type === 'haste' ? styles.spellHaste : {}),
               ...(spell.type === 'heal' ? styles.spellHeal : {}),
-              animation: spell.type === 'burn'
-                ? 'burn-spell-anim 1s ease-out forwards'
-                : spell.type === 'haste'
+              animation: spell.type === 'haste'
                 ? 'haste-spell-anim 0.6s ease-out forwards'
                 : spell.type === 'heal'
                 ? 'heal-spell-anim 1s ease-out forwards'
@@ -476,9 +632,7 @@ export function BattleField({
               zIndex: 35,
             }}
           >
-            {spell.type === 'burn'
-              ? '🔥 烈火!!'
-              : spell.type === 'haste'
+            {spell.type === 'haste'
               ? '💨 疾風!!'
               : '🌧️ 癒やし!!'}
           </div>
@@ -608,6 +762,90 @@ export function BattleField({
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
       {hoverX !== null && hoverY !== null && activeCard && (
         <>
+          {/* 烈火の呪文: 縦一列プレビュー帯（上端〜下端・全レーン貫通） */}
+          {activeCard.id === 'fire_spell' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: `${currentTargetX}%`,
+                width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
+                transform: 'translateX(-50%)',
+                background: 'linear-gradient(to right, rgba(239,68,68,0.18), rgba(249,115,22,0.38), rgba(239,68,68,0.18))',
+                borderLeft: '2px dashed #f97316',
+                borderRight: '2px dashed #f97316',
+                pointerEvents: 'none',
+                zIndex: 18,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '8px 0',
+                animation: 'fire-column-pulse 1.2s infinite ease-in-out',
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                  color: '#ffffff',
+                  fontSize: '9.5px',
+                  fontWeight: 'bold',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  border: '1px solid #fed7aa',
+                  boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🔥 烈火の範囲 (全レーン貫通)
+              </div>
+              <div
+                style={{
+                  fontSize: '20px',
+                  opacity: 0.8,
+                }}
+              >
+                🔥
+              </div>
+              <div
+                style={{
+                  backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                  color: '#ffffff',
+                  fontSize: '9.5px',
+                  fontWeight: 'bold',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  border: '1px solid #fed7aa',
+                  boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                🔥 縦一列 3ダメージ
+              </div>
+            </div>
+          )}
+
+          {/* 隕石: 範囲円プレビュー */}
+          {activeCard.id === 'meteor' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: `${currentTargetY}%`,
+                left: `${currentTargetX}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2 * (16 / 9)}%`,
+                borderRadius: '50%',
+                border: '2px dashed #ea580c',
+                backgroundColor: 'rgba(234, 88, 12, 0.15)',
+                boxShadow: '0 0 16px rgba(234, 88, 12, 0.4)',
+                pointerEvents: 'none',
+                zIndex: 19,
+              }}
+            />
+          )}
+
           {/* 垂直照準ライン (X座標 / 前後・奥行き) */}
           <div
             style={{
@@ -619,9 +857,13 @@ export function BattleField({
               transform: 'translateX(-50%)',
               backgroundColor: isTargetBlocked
                 ? 'rgba(239, 68, 68, 0.65)'
+                : activeCard.id === 'fire_spell'
+                ? 'rgba(249, 115, 22, 0.8)'
                 : 'rgba(56, 189, 248, 0.65)',
               boxShadow: isTargetBlocked
                 ? '0 0 8px rgba(239, 68, 68, 0.8)'
+                : activeCard.id === 'fire_spell'
+                ? '0 0 10px rgba(249, 115, 22, 0.9)'
                 : '0 0 8px rgba(56, 189, 248, 0.8)',
               pointerEvents: 'none',
               zIndex: 20,
@@ -701,9 +943,17 @@ export function BattleField({
             {isTargetBlocked
               ? `🚫 ${validation.reason}`
               : isDragging
-              ? activeCard.type === 'SPELL'
+              ? activeCard.id === 'fire_spell'
+                ? '🔥 ドロップで縦一列業火！'
+                : activeCard.id === 'meteor'
+                ? '☄️ ドロップで範囲隕石！'
+                : activeCard.type === 'SPELL'
                 ? '✨ ドロップ発動'
                 : `🎯 ドロップ出撃 [${depthRole.label}]`
+              : activeCard.id === 'fire_spell'
+              ? '🔥 クリックで縦一列業火！'
+              : activeCard.id === 'meteor'
+              ? '☄️ クリックで範囲隕石！'
               : activeCard.type === 'SPELL'
               ? '✨ クリック発動'
               : `🎯 クリック出撃 [${depthRole.label}]`}

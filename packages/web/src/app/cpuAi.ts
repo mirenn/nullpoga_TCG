@@ -6,6 +6,8 @@ import {
   isWithinEngageY,
   isWithinCollisionY,
   SPELL_RADIUS,
+  FIRE_SPELL_HALF_WIDTH_X,
+  isWithinFireSpellColumn,
   clampSpawnY,
 } from './board';
 import { INHIBITOR_SLOTS, inhibitorBlocksY } from './inhibitors';
@@ -153,11 +155,23 @@ export function computeCpuAction(
           }
         });
       } else if (card.id === 'fire_spell') {
-        if (totalPlayerUnits >= 2) {
+        // 烈火の呪文: 縦一列（X軸）で最も多くのプレイヤーユニットを巻き込める位置を探索
+        let bestTargetX = 50;
+        let maxHits = 0;
+        playerUnits.forEach((targetUnit) => {
+          const hits = playerUnits.filter((u) => isWithinFireSpellColumn(u.x, targetUnit.x)).length;
+          if (hits > maxHits) {
+            maxHits = hits;
+            bestTargetX = targetUnit.x;
+          }
+        });
+        if (maxHits >= 1) {
           options.push({
             handIndex: idx,
             card,
-            score: 12 + totalPlayerUnits * 4 + Math.random() * 3,
+            targetX: bestTargetX,
+            targetY: 50,
+            score: 14 + maxHits * 7 + Math.random() * 3,
           });
         }
       } else if (card.id === 'heal_spell') {

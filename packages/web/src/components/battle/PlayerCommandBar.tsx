@@ -231,7 +231,7 @@ export function PlayerCommandBar({
                               <div style={styles.cardStats}>
                                 <span style={styles.cardSpellTag}>✨呪文</span>
                                 <span style={styles.cardSpellScope}>
-                                  {card.id === 'fire_spell' ? '全体2' : '単体4'}
+                                  {card.id === 'fire_spell' ? '縦一列3' : card.id === 'meteor' ? '範囲3' : '単体4'}
                                 </span>
                               </div>
                             )}
