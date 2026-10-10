@@ -47,16 +47,16 @@
           transition: all 0.15s ease;
         }
 
-        /* ユニット攻撃時の一瞬の踏み込みバンプ */
+        /* ユニット攻撃時の一瞬の踏み込みバンプ (横方向) */
         @keyframes unit-attack-player {
-          0% { transform: translateY(0); }
-          35% { transform: translateY(-8px) scale(1.1); }
-          100% { transform: translateY(0) scale(1); }
+          0% { transform: translateX(0); }
+          35% { transform: translateX(8px) scale(1.1); }
+          100% { transform: translateX(0) scale(1); }
         }
         @keyframes unit-attack-cpu {
-          0% { transform: translateY(0); }
-          35% { transform: translateY(8px) scale(1.1); }
-          100% { transform: translateY(0) scale(1); }
+          0% { transform: scaleX(-1) translateX(0); }
+          35% { transform: scaleX(-1) translateX(8px) scale(1.1); }
+          100% { transform: scaleX(-1) translateX(0) scale(1); }
         }
         .unit-attacking-player {
           animation: unit-attack-player 0.22s ease-out;

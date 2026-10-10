@@ -6,26 +6,35 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら0ms）
   const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 0);
 
-  // ビーム・流線用の垂直範囲
-  const minY = Math.min(effect.fromY, effect.toY);
-  const heightY = Math.max(5, Math.abs(effect.toY - effect.fromY));
+  // ビーム・流線用の水平範囲（横長フィールド用）
+  const minX = Math.min(effect.fromX, effect.toX);
+  const widthX = Math.max(5, Math.abs(effect.toX - effect.fromX));
+  const beamTop = `${(effect.fromY + effect.toY) / 2}%`;
 
   const fromLeft = `${effect.fromX}%`;
   const targetLeft = `${effect.toX}%`;
-  const beamLeft = `${(effect.fromX + effect.toX) / 2}%`;
 
   return (
     <>
       {/* 1. 炎のドラゴン（長距離火炎ブレス流線 ＆ 着弾大爆発） */}
       {effect.effectType === 'fireball' && (
         <>
-          {/* ドラゴンから標的へ噴射される火炎ブレスの流線 */}
+          {/* ドラゴンから標的へ噴射される火炎ブレスの流線 (横方向) */}
           <div
             className="fire-breath-stream"
             style={{
-              top: `${minY}%`,
-              height: `${heightY}%`,
-              left: beamLeft,
+              position: 'absolute',
+              left: `${minX}%`,
+              width: `${widthX}%`,
+              top: beamTop,
+              height: '14px',
+              transform: 'translateY(-50%)',
+              background: 'linear-gradient(to right, #fef08a, #f97316 25%, #ea580c 50%, #dc2626 75%, #fef08a)',
+              boxShadow: '0 0 16px #f97316, 0 0 32px #ea580c, 0 0 48px #fef08a',
+              borderRadius: '7px',
+              pointerEvents: 'none',
+              zIndex: 35,
+              animation: 'fire-stream-flicker 0.5s ease-out forwards',
             }}
           />
 
@@ -107,9 +116,17 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
           <div
             className="lightning-beam-line"
             style={{
-              top: `${minY}%`,
-              height: `${heightY}%`,
-              left: beamLeft,
+              position: 'absolute',
+              left: `${minX}%`,
+              width: `${widthX}%`,
+              top: beamTop,
+              height: '3px',
+              transform: 'translateY(-50%)',
+              backgroundColor: '#38bdf8',
+              boxShadow: '0 0 12px #38bdf8, 0 0 24px #0ea5e9',
+              borderRadius: '2px',
+              pointerEvents: 'none',
+              zIndex: 37,
               '--impact-delay': `${flightTime}ms`,
             } as React.CSSProperties}
           />

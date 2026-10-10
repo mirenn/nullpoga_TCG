@@ -91,9 +91,12 @@ export interface AttackEffect {
 export interface CpuSpawnWarning {
   id: string;
   x: number;
+  y?: number;
+  targetY?: number;
   card: DemoCard;
   startTime: number;
   durationMs: number;
   comboCount?: number;
   lane?: number;
 }
+

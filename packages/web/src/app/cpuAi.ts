@@ -1,30 +1,31 @@
 import { DemoCard, Unit, CpuSpawnWarning, Inhibitor } from './types';
 import { SPAWN_MIN_SPACE } from './cards';
 import {
-  SPAWN_X_MIN,
-  SPAWN_X_MAX,
-  isWithinEngageX,
-  isWithinCollisionX,
-  SPELL_RADIUS_X,
-  clampSpawnX,
+  SPAWN_Y_MIN,
+  SPAWN_Y_MAX,
+  isWithinEngageY,
+  isWithinCollisionY,
+  SPELL_RADIUS,
+  clampSpawnY,
 } from './board';
-import { INHIBITOR_SLOTS, inhibitorBlocksX } from './inhibitors';
+import { INHIBITOR_SLOTS, inhibitorBlocksY } from './inhibitors';
 
 export type PlayableOption = {
   handIndex: number;
   card: DemoCard;
+  targetY?: number;
   targetX?: number;
   targetLane?: number; // 互換エイリアス
   score: number;
 };
 
-// CPUが出撃検討する代表的なX候補点（左右インヒビター正面、中央、およびその間の隙間ルート）
-const STRATEGIC_X_POINTS = [
-  18, // 左インヒビター正面
-  34, // 左と中央の隙間（素通りルート！）
+// CPUが出撃検討する代表的なY候補点（上下インヒビター正面、中央、およびその間の隙間ルート）
+const STRATEGIC_Y_POINTS = [
+  20, // 上インヒビター正面
+  35, // 上と中央の隙間（素通りルート！）
   50, // 中央インヒビター正面
-  66, // 中央と右の隙間（素通りルート！）
-  82, // 右インヒビター正面
+  65, // 中央と下の隙間（素通りルート！）
+  80, // 下インヒビター正面
 ];
 
 export function computeCpuAction(
@@ -42,19 +43,19 @@ export function computeCpuAction(
   const cpuUnits = units.filter((u) => u.owner === 'cpu' && u.hp > 0);
   const totalPlayerUnits = playerUnits.length;
 
-  // 出撃候補となるX座標リスト（戦略ポイント ＋ 攻めてきている敵の正面X）
-  const candidateXs = new Set<number>(STRATEGIC_X_POINTS);
+  // 出撃候補となるY座標リスト（戦略ポイント ＋ 攻めてきている敵の正面Y）
+  const candidateYs = new Set<number>(STRATEGIC_Y_POINTS);
   playerUnits.forEach((u) => {
-    candidateXs.add(clampSpawnX(u.x));
+    candidateYs.add(clampSpawnY(u.y));
   });
 
-  // 各X候補点について、自軍ユニットが出撃スペースを塞いでいないか判定
-  const validSpawnXs = Array.from(candidateXs).filter((x) => {
+  // 各Y候補点について、自軍ユニットが出撃スペースを塞いでいないか判定
+  const validSpawnYs = Array.from(candidateYs).filter((y) => {
     // 召喚予兆がすぐ近くにある場合は避ける
-    if (cpuSpawnWarnings.some((w) => isWithinCollisionX(w.x, x))) return false;
-    // 自軍の既存ユニットがすぐ出撃地点に詰まっているか（y < 5 + SPAWN_MIN_SPACE）
+    if (cpuSpawnWarnings.some((w) => isWithinCollisionY(w.y ?? (w.lane ?? 50), y))) return false;
+    // 自軍の既存ユニットがすぐ右端出撃地点に詰まっているか（x > 95 - SPAWN_MIN_SPACE）
     const blockingAlly = cpuUnits.some(
-      (u) => isWithinCollisionX(u.x, x) && u.y < 5 + SPAWN_MIN_SPACE
+      (u) => isWithinCollisionY(u.y, y) && u.x > 95 - SPAWN_MIN_SPACE
     );
     return !blockingAlly;
   });
@@ -72,23 +73,24 @@ export function computeCpuAction(
         if (hasDragon || isWarningDragon) return;
       }
 
-      if (validSpawnXs.length === 0) return;
+      if (validSpawnYs.length === 0) return;
 
-      validSpawnXs.forEach((x) => {
+      validSpawnYs.forEach((y) => {
         let score = 5;
-        // このX座標の交戦幅にいるプレイヤーユニット
-        const nearbyEnemies = playerUnits.filter((u) => isWithinEngageX(u.x, x));
-        const closeEnemies = nearbyEnemies.filter((u) => u.y < 55);
-        // このX座標の進路上に敵インヒビターがあるか
+        // このY座標の交戦幅にいるプレイヤーユニット
+        const nearbyEnemies = playerUnits.filter((u) => isWithinEngageY(u.y, y));
+        // CPU拠点(x=95)に迫っている敵 (x > 50)
+        const closeEnemies = nearbyEnemies.filter((u) => u.x > 50);
+        // このY座標の進路上に敵インヒビターがあるか
         const enemyInhibitor = inhibitors.find(
-          (i) => i.owner === 'player' && inhibitorBlocksX(i, x)
+          (i) => i.owner === 'player' && inhibitorBlocksY(i, y)
         );
 
         if (card.cardNo === 8) {
           // 忍びアサシン: 敵がいないルートを最優先で疾走！
           if (nearbyEnemies.length === 0) {
             score += 18;
-            // インヒビターにも遮られない素通りルート（x=34や66）なら拠点直撃の特大ボーナス！
+            // インヒビターにも遮られない素通りルート（y=35や65）なら拠点直撃の特大ボーナス！
             if (!enemyInhibitor) {
               score += 8;
             }
@@ -125,25 +127,27 @@ export function computeCpuAction(
         options.push({
           handIndex: idx,
           card,
-          targetX: x,
-          targetLane: x,
+          targetY: y,
+          targetX: 95,
+          targetLane: y,
           score,
         });
       });
     } else if (card.type === 'SPELL') {
       if (card.id === 'meteor') {
-        // メテオ: プレイヤーユニットが集まっているX座標（中央Y付近）
-        validSpawnXs.forEach((x) => {
+        // メテオ: プレイヤーユニットが集まっている場所
+        validSpawnYs.forEach((y) => {
           const hits = playerUnits.filter(
-            (u) => isWithinEngageX(u.x, x, SPELL_RADIUS_X) && Math.abs(u.y - 50) <= 20
+            (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && Math.abs(u.x - 50) <= 25
           );
           if (hits.length > 0) {
             const score = 12 + hits.length * 7 + Math.random() * 2;
             options.push({
               handIndex: idx,
               card,
-              targetX: x,
-              targetLane: x,
+              targetY: y,
+              targetX: 50,
+              targetLane: y,
               score,
             });
           }
@@ -157,31 +161,33 @@ export function computeCpuAction(
           });
         }
       } else if (card.id === 'heal_spell') {
-        validSpawnXs.forEach((x) => {
+        validSpawnYs.forEach((y) => {
           const wounded = cpuUnits.filter(
-            (u) => isWithinEngageX(u.x, x, SPELL_RADIUS_X) && u.hp < u.maxHp
+            (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && u.hp < u.maxHp
           );
           if (wounded.length > 0) {
             options.push({
               handIndex: idx,
               card,
-              targetX: x,
-              targetLane: x,
+              targetY: y,
+              targetX: 70,
+              targetLane: y,
               score: 8 + wounded.length * 6 + Math.random() * 2,
             });
           }
         });
       } else if (card.id === 'haste_spell') {
-        validSpawnXs.forEach((x) => {
+        validSpawnYs.forEach((y) => {
           const battlingAllies = cpuUnits.filter(
-            (u) => isWithinEngageX(u.x, x, SPELL_RADIUS_X) && playerUnits.some((p) => isWithinEngageX(p.x, u.x))
+            (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && playerUnits.some((p) => isWithinEngageY(p.y, u.y))
           );
           if (battlingAllies.length > 0) {
             options.push({
               handIndex: idx,
               card,
-              targetX: x,
-              targetLane: x,
+              targetY: y,
+              targetX: 70,
+              targetLane: y,
               score: 7 + battlingAllies.length * 4 + Math.random() * 3,
             });
           }

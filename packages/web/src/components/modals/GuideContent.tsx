@@ -34,13 +34,13 @@ export function GuideContent() {
             <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🏰 インヒビター攻略とマナボーナス</div>
               <div style={styles.tipText}>
-                左端・中央・右端に佇むインヒビターは進路を塞ぐ壁です。破壊すると即座にマナ+2、さらに以後のマナ回復速度が永続で+20%（最大+60%）強化されます！
+                上流・中央・下流（TOP/MID/BOTレーン）に佇むインヒビターは進路を塞ぐ壁です。破壊すると即座にマナ+2、さらに以後のマナ回復速度が永続で+20%（最大+60%）強化されます！
               </div>
             </div>
             <div style={styles.tipBox}>
-              <div style={styles.tipTitle}>📐 9列グリッドと隣接交戦</div>
+              <div style={styles.tipTitle}>📐 左右対戦フィールドと進軍</div>
               <div style={styles.tipText}>
-                戦場は9列に細分化！ユニットは直進しますが、横のずれ±1列以内の敵を索敵・攻撃します。インヒビターのない隙間（列2〜4、6〜8など）を突くか、正面から破壊するかの駆け引きが重要です。
+                戦場はPC画面に合わせたワイドな左右対戦！自軍（左側）から敵軍（右側）へ向かって進軍します。インヒビターのない隙間ルート（y=35%や65%など）を突くか、正面突破するかの駆け引きが熱い！
               </div>
             </div>
             <div style={styles.tipBox}>
@@ -94,7 +94,7 @@ export function GuideContent() {
             <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🎯 奥行き配置（前衛・中衛・後衛）</div>
               <div style={styles.tipText}>
-                自陣エリア（ミッドライン〜最奥）の任意位置をクリック/ドロップで出撃可能！前衛で即座に敵を迎撃したり、後衛に遠距離・回復役を配置して戦術的な布陣を敷くことができます。
+                自陣エリア（左半面: x=6%〜48%）の任意位置をクリック/ドロップで出撃可能！前衛で即座に敵を迎撃したり、後衛に遠距離・回復役を配置して戦術的な布陣を敷くことができます。
               </div>
             </div>
             <div style={styles.tipBox}>

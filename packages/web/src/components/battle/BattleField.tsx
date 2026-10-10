@@ -6,18 +6,18 @@ import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
 import {
   clampSpawnX,
-  clampPlayerSpawnY,
+  clampPlayerSpawnX,
   clampSpawnY,
   getSpawnDepthRole,
-  isWithinCollisionX,
-  SPELL_RADIUS_X,
+  isWithinCollisionY,
+  SPELL_RADIUS,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
-  PLAYER_SPAWN_Y_MIN,
-  PLAYER_SPAWN_Y_MAX,
+  PLAYER_SPAWN_X_MIN,
+  PLAYER_SPAWN_X_MAX,
+  PLAYER_DEFAULT_SPAWN_X,
 } from '../../app/board';
 import { SPAWN_MIN_SPACE } from '../../app/cards';
-import { INHIBITOR_SLOTS } from '../../app/inhibitors';
 
 export interface BattleFieldProps {
   units: Unit[];
@@ -66,20 +66,20 @@ export function BattleField({
 
   // マウス/タッチ座標からフィールドの横パーセント (SPAWN_X_MIN〜SPAWN_X_MAX) を算出
   const calculateXPercent = useCallback((clientX: number): number => {
-    if (!containerRef.current) return 50;
+    if (!containerRef.current) return 25;
     const rect = containerRef.current.getBoundingClientRect();
-    if (rect.width <= 0) return 50;
+    if (rect.width <= 0) return 25;
     const rawPct = ((clientX - rect.left) / rect.width) * 100;
     return clampSpawnX(rawPct);
   }, []);
 
-  // マウス/タッチ座標からフィールドの縦パーセント (0〜100%) を算出
+  // マウス/タッチ座標からフィールドの縦パーセント (12〜88%) を算出
   const calculateYPercent = useCallback((clientY: number): number => {
-    if (!containerRef.current) return 95;
+    if (!containerRef.current) return 50;
     const rect = containerRef.current.getBoundingClientRect();
-    if (rect.height <= 0) return 95;
+    if (rect.height <= 0) return 50;
     const rawPct = ((clientY - rect.top) / rect.height) * 100;
-    return Math.round(rawPct * 10) / 10;
+    return clampSpawnY(rawPct);
   }, []);
 
   const triggerRipple = (x: number, y: number) => {
@@ -88,11 +88,12 @@ export function BattleField({
   };
 
   const executePlay = useCallback(
-    (x: number, rawY: number, cardIdx: number, card: DemoCard) => {
-      const y = card.type === 'MONSTER'
-        ? clampPlayerSpawnY(rawY)
-        : clampSpawnY(rawY, 15, 85);
-      const validation = checkCanPlayCard(cardIdx, x, rawY);
+    (rawX: number, rawY: number, cardIdx: number, card: DemoCard) => {
+      const x = card.type === 'MONSTER'
+        ? clampPlayerSpawnX(rawX)
+        : clampSpawnX(rawX, 15, 85);
+      const y = clampSpawnY(rawY);
+      const validation = checkCanPlayCard(cardIdx, rawX, y);
       if (validation.canPlay) {
         if (playCardAt) {
           playCardAt(x, y, cardIdx);
@@ -160,17 +161,18 @@ export function BattleField({
   const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
   const hoverX = hoverPos?.x ?? null;
   const hoverY = hoverPos?.y ?? null;
-  const currentTargetX = hoverX ?? 50;
-  const rawTargetY = hoverY ?? (activeCard?.type === 'SPELL' ? 50 : 95);
+  const rawTargetX = hoverX ?? (activeCard?.type === 'SPELL' ? 50 : PLAYER_DEFAULT_SPAWN_X);
+  const rawTargetY = hoverY ?? 50;
 
-  const currentTargetY = activeCard?.type === 'MONSTER'
-    ? (hoverY !== null ? clampPlayerSpawnY(hoverY) : 95)
-    : clampSpawnY(rawTargetY, 15, 85);
+  const currentTargetX = activeCard?.type === 'MONSTER'
+    ? (hoverX !== null ? clampPlayerSpawnX(hoverX) : PLAYER_DEFAULT_SPAWN_X)
+    : clampSpawnX(rawTargetX, 15, 85);
+  const currentTargetY = clampSpawnY(rawTargetY);
 
-  const depthRole = getSpawnDepthRole(currentTargetY);
+  const depthRole = getSpawnDepthRole(currentTargetX);
 
   const validation = activeCard && activeCardIdx !== null
-    ? checkCanPlayCard(activeCardIdx, currentTargetX, rawTargetY)
+    ? checkCanPlayCard(activeCardIdx, rawTargetX, currentTargetY)
     : { canPlay: true };
   const canAfford = activeCard ? playerMana >= activeCard.manaCost : false;
   const isTargetBlocked = !validation.canPlay;
@@ -187,24 +189,25 @@ export function BattleField({
       onDrop={handleDrop}
       style={{
         flex: 1,
-        minHeight: '220px',
+        minHeight: '340px',
         position: 'relative',
-        margin: '4px 0',
-        borderRadius: '8px',
+        margin: '6px 0',
+        borderRadius: '10px',
         border: '1px solid #334155',
         backgroundColor: '#0a0f1d',
         backgroundImage: `
-          radial-gradient(circle at 50% 50%, rgba(30, 58, 138, 0.12) 0%, transparent 70%),
-          linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+          radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.16) 0%, transparent 60%),
+          radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.14) 0%, transparent 60%),
+          linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px)
         `,
-        backgroundSize: '100% 100%, 20px 20px, 20px 20px',
+        backgroundSize: '100% 100%, 100% 100%, 24px 24px, 24px 24px',
         overflow: 'hidden',
         userSelect: 'none',
         cursor: activeCard ? (validation.canPlay ? 'crosshair' : 'not-allowed') : 'default',
         boxShadow: activeCard
-          ? 'inset 0 0 20px rgba(59, 130, 246, 0.2), 0 0 10px rgba(15, 23, 42, 0.8)'
-          : 'inset 0 0 10px rgba(0, 0, 0, 0.5)',
+          ? 'inset 0 0 24px rgba(59, 130, 246, 0.25), 0 0 16px rgba(15, 23, 42, 0.9)'
+          : 'inset 0 0 14px rgba(0, 0, 0, 0.6)',
       }}
       data-field="battle-arena"
     >
@@ -227,41 +230,59 @@ export function BattleField({
         );
       })}
 
-      {/* 1. フィールド背景ガイドライン */}
-      {/* 敵陣ベースライン (y=5%) */}
+      {/* 1. フィールド背景ガイドライン (左右対戦形式) */}
+      {/* 自軍ベースライン (左端 x=5%) */}
       <div
         style={{
           position: 'absolute',
-          top: '5%',
-          left: 0,
-          right: 0,
-          height: '1px',
-          backgroundColor: 'rgba(239, 68, 68, 0.25)',
-          borderBottom: '1px dashed rgba(239, 68, 68, 0.4)',
+          left: '5%',
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          backgroundColor: 'rgba(59, 130, 246, 0.35)',
+          borderRight: '1px dashed rgba(59, 130, 246, 0.55)',
           pointerEvents: 'none',
-        }}
-      />
-      {/* 中央境界ライン (y=50%) */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: 0,
-          right: 0,
-          height: '1px',
-          backgroundColor: 'rgba(148, 163, 184, 0.15)',
-          borderBottom: '1px dashed rgba(148, 163, 184, 0.25)',
-          pointerEvents: 'none',
+          zIndex: 4,
         }}
       >
         <span
           style={{
             position: 'absolute',
-            left: '50%',
+            top: '8px',
+            left: '6px',
+            fontSize: '9.5px',
+            color: 'rgba(147, 197, 253, 0.85)',
+            fontWeight: 'bold',
+            letterSpacing: '1px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🛡️ 自軍 (PLAYER)
+        </span>
+      </div>
+
+      {/* 中央境界ライン (x=50%) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '50%',
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          backgroundColor: 'rgba(148, 163, 184, 0.2)',
+          borderRight: '1px dashed rgba(148, 163, 184, 0.35)',
+          pointerEvents: 'none',
+          zIndex: 4,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
             top: '50%',
-            transform: 'translate(-50%, -50%)',
+            left: '50%',
+            transform: 'translate(-50%, -50%) rotate(-90deg)',
             fontSize: '9px',
-            color: 'rgba(148, 163, 184, 0.35)',
+            color: 'rgba(148, 163, 184, 0.45)',
             letterSpacing: '2px',
             fontWeight: 'bold',
           }}
@@ -269,64 +290,86 @@ export function BattleField({
           MIDLINE
         </span>
       </div>
-      {/* 自陣召喚ベースライン (y=95%) */}
+
+      {/* 敵陣ベースライン (右端 x=95%) */}
       <div
         style={{
           position: 'absolute',
-          top: '95%',
-          left: 0,
-          right: 0,
-          height: '1px',
-          backgroundColor: 'rgba(59, 130, 246, 0.25)',
-          borderBottom: '1px dashed rgba(59, 130, 246, 0.4)',
+          left: '95%',
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          backgroundColor: 'rgba(239, 68, 68, 0.35)',
+          borderLeft: '1px dashed rgba(239, 68, 68, 0.55)',
           pointerEvents: 'none',
+          zIndex: 4,
         }}
-      />
-
-      {/* 3基のインヒビター進軍パスライン（薄い垂直ガイド） */}
-      {INHIBITOR_SLOTS.map((slot) => (
-        <div
-          key={slot.key}
+      >
+        <span
           style={{
             position: 'absolute',
-            left: `${slot.x}%`,
-            top: 0,
-            bottom: 0,
-            width: '1px',
-            borderLeft: '1px dashed rgba(255, 255, 255, 0.05)',
+            top: '8px',
+            right: '6px',
+            fontSize: '9.5px',
+            color: 'rgba(252, 165, 165, 0.85)',
+            fontWeight: 'bold',
+            letterSpacing: '1px',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          🤖 敵軍 (CPU)
+        </span>
+      </div>
+
+      {/* 3本の水平レーン進軍ガイドライン（TOP=20%, MID=50%, BOT=80%） */}
+      {[
+        { key: 'TOP LANE', y: 20 },
+        { key: 'MID LANE', y: 50 },
+        { key: 'BOT LANE', y: 80 },
+      ].map((lane) => (
+        <div
+          key={lane.key}
+          style={{
+            position: 'absolute',
+            top: `${lane.y}%`,
+            left: 0,
+            right: 0,
+            height: '1px',
+            borderTop: '1px dashed rgba(255, 255, 255, 0.06)',
             pointerEvents: 'none',
+            zIndex: 3,
           }}
         >
           <span
             style={{
               position: 'absolute',
-              top: '2px',
-              left: '50%',
-              transform: 'translateX(-50%)',
+              left: '8px',
+              top: '-11px',
               fontSize: '8px',
-              color: 'rgba(148, 163, 184, 0.4)',
+              color: 'rgba(148, 163, 184, 0.35)',
               fontWeight: 'bold',
-              whiteSpace: 'nowrap',
+              letterSpacing: '0.5px',
             }}
           >
-            {slot.key.toUpperCase()}
+            {lane.key}
           </span>
         </div>
       ))}
 
-      {/* 2. インヒビター（6基） */}
+      {/* 2. インヒビター（6基: 左3基・右3基） */}
       {inhibitors.map((inhib) => (
         <RenderInhibitor key={inhib.id} inhibitor={inhib} />
       ))}
 
-      {/* 3. CPU召喚予兆（詠唱魔方陣・インジケーター） */}
+      {/* 3. CPU召喚予兆（詠唱魔方陣・右端x=95%付近に表示） */}
       {cpuSpawnWarnings.map((w) => (
         <div
           key={w.id}
           style={{
             ...styles.cpuSpawnCircle,
-            left: `${w.x}%`,
-            top: '5%',
+            left: `${w.x ?? 95}%`,
+            top: `${w.y ?? 50}%`,
+            transform: 'translate(-50%, -50%)',
           }}
           className="cpu-spawn-pulse"
           title={`相手の召喚予告: ${w.card.name}`}
@@ -345,8 +388,8 @@ export function BattleField({
           isBlockingSpawn={
             isSpaceBlocked &&
             unit.owner === 'player' &&
-            isWithinCollisionX(unit.x, currentTargetX) &&
-            Math.abs(unit.y - currentTargetY) < SPAWN_MIN_SPACE
+            isWithinCollisionY(unit.y, currentTargetY) &&
+            Math.abs(unit.x - currentTargetX) < SPAWN_MIN_SPACE
           }
         />
       ))}
@@ -362,8 +405,8 @@ export function BattleField({
                 top: `${spell.y}%`,
                 left: `${spell.x}%`,
                 transform: 'translate(-50%, -50%)',
-                width: `${SPELL_RADIUS_X * 2}%`,
-                height: '38%',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2 * (16 / 9)}%`,
                 pointerEvents: 'none',
                 zIndex: 30,
               }}
@@ -386,7 +429,7 @@ export function BattleField({
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  fontSize: '32px',
+                  fontSize: '34px',
                   animation: 'meteor-falling-anim 1s ease-in forwards',
                   zIndex: 31,
                 }}
@@ -400,7 +443,7 @@ export function BattleField({
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  fontSize: '40px',
+                  fontSize: '42px',
                   animation: 'meteor-explosion-anim 1s ease-out forwards',
                   zIndex: 32,
                 }}
@@ -467,41 +510,41 @@ export function BattleField({
         />
       )}
 
-      {/* 8. 自陣出撃ゾーン（奥行き・前後対応：前衛〜後衛の奥行き領域可視化） */}
+      {/* 8. 自陣出撃ゾーン（左半面: 後衛〜前衛の奥行き領域可視化） */}
       {activeCard && activeCard.type === 'MONSTER' && (
         <div
           style={{
             position: 'absolute',
-            top: `${PLAYER_SPAWN_Y_MIN}%`,
-            bottom: '4%',
-            left: `${SPAWN_X_MIN}%`,
-            right: `${100 - SPAWN_X_MAX}%`,
+            left: `${PLAYER_SPAWN_X_MIN}%`,
+            width: `${PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN}%`,
+            top: '8%',
+            bottom: '8%',
             backgroundColor: 'rgba(30, 58, 138, 0.08)',
             border: '1px dashed rgba(59, 130, 246, 0.45)',
-            borderRadius: '6px',
+            borderRadius: '8px',
             pointerEvents: 'none',
             zIndex: 12,
             overflow: 'hidden',
           }}
         >
-          {/* 前衛・中衛境界線 (y=65%) */}
+          {/* 後衛・中衛境界線 (x=18%) */}
           <div
             style={{
               position: 'absolute',
-              top: `${((65 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
-              left: 0,
-              right: 0,
-              borderTop: '1px dotted rgba(59, 130, 246, 0.3)',
+              left: `${((18 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+              top: 0,
+              bottom: 0,
+              borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
             }}
           />
-          {/* 中衛・後衛境界線 (y=80%) */}
+          {/* 中衛・前衛境界線 (x=33%) */}
           <div
             style={{
               position: 'absolute',
-              top: `${((80 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
-              left: 0,
-              right: 0,
-              borderTop: '1px dotted rgba(59, 130, 246, 0.3)',
+              left: `${((33 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+              top: 0,
+              bottom: 0,
+              borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
             }}
           />
 
@@ -509,55 +552,55 @@ export function BattleField({
           <div
             style={{
               position: 'absolute',
-              top: '4px',
-              left: '8px',
+              top: '6px',
+              left: '6px',
               fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.75)',
+              color: 'rgba(147, 197, 253, 0.8)',
               fontWeight: 'bold',
               letterSpacing: '1px',
             }}
           >
-            ⚔️ 前衛エリア (VANGUARD)
+            🏹 後衛 (REAR)
           </div>
           <div
             style={{
               position: 'absolute',
-              top: `${((72 - PLAYER_SPAWN_Y_MIN) / (96 - PLAYER_SPAWN_Y_MIN)) * 100}%`,
-              left: '8px',
-              transform: 'translateY(-50%)',
+              top: '6px',
+              left: `${((25 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+              transform: 'translateX(-50%)',
               fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.75)',
+              color: 'rgba(147, 197, 253, 0.8)',
               fontWeight: 'bold',
               letterSpacing: '1px',
             }}
           >
-            🛡️ 中衛エリア (MIDGUARD)
+            🛡️ 中衛 (MID)
           </div>
           <div
             style={{
               position: 'absolute',
-              bottom: '4px',
-              left: '8px',
+              top: '6px',
+              right: '6px',
               fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.75)',
+              color: 'rgba(147, 197, 253, 0.8)',
               fontWeight: 'bold',
               letterSpacing: '1px',
             }}
           >
-            🏹 後衛エリア (REARGUARD)
+            ⚔️ 前衛 (VANGUARD)
           </div>
 
           <div
             style={{
               position: 'absolute',
-              bottom: '4px',
-              right: '8px',
+              bottom: '5px',
+              left: '8px',
               fontSize: '8px',
-              color: 'rgba(147, 197, 253, 0.5)',
+              color: 'rgba(147, 197, 253, 0.55)',
               fontWeight: 'bold',
             }}
           >
-            DEPLOY ZONE (奥行き・縦横クリック/ドロップで出撃)
+            DEPLOY ZONE (自陣・クリック/ドロップで出撃)
           </div>
         </div>
       )}
@@ -565,7 +608,7 @@ export function BattleField({
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
       {hoverX !== null && hoverY !== null && activeCard && (
         <>
-          {/* 垂直照準ライン (X座標) */}
+          {/* 垂直照準ライン (X座標 / 前後・奥行き) */}
           <div
             style={{
               position: 'absolute',
@@ -585,7 +628,7 @@ export function BattleField({
             }}
           />
 
-          {/* 水平照準ライン (Y座標 / 奥行き深さ) */}
+          {/* 水平照準ライン (Y座標 / レーン) */}
           <div
             style={{
               position: 'absolute',

@@ -1,28 +1,34 @@
 import {
-  ENGAGE_HALF_WIDTH_X,
-  COLLISION_HALF_WIDTH_X,
-  SPELL_RADIUS_X,
+  ENGAGE_HALF_WIDTH_Y,
+  COLLISION_HALF_WIDTH_Y,
+  SPELL_RADIUS,
+  isWithinEngageY,
+  isWithinCollisionY,
   isWithinEngageX,
   isWithinCollisionX,
   clampSpawnX,
+  clampSpawnY,
+  clampPlayerSpawnX,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
-  PLAYER_SPAWN_Y_MIN,
-  PLAYER_SPAWN_Y_MAX,
-  PLAYER_DEFAULT_SPAWN_Y,
-  clampPlayerSpawnY,
-  clampSpawnY,
+  SPAWN_Y_MIN,
+  SPAWN_Y_MAX,
+  PLAYER_SPAWN_X_MIN,
+  PLAYER_SPAWN_X_MAX,
+  PLAYER_DEFAULT_SPAWN_X,
   getSpawnDepthRole,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
-  inhibitorBlocksX,
-  inhibitorEngageableX,
+  inhibitorBlocksY,
+  inhibitorEngageableY,
   countDestroyedEnemyInhibitors,
   manaRegenMultiplier,
   INHIBITOR_SLOTS,
   INHIBITOR_MAX_HP,
   INHIBITOR_DESTROY_MANA_BONUS,
+  PLAYER_INHIBITOR_X,
+  CPU_INHIBITOR_X,
 } from '../src/app/inhibitors';
 import { computeCpuAction } from '../src/app/cpuAi';
 import { CARD_POOL } from '../src/app/cards';
@@ -33,29 +39,29 @@ function assert(condition: boolean, msg: string) {
   }
 }
 
-console.log('=== Running Open Field & Inhibitor Logic Tests ===');
+console.log('=== Running Horizontal Board & Inhibitor Logic Tests ===');
 
 // 1. Open field geometry tests
-console.log('[1/3] Testing open field continuous coordinates & geometry...');
+console.log('[1/4] Testing horizontal open field coordinates & geometry...');
 assert(SPAWN_X_MIN === 6 && SPAWN_X_MAX === 94, 'Spawn range must be 6% to 94%');
 assert(clampSpawnX(0) === SPAWN_X_MIN, 'Clamping 0% should return SPAWN_X_MIN');
 assert(clampSpawnX(100) === SPAWN_X_MAX, 'Clamping 100% should return SPAWN_X_MAX');
 assert(clampSpawnX(50.45) === 50.5, 'Clamping should round to 1 decimal place');
 
-// 交戦判定テスト
-assert(isWithinEngageX(50, 50), 'Same X should be within engage range');
-assert(isWithinEngageX(50, 50 + ENGAGE_HALF_WIDTH_X), 'X at boundary should be within engage');
-assert(isWithinEngageX(50, 55), 'X diff 5% should be within engage range (6.5%)');
-assert(!isWithinEngageX(50, 60), 'X diff 10% should NOT be within engage range');
+// 交戦判定テスト (Y軸・レーン)
+assert(isWithinEngageY(50, 50), 'Same Y should be within engage range');
+assert(isWithinEngageY(50, 50 + ENGAGE_HALF_WIDTH_Y), 'Y at boundary should be within engage');
+assert(isWithinEngageY(50, 55), 'Y diff 5% should be within engage range (6.5%)');
+assert(!isWithinEngageY(50, 60), 'Y diff 10% should NOT be within engage range');
 
-// 物理衝突判定テスト
-assert(isWithinCollisionX(50, 50), 'Same X should collide');
-assert(isWithinCollisionX(50, 54), 'X diff 4% should collide (half width 5.0%)');
-assert(!isWithinCollisionX(50, 57), 'X diff 7% should NOT collide (past half width 5.0%)');
-console.log('  -> Open field coordinates & geometry: PASSED');
+// 物理衝突判定テスト (Y軸)
+assert(isWithinCollisionY(50, 50), 'Same Y should collide');
+assert(isWithinCollisionY(50, 54), 'Y diff 4% should collide (half width 5.0%)');
+assert(!isWithinCollisionY(50, 57), 'Y diff 7% should NOT collide (past half width 5.0%)');
+console.log('  -> Horizontal coordinates & geometry: PASSED');
 
-// 2. Inhibitor tests
-console.log('[2/3] Testing inhibitor configuration & mana rewards...');
+// 2. Inhibitor tests (Horizontal layout: Player at Left x=22, CPU at Right x=78)
+console.log('[2/4] Testing horizontal inhibitor configuration & mana rewards...');
 const initialInhibitors = createInitialInhibitors();
 assert(initialInhibitors.length === 6, 'Should create 6 inhibitors (3 per team)');
 
@@ -64,23 +70,25 @@ const cpuInhibitors = initialInhibitors.filter((i) => i.owner === 'cpu');
 assert(playerInhibitors.length === 3, 'Player should have 3 inhibitors');
 assert(cpuInhibitors.length === 3, 'CPU should have 3 inhibitors');
 
-// 位置確認 (x = 18%, 50%, 82%)
-const playerXs = playerInhibitors.map((i) => i.x).sort((a, b) => a - b);
+// 位置確認 (Player x=22, CPU x=78, y=[20, 50, 80])
+assert(playerInhibitors.every((i) => i.x === PLAYER_INHIBITOR_X), 'Player inhibitors must be at x=22%');
+assert(cpuInhibitors.every((i) => i.x === CPU_INHIBITOR_X), 'CPU inhibitors must be at x=78%');
+const playerYs = playerInhibitors.map((i) => i.y).sort((a, b) => a - b);
 assert(
-  JSON.stringify(playerXs) === JSON.stringify([18, 50, 82]),
-  'Player inhibitors should be at X [18, 50, 82]'
+  JSON.stringify(playerYs) === JSON.stringify([20, 50, 80]),
+  'Player inhibitors should be at Y [20, 50, 80]'
 );
 assert(
   playerInhibitors.every((i) => i.hp === INHIBITOR_MAX_HP && i.maxHp === INHIBITOR_MAX_HP),
   'Inhibitors should have full max HP'
 );
 
-// 前進阻止判定（インヒビター正面はブロック、隙間は素通り）
-const leftInhib = playerInhibitors.find((i) => i.x === 18)!;
-assert(inhibitorBlocksX(leftInhib, 18), 'Unit directly in front of inhibitor (x=18%) must be blocked');
-assert(inhibitorBlocksX(leftInhib, 22), 'Unit near inhibitor (x=22%) must be blocked');
-assert(!inhibitorBlocksX(leftInhib, 34), 'Unit in the gap (x=34%) must NOT be blocked');
-assert(!inhibitorBlocksX(leftInhib, 50), 'Unit at center (x=50%) must NOT be blocked by left inhibitor');
+// 前進阻止判定（インヒビター正面y=20はブロック、隙間y=35は素通り）
+const topInhib = playerInhibitors.find((i) => i.y === 20)!;
+assert(inhibitorBlocksY(topInhib, 20), 'Unit directly in front of inhibitor (y=20%) must be blocked');
+assert(inhibitorBlocksY(topInhib, 24), 'Unit near inhibitor (y=24%) must be blocked');
+assert(!inhibitorBlocksY(topInhib, 35), 'Unit in the gap (y=35%) must NOT be blocked');
+assert(!inhibitorBlocksY(topInhib, 50), 'Unit at center (y=50%) must NOT be blocked by top inhibitor');
 
 // マナ回復ボーナス計算
 assert(manaRegenMultiplier(initialInhibitors, 'player') === 1.0, 'Initial multiplier should be 1.0');
@@ -88,7 +96,7 @@ assert(manaRegenMultiplier(initialInhibitors, 'cpu') === 1.0, 'Initial multiplie
 
 // 敵インヒビターを1基破壊
 const oneDestroyed = initialInhibitors.map((i) =>
-  i.id === 'inhib_cpu_left' ? { ...i, hp: 0 } : i
+  i.id === 'inhib_cpu_top' ? { ...i, hp: 0 } : i
 );
 assert(countDestroyedEnemyInhibitors(oneDestroyed, 'player') === 1, 'Player destroyed 1 CPU inhibitor');
 assert(Math.abs(manaRegenMultiplier(oneDestroyed, 'player') - 1.2) < 0.001, 'Multiplier should be 1.2 (+20%)');
@@ -103,30 +111,31 @@ assert(Math.abs(manaRegenMultiplier(allCpuDestroyed, 'player') - 1.6) < 0.001, '
 console.log('  -> Inhibitor specs & rewards: PASSED');
 
 // 3. CPU AI open field decisions
-console.log('[3/4] Testing CPU AI continuous X coordinate decisions...');
+console.log('[3/4] Testing CPU AI continuous Y coordinate decisions...');
 const cpuHand = [CARD_POOL[0], CARD_POOL[1]]; // ネズミ (cost 1), 柴犬 (cost 2)
 const action = computeCpuAction(5, cpuHand, [], [], initialInhibitors);
 assert(action !== null, 'CPU should choose an action when mana is available');
-assert(action!.targetX !== undefined, 'Action should have targetX');
+assert(action!.targetY !== undefined, 'Action should have targetY');
 assert(
-  action!.targetX! >= SPAWN_X_MIN && action!.targetX! <= SPAWN_X_MAX,
-  `TargetX (${action!.targetX}) must be between ${SPAWN_X_MIN}% and ${SPAWN_X_MAX}%`
+  action!.targetY! >= SPAWN_Y_MIN && action!.targetY! <= SPAWN_Y_MAX,
+  `TargetY (${action!.targetY}) must be between ${SPAWN_Y_MIN}% and ${SPAWN_Y_MAX}%`
 );
-console.log(`  -> CPU selected card "${action!.card.name}" at X=${action!.targetX}%`);
-console.log('  -> CPU AI continuous X decisions: PASSED');
+assert(action!.targetX === 95, 'CPU spawn targetX must be 95% (right edge base)');
+console.log(`  -> CPU selected card "${action!.card.name}" at lane Y=${action!.targetY}% (X=95%)`);
+console.log('  -> CPU AI continuous decisions: PASSED');
 
-// 4. Vertical depth coordinate & role classification tests
-console.log('[4/4] Testing depth / vertical coordinate ranges and roles...');
-assert(PLAYER_SPAWN_Y_MIN === 52 && PLAYER_SPAWN_Y_MAX === 95, 'Player depth range must be 52% to 95%');
-assert(PLAYER_DEFAULT_SPAWN_Y === 95, 'Default spawn Y must be 95%');
-assert(clampPlayerSpawnY(30) === PLAYER_SPAWN_Y_MIN, 'Clamping 30% (enemy area) should return PLAYER_SPAWN_Y_MIN (52%)');
-assert(clampPlayerSpawnY(100) === PLAYER_SPAWN_Y_MAX, 'Clamping 100% should return PLAYER_SPAWN_Y_MAX (95%)');
-assert(clampPlayerSpawnY(70.45) === 70.5, 'Clamping should round to 1 decimal place');
+// 4. Horizontal depth coordinate & role classification tests
+console.log('[4/4] Testing depth / horizontal coordinate ranges and roles...');
+assert(PLAYER_SPAWN_X_MIN === 6 && PLAYER_SPAWN_X_MAX === 48, 'Player depth range must be 6% to 48%');
+assert(PLAYER_DEFAULT_SPAWN_X === 6, 'Default spawn X must be 6%');
+assert(clampPlayerSpawnX(0) === PLAYER_SPAWN_X_MIN, 'Clamping 0% (offscreen) should return PLAYER_SPAWN_X_MIN (6%)');
+assert(clampPlayerSpawnX(80) === PLAYER_SPAWN_X_MAX, 'Clamping 80% (enemy area) should return PLAYER_SPAWN_X_MAX (48%)');
+assert(clampPlayerSpawnX(25.45) === 25.5, 'Clamping should round to 1 decimal place');
 
 // Role classification
-assert(getSpawnDepthRole(55).key === 'vanguard' && getSpawnDepthRole(55).label === '前衛', 'Y=55% should be vanguard');
-assert(getSpawnDepthRole(72).key === 'midguard' && getSpawnDepthRole(72).label === '中衛', 'Y=72% should be midguard');
-assert(getSpawnDepthRole(90).key === 'rearguard' && getSpawnDepthRole(90).label === '後衛', 'Y=90% should be rearguard');
-console.log('  -> Depth & vertical coordinates: PASSED');
+assert(getSpawnDepthRole(12).key === 'rearguard' && getSpawnDepthRole(12).label === '後衛', 'X=12% should be rearguard');
+assert(getSpawnDepthRole(25).key === 'midguard' && getSpawnDepthRole(25).label === '中衛', 'X=25% should be midguard');
+assert(getSpawnDepthRole(42).key === 'vanguard' && getSpawnDepthRole(42).label === '前衛', 'X=42% should be vanguard');
+console.log('  -> Depth & horizontal coordinates: PASSED');
 
 console.log('=== All 4 Test Suites PASSED Successfully! ===');

@@ -206,6 +206,7 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
           ...styles.unitBody,
           border: 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
+          transform: isPlayer ? 'none' : 'scaleX(-1)',
           boxShadow: isBlockingSpawn
             ? '0 0 12px #ea580c'
             : isStunned

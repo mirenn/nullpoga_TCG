@@ -17,23 +17,37 @@ import {
 } from './cards';
 import { computeCpuAction } from './cpuAi';
 import {
+  isWithinEngageY,
+  isWithinCollisionY,
+  SPELL_RADIUS,
+  clampSpawnX,
+  clampSpawnY,
+  clampPlayerSpawnX,
+  PLAYER_SPAWN_X_MIN,
+  PLAYER_SPAWN_X_MAX,
+  PLAYER_DEFAULT_SPAWN_X,
+  // 互換エイリアス
   isWithinEngageX,
   isWithinCollisionX,
   SPELL_RADIUS_X,
-  clampSpawnX,
   clampPlayerSpawnY,
-  clampSpawnY,
   PLAYER_SPAWN_Y_MIN,
   PLAYER_SPAWN_Y_MAX,
   PLAYER_DEFAULT_SPAWN_Y,
 } from './board';
 import {
   createInitialInhibitors,
-  inhibitorBlocksX,
-  inhibitorEngageableX,
+  inhibitorBlocksY,
+  inhibitorEngageableY,
   manaRegenMultiplier,
   INHIBITOR_DESTROY_MANA_BONUS,
+  PLAYER_INHIBITOR_X,
+  CPU_INHIBITOR_X,
+  // 互換エイリアス
+  inhibitorBlocksX,
+  inhibitorEngageableX,
 } from './inhibitors';
+
 
 // re-export for external consumers
 export {
@@ -144,9 +158,9 @@ export function useRealtimeGame() {
   const manaTimerRef = useRef<number>(0);
   const manaRegenRateRef = useRef<number>(manaRegenRate);
 
-  // コンボ・カウンターデプロイ用（X座標とタイムスタンプ）
-  const cpuSpawnTimestampsRef = useRef<{ x: number; time: number }[]>([]);
-  const playerSpawnTimestampsRef = useRef<{ x: number; time: number }[]>([]);
+  // コンボ・カウンターデプロイ用（座標とタイムスタンプ）
+  const cpuSpawnTimestampsRef = useRef<{ x: number; y: number; time: number }[]>([]);
+  const playerSpawnTimestampsRef = useRef<{ x: number; y: number; time: number }[]>([]);
   
   const [playerCombo, setPlayerCombo] = useState<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
   const playerComboRef = useRef<{ count: number; lastTime: number }>({ count: 0, lastTime: 0 });
@@ -202,21 +216,21 @@ export function useRealtimeGame() {
           return { canPlay: false, reason: '炎のドラゴンは場に1体まで' };
         }
       }
-      // モンスターの出撃エリア＆出撃スペース制限 (縦・横)
+      // モンスターの出撃エリア＆出撃スペース制限 (横・縦)
       if (card.type === 'MONSTER') {
-        if (spawnY !== undefined && spawnY < PLAYER_SPAWN_Y_MIN) {
+        if (spawnX !== undefined && (spawnX < PLAYER_SPAWN_X_MIN || spawnX > PLAYER_SPAWN_X_MAX)) {
           return { canPlay: false, reason: '自陣エリア外' };
         }
         if (spawnX !== undefined || spawnY !== undefined) {
-          const targetX = spawnX !== undefined ? clampSpawnX(spawnX) : 50;
-          const targetY = spawnY !== undefined ? clampPlayerSpawnY(spawnY) : PLAYER_DEFAULT_SPAWN_Y;
+          const targetX = spawnX !== undefined ? clampPlayerSpawnX(spawnX) : PLAYER_DEFAULT_SPAWN_X;
+          const targetY = spawnY !== undefined ? clampSpawnY(spawnY) : 50;
 
           // インヒビター（防壁障害物）との重複を防止
           const hasBlockingInhibitor = inhibitorsRef.current.some(
             (i) =>
               i.hp > 0 &&
-              Math.abs(i.x - targetX) <= 6.0 &&
-              Math.abs(i.y - targetY) <= 5.5
+              Math.abs(i.x - targetX) <= 5.5 &&
+              Math.abs(i.y - targetY) <= 6.0
           );
           if (hasBlockingInhibitor) {
             return { canPlay: false, reason: '障害物と重複' };
@@ -224,13 +238,13 @@ export function useRealtimeGame() {
 
           // 出撃スペース制限: 指定(X, Y)座標の直前・至近に味方モンスターがいる場合は前進するまで待機
           const hasBlockingAlly = unitsRef.current.some((u) => {
-            if (u.owner !== 'player' || u.hp <= 0 || !isWithinCollisionX(u.x, targetX)) {
+            if (u.owner !== 'player' || u.hp <= 0 || !isWithinCollisionY(u.y, targetY)) {
               return false;
             }
-            if (spawnY !== undefined) {
-              return Math.abs(u.y - targetY) < SPAWN_MIN_SPACE;
+            if (spawnX !== undefined) {
+              return Math.abs(u.x - targetX) < SPAWN_MIN_SPACE;
             } else {
-              return u.y > 95 - SPAWN_MIN_SPACE;
+              return u.x < 5 + SPAWN_MIN_SPACE;
             }
           });
           if (hasBlockingAlly) {
@@ -320,12 +334,14 @@ export function useRealtimeGame() {
       const card = hand[cardIdx];
       if (!card) return;
 
-      const spawnX = clampSpawnX(rawX);
+      const spawnX = card.type === 'MONSTER'
+        ? clampPlayerSpawnX(rawX)
+        : clampSpawnX(rawX, 15, 85);
       const spawnY = rawY !== undefined
-        ? (card.type === 'MONSTER' ? clampPlayerSpawnY(rawY) : clampSpawnY(rawY, 15, 85))
-        : PLAYER_DEFAULT_SPAWN_Y;
+        ? clampSpawnY(rawY)
+        : 50;
 
-      const validation = checkCanPlayCard(cardIdx, spawnX, rawY);
+      const validation = checkCanPlayCard(cardIdx, rawX, rawY);
       if (!validation.canPlay) return;
 
       // 連打誤爆防止デバウンス（約0.12秒）
@@ -345,10 +361,10 @@ export function useRealtimeGame() {
       setPlayerCombo(newCombo);
 
       if (card.type === 'MONSTER') {
-        // カウンターデプロイ判定 (Player)
+        // カウンターデプロイ判定 (Player): 同じレーン(Y)に出現したCPUをカウンター
         let isCounterDeploy = false;
         const recentCpuSpawn = cpuSpawnTimestampsRef.current.find(
-          (s) => isWithinEngageX(s.x, spawnX) && now - s.time <= 1500
+          (s) => isWithinEngageY(s.y, spawnY) && now - s.time <= 1500
         );
         if (recentCpuSpawn) {
           isCounterDeploy = true;
@@ -367,7 +383,7 @@ export function useRealtimeGame() {
         }
 
         // スポーン記録
-        playerSpawnTimestampsRef.current.push({ x: spawnX, time: now });
+        playerSpawnTimestampsRef.current.push({ x: spawnX, y: spawnY, time: now });
         playerSpawnTimestampsRef.current = playerSpawnTimestampsRef.current.filter(
           (s) => now - s.time <= 3000
         );
@@ -379,7 +395,7 @@ export function useRealtimeGame() {
           name: card.name,
           owner: 'player',
           x: spawnX,
-          lane: spawnX,
+          lane: spawnY,
           y: spawnY,
           maxHp: (card.life || 1) + comboBonusHp,
           hp: (card.life || 1) + comboBonusHp,
@@ -401,19 +417,17 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (card.type === 'SPELL') {
-        const spellY = rawY !== undefined ? clampSpawnY(rawY, 15, 85) : 50;
         if (card.id === 'meteor') {
-          // 指定座標（x: spawnX, y: spellY, 半径 SPELL_RADIUS_X, 縦20%）の敵に3ダメージ
+          // 指定座標（x: spawnX, y: spawnY, 半径 SPELL_RADIUS）の敵に3ダメージ
           setSpellEffects((prev) => [
             ...prev,
-            { id: `meteor_${Date.now()}`, x: spawnX, y: spellY, type: 'meteor', createdAt: Date.now() },
+            { id: `meteor_${Date.now()}`, x: spawnX, y: spawnY, type: 'meteor', createdAt: Date.now() },
           ]);
           const next = unitsRef.current
             .map((u) => {
               if (
                 u.owner === 'cpu' &&
-                isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X) &&
-                Math.abs(u.y - spellY) <= 20
+                Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS
               ) {
                 return { ...u, hp: u.hp - 3 };
               }
@@ -439,14 +453,13 @@ export function useRealtimeGame() {
           unitsRef.current = next;
           setUnits(next);
         } else if (card.id === 'haste_spell') {
-          // 指定X付近の味方ユニットの攻撃クールダウンをリセット
-          const hasteY = rawY !== undefined ? clampPlayerSpawnY(rawY) : 75;
+          // 指定位置付近の味方ユニットの攻撃クールダウンをリセット
           setSpellEffects((prev) => [
             ...prev,
-            { id: `haste_${Date.now()}`, x: spawnX, y: hasteY, type: 'haste', createdAt: Date.now() },
+            { id: `haste_${Date.now()}`, x: spawnX, y: spawnY, type: 'haste', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
-            if (u.owner === 'player' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
+            if (u.owner === 'player' && Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS) {
               return { ...u, attackCooldown: 0 };
             }
             return u;
@@ -454,14 +467,13 @@ export function useRealtimeGame() {
           unitsRef.current = next;
           setUnits(next);
         } else if (card.id === 'heal_spell') {
-          // 指定X付近の味方に3回復
-          const healY = rawY !== undefined ? clampPlayerSpawnY(rawY) : 50;
+          // 指定位置付近の味方に3回復
           setSpellEffects((prev) => [
             ...prev,
-            { id: `heal_${Date.now()}`, x: spawnX, y: healY, type: 'heal', createdAt: Date.now() },
+            { id: `heal_${Date.now()}`, x: spawnX, y: spawnY, type: 'heal', createdAt: Date.now() },
           ]);
           const next = unitsRef.current.map((u) => {
-            if (u.owner === 'player' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
+            if (u.owner === 'player' && Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS) {
               return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
             }
             return u;
@@ -532,12 +544,15 @@ export function useRealtimeGame() {
     cpuComboRef.current = { count: newComboCount, lastTime: now };
 
     if (chosen.card.type === 'MONSTER') {
-      const spawnX = clampSpawnX(chosen.targetX ?? chosen.targetLane ?? 50);
+      const spawnY = clampSpawnY(chosen.targetY ?? chosen.targetLane ?? 50);
+      const spawnX = 95;
       // 召喚予兆（0.65秒の詠唱インジケーター）
       const warning: CpuSpawnWarning = {
         id: `warn_${Date.now()}_${Math.random()}`,
         x: spawnX,
-        lane: spawnX,
+        y: spawnY,
+        targetY: spawnY,
+        lane: spawnY,
         card: chosen.card,
         startTime: Date.now(),
         durationMs: 650,
@@ -545,19 +560,19 @@ export function useRealtimeGame() {
       };
       setCpuSpawnWarnings((prev) => [...prev, warning]);
     } else if (chosen.card.type === 'SPELL') {
-      const spawnX = clampSpawnX(chosen.targetX ?? chosen.targetLane ?? 50);
+      const spellX = chosen.targetX ?? 50;
+      const spellY = clampSpawnY(chosen.targetY ?? chosen.targetLane ?? 50);
       if (chosen.card.id === 'meteor') {
-        // 隕石落下（指定Xの中央付近（y=50±20）のプレイヤーユニットに3ダメージ）
+        // 隕石落下（指定位置周辺のプレイヤーユニットに3ダメージ）
         setSpellEffects((prev) => [
           ...prev,
-          { id: `cpu_meteor_${Date.now()}`, x: spawnX, y: 50, type: 'meteor', createdAt: Date.now() },
+          { id: `cpu_meteor_${Date.now()}`, x: spellX, y: spellY, type: 'meteor', createdAt: Date.now() },
         ]);
         const next = unitsRef.current
           .map((u) => {
             if (
               u.owner === 'player' &&
-              isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X) &&
-              Math.abs(u.y - 50) <= 20
+              Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS
             ) {
               return { ...u, hp: u.hp - 3 };
             }
@@ -583,13 +598,13 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (chosen.card.id === 'haste_spell') {
-        // 疾風の号令（指定X付近のCPUユニットのクールダウンリセット）
+        // 疾風の号令（指定位置付近のCPUユニットのクールダウンリセット）
         setSpellEffects((prev) => [
           ...prev,
-          { id: `cpu_haste_${Date.now()}`, x: spawnX, y: 25, type: 'haste', createdAt: Date.now() },
+          { id: `cpu_haste_${Date.now()}`, x: spellX, y: spellY, type: 'haste', createdAt: Date.now() },
         ]);
         const next = unitsRef.current.map((u) => {
-          if (u.owner === 'cpu' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
+          if (u.owner === 'cpu' && Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS) {
             return { ...u, attackCooldown: 0 };
           }
           return u;
@@ -597,13 +612,13 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (chosen.card.id === 'heal_spell') {
-        // 癒やしの雨（指定X付近のCPUユニットHP3回復）
+        // 癒やしの雨（指定位置付近のCPUユニットHP3回復）
         setSpellEffects((prev) => [
           ...prev,
-          { id: `cpu_heal_${Date.now()}`, x: spawnX, y: 25, type: 'heal', createdAt: Date.now() },
+          { id: `cpu_heal_${Date.now()}`, x: spellX, y: spellY, type: 'heal', createdAt: Date.now() },
         ]);
         const next = unitsRef.current.map((u) => {
-          if (u.owner === 'cpu' && isWithinEngageX(u.x, spawnX, SPELL_RADIUS_X)) {
+          if (u.owner === 'cpu' && Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS) {
             return { ...u, hp: Math.min(u.hp + 3, u.maxHp) };
           }
           return u;
@@ -659,10 +674,11 @@ export function useRealtimeGame() {
           }
           if (spawningWarnings.length > 0) {
             spawnedCpuUnits = spawningWarnings.map((w) => {
-              // カウンターデプロイ判定 (CPU)
+              const spawnY = w.targetY ?? w.y ?? (w.lane ?? 50);
+              // カウンターデプロイ判定 (CPU): プレイヤーが1.5秒以内に同じレーン(Y)に出撃したか
               let isCounterDeploy = false;
               const recentPlayerSpawn = playerSpawnTimestampsRef.current.find(
-                (s) => isWithinEngageX(s.x, w.x) && now - s.time <= 1500
+                (s) => isWithinEngageY(s.y, spawnY) && now - s.time <= 1500
               );
               if (recentPlayerSpawn) {
                 isCounterDeploy = true;
@@ -682,16 +698,16 @@ export function useRealtimeGame() {
               }
 
               // スポーン記録
-              cpuSpawnTimestampsRef.current.push({ x: w.x, time: now });
+              cpuSpawnTimestampsRef.current.push({ x: 95, y: spawnY, time: now });
               
               return {
                 id: `cpu_${Date.now()}_${Math.random()}`,
                 cardNo: w.card.cardNo,
                 name: w.card.name,
                 owner: 'cpu' as const,
-                x: w.x,
-                lane: w.x,
-                y: 5, // CPU最奥からスタート
+                x: 95, // CPU最奥(右端)からスタート
+                lane: spawnY,
+                y: spawnY,
                 maxHp: (w.card.life || 1) + comboBonusHp,
                 hp: (w.card.life || 1) + comboBonusHp,
                 attack: (w.card.attack || 1) + comboBonusAtk + counterBonusAtk,
@@ -789,6 +805,7 @@ export function useRealtimeGame() {
         const updatedUnits = unitsAfterHits.map((unit) => {
           const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
           let cooldown = Math.max(0, unit.attackCooldown - dt);
+          let x = unit.x;
           let y = unit.y;
           let distance = unit.distanceTraveled || 0;
           let attack = unit.cardNo === 2
@@ -806,57 +823,57 @@ export function useRealtimeGame() {
             };
           }
 
-          // 交戦範囲（横のずれ isWithinEngageX）の対向敵を探す
+          // 交戦範囲（縦のずれ isWithinEngageY）の対向敵を探す
           const enemiesInRange = unitsAfterHits.filter(
-            (u) => isWithinEngageX(u.x, unit.x) && u.owner !== unit.owner && u.hp > 0
+            (u) => isWithinEngageY(u.y, unit.y) && u.owner !== unit.owner && u.hp > 0
           );
           // 進路・交戦範囲の敵インヒビター（攻撃対象 兼 壁）
           const enemyInhibitorsInPath = inhibitorsRef.current.filter(
-            (i) => i.owner !== unit.owner && inhibitorEngageableX(i, unit.x) && i.hp > 0
+            (i) => i.owner !== unit.owner && inhibitorEngageableY(i, unit.y) && i.hp > 0
           );
           const targetCandidates: CombatTarget[] = [
-            ...enemiesInRange.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.x, isStructure: false })),
-            ...enemyInhibitorsInPath.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.x, isStructure: true })),
+            ...enemiesInRange.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+            ...enemyInhibitorsInPath.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
           ];
 
           // 進行方向の前方にいる最も近い敵を探す（攻撃対象）
           let targetEnemy: CombatTarget | null = null;
           let minDistance = 999;
           targetCandidates.forEach((enemy) => {
-            const dist = unit.owner === 'player' ? unit.y - enemy.y : enemy.y - unit.y;
+            const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
             if (dist >= -2 && dist < minDistance) {
               minDistance = Math.max(0, dist);
               targetEnemy = enemy;
             }
           });
 
-          // 前方にいる敵ユニットまたはインヒビター（物理衝突・前進ストップ壁: 横幅 ±COLLISION_HALF_WIDTH_X または inhibitorBlocksX）
+          // 前方にいる敵ユニットまたはインヒビター（物理衝突・前進ストップ壁: 縦幅 ±COLLISION_HALF_WIDTH_Y または inhibitorBlocksY）
           let blockingObstacle: CombatTarget | null = null;
           let minBlockDist = 999;
           targetCandidates
             .filter((t) => {
               if (t.isStructure) {
                 const foundInhib = inhibitorsRef.current.find((i) => i.id === t.id);
-                return foundInhib ? inhibitorBlocksX(foundInhib, unit.x) : isWithinCollisionX(t.x, unit.x);
+                return foundInhib ? inhibitorBlocksY(foundInhib, unit.y) : isWithinCollisionY(t.y, unit.y);
               }
-              return isWithinCollisionX(t.x, unit.x);
+              return isWithinCollisionY(t.y, unit.y);
             })
             .forEach((obs) => {
-              const dist = unit.owner === 'player' ? unit.y - obs.y : obs.y - unit.y;
+              const dist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
               if (dist >= -1 && dist < minBlockDist) {
                 minBlockDist = Math.max(0, dist);
                 blockingObstacle = obs;
               }
             });
 
-          // 前方にいる味方を探す（追い越し防止・重なり防止: 横幅 ±COLLISION_HALF_WIDTH_X）
+          // 前方にいる味方を探す（追い越し防止・重なり防止: 縦幅 ±COLLISION_HALF_WIDTH_Y）
           const alliesInFront = unitsAfterHits.filter(
-            (u) => isWithinCollisionX(u.x, unit.x) && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
+            (u) => isWithinCollisionY(u.y, unit.y) && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
           );
           let targetAlly: Unit | null = null;
           let minAllyDist = 999;
           alliesInFront.forEach((ally) => {
-            const dist = unit.owner === 'player' ? unit.y - ally.y : ally.y - unit.y;
+            const dist = unit.owner === 'player' ? ally.x - unit.x : unit.x - ally.x;
             if (dist > 0 && dist < minAllyDist) {
               minAllyDist = dist;
               targetAlly = ally;
@@ -905,8 +922,8 @@ export function useRealtimeGame() {
                     attackerId: unit.id,
                     fromX: unit.x,
                     toX: primaryTarget.x,
-                    lane: unit.lane ?? unit.x,
-                    toLane: primaryTarget.lane ?? primaryTarget.x,
+                    lane: unit.lane ?? unit.y,
+                    toLane: primaryTarget.lane ?? primaryTarget.y,
                     fromY: unit.y,
                     toY: primaryTarget.y,
                     owner: unit.owner,
@@ -922,8 +939,8 @@ export function useRealtimeGame() {
                       id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
                       targetId: primaryTarget.id,
                       attackerId: unit.id,
-                      x: unit.x,
-                      lane: unit.lane ?? unit.x,
+                      x: primaryTarget.x,
+                      lane: unit.lane ?? unit.y,
                       damage: attack,
                       stunDuration: 1200,
                       hitTime: now + flightMs,
@@ -944,13 +961,13 @@ export function useRealtimeGame() {
             };
           }
 
-          // 敵陣最奥に到達しているか？
-          const isAtBase = unit.owner === 'player' ? y <= 6 : y >= 94;
+          // 敵陣最奥に到達しているか？ (Playerは右端 x>=94, CPUは左端 x<=6)
+          const isAtBase = unit.owner === 'player' ? x >= 94 : x <= 6;
           if (isAtBase) {
             if (cooldown <= 0) {
               cooldown = unit.attackInterval;
               lastAttack = now;
-              const targetBaseY = unit.owner === 'player' ? 2 : 98;
+              const targetBaseX = unit.owner === 'player' ? 98 : 2;
               let effectType: AttackEffectType = 'base_hit';
               let duration = 320;
               let baseFlightMs: number | undefined;
@@ -960,7 +977,7 @@ export function useRealtimeGame() {
                 duration = 550;
               } else if (unit.cardNo === 6) {
                 effectType = 'lightning';
-                const baseDist = Math.abs(unit.y - targetBaseY);
+                const baseDist = Math.abs(unit.x - targetBaseX);
                 const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
                 baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
                 duration = baseFlightMs + 450;
@@ -970,10 +987,10 @@ export function useRealtimeGame() {
                 id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
                 attackerId: unit.id,
                 fromX: unit.x,
-                toX: unit.x,
-                lane: unit.lane ?? unit.x,
+                toX: targetBaseX,
+                lane: unit.lane ?? unit.y,
                 fromY: unit.y,
-                toY: targetBaseY,
+                toY: unit.y,
                 owner: unit.owner,
                 effectType,
                 damage: attack,
@@ -987,8 +1004,8 @@ export function useRealtimeGame() {
                   id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
                   targetId: unit.owner === 'player' ? 'cpu' : 'player',
                   attackerId: unit.id,
-                  x: unit.x,
-                  lane: unit.lane ?? unit.x,
+                  x: targetBaseX,
+                  lane: unit.lane ?? unit.y,
                   damage: attack,
                   stunDuration: 0,
                   hitTime: now + baseFlightMs,
@@ -1009,31 +1026,31 @@ export function useRealtimeGame() {
           // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がいない場合は移動速度が3倍（超高速疾走）
           const isSprinting = unit.cardNo === 8 && enemiesInRange.length === 0;
 
-          // 移動計算
+          // 移動計算 (X軸方向)
           const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
           const moveDelta = currentSpeed * MOVE_SPEED_SCALE * dt;
           if (unit.owner === 'player') {
-            let maxYMove = y - moveDelta;
+            let maxXMove = x + moveDelta;
             if (blockingObstacle) {
-              const enemyWall = (blockingObstacle as CombatTarget).y + 7.5;
-              maxYMove = Math.max(maxYMove, enemyWall);
+              const enemyWall = (blockingObstacle as CombatTarget).x - 7.5;
+              maxXMove = Math.min(maxXMove, enemyWall);
             }
             if (targetAlly) {
-              const allyWall = (targetAlly as Unit).y + 8.0;
-              maxYMove = Math.max(maxYMove, allyWall);
+              const allyWall = (targetAlly as Unit).x - 8.0;
+              maxXMove = Math.min(maxXMove, allyWall);
             }
-            y = Math.max(5, maxYMove);
+            x = Math.min(95, maxXMove);
           } else {
-            let maxYMove = y + moveDelta;
+            let maxXMove = x - moveDelta;
             if (blockingObstacle) {
-              const enemyWall = (blockingObstacle as CombatTarget).y - 7.5;
-              maxYMove = Math.min(maxYMove, enemyWall);
+              const enemyWall = (blockingObstacle as CombatTarget).x + 7.5;
+              maxXMove = Math.max(maxXMove, enemyWall);
             }
             if (targetAlly) {
-              const allyWall = (targetAlly as Unit).y - 8.0;
-              maxYMove = Math.min(maxYMove, allyWall);
+              const allyWall = (targetAlly as Unit).x + 8.0;
+              maxXMove = Math.max(maxXMove, allyWall);
             }
-            y = Math.min(95, maxYMove);
+            x = Math.max(5, maxXMove);
           }
           distance += moveDelta;
 
@@ -1044,7 +1061,7 @@ export function useRealtimeGame() {
 
           return {
             ...unit,
-            y,
+            x,
             attack,
             distanceTraveled: distance,
             attackCooldown: cooldown,
@@ -1061,7 +1078,7 @@ export function useRealtimeGame() {
         const unitsAfterDamage = updatedUnits.map((unit) => {
           let currentHp = unit.hp;
           let stunnedUntil = unit.isStunnedUntil;
-          let y = unit.y;
+          let x = unit.x;
 
           updatedUnits.forEach((attacker) => {
             if (attacker.owner === unit.owner || attacker.lastAttackEffectTime !== now) return;
@@ -1069,10 +1086,10 @@ export function useRealtimeGame() {
             const primary = attackTargets.get(attacker.id);
             if (!primary || primary.isStructure) return;
 
-            // 主標的は必ず命中。それ以外は「主標的のX近傍」で射程内の敵にも巻き込みヒット
+            // 主標的は必ず命中。それ以外は「主標的のY近傍」で射程内の敵にも巻き込みヒット
             const isPrimary = primary.id === unit.id;
-            const dist = attacker.owner === 'player' ? attacker.y - unit.y : unit.y - attacker.y;
-            const isSplash = isWithinEngageX(unit.x, primary.x, 4.0) && dist >= -2 && dist <= attacker.range + 2;
+            const dist = attacker.owner === 'player' ? unit.x - attacker.x : attacker.x - unit.x;
+            const isSplash = isWithinEngageY(unit.y, primary.y, 4.0) && dist >= -2 && dist <= attacker.range + 2;
             if (isPrimary || isSplash) {
               const hadHp = currentHp > 0;
               currentHp -= attacker.attack;
@@ -1084,9 +1101,9 @@ export function useRealtimeGame() {
               if (attacker.cardNo === 7) {
                 const pushBackAmount = 8 + Math.random() * 2;
                 if (attacker.owner === 'player') {
-                  y = Math.max(5, y - pushBackAmount);
+                  x = Math.min(95, x + pushBackAmount);
                 } else {
-                  y = Math.min(95, y + pushBackAmount);
+                  x = Math.max(5, x - pushBackAmount);
                 }
                 stunnedUntil = now + 300;
               }
@@ -1094,7 +1111,7 @@ export function useRealtimeGame() {
           });
 
           const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-          return { ...unit, hp: currentHp, y, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+          return { ...unit, hp: currentHp, x, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
         });
 
         // D'. インヒビターへのダメージ（近接・火炎ブレス＝即時、電撃＝着弾時）

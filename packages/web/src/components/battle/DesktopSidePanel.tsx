@@ -35,7 +35,7 @@ export function DesktopSidePanel({
       {/* パネル上部タイトル */}
       <div style={styles.sidePanelTitleRow}>
         <span style={styles.sidePanelTitle}>Nullpoga RTS</span>
-        <span style={styles.sidePanelBadge}>9グリッド・インヒビター検証</span>
+        <span style={styles.sidePanelBadge}>左右ワイド対戦・インヒビター</span>
       </div>
 
       {/* 対戦相手（CPU）ステータス ＆ バトル操作カード */}
