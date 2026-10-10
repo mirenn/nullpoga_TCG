@@ -66,6 +66,7 @@ export interface SpellEffect {
   y: number;
   type: 'meteor' | 'burn' | 'haste' | 'heal';
   createdAt: number;
+  originY?: number; // 烈火の呪文などの延焼起点Y座標
   lane?: number;
 }
 

@@ -2,7 +2,10 @@ import {
   ENGAGE_HALF_WIDTH_Y,
   COLLISION_HALF_WIDTH_Y,
   SPELL_RADIUS,
+  FIRE_SPELL_SPREAD_SPEED_Y,
   isWithinFireSpellColumn,
+  calculateFireSpreadDelayMs,
+  isFireWaveReached,
   isWithinMeteorRange,
   isWithinEngageY,
   isWithinCollisionY,
@@ -66,6 +69,19 @@ assert(isWithinFireSpellColumn(50, 50), 'Targeting same X should be within colum
 assert(isWithinFireSpellColumn(58, 50), 'X diff 8% should be within column range (half width 9.0%)');
 assert(isWithinFireSpellColumn(42, 50), 'X diff -8% should be within column range (half width 9.0%)');
 assert(!isWithinFireSpellColumn(60, 50), 'X diff 10% should NOT be within column range (half width 9.0%)');
+
+// 烈火の呪文: 起点からの上下延焼ディレイ＆波面到達テスト
+assert(calculateFireSpreadDelayMs(50, 50) === 0, 'Same Y should have 0ms delay (instant impact at drop point)');
+// 160%/s = 16%につき100ms
+assert(calculateFireSpreadDelayMs(50, 66) === 100, 'Distance 16% should take exactly 100ms');
+assert(calculateFireSpreadDelayMs(50, 34) === 100, 'Upward distance 16% should also take exactly 100ms');
+assert(calculateFireSpreadDelayMs(50, 90) === 250, 'Distance 40% should take 250ms');
+// 波面到達判定 (elapsedMs)
+assert(isFireWaveReached(50, 66, 100), 'At 100ms, wave should reach dist 16%');
+assert(isFireWaveReached(50, 66, 150), 'At 150ms, wave should have passed dist 16%');
+assert(!isFireWaveReached(50, 66, 50), 'At 50ms, wave should NOT yet reach dist 16%');
+assert(isFireWaveReached(50, 20, 200), 'Upward dist 30% at 200ms should be reached (30 <= 32)');
+assert(!isFireWaveReached(50, 20, 150), 'Upward dist 30% at 150ms should NOT be reached (30 > 24)');
 
 // 隕石（メテオ・円形ユークリッド範囲）効果範囲テスト
 assert(isWithinMeteorRange(50, 50, 50, 50), 'Same point should be within meteor range');

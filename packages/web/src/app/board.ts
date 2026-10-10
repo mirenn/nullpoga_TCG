@@ -45,9 +45,32 @@ export const SPELL_RADIUS = 14.0;
 /** 烈火の呪文（縦一列範囲攻撃）のX軸効果半幅 (%) - 左右各9%で全レーン貫通の縦一列 */
 export const FIRE_SPELL_HALF_WIDTH_X = 9.0;
 
+/** 烈火の呪文のY軸（上下方向）への延焼伝播速度 (%/秒) - ドロップ地点を中心に上下へ広がる */
+export const FIRE_SPELL_SPREAD_SPEED_Y = 160;
+
 /** 2つのオブジェクト/座標が烈火の呪文（縦一列範囲）内にあるか */
 export function isWithinFireSpellColumn(unitX: number, targetX: number, halfWidth: number = FIRE_SPELL_HALF_WIDTH_X): boolean {
   return Math.abs(unitX - targetX) <= halfWidth;
+}
+
+/** 烈火の炎がドロップ起点(originY)からtargetYに到達するまでの時間 (ms) */
+export function calculateFireSpreadDelayMs(
+  originY: number,
+  targetY: number,
+  speed: number = FIRE_SPELL_SPREAD_SPEED_Y
+): number {
+  return Math.round((Math.abs(targetY - originY) / speed) * 1000);
+}
+
+/** 指定の経過時間(elapsedMs)時点で、烈火の炎の波面がoriginYからtargetYに到達しているか */
+export function isFireWaveReached(
+  originY: number,
+  targetY: number,
+  elapsedMs: number,
+  speed: number = FIRE_SPELL_SPREAD_SPEED_Y
+): boolean {
+  const spreadDistance = (elapsedMs / 1000) * speed;
+  return Math.abs(targetY - originY) <= spreadDistance;
 }
 
 /** 2つの座標が隕石（円形範囲攻撃）内にあるか */

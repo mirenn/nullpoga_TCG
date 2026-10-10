@@ -567,8 +567,9 @@ export function BattleField({
           );
         }
 
-        // 烈火の呪文: 縦一列火柱バースト (全レーン業火)
+        // 烈火の呪文: ドロップ地点起点で上下に広がる火柱バースト
         if (spell.type === 'burn') {
+          const originY = spell.originY ?? spell.y ?? 50;
           return (
             <div
               key={spell.id}
@@ -581,35 +582,107 @@ export function BattleField({
                 transform: 'translateX(-50%)',
                 pointerEvents: 'none',
                 zIndex: 35,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-around',
-                alignItems: 'center',
-                background: 'linear-gradient(to right, rgba(239, 68, 68, 0.25), rgba(249, 115, 22, 0.85), rgba(239, 68, 68, 0.25))',
-                borderLeft: '2px solid #ef4444',
-                borderRight: '2px solid #ef4444',
-                boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
-                animation: 'fire-column-burst 1.1s ease-out forwards',
               }}
             >
-              <div style={{ fontSize: '28px', animation: 'fire-flame-rise 1s ease-out forwards' }}>🔥</div>
+              {/* 1. 起点から上方向への火柱展開 (originY -> 上端 0%) */}
               <div
                 style={{
-                  backgroundColor: 'rgba(185, 28, 28, 0.95)',
-                  color: '#fff',
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 'bold',
-                  fontSize: '13px',
-                  letterSpacing: '1px',
-                  border: '1px solid #fca5a5',
-                  boxShadow: '0 0 15px #ef4444',
-                  whiteSpace: 'nowrap',
+                  position: 'absolute',
+                  top: 0,
+                  bottom: `${100 - originY}%`,
+                  left: 0,
+                  right: 0,
+                  transformOrigin: 'bottom',
+                  background: 'linear-gradient(to top, rgba(251, 146, 60, 0.95), rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.5))',
+                  borderLeft: '2px solid #ef4444',
+                  borderRight: '2px solid #ef4444',
+                  boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
+                  animation: 'fire-expand-up 1.1s ease-out forwards',
+                }}
+              />
+
+              {/* 2. 起点から下方向への火柱展開 (originY -> 下端 100%) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${originY}%`,
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  transformOrigin: 'top',
+                  background: 'linear-gradient(to bottom, rgba(251, 146, 60, 0.95), rgba(239, 68, 68, 0.85), rgba(220, 38, 38, 0.5))',
+                  borderLeft: '2px solid #ef4444',
+                  borderRight: '2px solid #ef4444',
+                  boxShadow: '0 0 35px rgba(239, 68, 68, 0.9), inset 0 0 25px rgba(249, 115, 22, 0.8)',
+                  animation: 'fire-expand-down 1.1s ease-out forwards',
+                }}
+              />
+
+              {/* 3. 上向き疾走火炎ヘッド (火球先頭波) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  '--origin-y': `${originY}%`,
+                  animation: 'fire-lead-up 0.55s ease-out forwards',
+                  fontSize: '28px',
+                  pointerEvents: 'none',
+                  zIndex: 37,
+                } as React.CSSProperties}
+              >
+                🔥
+              </div>
+
+              {/* 4. 下向き疾走火炎ヘッド (火球先頭波) */}
+              <div
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  '--origin-y': `${originY}%`,
+                  animation: 'fire-lead-down 0.55s ease-out forwards',
+                  fontSize: '28px',
+                  pointerEvents: 'none',
+                  zIndex: 37,
+                } as React.CSSProperties}
+              >
+                🔥
+              </div>
+
+              {/* 5. ドロップ起点(originY)の爆心地バースト */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${originY}%`,
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  animation: 'fire-origin-burst 1.1s ease-out forwards',
+                  zIndex: 38,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                 }}
               >
-                🔥 烈火の業火柱!! 💥
+                <div style={{ fontSize: '36px', filter: 'drop-shadow(0 0 16px #f97316)' }}>💥🔥</div>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(185, 28, 28, 0.95)',
+                    color: '#fff',
+                    padding: '3px 10px',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    fontSize: '12px',
+                    letterSpacing: '1px',
+                    border: '1px solid #fca5a5',
+                    boxShadow: '0 0 16px #ef4444',
+                    whiteSpace: 'nowrap',
+                    marginTop: '-4px',
+                  }}
+                >
+                  🔥 業火延焼!! 💥
+                </div>
               </div>
-              <div style={{ fontSize: '28px', animation: 'fire-flame-rise 1s ease-out forwards', animationDelay: '0.15s' }}>🔥</div>
             </div>
           );
         }
@@ -763,68 +836,113 @@ export function BattleField({
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
       {hoverX !== null && hoverY !== null && activeCard && (
         <>
-          {/* 烈火の呪文: 縦一列プレビュー帯（上端〜下端・全レーン貫通） */}
+          {/* 烈火の呪文: 縦一列プレビュー帯（ドロップ起点から上下へ延焼） */}
           {activeCard.id === 'fire_spell' && (
-            <div
-              style={{
-                position: 'absolute',
-                top: 0,
-                bottom: 0,
-                left: `${currentTargetX}%`,
-                width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
-                transform: 'translateX(-50%)',
-                background: 'linear-gradient(to right, rgba(239,68,68,0.18), rgba(249,115,22,0.38), rgba(239,68,68,0.18))',
-                borderLeft: '2px dashed #f97316',
-                borderRight: '2px dashed #f97316',
-                pointerEvents: 'none',
-                zIndex: 18,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                padding: '8px 0',
-                animation: 'fire-column-pulse 1.2s infinite ease-in-out',
-              }}
-            >
+            <>
+              {/* 縦一列の延焼予測エリア */}
               <div
                 style={{
-                  backgroundColor: 'rgba(234, 88, 12, 0.95)',
-                  color: '#ffffff',
-                  fontSize: '9.5px',
-                  fontWeight: 'bold',
-                  padding: '2px 8px',
-                  borderRadius: '10px',
-                  border: '1px solid #fed7aa',
-                  boxShadow: '0 0 10px rgba(249,115,22,0.8)',
-                  whiteSpace: 'nowrap',
+                  position: 'absolute',
+                  top: 0,
+                  bottom: 0,
+                  left: `${currentTargetX}%`,
+                  width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
+                  transform: 'translateX(-50%)',
+                  background: 'linear-gradient(to right, rgba(239,68,68,0.18), rgba(249,115,22,0.38), rgba(239,68,68,0.18))',
+                  borderLeft: '2px dashed #f97316',
+                  borderRight: '2px dashed #f97316',
+                  pointerEvents: 'none',
+                  zIndex: 18,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '8px 0',
+                  animation: 'fire-column-pulse 1.2s infinite ease-in-out',
                 }}
               >
-                🔥 烈火の範囲 (全レーン貫通)
+                <div
+                  style={{
+                    backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                    color: '#ffffff',
+                    fontSize: '9.5px',
+                    fontWeight: 'bold',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    border: '1px solid #fed7aa',
+                    boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                    whiteSpace: 'nowrap',
+                    animation: 'fire-preview-arrow-up 0.9s infinite ease-in-out',
+                  }}
+                >
+                  ⬆️ 上方へ延焼
+                </div>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(234, 88, 12, 0.95)',
+                    color: '#ffffff',
+                    fontSize: '9.5px',
+                    fontWeight: 'bold',
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    border: '1px solid #fed7aa',
+                    boxShadow: '0 0 10px rgba(249,115,22,0.8)',
+                    whiteSpace: 'nowrap',
+                    animation: 'fire-preview-arrow-down 0.9s infinite ease-in-out',
+                  }}
+                >
+                  ⬇️ 下方へ延焼
+                </div>
               </div>
+
+              {/* ドロップ起点マーカー (ここから上下に延焼スタート) */}
               <div
                 style={{
-                  fontSize: '20px',
-                  opacity: 0.8,
+                  position: 'absolute',
+                  left: `${currentTargetX}%`,
+                  top: `${currentTargetY}%`,
+                  transform: 'translate(-50%, -50%)',
+                  pointerEvents: 'none',
+                  zIndex: 22,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                 }}
               >
-                🔥
+                <div
+                  style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '2px solid #fef08a',
+                    backgroundColor: 'rgba(249, 115, 22, 0.45)',
+                    boxShadow: '0 0 18px #f97316, inset 0 0 10px #ef4444',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '18px',
+                  }}
+                >
+                  🔥
+                </div>
+                <div
+                  style={{
+                    marginTop: '2px',
+                    backgroundColor: 'rgba(185, 28, 28, 0.95)',
+                    color: '#ffffff',
+                    fontSize: '9.5px',
+                    fontWeight: 'bold',
+                    padding: '2px 8px',
+                    borderRadius: '8px',
+                    border: '1px solid #fca5a5',
+                    boxShadow: '0 0 10px rgba(239,68,68,0.8)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  🎯 延焼の起点 (上下へ3ダメージ)
+                </div>
               </div>
-              <div
-                style={{
-                  backgroundColor: 'rgba(234, 88, 12, 0.95)',
-                  color: '#ffffff',
-                  fontSize: '9.5px',
-                  fontWeight: 'bold',
-                  padding: '2px 8px',
-                  borderRadius: '10px',
-                  border: '1px solid #fed7aa',
-                  boxShadow: '0 0 10px rgba(249,115,22,0.8)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                🔥 縦一列 3ダメージ
-              </div>
-            </div>
+            </>
           )}
 
           {/* 隕石: 範囲円プレビュー */}

@@ -21,6 +21,7 @@ import {
   isWithinCollisionY,
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
+  FIRE_SPELL_SPREAD_SPEED_Y,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
   clampSpawnX,
@@ -88,6 +89,18 @@ interface PendingLightningHit {
   hitTime: number;        // 着弾予定時刻 (Date.now() + 飛行時間)
 }
 
+/** 烈火の呪文: 上下へ伝播中の延焼状態 */
+interface ActiveFireSpell {
+  id: string;
+  x: number;
+  originY: number;
+  targetOwner: Owner;
+  startTime: number;
+  damage: number;
+  hitUnitIds: Set<string>;
+  durationMs: number;
+}
+
 /** 索敵対象（敵ユニット or 敵インヒビター） */
 interface CombatTarget {
   id: string;
@@ -152,6 +165,8 @@ export function useRealtimeGame() {
   useEffect(() => {
     pendingHitsRef.current = pendingLightningHits;
   }, [pendingLightningHits]);
+  // 烈火の呪文の上下延焼状態
+  const activeFireSpellsRef = useRef<ActiveFireSpell[]>([]);
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -440,21 +455,22 @@ export function useRealtimeGame() {
           unitsRef.current = next;
           setUnits(next);
         } else if (card.id === 'fire_spell') {
-          // 指定したX座標の縦一列（全レーン貫通）に3ダメージ
+          // ドロップした座標 (spawnX, spawnY) を中心に上下へ火が広がり、到達した敵に3ダメージ
+          const effectId = `burn_${Date.now()}`;
           setSpellEffects((prev) => [
             ...prev,
-            { id: `burn_${Date.now()}`, x: spawnX, y: 50, type: 'burn', createdAt: Date.now() },
+            { id: effectId, x: spawnX, y: spawnY, originY: spawnY, type: 'burn', createdAt: Date.now() },
           ]);
-          const next = unitsRef.current
-            .map((u) => {
-              if (u.owner === 'cpu' && isWithinFireSpellColumn(u.x, spawnX)) {
-                return { ...u, hp: u.hp - 3 };
-              }
-              return u;
-            })
-            .filter((u) => u.hp > 0);
-          unitsRef.current = next;
-          setUnits(next);
+          activeFireSpellsRef.current.push({
+            id: effectId,
+            x: spawnX,
+            originY: spawnY,
+            targetOwner: 'cpu',
+            startTime: Date.now(),
+            damage: 3,
+            hitUnitIds: new Set<string>(),
+            durationMs: 1200,
+          });
         } else if (card.id === 'haste_spell') {
           // 指定位置付近の味方ユニットの攻撃クールダウンをリセット
           setSpellEffects((prev) => [
@@ -585,21 +601,22 @@ export function useRealtimeGame() {
         unitsRef.current = next;
         setUnits(next);
       } else if (chosen.card.id === 'fire_spell') {
-        // 烈火の呪文（指定X座標の縦一列の全プレイヤーユニットに3ダメージ）
+        // 烈火の呪文: 指定位置 (spellX, spellY) を中心に上下へ火が広がり、到達したプレイヤーユニットに3ダメージ
+        const effectId = `cpu_burn_${Date.now()}`;
         setSpellEffects((prev) => [
           ...prev,
-          { id: `cpu_burn_${Date.now()}`, x: spellX, y: 50, type: 'burn', createdAt: Date.now() },
+          { id: effectId, x: spellX, y: spellY, originY: spellY, type: 'burn', createdAt: Date.now() },
         ]);
-        const next = unitsRef.current
-          .map((u) => {
-            if (u.owner === 'player' && isWithinFireSpellColumn(u.x, spellX)) {
-              return { ...u, hp: u.hp - 3 };
-            }
-            return u;
-          })
-          .filter((u) => u.hp > 0);
-        unitsRef.current = next;
-        setUnits(next);
+        activeFireSpellsRef.current.push({
+          id: effectId,
+          x: spellX,
+          originY: spellY,
+          targetOwner: 'player',
+          startTime: Date.now(),
+          damage: 3,
+          hitUnitIds: new Set<string>(),
+          durationMs: 1200,
+        });
       } else if (chosen.card.id === 'haste_spell') {
         // 疾風の号令（指定位置付近のCPUユニットのクールダウンリセット）
         setSpellEffects((prev) => [
@@ -797,6 +814,43 @@ export function useRealtimeGame() {
           })
           .filter((u) => u.hp > 0);
 
+        // B2. 烈火の呪文: ドロップ起点(originY)から上下へ広がる炎の波面によるダメージ着弾判定
+        const activeFireSpells = activeFireSpellsRef.current;
+        const unitsAfterFire = (activeFireSpells.length > 0
+          ? unitsAfterHits
+              .map((unit) => {
+                if (unit.hp <= 0) return unit;
+                let hp = unit.hp;
+
+                for (const fire of activeFireSpells) {
+                  if (unit.owner === fire.targetOwner && !fire.hitUnitIds.has(unit.id)) {
+                    if (isWithinFireSpellColumn(unit.x, fire.x)) {
+                      const elapsed = now - fire.startTime;
+                      const currentSpreadRadiusY = (elapsed / 1000) * FIRE_SPELL_SPREAD_SPEED_Y;
+                      if (Math.abs(unit.y - fire.originY) <= currentSpreadRadiusY) {
+                        fire.hitUnitIds.add(unit.id);
+                        hp -= fire.damage;
+                      }
+                    }
+                  }
+                }
+
+                if (hp !== unit.hp) {
+                  return { ...unit, hp };
+                }
+                return unit;
+              })
+              .filter((u) => u.hp > 0)
+          : unitsAfterHits
+        );
+
+        // 継続時間を経過したファイアスペルのクリーンアップ
+        if (activeFireSpells.length > 0) {
+          activeFireSpellsRef.current = activeFireSpells.filter(
+            (fire) => now - fire.startTime < fire.durationMs
+          );
+        }
+
         // C. 各ユニットの移動・攻撃・クールダウン更新
         const newAttackEffects: AttackEffect[] = [];
         const newPendingHits: PendingLightningHit[] = [];
@@ -805,7 +859,7 @@ export function useRealtimeGame() {
         // このフレームで攻撃を放ったユニット → 主標的
         const attackTargets = new Map<string, CombatTarget>();
 
-        const updatedUnits = unitsAfterHits.map((unit) => {
+        const updatedUnits = unitsAfterFire.map((unit) => {
           const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
           let cooldown = Math.max(0, unit.attackCooldown - dt);
           let x = unit.x;
@@ -1215,8 +1269,8 @@ export function useRealtimeGame() {
         pendingHitsRef.current = nextPendingHits;
         setPendingLightningHits(nextPendingHits);
 
-        // スペルエフェクトの掃除（1秒以上経過したものを除去）
-        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1000));
+        // スペルエフェクトの掃除（1.2秒以上経過したものを除去）
+        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < 1200));
       }
 
       animId = requestAnimationFrame(gameLoop);
@@ -1241,6 +1295,7 @@ export function useRealtimeGame() {
     setAttackEffects([]);
     setPendingLightningHits([]);
     pendingHitsRef.current = [];
+    activeFireSpellsRef.current = [];
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;

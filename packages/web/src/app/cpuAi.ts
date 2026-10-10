@@ -162,14 +162,17 @@ export function computeCpuAction(
           });
         }
       } else if (card.id === 'fire_spell') {
-        // 烈火の呪文: 縦一列（X軸）で最も多くのプレイヤーユニットを巻き込める位置を探索
+        // 烈火の呪文: 縦一列（X軸）で最も多くのプレイヤーユニットを巻き込める位置と中心Y座標を探索
         let bestTargetX = 50;
+        let bestTargetY = 50;
         let maxHits = 0;
         playerUnits.forEach((targetUnit) => {
-          const hits = playerUnits.filter((u) => isWithinFireSpellColumn(u.x, targetUnit.x)).length;
-          if (hits > maxHits) {
-            maxHits = hits;
+          const inCol = playerUnits.filter((u) => isWithinFireSpellColumn(u.x, targetUnit.x));
+          if (inCol.length > maxHits) {
+            maxHits = inCol.length;
             bestTargetX = targetUnit.x;
+            const avgY = inCol.reduce((acc, cur) => acc + cur.y, 0) / inCol.length;
+            bestTargetY = Math.round(avgY);
           }
         });
         if (maxHits >= 1) {
@@ -177,7 +180,7 @@ export function computeCpuAction(
             handIndex: idx,
             card,
             targetX: bestTargetX,
-            targetY: 50,
+            targetY: bestTargetY,
             score: 14 + maxHits * 7 + Math.random() * 3,
           });
         }
