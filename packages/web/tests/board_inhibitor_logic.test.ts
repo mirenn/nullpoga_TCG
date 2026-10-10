@@ -3,6 +3,7 @@ import {
   COLLISION_HALF_WIDTH_Y,
   SPELL_RADIUS,
   isWithinFireSpellColumn,
+  isWithinMeteorRange,
   isWithinEngageY,
   isWithinCollisionY,
   isWithinEngageX,
@@ -65,7 +66,14 @@ assert(isWithinFireSpellColumn(50, 50), 'Targeting same X should be within colum
 assert(isWithinFireSpellColumn(58, 50), 'X diff 8% should be within column range (half width 9.0%)');
 assert(isWithinFireSpellColumn(42, 50), 'X diff -8% should be within column range (half width 9.0%)');
 assert(!isWithinFireSpellColumn(60, 50), 'X diff 10% should NOT be within column range (half width 9.0%)');
-console.log('  -> Horizontal coordinates & geometry & fire column: PASSED');
+
+// 隕石（メテオ・円形ユークリッド範囲）効果範囲テスト
+assert(isWithinMeteorRange(50, 50, 50, 50), 'Same point should be within meteor range');
+assert(isWithinMeteorRange(50 + SPELL_RADIUS, 50, 50, 50), 'Boundary X should be within meteor range');
+assert(isWithinMeteorRange(50, 50 + SPELL_RADIUS, 50, 50), 'Boundary Y should be within meteor range');
+assert(isWithinMeteorRange(50 + 9, 50 + 9, 50, 50), 'Diagonal (9,9) hypot~12.7 should be within meteor range (radius 14)');
+assert(!isWithinMeteorRange(50 + 11, 50 + 11, 50, 50), 'Diagonal (11,11) hypot~15.5 should NOT be within meteor range');
+console.log('  -> Horizontal coordinates & geometry & fire column & meteor: PASSED');
 
 // 2. Inhibitor tests (Horizontal layout: Player at Left x=22, CPU at Right x=78)
 console.log('[2/4] Testing horizontal inhibitor configuration & mana rewards...');

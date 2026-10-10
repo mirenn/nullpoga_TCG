@@ -8,6 +8,7 @@ import {
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
   isWithinFireSpellColumn,
+  isWithinMeteorRange,
   clampSpawnY,
 } from './board';
 import { INHIBITOR_SLOTS, inhibitorBlocksY } from './inhibitors';
@@ -137,23 +138,29 @@ export function computeCpuAction(
       });
     } else if (card.type === 'SPELL') {
       if (card.id === 'meteor') {
-        // メテオ: プレイヤーユニットが集まっている場所
-        validSpawnYs.forEach((y) => {
-          const hits = playerUnits.filter(
-            (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && Math.abs(u.x - 50) <= 25
-          );
-          if (hits.length > 0) {
-            const score = 12 + hits.length * 7 + Math.random() * 2;
-            options.push({
-              handIndex: idx,
-              card,
-              targetY: y,
-              targetX: 50,
-              targetLane: y,
-              score,
-            });
-          }
-        });
+        // メテオ: 最も多くのプレイヤーユニットを巻き込める座標 (X, Y) を探索
+        if (playerUnits.length > 0) {
+          let bestTargetX = 50;
+          let bestTargetY = 50;
+          let maxHits = 0;
+          playerUnits.forEach((candidate) => {
+            const hits = playerUnits.filter((u) => isWithinMeteorRange(u.x, u.y, candidate.x, candidate.y)).length;
+            if (hits > maxHits) {
+              maxHits = hits;
+              bestTargetX = candidate.x;
+              bestTargetY = candidate.y;
+            }
+          });
+          const score = 12 + maxHits * 7 + Math.random() * 2;
+          options.push({
+            handIndex: idx,
+            card,
+            targetX: bestTargetX,
+            targetY: bestTargetY,
+            targetLane: bestTargetY,
+            score,
+          });
+        }
       } else if (card.id === 'fire_spell') {
         // 烈火の呪文: 縦一列（X軸）で最も多くのプレイヤーユニットを巻き込める位置を探索
         let bestTargetX = 50;

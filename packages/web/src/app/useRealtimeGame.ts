@@ -22,6 +22,7 @@ import {
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
   isWithinFireSpellColumn,
+  isWithinMeteorRange,
   clampSpawnX,
   clampSpawnY,
   clampPlayerSpawnX,
@@ -429,7 +430,7 @@ export function useRealtimeGame() {
             .map((u) => {
               if (
                 u.owner === 'cpu' &&
-                Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS
+                isWithinMeteorRange(u.x, u.y, spawnX, spawnY)
               ) {
                 return { ...u, hp: u.hp - 3 };
               }
@@ -574,7 +575,7 @@ export function useRealtimeGame() {
           .map((u) => {
             if (
               u.owner === 'player' &&
-              Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS
+              isWithinMeteorRange(u.x, u.y, spellX, spellY)
             ) {
               return { ...u, hp: u.hp - 3 };
             }

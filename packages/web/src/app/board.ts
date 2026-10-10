@@ -50,6 +50,17 @@ export function isWithinFireSpellColumn(unitX: number, targetX: number, halfWidt
   return Math.abs(unitX - targetX) <= halfWidth;
 }
 
+/** 2つの座標が隕石（円形範囲攻撃）内にあるか */
+export function isWithinMeteorRange(
+  unitX: number,
+  unitY: number,
+  targetX: number,
+  targetY: number,
+  radius: number = SPELL_RADIUS
+): boolean {
+  return Math.hypot(unitX - targetX, unitY - targetY) <= radius;
+}
+
 // === 互換性エイリアス ===
 export const ENGAGE_HALF_WIDTH_X = ENGAGE_HALF_WIDTH_Y;
 export const COLLISION_HALF_WIDTH_X = COLLISION_HALF_WIDTH_Y;

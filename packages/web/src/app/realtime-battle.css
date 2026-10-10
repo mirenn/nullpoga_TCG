@@ -394,16 +394,16 @@
 
         /* スペル演出: 隕石落下・着弾 (Meteor) */
         @keyframes meteor-indicator-anim {
-          0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
-          20% { opacity: 0.6; transform: translate(-50%, -50%) scale(1); }
-          80% { opacity: 0.8; transform: translate(-50%, -50%) scale(1); }
-          100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+          0% { opacity: 0; transform: scale(0.3); }
+          20% { opacity: 0.6; transform: scale(1); }
+          80% { opacity: 0.8; transform: scale(1); }
+          100% { opacity: 0; transform: scale(1); }
         }
         @keyframes meteor-falling-anim {
-          0% { transform: translate(150%, -250%) scale(1.5) rotate(-45deg); opacity: 0; }
+          0% { transform: translate(120%, -300%) scale(1.6) rotate(-45deg); opacity: 0; }
           20% { opacity: 1; }
-          80% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 1; }
-          100% { transform: translate(0%, -50%) scale(1.5) rotate(-45deg); opacity: 0; }
+          80% { transform: translate(-50%, -50%) scale(1.3) rotate(-45deg); opacity: 1; }
+          100% { transform: translate(-50%, -50%) scale(1) rotate(-45deg); opacity: 0; }
         }
         @keyframes meteor-explosion-anim {
           0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }

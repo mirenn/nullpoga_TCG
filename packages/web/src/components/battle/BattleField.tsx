@@ -13,6 +13,7 @@ import {
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
   isWithinFireSpellColumn,
+  isWithinMeteorRange,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
   PLAYER_SPAWN_X_MIN,
@@ -414,7 +415,7 @@ export function BattleField({
         const isMeteorTargeted =
           activeCard?.id === 'meteor' &&
           unit.owner === 'cpu' &&
-          Math.hypot(unit.x - currentTargetX, unit.y - currentTargetY) <= SPELL_RADIUS;
+          isWithinMeteorRange(unit.x, unit.y, currentTargetX, currentTargetY);
 
         return (
           <React.Fragment key={unit.id}>
@@ -518,7 +519,7 @@ export function BattleField({
                 left: `${spell.x}%`,
                 transform: 'translate(-50%, -50%)',
                 width: `${SPELL_RADIUS * 2}%`,
-                height: `${SPELL_RADIUS * 2 * (16 / 9)}%`,
+                height: `${SPELL_RADIUS * 2}%`,
                 pointerEvents: 'none',
                 zIndex: 30,
               }}
@@ -835,7 +836,7 @@ export function BattleField({
                 left: `${currentTargetX}%`,
                 transform: 'translate(-50%, -50%)',
                 width: `${SPELL_RADIUS * 2}%`,
-                height: `${SPELL_RADIUS * 2 * (16 / 9)}%`,
+                height: `${SPELL_RADIUS * 2}%`,
                 borderRadius: '50%',
                 border: '2px dashed #ea580c',
                 backgroundColor: 'rgba(234, 88, 12, 0.15)',
