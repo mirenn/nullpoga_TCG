@@ -104,7 +104,7 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
               <div style={styles.tipBox}>
                 <div style={styles.tipTitle}>🛡️ 出撃レギュレーション</div>
                 <div style={styles.tipText}>
-                  障害物・直前味方ユニットとの出撃スペース確保、ドラゴン1体制限、連続召喚誤爆防止（約0.12秒）の制限があります。
+                  直前味方ユニットとの出撃スペース確保、ドラゴン1体制限、連続召喚誤爆防止（約0.12秒）の制限があります。
                 </div>
               </div>
             </div>

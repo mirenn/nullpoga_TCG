@@ -246,17 +246,6 @@ export function useRealtimeGame() {
           const targetX = spawnX !== undefined ? clampPlayerSpawnX(spawnX) : PLAYER_DEFAULT_SPAWN_X;
           const targetY = spawnY !== undefined ? clampSpawnY(spawnY) : 50;
 
-          // インヒビター（防壁障害物）との重複を防止
-          const hasBlockingInhibitor = inhibitorsRef.current.some(
-            (i) =>
-              i.hp > 0 &&
-              Math.abs(i.x - targetX) <= 5.5 &&
-              Math.abs(i.y - targetY) <= 6.0
-          );
-          if (hasBlockingInhibitor) {
-            return { canPlay: false, reason: '障害物と重複' };
-          }
-
           // 出撃スペース制限: 指定(X, Y)座標の直前・至近に味方モンスターがいる場合は前進するまで待機
           const hasBlockingAlly = unitsRef.current.some((u) => {
             if (u.owner !== 'player' || u.hp <= 0 || !isWithinCollisionY(u.y, targetY)) {
