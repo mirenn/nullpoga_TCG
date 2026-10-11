@@ -3,7 +3,11 @@ import type { Unit } from '../../app/types';
 import { UnitSvgRenderer, deriveAnimationState } from './UnitSvgRenderer';
 import { styles } from '../../app/page.styles';
 
-const COOLDOWN_RING_RADIUS = 16.5;
+// ユニット本体(36px)の外側に一回り大きいリングを描き、アイコンと重ならず一目でゲージと分かるようにする
+const RING_SIZE = 46;
+const RING_CENTER = RING_SIZE / 2;
+const RING_OFFSET = -(RING_SIZE - 36) / 2;
+const COOLDOWN_RING_RADIUS = 20;
 const COOLDOWN_RING_CIRCUMFERENCE = 2 * Math.PI * COOLDOWN_RING_RADIUS; // ~103.67
 
 interface UnitCooldownRingProps {
@@ -24,19 +28,19 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
       <svg
         style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '36px',
-          height: '36px',
+          top: RING_OFFSET,
+          left: RING_OFFSET,
+          width: RING_SIZE,
+          height: RING_SIZE,
           pointerEvents: 'none',
           overflow: 'visible',
           zIndex: 2,
         }}
-        viewBox="0 0 36 36"
+        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
       >
         <circle
-          cx="18"
-          cy="18"
+          cx={RING_CENTER}
+          cy={RING_CENTER}
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={shieldColor}
@@ -64,14 +68,14 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 
   const isReady = !isCharging && progress >= 0.999;
 
-  // トラック（未チャージ・下地の溝）の色: 極めて薄い暗色にしてゲージの欠け（未チャージ部分）を明確にする
-  let trackColor = 'rgba(0, 0, 0, 0.45)';
+  // トラック（下地の溝）: 白系の半透明にして、暗い背景でも未充填部分が見えるようにする
+  let trackColor = 'rgba(255, 255, 255, 0.28)';
   if (isBlockingSpawn) trackColor = 'rgba(234, 88, 12, 0.25)';
   if (isStunned) trackColor = 'rgba(234, 179, 8, 0.15)';
 
-  // ゲージの色
-  let gaugeColor = isPlayer ? '#38bdf8' : '#f43f5e';
-  let glowColor = isPlayer ? 'rgba(56, 189, 248, 0.95)' : 'rgba(244, 63, 94, 0.95)';
+  // ゲージの色: リロード中はオレンジ（陣営色と区別）、攻撃準備完了で陣営色に変化
+  let gaugeColor = '#fb923c';
+  let glowColor = 'rgba(251, 146, 60, 0.9)';
 
   if (isBlockingSpawn) {
     gaugeColor = '#ea580c';
@@ -84,40 +88,47 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
     glowColor = '#facc15';
   } else if (isReady) {
     gaugeColor = isPlayer ? '#00f0ff' : '#ff1744';
+    glowColor = isPlayer ? 'rgba(0, 240, 255, 0.95)' : 'rgba(255, 23, 68, 0.95)';
   }
 
   const strokeDashoffset = COOLDOWN_RING_CIRCUMFERENCE * (1 - progress);
+
+  // ゲージ先端のドット位置（12時から時計回り）
+  const tipAngle = progress * 2 * Math.PI - Math.PI / 2;
+  const tipX = RING_CENTER + COOLDOWN_RING_RADIUS * Math.cos(tipAngle);
+  const tipY = RING_CENTER + COOLDOWN_RING_RADIUS * Math.sin(tipAngle);
+  const showTip = !isStunned && !isReady && progress > 0.01;
 
   return (
     <svg
       style={{
         position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '36px',
-        height: '36px',
+        top: RING_OFFSET,
+        left: RING_OFFSET,
+        width: RING_SIZE,
+        height: RING_SIZE,
         pointerEvents: 'none',
         overflow: 'visible',
         zIndex: 2,
       }}
-      viewBox="0 0 36 36"
+      viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
     >
-      {/* ベース下地の溝（未チャージ部分: 暗いレール） */}
+      {/* ベース下地の溝（未充填部分） */}
       <circle
-        cx="18"
-        cy="18"
+        cx={RING_CENTER}
+        cy={RING_CENTER}
         r={COOLDOWN_RING_RADIUS}
         fill="none"
         stroke={trackColor}
-        strokeWidth="1.8"
+        strokeWidth="2.4"
       />
 
       {/* 状態に応じたゲージ表示 */}
       {isStunned ? (
         // 麻痺中は破線で停止を表現
         <circle
-          cx="18"
-          cy="18"
+          cx={RING_CENTER}
+          cy={RING_CENTER}
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={gaugeColor}
@@ -128,8 +139,8 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
       ) : (
         // クールダウン進行ゲージ（上部12時から時計回りに満ちる。太く鮮やかにして欠けを一目で分かるように）
         <circle
-          cx="18"
-          cy="18"
+          cx={RING_CENTER}
+          cy={RING_CENTER}
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={gaugeColor}
@@ -137,12 +148,15 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           strokeDasharray={COOLDOWN_RING_CIRCUMFERENCE}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap={progress > 0.05 ? 'round' : 'butt'}
-          transform="rotate(-90 18 18)"
+          transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
           style={{
             filter: `drop-shadow(0 0 ${isReady ? '5px' : '2.5px'} ${glowColor})`,
             transition: 'stroke-dashoffset 0.04s linear',
           }}
         />
+      )}
+      {showTip && (
+        <circle cx={tipX} cy={tipY} r="2.6" fill="#fff" style={{ filter: `drop-shadow(0 0 3px ${glowColor})` }} />
       )}
     </svg>
   );
