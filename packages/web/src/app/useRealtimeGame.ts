@@ -39,6 +39,9 @@ import {
   PLAYER_SPAWN_Y_MAX,
   PLAYER_DEFAULT_SPAWN_Y,
 } from './board';
+
+/** 隕石アニメーション(1s)の着弾タイミング(80%)。ダメージ判定はこの時点で行う */
+const METEOR_IMPACT_DELAY_MS = 800;
 import {
   createInitialInhibitors,
   inhibitorBlocksY,
@@ -441,19 +444,22 @@ export function useRealtimeGame() {
             ...prev,
             { id: `meteor_${Date.now()}`, x: spawnX, y: spawnY, type: 'meteor', createdAt: Date.now() },
           ]);
-          const next = unitsRef.current
-            .map((u) => {
-              if (
-                u.owner === 'cpu' &&
-                isWithinMeteorRange(u.x, u.y, spawnX, spawnY)
-              ) {
-                return { ...u, hp: u.hp - 3 };
-              }
-              return u;
-            })
-            .filter((u) => u.hp > 0);
-          unitsRef.current = next;
-          setUnits(next);
+          // 着弾アニメーション(1秒中80%地点)に合わせて、着弾時点の範囲内の敵にダメージ
+          setTimeout(() => {
+            const next = unitsRef.current
+              .map((u) => {
+                if (
+                  u.owner === 'cpu' &&
+                  isWithinMeteorRange(u.x, u.y, spawnX, spawnY)
+                ) {
+                  return { ...u, hp: u.hp - 3 };
+                }
+                return u;
+              })
+              .filter((u) => u.hp > 0);
+            unitsRef.current = next;
+            setUnits(next);
+          }, METEOR_IMPACT_DELAY_MS);
         } else if (card.id === 'fire_spell') {
           // ドロップした座標 (spawnX, spawnY) を中心に上下へ火が広がり、到達した敵に3ダメージ
           const effectId = `burn_${Date.now()}`;
@@ -587,19 +593,21 @@ export function useRealtimeGame() {
           ...prev,
           { id: `cpu_meteor_${Date.now()}`, x: spellX, y: spellY, type: 'meteor', createdAt: Date.now() },
         ]);
-        const next = unitsRef.current
-          .map((u) => {
-            if (
-              u.owner === 'player' &&
-              isWithinMeteorRange(u.x, u.y, spellX, spellY)
-            ) {
-              return { ...u, hp: u.hp - 3 };
-            }
-            return u;
-          })
-          .filter((u) => u.hp > 0);
-        unitsRef.current = next;
-        setUnits(next);
+        setTimeout(() => {
+          const next = unitsRef.current
+            .map((u) => {
+              if (
+                u.owner === 'player' &&
+                isWithinMeteorRange(u.x, u.y, spellX, spellY)
+              ) {
+                return { ...u, hp: u.hp - 3 };
+              }
+              return u;
+            })
+            .filter((u) => u.hp > 0);
+          unitsRef.current = next;
+          setUnits(next);
+        }, METEOR_IMPACT_DELAY_MS);
       } else if (chosen.card.id === 'fire_spell') {
         // 烈火の呪文: 指定位置 (spellX, spellY) を中心に上下へ火が広がり、到達したプレイヤーユニットに3ダメージ
         const effectId = `cpu_burn_${Date.now()}`;
