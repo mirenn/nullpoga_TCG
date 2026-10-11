@@ -209,14 +209,14 @@ const batCard = CARD_POOL.find((c) => c.id === 'vampire_bat')!;
 const jellyfishCard = CARD_POOL.find((c) => c.id === 'jellyfish')!;
 const dragonCard = CARD_POOL.find((c) => c.id === 'dragon')!;
 
-assert(mouseCard.attackWindup === 0.25, 'Mouse windup must be 0.25s');
-assert(catCard.attackWindup === 0.35, 'Cat windup must be 0.35s');
-assert(shibaCard.attackWindup === 0.4, 'Shiba windup must be 0.4s');
-assert(boarCard.attackWindup === 0.5, 'Boar windup must be 0.5s');
-assert(assassinCard.attackWindup === 0.3, 'Assassin windup must be 0.3s');
-assert(batCard.attackWindup === 0.35, 'Bat windup must be 0.35s');
-assert(jellyfishCard.attackWindup === 1.0, 'Jellyfish windup must be 1.0s');
-assert(dragonCard.attackWindup === 0.8, 'Dragon windup must be 0.8s');
+assert(mouseCard.attackWindup === 0.5, 'Mouse windup must be 0.5s');
+assert(catCard.attackWindup === 0.7, 'Cat windup must be 0.7s');
+assert(shibaCard.attackWindup === 0.8, 'Shiba windup must be 0.8s');
+assert(boarCard.attackWindup === 1.0, 'Boar windup must be 1.0s');
+assert(assassinCard.attackWindup === 0.6, 'Assassin windup must be 0.6s');
+assert(batCard.attackWindup === 0.7, 'Bat windup must be 0.7s');
+assert(jellyfishCard.attackWindup === 2.0, 'Jellyfish windup must be 2.0s');
+assert(dragonCard.attackWindup === 1.6, 'Dragon windup must be 1.6s');
 
 // 5-2. deriveAnimationState 状態遷移テスト
 const baseUnit: Unit = {
@@ -233,7 +233,7 @@ const baseUnit: Unit = {
   range: 9,
   attackCooldown: 0,
   attackInterval: 0.8,
-  attackWindup: 0.25,
+  attackWindup: 0.5,
   icon: '🐭',
 };
 
