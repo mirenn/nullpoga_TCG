@@ -70,7 +70,17 @@ export interface SpellEffect {
   lane?: number;
 }
 
-export type AttackEffectType = 'fireball' | 'lightning' | 'slash' | 'base_hit';
+export type AttackEffectType =
+  | 'fireball'
+  | 'lightning'
+  | 'slash'
+  | 'base_hit'
+  | 'claw'
+  | 'bite'
+  | 'tackle'
+  | 'headbutt'
+  | 'shadow_slash'
+  | 'blood_bite';
 
 export interface AttackEffect {
   id: string;

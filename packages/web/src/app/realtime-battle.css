@@ -343,6 +343,126 @@
           animation: melee-slash-anim 0.22s ease-out forwards;
         }
 
+        /* ネコ: 猫の鋭い爪痕スワイプ */
+        @keyframes melee-claw-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6) rotate(-20deg);
+            opacity: 0.2;
+          }
+          30% {
+            transform: translate(-50%, -50%) scale(1.4) rotate(0deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 12px #f59e0b) drop-shadow(0 0 4px #fbbf24);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.7) rotate(15deg);
+            opacity: 0;
+          }
+        }
+        .melee-claw-effect {
+          animation: melee-claw-anim 0.26s ease-out forwards;
+        }
+
+        /* ネズミ: 飛びつき俊敏バイト */
+        @keyframes melee-bite-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5);
+            opacity: 0.4;
+          }
+          40% {
+            transform: translate(-50%, -50%) scale(1.35);
+            opacity: 1;
+            filter: drop-shadow(0 0 8px #facc15);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.6);
+            opacity: 0;
+          }
+        }
+        .melee-bite-effect {
+          animation: melee-bite-anim 0.22s ease-out forwards;
+        }
+
+        /* 柴犬: 突進バイト＆牙インパクト */
+        @keyframes melee-tackle-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5) rotate(-10deg);
+            opacity: 0.3;
+          }
+          40% {
+            transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 12px #ea580c);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.8) rotate(10deg);
+            opacity: 0;
+          }
+        }
+        .melee-tackle-effect {
+          animation: melee-tackle-anim 0.28s ease-out forwards;
+        }
+
+        /* イノシシ: 猛烈かち上げ土煙＆重衝撃波 */
+        @keyframes melee-headbutt-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.5;
+          }
+          35% {
+            transform: translate(-50%, -50%) scale(1.7) translateY(-4px);
+            opacity: 1;
+            filter: drop-shadow(0 0 16px #f97316) drop-shadow(0 0 8px #78716c);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.2) translateY(-8px);
+            opacity: 0;
+          }
+        }
+        .melee-headbutt-effect {
+          animation: melee-headbutt-anim 0.32s ease-out forwards;
+        }
+
+        /* アサシン: 居合い一閃抜刀斬り光 */
+        @keyframes melee-shadow-slash-anim {
+          0% {
+            transform: translate(-50%, -50%) scaleX(0.2) scaleY(1.5) rotate(-35deg);
+            opacity: 0;
+          }
+          30% {
+            transform: translate(-50%, -50%) scaleX(1.8) scaleY(1.1) rotate(-35deg);
+            opacity: 1;
+            filter: drop-shadow(0 0 14px #00f0ff) drop-shadow(0 0 6px #38bdf8);
+          }
+          100% {
+            transform: translate(-50%, -50%) scaleX(2.4) scaleY(0.6) rotate(-35deg);
+            opacity: 0;
+          }
+        }
+        .melee-shadow-slash-effect {
+          animation: melee-shadow-slash-anim 0.26s ease-out forwards;
+        }
+
+        /* コウモリ: 吸血バイト＆ブラッドスプラッシュ */
+        @keyframes melee-blood-bite-anim {
+          0% {
+            transform: translate(-50%, -50%) scale(0.6);
+            opacity: 0.4;
+          }
+          35% {
+            transform: translate(-50%, -50%) scale(1.4);
+            opacity: 1;
+            filter: drop-shadow(0 0 14px #dc2626) drop-shadow(0 0 6px #9333ea);
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.7);
+            opacity: 0;
+          }
+        }
+        .melee-blood-bite-effect {
+          animation: melee-blood-bite-anim 0.28s ease-out forwards;
+        }
+
         /* 拠点ヒット衝撃 */
         @keyframes base-hit-anim {
           0% {

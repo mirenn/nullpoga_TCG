@@ -38,6 +38,8 @@ import {
 } from '../src/app/inhibitors';
 import { computeCpuAction } from '../src/app/cpuAi';
 import { CARD_POOL } from '../src/app/cards';
+import { deriveAnimationState, getAttackAnimDuration } from '../src/components/units/animationLogic';
+import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) {
@@ -179,4 +181,87 @@ assert(getSpawnDepthRole(25).key === 'midguard' && getSpawnDepthRole(25).label =
 assert(getSpawnDepthRole(42).key === 'vanguard' && getSpawnDepthRole(42).label === '前衛', 'X=42% should be vanguard');
 console.log('  -> Depth & horizontal coordinates: PASSED');
 
-console.log('=== All 4 Test Suites PASSED Successfully! ===');
+// 5. Unit attack windup, animation state and SVG renderer tests
+console.log('[5/5] Testing unit attack windup, animation state & SVG renderers...');
+
+// 5-1. 各モンスターの attackWindup と attackInterval
+const monsterCards = CARD_POOL.filter((c) => c.type === 'MONSTER');
+const attackingMonsters = monsterCards.filter((c) => (c.attack ?? 0) > 0);
+assert(attackingMonsters.length === 8, 'There should be 8 attacking monster cards');
+attackingMonsters.forEach((c) => {
+  assert(
+    typeof c.attackWindup === 'number' && c.attackWindup > 0,
+    `Attacking monster ${c.name} must have a positive attackWindup, got ${c.attackWindup}`
+  );
+  assert(
+    typeof c.attackInterval === 'number' && c.attackInterval > 0,
+    `Attacking monster ${c.name} must have a positive attackInterval`
+  );
+});
+
+// 個別キャラクターの windup 値チェック
+const mouseCard = CARD_POOL.find((c) => c.id === 'mouse')!;
+const catCard = CARD_POOL.find((c) => c.id === 'cat')!;
+const shibaCard = CARD_POOL.find((c) => c.id === 'shiba')!;
+const boarCard = CARD_POOL.find((c) => c.id === 'boar')!;
+const assassinCard = CARD_POOL.find((c) => c.id === 'assassin')!;
+const batCard = CARD_POOL.find((c) => c.id === 'vampire_bat')!;
+const jellyfishCard = CARD_POOL.find((c) => c.id === 'jellyfish')!;
+const dragonCard = CARD_POOL.find((c) => c.id === 'dragon')!;
+
+assert(mouseCard.attackWindup === 0.25, 'Mouse windup must be 0.25s');
+assert(catCard.attackWindup === 0.35, 'Cat windup must be 0.35s');
+assert(shibaCard.attackWindup === 0.4, 'Shiba windup must be 0.4s');
+assert(boarCard.attackWindup === 0.5, 'Boar windup must be 0.5s');
+assert(assassinCard.attackWindup === 0.3, 'Assassin windup must be 0.3s');
+assert(batCard.attackWindup === 0.35, 'Bat windup must be 0.35s');
+assert(jellyfishCard.attackWindup === 1.0, 'Jellyfish windup must be 1.0s');
+assert(dragonCard.attackWindup === 0.8, 'Dragon windup must be 0.8s');
+
+// 5-2. deriveAnimationState 状態遷移テスト
+const baseUnit: Unit = {
+  id: 'u1',
+  cardNo: 1,
+  name: 'ネズミ',
+  owner: 'player',
+  x: 50,
+  y: 50,
+  maxHp: 1,
+  hp: 1,
+  attack: 1,
+  speed: 8,
+  range: 9,
+  attackCooldown: 0,
+  attackInterval: 0.8,
+  attackWindup: 0.25,
+  icon: '🐭',
+};
+
+// スタン状態
+assert(deriveAnimationState({ ...baseUnit, isStunned: true }) === 'stunned', 'Should return stunned when isStunned is true');
+
+// チャージ状態
+assert(deriveAnimationState({ ...baseUnit, isCharging: true }) === 'charging', 'Should return charging when isCharging is true');
+
+// 攻撃中状態
+const now = Date.now();
+assert(deriveAnimationState({ ...baseUnit, lastAttackEffectTime: now - 50 }) === 'attacking', 'Should return attacking within anim duration');
+
+// ドラゴンの攻撃持続時間 (480ms)
+const dragonUnit: Unit = { ...baseUnit, cardNo: 11, name: '炎のドラゴン' };
+assert(deriveAnimationState({ ...dragonUnit, lastAttackEffectTime: now - 400 }) === 'attacking', 'Dragon should still be attacking at 400ms');
+assert(deriveAnimationState({ ...dragonUnit, lastAttackEffectTime: now - 600 }) === 'walking', 'Dragon should revert to walking after 600ms');
+
+// 歩行・待機
+assert(deriveAnimationState({ ...baseUnit, speed: 5 }) === 'walking', 'Should return walking when speed > 0');
+assert(deriveAnimationState({ ...baseUnit, speed: 0 }) === 'idle', 'Should return idle when speed is 0');
+
+// 5-3. 攻撃アニメーション持続時間判定テスト
+assert(getAttackAnimDuration(11) === 480, 'Dragon attack duration must be 480ms');
+assert(getAttackAnimDuration(7) === 380, 'Boar attack duration must be 380ms');
+assert(getAttackAnimDuration(8) === 320, 'Assassin attack duration must be 320ms');
+assert(getAttackAnimDuration(2) === 320, 'Shiba attack duration must be 320ms');
+assert(getAttackAnimDuration(1) === 300, 'Mouse attack duration must be 300ms');
+console.log('  -> Attack windup, animation states & duration logic: PASSED');
+
+console.log('=== All 5 Test Suites PASSED Successfully! ===');

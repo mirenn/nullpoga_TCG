@@ -11,8 +11,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 1,
     speed: 8, // 高速ダッシュ型アタッカー（旧16から調整）
     range: 9, // 近接接触
-    attackInterval: 1.0,
-    effectDesc: '足が速い低コストアタッカー。奇襲や時間稼ぎに。',
+    attackInterval: 0.8,
+    attackWindup: 0.25, // 攻撃前隙（タメ0.25秒）
+    effectDesc: '足が速い低コストアタッカー。0.25秒のタメから素早く飛びつく。奇襲や時間稼ぎに。',
     icon: '🐭',
   },
   {
@@ -25,8 +26,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 5, // 標準歩兵ペース（旧10から調整）
     range: 9,
-    attackInterval: 1.0,
-    effectDesc: 'バランスの取れた標準的な歩兵ユニット。',
+    attackInterval: 0.85,
+    attackWindup: 0.35, // 攻撃前隙（狙い0.35秒）
+    effectDesc: 'バランスの取れた標準的な歩兵ユニット。0.35秒の狙いから鋭い爪でひっかく。',
     icon: '🐱',
   },
   {
@@ -39,8 +41,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 5, // じっくり前進（旧10から調整）
     range: 9,
-    attackInterval: 1.0,
-    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。',
+    attackInterval: 0.8,
+    attackWindup: 0.4, // 攻撃前隙（構え0.4秒）
+    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。0.4秒の構えから力強く噛みつく。',
     icon: '🐕',
   },
   {
@@ -82,8 +85,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 7, // 突破突進（旧13から調整）
     range: 9,
-    attackInterval: 1.0,
-    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。攻撃ヒット時に相手をノックバックさせる。',
+    attackInterval: 0.9,
+    attackWindup: 0.5, // 攻撃前隙（ブルチャージタメ0.5秒）
+    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。0.5秒のタメ後に強烈なかち上げ突進で相手をノックバックさせる。',
     icon: '🐗',
   },
   {
@@ -96,8 +100,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 5, // 通常速度5（敵不在時は3倍速の15）
     range: 9, // 近接接触
-    attackInterval: 1.0,
-    effectDesc: '敵がいないレーンを走ると移動速度が3倍（超高速）になる。奇襲やスプリットプッシュに特化。',
+    attackInterval: 0.7,
+    attackWindup: 0.3, // 攻撃前隙（居合い構え0.3秒）
+    effectDesc: '敵がいないレーンを走ると移動速度が3倍（超高速）になる。0.3秒の居合いの構えから一閃で斬りつける。',
     icon: '🥷',
   },
   {
@@ -110,8 +115,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 2,
     speed: 6, // 飛行による素早い前進
     range: 9, // 近接接触
-    attackInterval: 1.0,
-    effectDesc: '相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
+    attackInterval: 0.75,
+    attackWindup: 0.35, // 攻撃前隙（急降下狙い0.35秒）
+    effectDesc: '0.35秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
     icon: '🦇',
   },
   {
@@ -124,8 +130,9 @@ export const CARD_POOL: DemoCard[] = [
     life: 8,
     speed: 3.5, // 重量級ボス
     range: 32, // 長距離火炎ブレス（旧15から大幅拡大）
-    attackInterval: 1.0,
-    effectDesc: '遠距離から強烈な火炎ブレスを浴びせ、大ダメージを与える。',
+    attackInterval: 1.2,
+    attackWindup: 0.8, // 攻撃前隙（ブレス息吹チャージ0.8秒）
+    effectDesc: '遠距離から強烈な火炎ブレスを浴びせ、大ダメージを与える。0.8秒の息吹チャージ後に炎を吐く。',
     icon: '🐉',
   },
   {

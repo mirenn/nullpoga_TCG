@@ -25,12 +25,19 @@ export const BoarSvg: React.FC<UnitSvgProps> = ({
 
   // 各パーツのCSSクラス算出
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'boar-walk-body' : isAttacking ? 'boar-attack-body' : 'boar-idle-body';
-  const frontLegLClass = isWalking ? 'boar-walk-leg-f-l' : '';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'boar-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'boar-walk-body'
+    : isCharging
+    ? 'boar-charge-body'
+    : isAttacking
+    ? 'boar-attack-body'
+    : 'boar-idle-body';
+  const frontLegLClass = isWalking ? 'boar-walk-leg-f-l' : isCharging ? 'boar-charge-leg-f' : '';
   const frontLegRClass = isWalking ? 'boar-walk-leg-f-r' : '';
   const backLegLClass = isWalking ? 'boar-walk-leg-b-l' : '';
   const backLegRClass = isWalking ? 'boar-walk-leg-b-r' : '';
@@ -113,6 +120,19 @@ export const BoarSvg: React.FC<UnitSvgProps> = ({
             {(isAttacking || isWalking) && (
               <line x1="22" y1="11" x2="26" y2="12" stroke={eyeColor} strokeWidth="1" strokeLinecap="round" />
             )}
+          </g>
+        )}
+
+        {/* === チャージエフェクト: 鼻息スチーム ＆ 足掻き砂煙 === */}
+        {isCharging && (
+          <g className="boar-charge-steam">
+            {/* 鼻先の荒い蒸気 */}
+            <circle cx="36" cy="14" r="1.5" fill="#f8fafc" opacity="0.8" />
+            <circle cx="38" cy="12" r="2" fill="#f8fafc" opacity="0.6" />
+            <path d="M34,17 Q37,14 40,11" stroke="#e2e8f0" strokeWidth="1.2" fill="none" opacity="0.7" />
+            {/* 前足の足掻き砂埃 */}
+            <circle cx="17" cy="32" r="1.8" fill="#a8a29e" opacity="0.6" />
+            <circle cx="14" cy="30" r="1.2" fill="#a8a29e" opacity="0.5" />
           </g>
         )}
 

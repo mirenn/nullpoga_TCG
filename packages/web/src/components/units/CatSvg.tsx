@@ -25,21 +25,37 @@ export const CatSvg: React.FC<UnitSvgProps> = ({
 
   // 各パーツのCSSクラス算出
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'cat-walk-body' : isAttacking ? 'cat-attack-body' : '';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'cat-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'cat-walk-body'
+    : isCharging
+    ? 'cat-charge-body'
+    : isAttacking
+    ? 'cat-attack-body'
+    : '';
   const frontLegLClass = isWalking
     ? 'cat-walk-front-l'
+    : isCharging
+    ? 'cat-charge-paw-l'
     : isAttacking
     ? 'cat-attack-paw'
     : '';
-  const frontLegRClass = isWalking ? 'cat-walk-front-r' : '';
+  const frontLegRClass = isWalking
+    ? 'cat-walk-front-r'
+    : isCharging
+    ? 'cat-charge-paw-r'
+    : '';
   const backLegLClass = isWalking ? 'cat-walk-back-l' : '';
   const backLegRClass = isWalking ? 'cat-walk-back-r' : '';
-  const tailClass =
-    state === 'idle' || isWalking ? 'cat-idle-tail' : '';
+  const tailClass = isCharging
+    ? 'cat-charge-tail'
+    : state === 'idle' || isWalking
+    ? 'cat-idle-tail'
+    : '';
 
   return (
     <svg
@@ -119,6 +135,16 @@ export const CatSvg: React.FC<UnitSvgProps> = ({
         <line x1="9.5" y1="15.8" x2="14" y2="15.5" stroke={bodyDark} strokeWidth="0.4" opacity="0.5" />
         <line x1="22" y1="14.8" x2="27" y2="14" stroke={bodyDark} strokeWidth="0.4" opacity="0.5" />
         <line x1="22" y1="15.5" x2="26.5" y2="15.8" stroke={bodyDark} strokeWidth="0.4" opacity="0.5" />
+
+        {/* === チャージエフェクト: 爪の構え光 === */}
+        {isCharging && (
+          <g className="cat-charge-spark">
+            <circle cx="14" cy="33" r="1.5" fill="#facc15" opacity="0.9" />
+            <circle cx="22" cy="33" r="1.5" fill="#facc15" opacity="0.9" />
+            <line x1="12" y1="31" x2="16" y2="35" stroke="#fef08a" strokeWidth="1" strokeLinecap="round" />
+            <line x1="20" y1="31" x2="24" y2="35" stroke="#fef08a" strokeWidth="1" strokeLinecap="round" />
+          </g>
+        )}
 
         {/* === 攻撃エフェクト: ひっかき線 === */}
         {isAttacking && (

@@ -24,13 +24,24 @@ export const MouseSvg: React.FC<UnitSvgProps> = ({
   const tail = '#f43f5e'; // ピンクのしっぽ
 
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'mouse-walk-body' : isAttacking ? 'mouse-attack-body' : 'mouse-idle-body';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'mouse-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'mouse-walk-body'
+    : isCharging
+    ? 'mouse-charge-body'
+    : isAttacking
+    ? 'mouse-attack-body'
+    : 'mouse-idle-body';
   const legClass = isWalking ? 'mouse-walk-legs' : '';
-  const tailClass = isWalking ? 'mouse-walk-tail' : 'mouse-idle-tail';
+  const tailClass = isCharging
+    ? 'mouse-charge-tail'
+    : isWalking
+    ? 'mouse-walk-tail'
+    : 'mouse-idle-tail';
 
   return (
     <svg
@@ -91,6 +102,15 @@ export const MouseSvg: React.FC<UnitSvgProps> = ({
         {/* === ひげ === */}
         <line x1="30" y1="23" x2="35" y2="25" stroke={bodyDark} strokeWidth="0.5" />
         <line x1="30" y1="24" x2="35" y2="28" stroke={bodyDark} strokeWidth="0.5" />
+
+        {/* === チャージエフェクト: 身構え集中線 === */}
+        {isCharging && (
+          <g className="mouse-charge-spark">
+            <line x1="28" y1="14" x2="26" y2="10" stroke="#facc15" strokeWidth="1" strokeLinecap="round" />
+            <line x1="32" y1="15" x2="35" y2="12" stroke="#facc15" strokeWidth="1" strokeLinecap="round" />
+            <circle cx="34" cy="22" r="1.2" fill="#facc15" opacity="0.8" />
+          </g>
+        )}
 
         {/* === 攻撃エフェクト: 噛みつき === */}
         {isAttacking && (

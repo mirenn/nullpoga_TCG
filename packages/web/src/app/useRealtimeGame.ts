@@ -969,6 +969,24 @@ export function useRealtimeGame() {
                     const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
                     flightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
                     duration = flightMs + 450;
+                  } else if (unit.cardNo === 1) {
+                    effectType = 'bite';
+                    duration = 260;
+                  } else if (unit.cardNo === 2) {
+                    effectType = 'tackle';
+                    duration = 320;
+                  } else if (unit.cardNo === 3) {
+                    effectType = 'claw';
+                    duration = 300;
+                  } else if (unit.cardNo === 7) {
+                    effectType = 'headbutt';
+                    duration = 380;
+                  } else if (unit.cardNo === 8) {
+                    effectType = 'shadow_slash';
+                    duration = 300;
+                  } else if (unit.cardNo === 9) {
+                    effectType = 'blood_bite';
+                    duration = 320;
                   }
 
                   const primaryTarget = targetEnemy as CombatTarget;
@@ -1021,63 +1039,95 @@ export function useRealtimeGame() {
           // 敵陣最奥に到達しているか？ (Playerは右端 x>=94, CPUは左端 x<=6)
           const isAtBase = unit.owner === 'player' ? x >= 94 : x <= 6;
           if (isAtBase) {
+            const windup = unit.attackWindup || 0;
+            let isCharging = unit.isCharging || false;
+            let chargeStartTime = unit.chargeStartTime;
+
             if (cooldown <= 0) {
-              cooldown = unit.attackInterval;
-              lastAttack = now;
-              const targetBaseX = unit.owner === 'player' ? 98 : 2;
-              let effectType: AttackEffectType = 'base_hit';
-              let duration = 320;
-              let baseFlightMs: number | undefined;
-
-              if (unit.cardNo === 11) {
-                effectType = 'fireball';
-                duration = 550;
-              } else if (unit.cardNo === 6) {
-                effectType = 'lightning';
-                const baseDist = Math.abs(unit.x - targetBaseX);
-                const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
-                baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
-                duration = baseFlightMs + 450;
-              }
-
-              newAttackEffects.push({
-                id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                attackerId: unit.id,
-                fromX: unit.x,
-                toX: targetBaseX,
-                lane: unit.lane ?? unit.y,
-                fromY: unit.y,
-                toY: unit.y,
-                owner: unit.owner,
-                effectType,
-                damage: attack,
-                createdAt: now,
-                duration,
-                flightDuration: baseFlightMs,
-              });
-
-              if (unit.cardNo === 6 && baseFlightMs) {
-                newPendingHits.push({
-                  id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                  targetId: unit.owner === 'player' ? 'cpu' : 'player',
-                  attackerId: unit.id,
-                  x: targetBaseX,
-                  lane: unit.lane ?? unit.y,
-                  damage: attack,
-                  stunDuration: 0,
-                  hitTime: now + baseFlightMs,
-                });
+              if (windup > 0 && !isCharging) {
+                // 拠点攻撃前隙・チャージ開始
+                isCharging = true;
+                chargeStartTime = now;
               } else {
-                if (unit.owner === 'player') {
-                  pDamageToCpu += attack;
-                } else {
-                  cpuDamageToPlayer += attack;
+                const chargeElapsed = isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
+                if (windup === 0 || chargeElapsed >= windup) {
+                  // チャージ完了 -> 拠点攻撃実行
+                  isCharging = false;
+                  chargeStartTime = undefined;
+                  cooldown = unit.attackInterval;
+                  lastAttack = now;
+                  const targetBaseX = unit.owner === 'player' ? 98 : 2;
+                  let effectType: AttackEffectType = 'base_hit';
+                  let duration = 320;
+                  let baseFlightMs: number | undefined;
+
+                  if (unit.cardNo === 11) {
+                    effectType = 'fireball';
+                    duration = 550;
+                  } else if (unit.cardNo === 6) {
+                    effectType = 'lightning';
+                    const baseDist = Math.abs(unit.x - targetBaseX);
+                    const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
+                    baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
+                    duration = baseFlightMs + 450;
+                  }
+
+                  newAttackEffects.push({
+                    id: `atk_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                    attackerId: unit.id,
+                    fromX: unit.x,
+                    toX: targetBaseX,
+                    lane: unit.lane ?? unit.y,
+                    fromY: unit.y,
+                    toY: unit.y,
+                    owner: unit.owner,
+                    effectType,
+                    damage: attack,
+                    createdAt: now,
+                    duration,
+                    flightDuration: baseFlightMs,
+                  });
+
+                  if (unit.cardNo === 6 && baseFlightMs) {
+                    newPendingHits.push({
+                      id: `lhit_base_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                      targetId: unit.owner === 'player' ? 'cpu' : 'player',
+                      attackerId: unit.id,
+                      x: targetBaseX,
+                      lane: unit.lane ?? unit.y,
+                      damage: attack,
+                      stunDuration: 0,
+                      hitTime: now + baseFlightMs,
+                    });
+                  } else {
+                    if (unit.owner === 'player') {
+                      pDamageToCpu += attack;
+                    } else {
+                      cpuDamageToPlayer += attack;
+                    }
+                  }
+
+                  return {
+                    ...unit,
+                    hp: 0,
+                    attackCooldown: cooldown,
+                    lastAttackEffectTime: lastAttack,
+                    isCharging: false,
+                    chargeStartTime: undefined,
+                  };
                 }
               }
-
-              return { ...unit, hp: 0, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
+            } else {
+              isCharging = false;
+              chargeStartTime = undefined;
             }
-            return { ...unit, attackCooldown: cooldown, lastAttackEffectTime: lastAttack };
+            return {
+              ...unit,
+              attackCooldown: cooldown,
+              lastAttackEffectTime: lastAttack,
+              isCharging,
+              chargeStartTime,
+            };
           }
 
           // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がいない場合は移動速度が3倍（超高速疾走）

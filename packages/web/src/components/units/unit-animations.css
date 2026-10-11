@@ -108,15 +108,61 @@
   animation: cat-tail-sway 2s ease-in-out infinite;
 }
 
+/* チャージ (Windup: 0.35s): 体を低く沈め、お尻・尻尾を小刻みにフリフリ */
+@keyframes cat-charge-crouch {
+  0%   { transform: translateY(0) scale(1, 1); }
+  50%  { transform: translateY(1.5px) scale(1.05, 0.92); }
+  100% { transform: translateY(2px) scale(1.08, 0.88); }
+}
+
+@keyframes cat-charge-tail-wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  25% { transform: rotate(18deg); }
+  75% { transform: rotate(-18deg); }
+}
+
+@keyframes cat-charge-paw-tuck {
+  0%   { transform: translateY(0); }
+  100% { transform: translateY(-1.5px) scaleY(0.9); }
+}
+
+@keyframes cat-charge-sparkle {
+  0%   { opacity: 0; transform: scale(0.6); }
+  50%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.8; transform: scale(1); }
+}
+
+.cat-charge-body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: cat-charge-crouch 0.35s ease-out forwards;
+}
+
+.cat-charge-tail {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+  animation: cat-charge-tail-wiggle 0.12s ease-in-out infinite;
+}
+
+.cat-charge-paw-l, .cat-charge-paw-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: cat-charge-paw-tuck 0.35s ease-out forwards;
+}
+
+.cat-charge-spark {
+  animation: cat-charge-sparkle 0.35s ease-out forwards;
+}
+
 /* 攻撃クラス */
 .cat-attack-paw {
   transform-box: fill-box;
   transform-origin: top center;
-  animation: cat-paw-slash 0.24s ease-out forwards;
+  animation: cat-paw-slash 0.28s ease-out forwards;
 }
 
 .cat-attack-body {
-  animation: cat-attack-lunge 0.24s ease-out forwards;
+  animation: cat-attack-lunge 0.28s ease-out forwards;
 }
 
 /* ─── 電気クラゲ (Jellyfish) ─── */
@@ -323,10 +369,57 @@
   animation: boar-leg-swing 0.2s ease-in-out infinite alternate;
 }
 
+/* チャージ (Windup: 0.5s): 頭を低く下げ、前脚で地面を掻き鼻息スチーム噴出 */
+@keyframes boar-charge-windup {
+  0%   { transform: translateY(0) rotate(0deg); }
+  30%  { transform: translateY(2px) rotate(-6deg) scale(0.98); }
+  70%  { transform: translateY(3px) rotate(-10deg) scale(0.95); }
+  100% { transform: translateY(3.5px) rotate(-12deg) scale(0.95); }
+}
+
+@keyframes boar-charge-scratch {
+  0%   { transform: rotate(0deg) translateY(0); }
+  50%  { transform: rotate(-25deg) translateY(-2px); }
+  100% { transform: rotate(20deg) translateY(1px); }
+}
+
+@keyframes boar-charge-steam-puff {
+  0%   { opacity: 0; transform: translate(0, 0) scale(0.5); }
+  40%  { opacity: 0.9; transform: translate(3px, -2px) scale(1.1); }
+  80%  { opacity: 0.6; transform: translate(6px, -4px) scale(1.3); }
+  100% { opacity: 0; transform: translate(8px, -6px) scale(1.5); }
+}
+
+@keyframes boar-charge-vibrate {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.8px, 0.5px); }
+  75% { transform: translate(0.8px, -0.5px); }
+}
+
+.boar-charging-root {
+  animation: boar-charge-vibrate 0.08s ease-in-out infinite;
+}
+
+.boar-charge-body {
+  transform-box: fill-box;
+  transform-origin: center right;
+  animation: boar-charge-windup 0.5s ease-out forwards;
+}
+
+.boar-charge-leg-f {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: boar-charge-scratch 0.14s ease-in-out infinite alternate;
+}
+
+.boar-charge-steam {
+  animation: boar-charge-steam-puff 0.5s ease-out infinite;
+}
+
 .boar-attack-body {
   transform-box: fill-box;
   transform-origin: center right;
-  animation: boar-attack-headbutt 0.4s ease-out forwards;
+  animation: boar-attack-headbutt 0.38s ease-out forwards;
 }
 
 .boar-stunned-eye {
@@ -357,9 +450,52 @@
   0%, 100% { transform: rotate(0deg); }
   50% { transform: rotate(15deg); }
 }
+/* チャージ (Windup: 0.25s): 体をギュッと縮めてバネのようにタメ */
+@keyframes mouse-charge-coil {
+  0%   { transform: scale(1, 1) translateX(0); }
+  50%  { transform: scale(0.88, 1.1) translateX(-1px); }
+  100% { transform: scale(0.82, 1.15) translateX(-2px); }
+}
+
+@keyframes mouse-charge-tail-stiff {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-30deg) translateY(-2px); }
+}
+
+@keyframes mouse-charge-jitter {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.5px, 0.4px); }
+  75% { transform: translate(0.5px, -0.4px); }
+}
+
+@keyframes mouse-charge-spark-pop {
+  0%   { opacity: 0; transform: scale(0.5); }
+  50%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.9; transform: scale(1); }
+}
+
+.mouse-charging-root {
+  animation: mouse-charge-jitter 0.06s ease-in-out infinite;
+}
+
+.mouse-charge-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mouse-charge-coil 0.25s ease-out forwards;
+}
+
+.mouse-charge-tail {
+  transform-origin: 5px 17px;
+  animation: mouse-charge-tail-stiff 0.25s ease-out forwards;
+}
+
+.mouse-charge-spark {
+  animation: mouse-charge-spark-pop 0.25s ease-out forwards;
+}
+
 @keyframes mouse-attack-body {
-  0% { transform: translateX(0) scale(1); }
-  30% { transform: translateX(4px) scale(1.1); }
+  0%   { transform: translateX(0) scale(1); }
+  35%  { transform: translateX(6px) scale(1.15); }
   100% { transform: translateX(0) scale(1); }
 }
 .mouse-idle-body { animation: mouse-idle-body 0.8s ease-in-out infinite; }
@@ -367,7 +503,7 @@
 .mouse-walk-body { transform-box: fill-box; transform-origin: center; animation: mouse-walk-body 0.15s ease-in-out infinite; }
 .mouse-walk-legs { transform-box: fill-box; transform-origin: top center; animation: mouse-walk-legs 0.15s linear infinite alternate; }
 .mouse-walk-tail { transform-origin: 5px 17px; animation: mouse-walk-tail 0.15s ease-in-out infinite alternate; }
-.mouse-attack-body { transform-box: fill-box; transform-origin: center; animation: mouse-attack-body 0.2s ease-out forwards; }
+.mouse-attack-body { transform-box: fill-box; transform-origin: center; animation: mouse-attack-body 0.25s ease-out forwards; }
 
 /* ─── 柴犬 (Shiba) ─── */
 @keyframes shiba-idle-body {
@@ -399,6 +535,61 @@
   30% { transform: translateY(-4px) rotate(-10deg); }
   100% { transform: translateY(0) rotate(0deg); }
 }
+/* チャージ (Windup: 0.4s): 前脚を踏ん張り身を沈め、唸り声を上げる威嚇の構え */
+@keyframes shiba-charge-crouch {
+  0%   { transform: translateY(0) rotate(0deg); }
+  40%  { transform: translateY(2px) rotate(4deg) scale(1.02, 0.95); }
+  100% { transform: translateY(2.5px) rotate(6deg) scale(1.04, 0.92); }
+}
+
+@keyframes shiba-charge-tail-stiff {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-20deg) translateY(-2px); }
+}
+
+@keyframes shiba-charge-leg-brace {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-15deg); }
+}
+
+@keyframes shiba-charge-rumble {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.6px, 0.4px); }
+  75% { transform: translate(0.6px, -0.4px); }
+}
+
+@keyframes shiba-charge-spark-pop {
+  0%   { opacity: 0; transform: scale(0.6); }
+  50%  { opacity: 1; transform: scale(1.2); }
+  100% { opacity: 0.85; transform: scale(1); }
+}
+
+.shiba-charging-root {
+  animation: shiba-charge-rumble 0.08s ease-in-out infinite;
+}
+
+.shiba-charge-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: shiba-charge-crouch 0.4s ease-out forwards;
+}
+
+.shiba-charge-leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: shiba-charge-leg-brace 0.4s ease-out forwards;
+}
+
+.shiba-charge-tail {
+  transform-box: fill-box;
+  transform-origin: 8px 14px;
+  animation: shiba-charge-tail-stiff 0.4s ease-out forwards;
+}
+
+.shiba-charge-spark {
+  animation: shiba-charge-spark-pop 0.4s ease-out forwards;
+}
+
 .shiba-idle-body { animation: shiba-idle-body 1s ease-in-out infinite; }
 .shiba-idle-tail { animation: shiba-idle-tail 0.4s ease-in-out infinite alternate; }
 .shiba-walk-body { transform-box: fill-box; transform-origin: center; animation: shiba-walk-body 0.3s ease-in-out infinite; }
@@ -407,7 +598,7 @@
 .shiba-walk-leg-b-l { animation: shiba-walk-leg-b 0.3s ease-in-out infinite alternate-reverse; }
 .shiba-walk-leg-b-r { animation: shiba-walk-leg-b 0.3s ease-in-out infinite alternate; }
 .shiba-walk-tail { animation: shiba-walk-tail 0.25s ease-in-out infinite alternate; }
-.shiba-attack-body { transform-box: fill-box; transform-origin: center; animation: shiba-attack-body 0.3s ease-out forwards; }
+.shiba-attack-body { transform-box: fill-box; transform-origin: center; animation: shiba-attack-body 0.32s ease-out forwards; }
 
 /* ─── 亀吉 (Turtle) ─── */
 @keyframes turtle-idle-body {
@@ -482,6 +673,58 @@
   80% { transform: scaleX(1); opacity: 1; }
   100% { transform: scaleX(1.2); opacity: 0; }
 }
+/* チャージ (Windup: 0.8s): 首を後ろに反らし、胸を大きく膨らませて火炎球を集束 */
+@keyframes dragon-charge-inhale {
+  0%   { transform: translateY(0) rotate(0deg); }
+  40%  { transform: translateY(-2px) rotate(-8deg) scale(1.05, 1.02); }
+  80%  { transform: translateY(-3px) rotate(-14deg) scale(1.1, 1.06); }
+  100% { transform: translateY(-3px) rotate(-15deg) scale(1.12, 1.08); }
+}
+
+@keyframes dragon-charge-wing-spread {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-25deg) scale(1.1); }
+}
+
+@keyframes dragon-charge-fire-spark {
+  0%   { opacity: 0; transform: scale(0.3); }
+  40%  { opacity: 0.8; transform: scale(0.9); }
+  80%  { opacity: 1; transform: scale(1.3); }
+  100% { opacity: 1; transform: scale(1.4); filter: drop-shadow(0 0 6px #ea580c); }
+}
+
+@keyframes dragon-charge-tremor {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-1px, 0.6px); }
+  75% { transform: translate(1px, -0.6px); }
+}
+
+.dragon-charging-root {
+  animation: dragon-charge-tremor 0.1s ease-in-out infinite;
+}
+
+.dragon-charge-body {
+  transform-box: fill-box;
+  transform-origin: center left;
+  animation: dragon-charge-inhale 0.8s ease-out forwards;
+}
+
+.dragon-charge-wing-l {
+  transform-box: fill-box;
+  transform-origin: 14px 16px;
+  animation: dragon-charge-wing-spread 0.8s ease-out forwards;
+}
+
+.dragon-charge-wing-r {
+  transform-box: fill-box;
+  transform-origin: 16px 14px;
+  animation: dragon-charge-wing-spread 0.8s ease-out forwards;
+}
+
+.dragon-charge-fire {
+  animation: dragon-charge-fire-spark 0.8s ease-out forwards;
+}
+
 .dragon-idle-body { animation: dragon-idle-body 1.5s ease-in-out infinite; }
 .dragon-idle-wing-l { animation: dragon-idle-wing 1.5s ease-in-out infinite alternate; }
 .dragon-idle-wing-r { animation: dragon-idle-wing 1.5s ease-in-out infinite alternate-reverse; }
@@ -490,7 +733,7 @@
 .dragon-walk-wing-r { animation: dragon-walk-wing 0.4s ease-in-out infinite alternate-reverse; }
 .dragon-walk-leg-l { animation: dragon-walk-leg 0.3s ease-in-out infinite alternate; }
 .dragon-walk-leg-r { animation: dragon-walk-leg 0.3s ease-in-out infinite alternate-reverse; }
-.dragon-attack-body { transform-box: fill-box; transform-origin: center left; animation: dragon-attack-body 0.5s ease-out forwards; }
+.dragon-attack-body { transform-box: fill-box; transform-origin: center left; animation: dragon-attack-body 0.48s ease-out forwards; }
 
 /* ─── 吸血コウモリ (Vampire Bat) ─── */
 @keyframes bat-idle-body {
@@ -558,11 +801,172 @@
   transform-origin: 10% 50%;
   animation: bat-walk-wing-r 0.3s ease-in-out infinite;
 }
+/* チャージ (Windup: 0.35s): 翼を高く掲げて急降下の狙いを定め、吸血オーラが脈動 */
+@keyframes bat-charge-hover {
+  0%   { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(-3px) scale(1.06); }
+  100% { transform: translateY(-4px) scale(1.1); }
+}
+
+@keyframes bat-charge-wing-raise-l {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(45deg) scaleY(1.2); }
+}
+
+@keyframes bat-charge-wing-raise-r {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(-45deg) scaleY(1.2); }
+}
+
+@keyframes bat-charge-aura-spin {
+  0%   { transform: scale(0.7) rotate(0deg); opacity: 0; }
+  50%  { transform: scale(1.1) rotate(180deg); opacity: 0.9; }
+  100% { transform: scale(1.2) rotate(360deg); opacity: 0.7; }
+}
+
+.bat-charge-body {
+  animation: bat-charge-hover 0.35s ease-out forwards;
+}
+
+.bat-charge-wing-l {
+  transform-box: fill-box;
+  transform-origin: 90% 50%;
+  animation: bat-charge-wing-raise-l 0.35s ease-out forwards;
+}
+
+.bat-charge-wing-r {
+  transform-box: fill-box;
+  transform-origin: 10% 50%;
+  animation: bat-charge-wing-raise-r 0.35s ease-out forwards;
+}
+
+.bat-charge-aura {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: bat-charge-aura-spin 0.35s ease-out infinite;
+}
+
 .bat-attack-body {
-  animation: bat-attack-body 0.24s ease-out forwards;
+  animation: bat-attack-body 0.32s ease-out forwards;
 }
 .bat-attack-bite {
   transform-box: fill-box;
   transform-origin: center;
-  animation: bat-attack-bite 0.24s ease-out forwards;
+  animation: bat-attack-bite 0.32s ease-out forwards;
+}
+
+/* ─── 忍びアサシン (Assassin) ─── */
+
+/* idle: 静かな佇まい、息づかい */
+@keyframes assassin-idle-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-0.8px); }
+}
+
+/* idle: マフラーのゆらめき */
+@keyframes assassin-scarf-flutter {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-8deg) scaleY(1.1); }
+}
+
+/* walk: 超低空ニンジャ走り */
+@keyframes assassin-dash-run {
+  0%, 100% { transform: translateY(0) rotate(8deg); }
+  50% { transform: translateY(-1.5px) rotate(12deg); }
+}
+
+@keyframes assassin-leg-dash-l {
+  0%   { transform: rotate(35deg); }
+  100% { transform: rotate(-35deg); }
+}
+
+@keyframes assassin-leg-dash-r {
+  0%   { transform: rotate(-35deg); }
+  100% { transform: rotate(35deg); }
+}
+
+/* チャージ (Windup: 0.3s): 刀の柄に手を当て低く身構える居合いのタメ */
+@keyframes assassin-charge-iaido {
+  0%   { transform: translateY(0) rotate(0deg); }
+  50%  { transform: translateY(2px) rotate(-8deg) scale(0.96); }
+  100% { transform: translateY(3px) rotate(-12deg) scale(0.94); }
+}
+
+@keyframes assassin-charge-aura-pulse {
+  0%   { opacity: 0; transform: scale(0.6); }
+  50%  { opacity: 0.9; transform: scale(1.15); }
+  100% { opacity: 0.7; transform: scale(1.3); }
+}
+
+@keyframes assassin-charge-vibrate {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-0.5px, 0.4px); }
+  75% { transform: translate(0.5px, -0.4px); }
+}
+
+/* attack: 居合い一閃の高速抜刀斬り */
+@keyframes assassin-attack-lunge {
+  0%   { transform: translateX(0) rotate(-10deg); }
+  30%  { transform: translateX(8px) rotate(5deg) scale(1.15); }
+  100% { transform: translateX(0) rotate(0deg) scale(1); }
+}
+
+@keyframes assassin-slash-dash {
+  0%   { opacity: 0; transform: scaleX(0); }
+  35%  { opacity: 1; transform: scaleX(1.3); }
+  100% { opacity: 0; transform: scaleX(1); }
+}
+
+.assassin-idle-body {
+  animation: assassin-idle-bob 1.2s ease-in-out infinite;
+}
+
+.assassin-idle-scarf {
+  animation: assassin-scarf-flutter 1.4s ease-in-out infinite;
+}
+
+.assassin-walk-body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: assassin-dash-run 0.2s ease-in-out infinite;
+}
+
+.assassin-walk-scarf {
+  animation: assassin-scarf-flutter 0.3s ease-in-out infinite;
+}
+
+.assassin-walk-leg-l {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: assassin-leg-dash-l 0.18s ease-in-out infinite alternate;
+}
+
+.assassin-walk-leg-r {
+  transform-box: fill-box;
+  transform-origin: top center;
+  animation: assassin-leg-dash-r 0.18s ease-in-out infinite alternate;
+}
+
+.assassin-charging-root {
+  animation: assassin-charge-vibrate 0.06s ease-in-out infinite;
+}
+
+.assassin-charge-body {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+  animation: assassin-charge-iaido 0.3s ease-out forwards;
+}
+
+.assassin-charge-aura {
+  animation: assassin-charge-aura-pulse 0.3s ease-out infinite;
+}
+
+.assassin-attack-body {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: assassin-attack-lunge 0.32s ease-out forwards;
+}
+
+.assassin-attack-slash {
+  animation: assassin-slash-dash 0.32s ease-out forwards;
 }

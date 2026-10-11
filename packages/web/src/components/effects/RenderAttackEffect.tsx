@@ -151,7 +151,116 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         </>
       )}
 
-      {/* 3. 近接攻撃（斬撃・爪痕・打撃） */}
+      {/* 3. キャラクター固有の近接攻撃エフェクト */}
+      {/* ネコ: 猫パンチ・鋭い爪痕スワイプ */}
+      {effect.effectType === 'claw' && (
+        <div
+          className="melee-claw-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '32px', display: 'block', filter: 'drop-shadow(0 0 10px #f59e0b)' }}>
+            🐾⚡
+          </span>
+        </div>
+      )}
+
+      {/* ネズミ: 飛びつき素早い噛みつきバイト */}
+      {effect.effectType === 'bite' && (
+        <div
+          className="melee-bite-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '28px', display: 'block', filter: 'drop-shadow(0 0 8px #facc15)' }}>
+            ✨🦷
+          </span>
+        </div>
+      )}
+
+      {/* 柴犬: 突進バイト＆牙タックル */}
+      {effect.effectType === 'tackle' && (
+        <div
+          className="melee-tackle-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '30px', display: 'block', filter: 'drop-shadow(0 0 10px #ea580c)' }}>
+            💥🐕
+          </span>
+        </div>
+      )}
+
+      {/* イノシシ: 猛烈かち上げ土煙＆ヘッドバット */}
+      {effect.effectType === 'headbutt' && (
+        <div
+          className="melee-headbutt-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '34px', display: 'block', filter: 'drop-shadow(0 0 14px #ea580c)' }}>
+            💥🐗
+          </span>
+        </div>
+      )}
+
+      {/* 忍びアサシン: 居合い一閃抜刀斬り光 */}
+      {effect.effectType === 'shadow_slash' && (
+        <div
+          className="melee-shadow-slash-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '32px', display: 'block', filter: 'drop-shadow(0 0 14px #00f0ff)' }}>
+            ⚡🗡️
+          </span>
+        </div>
+      )}
+
+      {/* 吸血コウモリ: 牙の吸血バイト＆ブラッドスプラッシュ */}
+      {effect.effectType === 'blood_bite' && (
+        <div
+          className="melee-blood-bite-effect"
+          style={{
+            position: 'absolute',
+            top: `${effect.toY}%`,
+            left: targetLeft,
+            pointerEvents: 'none',
+            zIndex: 36,
+          }}
+        >
+          <span style={{ fontSize: '30px', display: 'block', filter: 'drop-shadow(0 0 12px #dc2626)' }}>
+            🩸🦇
+          </span>
+        </div>
+      )}
+
+      {/* 共通近接スラッシュ（フォールバック） */}
       {effect.effectType === 'slash' && (
         <div
           className="melee-slash-effect"

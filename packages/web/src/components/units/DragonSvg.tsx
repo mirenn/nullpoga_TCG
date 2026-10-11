@@ -23,13 +23,28 @@ export const DragonSvg: React.FC<UnitSvgProps> = ({
   const eye = '#facc15'; // 光る黄色い目
 
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'dragon-walk-body' : isAttacking ? 'dragon-attack-body' : 'dragon-idle-body';
-  const wingLClass = isWalking ? 'dragon-walk-wing-l' : 'dragon-idle-wing-l';
-  const wingRClass = isWalking ? 'dragon-walk-wing-r' : 'dragon-idle-wing-r';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'dragon-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'dragon-walk-body'
+    : isCharging
+    ? 'dragon-charge-body'
+    : isAttacking
+    ? 'dragon-attack-body'
+    : 'dragon-idle-body';
+  const wingLClass = isCharging
+    ? 'dragon-charge-wing-l'
+    : isWalking
+    ? 'dragon-walk-wing-l'
+    : 'dragon-idle-wing-l';
+  const wingRClass = isCharging
+    ? 'dragon-charge-wing-r'
+    : isWalking
+    ? 'dragon-walk-wing-r'
+    : 'dragon-idle-wing-r';
   const legLClass = isWalking ? 'dragon-walk-leg-l' : '';
   const legRClass = isWalking ? 'dragon-walk-leg-r' : '';
 
@@ -106,6 +121,16 @@ export const DragonSvg: React.FC<UnitSvgProps> = ({
            <path d="M28,7 L30,9 M30,7 L28,9" stroke="#111" strokeWidth="0.8" strokeLinecap="round" />
         ) : (
            <polygon points="29,7 31,7 30,8" fill={eye} />
+        )}
+
+        {/* === チャージエフェクト: 口元の火炎凝縮 ＆ 息吹タメ === */}
+        {isCharging && (
+          <g className="dragon-charge-fire">
+            <circle cx="33" cy="14" r="3" fill="#ea580c" opacity="0.8" />
+            <circle cx="33" cy="14" r="1.8" fill="#facc15" opacity="0.95" />
+            <path d="M37,12 L34,14 L36,16" stroke="#f97316" strokeWidth="1" fill="none" />
+            <circle cx="21" cy="22" r="7" fill="#f97316" opacity="0.35" /> {/* 腹部の赤熱膨張 */}
+          </g>
         )}
 
         {/* === 攻撃エフェクト: 火炎ブレス === */}

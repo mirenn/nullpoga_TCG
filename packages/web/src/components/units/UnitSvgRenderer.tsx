@@ -7,25 +7,12 @@ import { CatSvg } from './CatSvg';
 import { TurtleSvg } from './TurtleSvg';
 import { JellyfishSvg } from './JellyfishSvg';
 import { BoarSvg } from './BoarSvg';
+import { AssassinSvg } from './AssassinSvg';
 import { DragonSvg } from './DragonSvg';
 import { BatSvg } from './BatSvg';
 import './unit-animations.css';
 
-/**
- * Unit の状態から UnitAnimationState を算出する
- */
-export function deriveAnimationState(unit: Unit): UnitAnimationState {
-  if (unit.isStunned) return 'stunned';
-  if (unit.isCharging) return 'charging';
-  if (
-    unit.lastAttackEffectTime &&
-    Date.now() - unit.lastAttackEffectTime < 240
-  ) {
-    return 'attacking';
-  }
-  if (unit.speed > 0) return 'walking';
-  return 'idle';
-}
+export { getAttackAnimDuration, deriveAnimationState } from './animationLogic';
 
 /**
  * cardNo に対応する SVG コンポーネントを返すディスパッチャ。
@@ -48,6 +35,8 @@ export function UnitSvgRenderer({
       return <JellyfishSvg {...svgProps} />;
     case 7:
       return <BoarSvg {...svgProps} />;
+    case 8:
+      return <AssassinSvg {...svgProps} />;
     case 9:
       return <BatSvg {...svgProps} />;
     case 11:

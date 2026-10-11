@@ -51,10 +51,18 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 
   const interval = unit.attackInterval || 1.0;
   const cooldown = Math.max(0, unit.attackCooldown || 0);
-  // 0 (攻撃直後) 〜 1 (Ready)
-  const progress = interval > 0 ? Math.min(1, Math.max(0, 1 - cooldown / interval)) : 1;
-  const isReady = progress >= 0.999;
   const isCharging = Boolean(unit.isCharging);
+
+  // チャージ中は前隙（タメ時間）の進行度を0〜100%で表現し、それ以外はクールダウン復帰度
+  let progress = 1;
+  if (isCharging && unit.chargeStartTime && unit.attackWindup && unit.attackWindup > 0) {
+    const elapsed = (Date.now() - unit.chargeStartTime) / 1000;
+    progress = Math.min(1, Math.max(0, elapsed / unit.attackWindup));
+  } else if (interval > 0) {
+    progress = Math.min(1, Math.max(0, 1 - cooldown / interval));
+  }
+
+  const isReady = !isCharging && progress >= 0.999;
 
   // トラック（未チャージ・下地の溝）の色: 極めて薄い暗色にしてゲージの欠け（未チャージ部分）を明確にする
   let trackColor = 'rgba(0, 0, 0, 0.45)';
@@ -147,7 +155,10 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
   const hasBatBuff = unit.cardNo === 9 && (unit.killCount || 0) > 0; // 吸血コウモリ撃破バフ
   const isRecentKill = Boolean(unit.lastKillTime && Date.now() - unit.lastKillTime < 800);
-  const isAttacking = unit.lastAttackEffectTime && (Date.now() - unit.lastAttackEffectTime < 240);
+
+  // SVG アニメーション状態を算出
+  const animState = deriveAnimationState(unit);
+  const isAttacking = animState === 'attacking';
   const attackClass = isAttacking
     ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
     : '';
@@ -157,8 +168,6 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
   const cooldown = Math.max(0, unit.attackCooldown || 0);
   const isReady = interval > 0 ? (cooldown / interval) <= 0.001 : true;
 
-  // SVG アニメーション状態を算出
-  const animState = deriveAnimationState(unit);
   const svgElement = UnitSvgRenderer({
     cardNo: unit.cardNo,
     state: animState,

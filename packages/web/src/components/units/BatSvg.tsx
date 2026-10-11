@@ -25,13 +25,32 @@ export const BatSvg: React.FC<UnitSvgProps> = ({
   const fangColor = '#ffffff';
 
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'bat-walk-body' : isAttacking ? 'bat-attack-body' : 'bat-idle-body';
-  const wingLClass = isWalking ? 'bat-walk-wing-l' : isAttacking ? 'bat-attack-bite' : 'bat-idle-wing-l';
-  const wingRClass = isWalking ? 'bat-walk-wing-r' : isAttacking ? 'bat-attack-bite' : 'bat-idle-wing-r';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'bat-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'bat-walk-body'
+    : isCharging
+    ? 'bat-charge-body'
+    : isAttacking
+    ? 'bat-attack-body'
+    : 'bat-idle-body';
+  const wingLClass = isCharging
+    ? 'bat-charge-wing-l'
+    : isAttacking
+    ? 'bat-attack-bite'
+    : isWalking
+    ? 'bat-walk-wing-l'
+    : 'bat-idle-wing-l';
+  const wingRClass = isCharging
+    ? 'bat-charge-wing-r'
+    : isAttacking
+    ? 'bat-attack-bite'
+    : isWalking
+    ? 'bat-walk-wing-r'
+    : 'bat-idle-wing-r';
   const biteClass = isAttacking ? 'bat-attack-bite' : '';
 
   return (
@@ -122,6 +141,15 @@ export const BatSvg: React.FC<UnitSvgProps> = ({
           <polygon points="16.6,16.2 17.2,18.2 17.6,16.2" fill={fangColor} />
           <polygon points="18.4,16.2 18.8,18.2 19.4,16.2" fill={fangColor} />
         </g>
+
+        {/* === チャージエフェクト: 吸血ダークオーラ === */}
+        {isCharging && (
+          <g className="bat-charge-aura">
+            <circle cx="18" cy="18" r="14" fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" opacity="0.75" />
+            <circle cx="18" cy="18" r="10" fill="none" stroke="#a855f7" strokeWidth="1" opacity="0.6" />
+            <polygon points="17,8 19,8 18,6" fill="#ef4444" opacity="0.8" />
+          </g>
+        )}
       </g>
     </svg>
   );

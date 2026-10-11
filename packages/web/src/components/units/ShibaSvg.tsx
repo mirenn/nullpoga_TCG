@@ -24,16 +24,27 @@ export const ShibaSvg: React.FC<UnitSvgProps> = ({
   const eye = '#0f172a';
 
   const isWalking = state === 'walking';
+  const isCharging = state === 'charging';
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = isStunned ? 'unit-svg-stunned' : '';
-  const bodyClass = isWalking ? 'shiba-walk-body' : isAttacking ? 'shiba-attack-body' : 'shiba-idle-body';
-  const frontLegLClass = isWalking ? 'shiba-walk-leg-f-l' : '';
+  const rootClass = isStunned ? 'unit-svg-stunned' : isCharging ? 'shiba-charging-root' : '';
+  const bodyClass = isWalking
+    ? 'shiba-walk-body'
+    : isCharging
+    ? 'shiba-charge-body'
+    : isAttacking
+    ? 'shiba-attack-body'
+    : 'shiba-idle-body';
+  const frontLegLClass = isWalking ? 'shiba-walk-leg-f-l' : isCharging ? 'shiba-charge-leg' : '';
   const frontLegRClass = isWalking ? 'shiba-walk-leg-f-r' : '';
   const backLegLClass = isWalking ? 'shiba-walk-leg-b-l' : '';
   const backLegRClass = isWalking ? 'shiba-walk-leg-b-r' : '';
-  const tailClass = isWalking ? 'shiba-walk-tail' : 'shiba-idle-tail';
+  const tailClass = isCharging
+    ? 'shiba-charge-tail'
+    : isWalking
+    ? 'shiba-walk-tail'
+    : 'shiba-idle-tail';
 
   return (
     <svg
@@ -115,6 +126,14 @@ export const ShibaSvg: React.FC<UnitSvgProps> = ({
 
         {/* === 口 === */}
         <path d="M28,17 Q30,19 31,17" stroke={nose} strokeWidth="0.5" fill="none" />
+
+        {/* === チャージエフェクト: 威嚇・構え気迫 === */}
+        {isCharging && (
+          <g className="shiba-charge-spark">
+            <path d="M22,6 L20,3 M26,5 L26,2 M30,6 L32,3" stroke="#f59e0b" strokeWidth="1" strokeLinecap="round" />
+            <circle cx="30" cy="19" r="1.5" fill="#facc15" opacity="0.85" />
+          </g>
+        )}
 
         {/* === 攻撃エフェクト: 飛びかかり衝撃 === */}
         {isAttacking && (
