@@ -9,6 +9,7 @@ import {
   MOVE_SPEED_SCALE,
   PLAY_CARD_COOLDOWN_MS,
   SPAWN_MIN_SPACE,
+  ALLY_MIN_GAP,
   createDefault15Deck,
   shuffleCards,
   DeckState,
@@ -1140,7 +1141,7 @@ export function useRealtimeGame() {
               maxXMove = Math.min(maxXMove, enemyWall);
             }
             if (targetAlly) {
-              const allyWall = (targetAlly as Unit).x - 8.0;
+              const allyWall = (targetAlly as Unit).x - ALLY_MIN_GAP;
               maxXMove = Math.min(maxXMove, allyWall);
             }
             x = Math.min(95, maxXMove);
@@ -1151,7 +1152,7 @@ export function useRealtimeGame() {
               maxXMove = Math.max(maxXMove, enemyWall);
             }
             if (targetAlly) {
-              const allyWall = (targetAlly as Unit).x + 8.0;
+              const allyWall = (targetAlly as Unit).x + ALLY_MIN_GAP;
               maxXMove = Math.max(maxXMove, allyWall);
             }
             x = Math.max(5, maxXMove);

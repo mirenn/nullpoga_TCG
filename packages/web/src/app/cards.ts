@@ -184,6 +184,8 @@ export const DEFAULT_MANA_REGEN_PER_SEC = 0.40; // 推奨標準：約2.5秒で1�
 export const MOVE_SPEED_SCALE = 0.375; // ユニット移動速度の全体スケーラー（移動所要時間を倍・旧0.75から半減）
 export const PLAY_CARD_COOLDOWN_MS = 120; // カード使用時の誤爆・連打防止デバウンス（約0.12秒）
 export const SPAWN_MIN_SPACE = 8.0; // 召喚時の最小専有空間（%単位：味方の前進待ちスペース）
+// 出撃後の味方同士の最小間隔: 出撃時の必要スペースの半分まで詰められる（0.5重なり）
+export const ALLY_MIN_GAP = SPAWN_MIN_SPACE * 0.5;
 
 export const createDefault15Deck = (): DemoCard[] => {
   const cardMap: Record<string, DemoCard> = {};
