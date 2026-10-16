@@ -54,6 +54,7 @@ export interface Unit {
   lastAttackEffectTime?: number; // エフェクト描画用
   isCounterDeploy?: boolean; // カウンターデプロイバフ適用中
   comboCount?: number; // コンボボーナス段階 (2=2コンボ, 3=3コンボ)
+  isHolding?: boolean; // クリックで待機中（移動のみ停止。射程内なら攻撃は継続）
   isSprinting?: boolean; // 前方敵不在で疾走中（3倍速）
   killCount?: number; // 敵ユニット撃破数（吸血コウモリ等）
   lastKillTime?: number; // 撃破・ステータス向上エフェクト描画用

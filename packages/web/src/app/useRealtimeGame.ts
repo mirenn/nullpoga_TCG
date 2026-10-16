@@ -1214,12 +1214,16 @@ export function useRealtimeGame() {
           }
 
           // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がおらず、かつカメラで看破（isSpotted）されていない場合は移動速度が3倍（超高速疾走）
-          const isSprinting = unit.cardNo === 8 && enemiesInRange.length === 0 && !unit.isSpotted;
+          const isHolding = unit.owner === 'player' && Boolean(unit.isHolding);
+          const isSprinting =
+            !isHolding && unit.cardNo === 8 && enemiesInRange.length === 0 && !unit.isSpotted;
 
           // 移動計算 (X軸方向)
           const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
-          const moveDelta = currentSpeed * MOVE_SPEED_SCALE * dt;
-          if (unit.owner === 'player') {
+          const moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
+          if (isHolding) {
+            // 待機中は移動しない
+          } else if (unit.owner === 'player') {
             let maxXMove = x + moveDelta;
             if (blockingObstacle) {
               const enemyWall = (blockingObstacle as CombatTarget).x - 7.5;
@@ -1413,6 +1417,15 @@ export function useRealtimeGame() {
     return () => cancelAnimationFrame(animId);
   }, [handleCpuAi]);
 
+  // ユニットのクリックによる待機／再前進トグル（プレイヤーユニットのみ）
+  const toggleUnitHold = useCallback((unitId: string) => {
+    const next = unitsRef.current.map((u) =>
+      u.id === unitId && u.owner === 'player' ? { ...u, isHolding: !u.isHolding } : u
+    );
+    unitsRef.current = next;
+    setUnits(next);
+  }, []);
+
   // リセット
   const resetGame = useCallback(() => {
     setPlayerHp(INITIAL_LIFE);
@@ -1482,6 +1495,7 @@ export function useRealtimeGame() {
     playCardAtX,
     playCardOnLane,
     resetGame,
+    toggleUnitHold,
     comboCount: playerCombo.count,
     lastComboTime: playerCombo.lastTime,
   };

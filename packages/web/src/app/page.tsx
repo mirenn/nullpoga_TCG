@@ -48,6 +48,7 @@ export default function RealtimeDemoPage() {
     playCardAtX,
     playCardOnLane,
     resetGame,
+    toggleUnitHold,
     comboCount,
     lastComboTime,
   } = useRealtimeGame();
@@ -359,6 +360,7 @@ export default function RealtimeDemoPage() {
             playCardAt={playCardAt}
             playCardAtX={playCardAtX}
             playCardOnLane={playCardOnLane}
+            toggleUnitHold={toggleUnitHold}
             handleLaneDragOver={handleLaneDragOver}
             handleLaneDragLeave={handleLaneDragLeave}
             handleLaneDrop={handleLaneDrop}

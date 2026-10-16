@@ -167,11 +167,15 @@ export function RenderUnit({
   unit,
   isBlockingSpawn,
   isConcealed = false,
+  onToggleHold,
 }: {
   unit: Unit;
   isBlockingSpawn?: boolean;
   isConcealed?: boolean;
+  onToggleHold?: (unitId: string) => void;
 }) {
+  const isHolding = Boolean(unit.isHolding) && unit.owner === 'player';
+  const canToggleHold = Boolean(onToggleHold) && unit.owner === 'player';
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
@@ -265,8 +269,21 @@ export function RenderUnit({
       {/* ユニット本体アイコン */}
       <div
         className={attackClass}
+        data-holding={isHolding ? 'true' : 'false'}
+        onClick={
+          canToggleHold
+            ? (e) => {
+                e.stopPropagation();
+                onToggleHold?.(unit.id);
+              }
+            : undefined
+        }
         style={{
           ...styles.unitBody,
+          pointerEvents: canToggleHold ? 'auto' : undefined,
+          cursor: canToggleHold ? 'pointer' : undefined,
+          outline: isHolding ? '2px dashed #f59e0b' : undefined,
+          outlineOffset: isHolding ? '2px' : undefined,
           border: unit.isSpotted ? '1.5px solid #facc15' : 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
           transform: isPlayer ? 'none' : 'scaleX(-1)',
@@ -301,6 +318,26 @@ export function RenderUnit({
         {svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>}
 
         {/* 状態異常・バフ表示 */}
+        {isHolding && (
+          <span
+            style={{
+              position: 'absolute',
+              top: '-14px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '9px',
+              fontWeight: 'bold',
+              color: '#fffbeb',
+              backgroundColor: '#b45309',
+              padding: '0 4px',
+              borderRadius: '4px',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+            }}
+          >
+            ⏸ HOLD
+          </span>
+        )}
         {isStunned && <span style={styles.statusStun}>⚡麻痺</span>}
         {unit.isSprinting && !isStunned && <span style={styles.statusSprint}>💨3x速</span>}
         {hasBuff && <span style={styles.statusBuff}>⚔️+{unit.attack - 1}</span>}

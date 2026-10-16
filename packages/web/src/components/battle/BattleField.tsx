@@ -66,6 +66,7 @@ export interface BattleFieldProps {
   cpuMana?: number;
   showUnitRange?: boolean;
   playCardOnLane?: (laneIndex: number, cardIndexOverride?: number) => void;
+  toggleUnitHold?: (unitId: string) => void;
   dragOverLaneIndex?: number | null;
   spawnRippleLane?: number | null;
   handleLaneDragOver?: (e: React.DragEvent, laneIndex: number) => void;
@@ -99,6 +100,7 @@ export function BattleField({
   checkCanPlayCard,
   playCardAt,
   playCardAtX,
+  toggleUnitHold,
   handleDragEnd,
 }: BattleFieldProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -835,6 +837,9 @@ export function BattleField({
             <RenderUnit
               unit={unit}
               isConcealed={isUnitConcealed}
+              onToggleHold={
+                selectedCardIndex === null && !isDragging ? toggleUnitHold : undefined
+              }
               isBlockingSpawn={
                 isSpaceBlocked &&
                 unit.owner === 'player' &&
