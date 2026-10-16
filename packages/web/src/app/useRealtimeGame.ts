@@ -451,6 +451,7 @@ export function useRealtimeGame() {
           attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
           speed: card.speed || 10,
           range: card.range || 3,
+          hitRange: card.hitRange,
           attackCooldown: 0,
           attackInterval: Math.max(0.1, (card.attackInterval ?? 1.0) - counterBonusInterval),
           attackWindup: card.attackWindup ?? 0,
@@ -770,6 +771,7 @@ export function useRealtimeGame() {
                 attack: (w.card.attack || 1) + comboBonusAtk + counterBonusAtk,
                 speed: w.card.speed || 10,
                 range: w.card.range || 3,
+                hitRange: w.card.hitRange,
                 attackCooldown: 0,
                 attackInterval: Math.max(0.1, (w.card.attackInterval ?? 1.0) - counterBonusInterval),
                 attackWindup: w.card.attackWindup ?? 0,
@@ -1283,6 +1285,8 @@ export function useRealtimeGame() {
             // 主標的は必ず命中。それ以外は「主標的のY近傍」で射程内の敵にも巻き込みヒット
             const isPrimary = primary.id === unit.id;
             const dist = attacker.owner === 'player' ? unit.x - attacker.x : attacker.x - unit.x;
+            // hitRange 指定ユニット（ドラゴン等）は、発射時点で実ヒット距離外にいる相手には空振りする
+            if (attacker.hitRange !== undefined && dist > attacker.hitRange) return;
             const isSplash = isWithinEngageY(unit.y, primary.y, 4.0) && dist >= -2 && dist <= attacker.range + 2;
             if (isPrimary || isSplash) {
               const hadHp = currentHp > 0;

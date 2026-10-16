@@ -9,6 +9,7 @@ export interface DemoCard {
   attack?: number;
   life?: number;
   speed?: number; // 前進速度 (フィールド全体の% / 秒)
+  hitRange?: number; // 実際に攻撃が当たる距離 (%)。range(探知・攻撃モーション開始距離)より短いと、範囲外へ逃げた相手に空振りする
   range?: number; // 射程 (%単位)
   attackInterval?: number; // 攻撃間隔・クールダウン (秒)
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 1.0)
@@ -41,6 +42,7 @@ export interface Unit {
   hp: number;
   attack: number;
   speed: number; // 1秒あたりの移動量 (%)
+  hitRange?: number; // 実ヒット距離 (%)。未指定なら range と同じ
   range: number; // 射程 (%)
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
