@@ -748,6 +748,10 @@ export function BattleField({
         const rangeZone = showUnitRange && !isUnitConcealed
           ? computeUnitRangeZone(unit.x, unit.y, unit.range, unit.owner)
           : null;
+        const hitZone =
+          rangeZone && unit.hitRange !== undefined && unit.hitRange < unit.range
+            ? computeUnitRangeZone(unit.x, unit.y, unit.hitRange, unit.owner)
+            : null;
 
         // 陣営・役割ごとの射程カラー
         const rangeAccentColor = isShieldUnit
@@ -829,7 +833,53 @@ export function BattleField({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isShieldUnit ? `🛡️${unit.range}%` : `🎯${unit.range}%`}
+                  {isShieldUnit
+                    ? `🛡️${unit.range}%`
+                    : hitZone
+                    ? `👁探知${unit.range}%`
+                    : `🎯${unit.range}%`}
+                </span>
+              </div>
+            )}
+            {/* 実ヒット距離(hitRange)が探知距離より短いユニットは、内側に命中範囲を重ねて表示 */}
+            {hitZone && hitZone.width > 0 && (
+              <div
+                data-unit-hit-range-id={unit.id}
+                data-unit-hit-range={unit.hitRange}
+                style={{
+                  position: 'absolute',
+                  left: `${hitZone.left}%`,
+                  top: `${hitZone.top}%`,
+                  width: `${hitZone.width}%`,
+                  height: `${hitZone.height}%`,
+                  background: isPlayer
+                    ? 'linear-gradient(to right, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.38))'
+                    : 'linear-gradient(to left, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.38))',
+                  borderRight: isPlayer ? '2px solid #f97316' : 'none',
+                  borderLeft: !isPlayer ? '2px solid #f97316' : 'none',
+                  borderRadius: isPlayer ? '0 6px 6px 0' : '6px 0 0 6px',
+                  pointerEvents: 'none',
+                  zIndex: 7,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    bottom: '2px',
+                    right: isPlayer ? '3px' : undefined,
+                    left: !isPlayer ? '3px' : undefined,
+                    fontSize: '8.5px',
+                    fontWeight: 'bold',
+                    color: '#fff7ed',
+                    backgroundColor: 'rgba(124, 45, 18, 0.92)',
+                    border: '1px solid #f97316',
+                    borderRadius: '3px',
+                    padding: '0px 4px',
+                    lineHeight: '12px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  🔥命中{unit.hitRange}%
                 </span>
               </div>
             )}
@@ -1471,6 +1521,7 @@ export function BattleField({
               ? '#10b981'
               : '#38bdf8';
             return (
+              <>
               <div
                 data-spawn-range-preview={previewRange}
                 style={{
@@ -1511,6 +1562,47 @@ export function BattleField({
                   {isShield ? `🛡️射程 ${previewRange}%` : `🎯射程 ${previewRange}%`}
                 </span>
               </div>
+              {/* 実ヒット距離(hitRange)が探知距離より短いカードは、内側に命中範囲を重ねて表示 */}
+              {activeCard.hitRange !== undefined && activeCard.hitRange < previewRange && (() => {
+                const hitZone = computeUnitRangeZone(currentTargetX, currentTargetY, activeCard.hitRange, 'player');
+                return (
+                  <div
+                    data-spawn-hit-range-preview={activeCard.hitRange}
+                    style={{
+                      position: 'absolute',
+                      left: `${hitZone.left}%`,
+                      top: `${hitZone.top}%`,
+                      width: `${hitZone.width}%`,
+                      height: `${hitZone.height}%`,
+                      background: 'linear-gradient(to right, rgba(249, 115, 22, 0.1), rgba(249, 115, 22, 0.35))',
+                      borderRight: '2.5px solid #f97316',
+                      borderRadius: '0 6px 6px 0',
+                      pointerEvents: 'none',
+                      zIndex: 20,
+                    }}
+                  >
+                    <span
+                      style={{
+                        position: 'absolute',
+                        bottom: '2px',
+                        right: '4px',
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        color: '#fff7ed',
+                        backgroundColor: 'rgba(124, 45, 18, 0.92)',
+                        border: '1px solid #f97316',
+                        borderRadius: '3px',
+                        padding: '0px 4px',
+                        lineHeight: '13px',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      🔥命中 {activeCard.hitRange}%
+                    </span>
+                  </div>
+                );
+              })()}
+              </>
             );
           })()}
 
