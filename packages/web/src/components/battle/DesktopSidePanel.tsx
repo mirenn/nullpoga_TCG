@@ -13,6 +13,8 @@ interface DesktopSidePanelProps {
   cpuDeckCount: number;
   manaRegenRate: number;
   setManaRegenRate: (rate: number) => void;
+  showUnitRange?: boolean;
+  onToggleUnitRange?: () => void;
   onReset: () => void;
 }
 
@@ -25,6 +27,8 @@ export function DesktopSidePanel({
   cpuDeckCount,
   manaRegenRate,
   setManaRegenRate,
+  showUnitRange = false,
+  onToggleUnitRange,
   onReset,
 }: DesktopSidePanelProps) {
   const isCpuBoosted = cpuManaRegenMultiplier > 1;
@@ -135,6 +139,23 @@ export function DesktopSidePanel({
               ))}
             </select>
           </div>
+
+          {onToggleUnitRange && (
+            <button
+              type="button"
+              onClick={onToggleUnitRange}
+              data-testid="toggle-unit-range-side"
+              style={{
+                ...styles.guideToggleButton,
+                backgroundColor: showUnitRange ? '#0369a1' : '#1e293b',
+                border: `1px solid ${showUnitRange ? '#38bdf8' : '#475569'}`,
+                color: showUnitRange ? '#e0f2fe' : '#94a3b8',
+              }}
+              title="各ユニットの射程範囲表示を切り替え (ショートカット: Rキー)"
+            >
+              🎯 射程:{showUnitRange ? 'ON' : 'OFF'}
+            </button>
+          )}
 
           <button onClick={onReset} style={styles.resetButton} title="ゲームを最初からやり直す">
             <span className="btn-text-desktop">🔄 やり直す</span>

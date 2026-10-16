@@ -16,6 +16,7 @@ import {
   generateFirePillars,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
+  computeUnitRangeZone,
   SPAWN_X_MIN,
   SPAWN_X_MAX,
   PLAYER_SPAWN_X_MIN,
@@ -42,6 +43,7 @@ export interface BattleFieldProps {
   playerHp?: number;
   cpuHp?: number;
   cpuMana?: number;
+  showUnitRange?: boolean;
   playCardOnLane?: (laneIndex: number, cardIndexOverride?: number) => void;
   dragOverLaneIndex?: number | null;
   spawnRippleLane?: number | null;
@@ -67,6 +69,7 @@ export function BattleField({
   playerHp,
   cpuHp,
   cpuMana,
+  showUnitRange = false,
   checkCanPlayCard,
   playCardAt,
   playCardAtX,
@@ -413,7 +416,7 @@ export function BattleField({
         </div>
       ))}
 
-      {/* 4. フィールド上のユニット描画 */}
+      {/* 4. フィールド上のユニット描画 & 射程範囲可視化 */}
       {units.map((unit) => {
         const isFireTargeted =
           activeCard?.id === 'fire_spell' &&
@@ -424,8 +427,97 @@ export function BattleField({
           unit.owner === 'cpu' &&
           isWithinMeteorRange(unit.x, unit.y, currentTargetX, currentTargetY);
 
+        const isPlayer = unit.owner === 'player';
+        const isShieldUnit = unit.attack === 0;
+        const rangeZone = showUnitRange
+          ? computeUnitRangeZone(unit.x, unit.y, unit.range, unit.owner)
+          : null;
+
+        // 陣営・役割ごとの射程カラー
+        const rangeAccentColor = isShieldUnit
+          ? '#10b981'
+          : isPlayer
+          ? '#38bdf8'
+          : '#f43f5e';
+        const rangeFillGradient = isShieldUnit
+          ? isPlayer
+            ? 'linear-gradient(to right, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.18))'
+            : 'linear-gradient(to left, rgba(16, 185, 129, 0.05), rgba(16, 185, 129, 0.18))'
+          : isPlayer
+          ? 'linear-gradient(to right, rgba(56, 189, 248, 0.05), rgba(56, 189, 248, 0.22))'
+          : 'linear-gradient(to left, rgba(244, 63, 94, 0.05), rgba(244, 63, 94, 0.22))';
+        const rangeBorderSubtle = isShieldUnit
+          ? 'rgba(16, 185, 129, 0.4)'
+          : isPlayer
+          ? 'rgba(56, 189, 248, 0.45)'
+          : 'rgba(244, 63, 94, 0.45)';
+
         return (
           <React.Fragment key={unit.id}>
+            {/* 各ユニットの射程範囲 (X軸: 前方unit.range%, Y軸: 交戦幅±ENGAGE_HALF_WIDTH_Y%) */}
+            {rangeZone && rangeZone.width > 0 && (
+              <div
+                data-unit-range-id={unit.id}
+                data-unit-range={unit.range}
+                data-unit-owner={unit.owner}
+                style={{
+                  position: 'absolute',
+                  left: `${rangeZone.left}%`,
+                  top: `${rangeZone.top}%`,
+                  width: `${rangeZone.width}%`,
+                  height: `${rangeZone.height}%`,
+                  background: rangeFillGradient,
+                  borderTop: `1px dashed ${rangeBorderSubtle}`,
+                  borderBottom: `1px dashed ${rangeBorderSubtle}`,
+                  borderRight: isPlayer ? `2px solid ${rangeAccentColor}` : 'none',
+                  borderLeft: !isPlayer ? `2px solid ${rangeAccentColor}` : 'none',
+                  borderRadius: isPlayer ? '0 6px 6px 0' : '6px 0 0 6px',
+                  boxShadow: isPlayer
+                    ? `inset -6px 0 12px -6px ${rangeAccentColor}`
+                    : `inset 6px 0 12px -6px ${rangeAccentColor}`,
+                  pointerEvents: 'none',
+                  zIndex: 6,
+                }}
+              >
+                {/* 中心軸の射程レーザーガイドライン */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: 0,
+                    right: 0,
+                    top: '50%',
+                    height: '1px',
+                    borderTop: `1px dotted ${rangeAccentColor}`,
+                    opacity: 0.75,
+                  }}
+                />
+                {/* 先端の射程距離バッジ */}
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: isPlayer ? '3px' : undefined,
+                    left: !isPlayer ? '3px' : undefined,
+                    fontSize: '8.5px',
+                    fontWeight: 'bold',
+                    color: '#f8fafc',
+                    backgroundColor: isShieldUnit
+                      ? 'rgba(6, 95, 70, 0.88)'
+                      : isPlayer
+                      ? 'rgba(12, 74, 110, 0.88)'
+                      : 'rgba(136, 19, 55, 0.88)',
+                    border: `1px solid ${rangeAccentColor}`,
+                    borderRadius: '3px',
+                    padding: '0px 4px',
+                    lineHeight: '12px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isShieldUnit ? `🛡️${unit.range}%` : `🎯${unit.range}%`}
+                </span>
+              </div>
+            )}
+
             <RenderUnit
               unit={unit}
               isBlockingSpawn={
@@ -1021,6 +1113,60 @@ export function BattleField({
               }}
             />
           )}
+
+          {/* モンスター出撃プレビュー時の射程範囲表示 (showUnitRange有効時) */}
+          {showUnitRange && activeCard.type === 'MONSTER' && (() => {
+            const previewRange = activeCard.range ?? 8;
+            const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, previewRange, 'player');
+            const isShield = (activeCard.attack ?? 0) === 0;
+            const previewColor = isTargetBlocked
+              ? '#ef4444'
+              : isShield
+              ? '#10b981'
+              : '#38bdf8';
+            return (
+              <div
+                data-spawn-range-preview={previewRange}
+                style={{
+                  position: 'absolute',
+                  left: `${previewZone.left}%`,
+                  top: `${previewZone.top}%`,
+                  width: `${previewZone.width}%`,
+                  height: `${previewZone.height}%`,
+                  background: isTargetBlocked
+                    ? 'linear-gradient(to right, rgba(239, 68, 68, 0.05), rgba(239, 68, 68, 0.2))'
+                    : isShield
+                    ? 'linear-gradient(to right, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.24))'
+                    : 'linear-gradient(to right, rgba(56, 189, 248, 0.08), rgba(56, 189, 248, 0.26))',
+                  borderTop: `1.5px dashed ${previewColor}`,
+                  borderBottom: `1.5px dashed ${previewColor}`,
+                  borderRight: `2.5px solid ${previewColor}`,
+                  borderRadius: '0 6px 6px 0',
+                  pointerEvents: 'none',
+                  zIndex: 19,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '4px',
+                    fontSize: '9px',
+                    fontWeight: 'bold',
+                    color: '#ffffff',
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    border: `1px solid ${previewColor}`,
+                    borderRadius: '3px',
+                    padding: '0px 4px',
+                    lineHeight: '13px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {isShield ? `🛡️射程 ${previewRange}%` : `🎯射程 ${previewRange}%`}
+                </span>
+              </div>
+            );
+          })()}
 
           {/* 垂直照準ライン (X座標 / 前後・奥行き) */}
           <div

@@ -49,6 +49,43 @@ export default function RealtimeDemoPage() {
 
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showDesktopSidePanel, setShowDesktopSidePanel] = useState(true);
+  const [showUnitRange, setShowUnitRange] = useState(false);
+
+  // 初回マウント時に URL クエリパラメータ (?range=1 / ?range=true) または localStorage から射程表示設定を復元
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const rangeParam = params.get('range') ?? params.get('showRange');
+      if (rangeParam === '1' || rangeParam === 'true') {
+        setShowUnitRange(true);
+        window.localStorage.setItem('nullpoga_show_unit_range', 'true');
+        return;
+      }
+      if (rangeParam === '0' || rangeParam === 'false') {
+        setShowUnitRange(false);
+        window.localStorage.setItem('nullpoga_show_unit_range', 'false');
+        return;
+      }
+      const saved = window.localStorage.getItem('nullpoga_show_unit_range');
+      if (saved === 'true') {
+        setShowUnitRange(true);
+      }
+    } catch {
+      // SSRやlocalStorageアクセス制限時は無視
+    }
+  }, []);
+
+  const handleToggleUnitRange = useCallback(() => {
+    setShowUnitRange((prev) => {
+      const next = !prev;
+      try {
+        window.localStorage.setItem('nullpoga_show_unit_range', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  }, []);
   
   // ドラッグ＆ドロップ用ステート
   const [draggedCardIndex, setDraggedCardIndex] = useState<number | null>(null);
@@ -149,7 +186,7 @@ export default function RealtimeDemoPage() {
     setDragOverLaneIndex(null);
   };
 
-  // キーボードショートカット (1〜4キーで手札選択、Escで選択解除)
+  // キーボードショートカット (1〜4キーで手札選択、Escで選択解除、Rキーで射程範囲表示トグル)
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       // フォーム入力中の誤爆を防止
@@ -171,9 +208,11 @@ export default function RealtimeDemoPage() {
         }
       } else if (e.key === 'Escape') {
         setSelectedCardIndex(null);
+      } else if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        handleToggleUnitRange();
       }
     },
-    [hand.length, setSelectedCardIndex]
+    [hand.length, setSelectedCardIndex, handleToggleUnitRange]
   );
 
   useEffect(() => {
@@ -216,6 +255,23 @@ export default function RealtimeDemoPage() {
                   ))}
                 </select>
               </div>
+
+              {/* 射程範囲表示トグルボタン (開発・検証用) */}
+              <button
+                type="button"
+                onClick={handleToggleUnitRange}
+                data-testid="toggle-unit-range-btn"
+                style={{
+                  ...styles.guideToggleButton,
+                  backgroundColor: showUnitRange ? '#0369a1' : '#1e293b',
+                  border: `1px solid ${showUnitRange ? '#38bdf8' : '#475569'}`,
+                  color: showUnitRange ? '#e0f2fe' : '#94a3b8',
+                  boxShadow: showUnitRange ? '0 0 8px rgba(56, 189, 248, 0.45)' : 'none',
+                }}
+                title="各ユニットの射程範囲表示を切り替え (ショートカット: Rキー / URL: ?range=1)"
+              >
+                🎯 射程表示: {showUnitRange ? 'ON' : 'OFF'}
+              </button>
 
               {/* やり直すボタン */}
               <button
@@ -264,6 +320,8 @@ export default function RealtimeDemoPage() {
             cpuDeckCount={cpuDeckCount}
             manaRegenRate={manaRegenRate}
             setManaRegenRate={setManaRegenRate}
+            showUnitRange={showUnitRange}
+            onToggleUnitRange={handleToggleUnitRange}
             onReset={handleReset}
             onOpenGuide={() => setShowGuideModal(true)}
           />
@@ -286,6 +344,7 @@ export default function RealtimeDemoPage() {
             playerHp={playerHp}
             cpuHp={cpuHp}
             cpuMana={cpuMana}
+            showUnitRange={showUnitRange}
             checkCanPlayCard={checkCanPlayCard}
             playCardAt={playCardAt}
             playCardAtX={playCardAtX}
@@ -330,6 +389,8 @@ export default function RealtimeDemoPage() {
             cpuDeckCount={cpuDeckCount}
             manaRegenRate={manaRegenRate}
             setManaRegenRate={setManaRegenRate}
+            showUnitRange={showUnitRange}
+            onToggleUnitRange={handleToggleUnitRange}
             onReset={handleReset}
           />
         )}

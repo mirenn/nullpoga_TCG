@@ -177,6 +177,52 @@ export function isWithinCollisionX(a: number, b: number, halfWidth: number = COL
   return isWithinCollisionY(a, b, halfWidth);
 }
 
+/** ユニットの射程範囲（交戦・攻撃可能領域）の矩形ジオメトリ情報 (%単位) */
+export interface UnitRangeZone {
+  left: number;
+  right: number;
+  width: number;
+  top: number;
+  bottom: number;
+  height: number;
+  frontEdgeX: number;
+}
+
+/**
+ * ユニットの現在座標 (x, y)・射程 (range)・陣営 (owner) から、
+ * フィールド上の実効射程範囲（X軸: 前方range%, Y軸: ±ENGAGE_HALF_WIDTH_Y%）を算出する
+ */
+export function computeUnitRangeZone(
+  x: number,
+  y: number,
+  range: number,
+  owner: 'player' | 'cpu',
+  engageHalfWidthY: number = ENGAGE_HALF_WIDTH_Y
+): UnitRangeZone {
+  const effectiveRange = Math.max(0, range);
+  const rawLeft = owner === 'player' ? x : x - effectiveRange;
+  const rawRight = owner === 'player' ? x + effectiveRange : x;
+
+  const left = Math.max(0, Math.min(FIELD_WIDTH_PERCENT, rawLeft));
+  const right = Math.max(0, Math.min(FIELD_WIDTH_PERCENT, rawRight));
+  const width = Math.max(0, right - left);
+  const frontEdgeX = owner === 'player' ? right : left;
+
+  const top = Math.max(0, Math.min(FIELD_HEIGHT_PERCENT, y - engageHalfWidthY));
+  const bottom = Math.max(0, Math.min(FIELD_HEIGHT_PERCENT, y + engageHalfWidthY));
+  const height = Math.max(0, bottom - top);
+
+  return {
+    left,
+    right,
+    width,
+    top,
+    bottom,
+    height,
+    frontEdgeX,
+  };
+}
+
 /** クリック/タッチ座標から有効なプレイヤーXパーセント(6〜48%)を算出 */
 export function clampPlayerSpawnX(rawXPercent: number): number {
   return Math.max(PLAYER_SPAWN_X_MIN, Math.min(PLAYER_SPAWN_X_MAX, Math.round(rawXPercent * 10) / 10));

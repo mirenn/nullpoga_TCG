@@ -11,6 +11,8 @@ interface MobileCpuHeaderProps {
   cpuDeckCount: number;
   manaRegenRate: number;
   setManaRegenRate: (rate: number) => void;
+  showUnitRange?: boolean;
+  onToggleUnitRange?: () => void;
   onReset: () => void;
   onOpenGuide: () => void;
 }
@@ -24,6 +26,8 @@ export function MobileCpuHeader({
   cpuDeckCount,
   manaRegenRate,
   setManaRegenRate,
+  showUnitRange = false,
+  onToggleUnitRange,
   onReset,
   onOpenGuide,
 }: MobileCpuHeaderProps) {
@@ -95,7 +99,7 @@ export function MobileCpuHeader({
         </div>
       </div>
 
-      {/* ゲーム操作コントロール (速度・リセット・モバイルガイド) */}
+      {/* ゲーム操作コントロール (速度・射程・リセット・モバイルガイド) */}
       <div style={styles.cpuHeaderControls}>
         {/* マナ回復速度セレクター */}
         <div style={styles.manaSpeedSelector} title="マナ回復速度を調整">
@@ -117,6 +121,24 @@ export function MobileCpuHeader({
             ))}
           </select>
         </div>
+
+        {onToggleUnitRange && (
+          <button
+            type="button"
+            onClick={onToggleUnitRange}
+            data-testid="toggle-unit-range-mobile"
+            style={{
+              ...styles.guideToggleButton,
+              backgroundColor: showUnitRange ? '#0369a1' : '#1e293b',
+              border: `1px solid ${showUnitRange ? '#38bdf8' : '#475569'}`,
+              color: showUnitRange ? '#e0f2fe' : '#94a3b8',
+            }}
+            title="各ユニットの射程範囲表示を切り替え (ショートカット: Rキー)"
+          >
+            <span className="btn-text-desktop">🎯 射程:{showUnitRange ? 'ON' : 'OFF'}</span>
+            <span className="btn-text-mobile">🎯</span>
+          </button>
+        )}
 
         <button
           onClick={onOpenGuide}

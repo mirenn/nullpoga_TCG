@@ -23,6 +23,7 @@ import {
   PLAYER_SPAWN_X_MAX,
   PLAYER_DEFAULT_SPAWN_X,
   getSpawnDepthRole,
+  computeUnitRangeZone,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
@@ -264,4 +265,28 @@ assert(getAttackAnimDuration(2) === 320, 'Shiba attack duration must be 320ms');
 assert(getAttackAnimDuration(1) === 300, 'Mouse attack duration must be 300ms');
 console.log('  -> Attack windup, animation states & duration logic: PASSED');
 
-console.log('=== All 5 Test Suites PASSED Successfully! ===');
+// 6. Unit attack range zone geometry tests
+console.log('[6/6] Testing unit attack range zone geometry (computeUnitRangeZone)...');
+const playerRangeZone = computeUnitRangeZone(20, 50, 28, 'player');
+assert(playerRangeZone.left === 20, 'Player range zone should start at unit X (20%)');
+assert(playerRangeZone.right === 48, 'Player range zone should extend +28% to 48%');
+assert(playerRangeZone.width === 28, 'Player range zone width should be 28%');
+assert(playerRangeZone.frontEdgeX === 48, 'Player frontEdgeX should be 48%');
+assert(playerRangeZone.top === 50 - ENGAGE_HALF_WIDTH_Y, 'Player range zone top should be 43.5%');
+assert(playerRangeZone.bottom === 50 + ENGAGE_HALF_WIDTH_Y, 'Player range zone bottom should be 56.5%');
+assert(playerRangeZone.height === ENGAGE_HALF_WIDTH_Y * 2, 'Player range zone height should be 13%');
+
+const cpuRangeZone = computeUnitRangeZone(80, 20, 32, 'cpu');
+assert(cpuRangeZone.left === 48, 'CPU range zone left should be 80 - 32 = 48%');
+assert(cpuRangeZone.right === 80, 'CPU range zone right should be unit X (80%)');
+assert(cpuRangeZone.width === 32, 'CPU range zone width should be 32%');
+assert(cpuRangeZone.frontEdgeX === 48, 'CPU frontEdgeX should be 48%');
+
+// フィールド端のクランプ確認
+const clampedPlayerZone = computeUnitRangeZone(85, 5, 28, 'player');
+assert(clampedPlayerZone.right === 100, 'Range zone right must clamp at 100%');
+assert(clampedPlayerZone.width === 15, 'Clamped width should be 15%');
+assert(clampedPlayerZone.top === 0, 'Range zone top must clamp at 0%');
+console.log('  -> Unit attack range zone geometry: PASSED');
+
+console.log('=== All 6 Test Suites PASSED Successfully! ===');
