@@ -1,5 +1,7 @@
 export type CardType = 'MONSTER' | 'SPELL';
 
+export type ObstacleAction = 'slide' | 'jump' | 'smash' | 'block';
+
 export interface DemoCard {
   id: string;
   cardNo: number;
@@ -15,6 +17,7 @@ export interface DemoCard {
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 1.0)
   canMoveWhileCharging?: boolean; // 攻撃チャージ中（attackWindup）も立ち止まらずに前進・突進可能か（猪・柴犬など）
   isCircularRange?: boolean; // 円形探知範囲（忍者など）
+  obstacleAction?: ObstacleAction; // 障害物衝突時の性質（slide=スライド迂回, jump=飛び越え, smash=激突粉砕, block=停止）
   effectDesc: string;
   icon: string;
 }
@@ -48,6 +51,9 @@ export interface Unit {
   range: number; // 射程 (%)
   canMoveWhileCharging?: boolean; // 攻撃チャージ中も前進可能か
   isCircularRange?: boolean; // 円形全方位探知（忍者など）
+  obstacleAction?: ObstacleAction; // 障害物衝突時の性質
+  isJumping?: boolean; // 障害物飛び越え中か
+  jumpProgress?: number; // ジャンプ進行度 (0〜1)
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒)

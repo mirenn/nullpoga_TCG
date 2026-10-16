@@ -28,7 +28,8 @@ export const CARD_POOL: DemoCard[] = [
     range: 8,
     attackInterval: 3.4,
     attackWindup: 0.7, // 攻撃前隙（狙い0.7秒）
-    effectDesc: 'バランスの取れた標準的な歩兵ユニット。0.7秒の狙いから鋭い爪でひっかく。',
+    obstacleAction: 'slide', // 障害物に当たると身軽にスライド迂回
+    effectDesc: 'バランスの取れた標準的な歩兵ユニット。障害物に当たると上下にするりとスライド迂回して前進を続ける。0.7秒の狙いから鋭い爪でひっかく。',
     icon: '🐱',
   },
   {
@@ -44,7 +45,8 @@ export const CARD_POOL: DemoCard[] = [
     attackInterval: 3.2,
     attackWindup: 0.8, // 攻撃前隙（構え0.8秒）
     canMoveWhileCharging: true, // 構え・チャージ中も低姿勢で走り込みながら前進
-    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。敵を捉えると立ち止まらずに低姿勢で走り込みながらチャージし、力強く噛みつく。',
+    obstacleAction: 'slide', // 障害物をスライド回避しながら走り込む
+    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。障害物に当たるとスライド迂回して駆け抜け、立ち止まらずに低姿勢で走り込みながらチャージして噛みつく。',
     icon: '🐕',
   },
   {
@@ -58,6 +60,7 @@ export const CARD_POOL: DemoCard[] = [
     speed: 2.5, // 重装タンク歩行（旧4から調整）
     range: 8,
     attackInterval: 4.0,
+    obstacleAction: 'block',
     effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。',
     icon: '🐢',
   },
@@ -73,6 +76,7 @@ export const CARD_POOL: DemoCard[] = [
     range: 28, // 長距離放電（旧12から大幅拡大：遠くから雷撃）
     attackInterval: 8.0, // 攻撃間隔8.0秒（さらに倍に調整）
     attackWindup: 2.0, // 攻撃前隙（チャージモーション2.0秒）
+    obstacleAction: 'block',
     effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。2.0秒のチャージ後に雷撃を放つ。',
     icon: '🪼',
   },
@@ -89,7 +93,8 @@ export const CARD_POOL: DemoCard[] = [
     attackInterval: 3.6,
     attackWindup: 1.0, // 攻撃前隙（ブルチャージタメ1.0秒）
     canMoveWhileCharging: true, // チャージ中も猛突進して敵に激突
-    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。敵を捉えると立ち止まらずに猛突進しながらチャージし、激突時に強烈なかち上げで相手をノックバックさせる。',
+    obstacleAction: 'smash', // 障害物に激突すると粉砕突破
+    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。邪魔な木や岩の障害物に激突すると粉砕（ドカンとなぎ倒す）して直進！ 敵を捉えると立ち止まらずに猛突進してかち上げる。',
     icon: '🐗',
   },
   {
@@ -105,7 +110,8 @@ export const CARD_POOL: DemoCard[] = [
     isCircularRange: true, // 円形全方位探知
     attackInterval: 2.6,
     attackWindup: 0.5, // 手裏剣投擲の振りかぶり構え0.5秒
-    effectDesc: '全方位円形（半径16%）の敵を探知し、すれ違いざまに手裏剣を投擲して攻撃する。進路に対向敵がいない時は移動速度が3倍（疾走）。',
+    obstacleAction: 'slide', // 壁走り・身軽なすり抜け迂回
+    effectDesc: '全方位円形（半径16%）の敵を探知し、すれ違いざまに手裏剣を投擲して攻撃する。障害物に当たると壁走りでスライド迂回。対向敵がいない時は3倍速で疾走。',
     icon: '🥷',
   },
   {
@@ -120,7 +126,8 @@ export const CARD_POOL: DemoCard[] = [
     range: 8, // 近接接触
     attackInterval: 3.0,
     attackWindup: 0.7, // 攻撃前隙（急降下狙い0.7秒）
-    effectDesc: '0.7秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
+    obstacleAction: 'jump', // 障害物を羽ばたきで飛び越える
+    effectDesc: '障害物に当たると羽ばたいて飛び越える。0.7秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
     icon: '🦇',
   },
   {
@@ -136,7 +143,8 @@ export const CARD_POOL: DemoCard[] = [
     hitRange: 30, // 実際に炎が届く距離（探知より短い＝射程ギリギリで立ち止まられると空振り）
     attackInterval: 4.8,
     attackWindup: 1.6, // 攻撃前隙（ブレス息吹チャージ1.6秒）
-    effectDesc: '遠距離から火炎ブレスを吐き、前方の敵をまとめて焼く範囲攻撃（主標的以外は70%ダメージ）。1.6秒の息吹チャージ後に炎を吐く。炎が実際に届くのは探知距離よりやや短く、チャージ中に射程ギリギリで立ち止まられると空振りする。',
+    obstacleAction: 'smash', // 巨大な質量で障害物をなぎ倒す
+    effectDesc: '巨大な質量で障害物をなぎ倒して進軍。遠距離から火炎ブレスを吐き、前方の敵をまとめて焼く範囲攻撃（主標的以外は70%ダメージ）。',
     icon: '🐉',
   },
   {
@@ -215,8 +223,9 @@ export const HOUND_TOKEN_SPEC = {
   range: 8,
   attackInterval: 2.0,
   attackWindup: 0.3,
+  obstacleAction: 'slide' as const,
   icon: '🐕‍🦺',
-  effectDesc: '狩人に付き従う俊敏な猟犬。素早く前進して敵を足止めする。',
+  effectDesc: '狩人に付き従う俊敏な猟犬。障害物に当たると素早くスライド迂回しながら前進して敵を足止めする。',
 } as const;
 
 export const createDefault15Deck = (): DemoCard[] => {

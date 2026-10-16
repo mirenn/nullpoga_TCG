@@ -203,6 +203,11 @@ export function RenderUnit({
   });
   const hasSvg = svgElement !== null;
 
+  const isJumping = Boolean(unit.isJumping);
+  const jumpProgress = unit.jumpProgress ?? 0;
+  const jumpOffsetY = isJumping ? -Math.sin(jumpProgress * Math.PI) * 26 : 0;
+  const jumpScale = isJumping ? 1 + Math.sin(jumpProgress * Math.PI) * 0.25 : 1;
+
   return (
     <div
       data-unit-id={unit.id}
@@ -212,17 +217,43 @@ export function RenderUnit({
       data-kill-count={unit.killCount || 0}
       data-spotted={unit.isSpotted ? 'true' : 'false'}
       data-concealed={isConcealed ? 'true' : 'false'}
+      data-jumping={isJumping ? 'true' : 'false'}
       style={{
         ...styles.unitWrapper,
         left: `${unit.x}%`,
         top: `${unit.y}%`,
-        transform: 'translate(-50%, -50%)',
+        transform: `translate(-50%, calc(-50% + ${jumpOffsetY}px)) scale(${jumpScale})`,
         opacity: isConcealed ? 0.12 : 1,
         filter: isConcealed ? 'blur(1.5px) brightness(0.5)' : undefined,
-        zIndex: unit.isSpotted ? 31 : styles.unitWrapper.zIndex,
-        transition: 'opacity 0.18s ease-out, filter 0.18s ease-out',
+        zIndex: isJumping ? 45 : unit.isSpotted ? 31 : styles.unitWrapper.zIndex,
+        transition: isJumping ? 'none' : 'opacity 0.18s ease-out, filter 0.18s ease-out',
       }}
     >
+      {/* 障害物ジャンプ飛び越えバッジ */}
+      {isJumping && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#0284c7',
+            color: '#f0f9ff',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 5px',
+            borderRadius: '999px',
+            border: '1px solid #38bdf8',
+            boxShadow: '0 0 10px rgba(56, 189, 248, 0.8)',
+            whiteSpace: 'nowrap',
+            zIndex: 46,
+            pointerEvents: 'none',
+          }}
+        >
+          🦘 飛び越え!
+        </div>
+      )}
+
       {/* カメラ覗き込みによる奇襲看破（SPOT!）ポップアップ */}
       {isRecentSpot && (
         <div

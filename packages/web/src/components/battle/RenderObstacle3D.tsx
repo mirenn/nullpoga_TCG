@@ -20,8 +20,11 @@ export function RenderObstacleGround({
 }: RenderObstacleGroundProps) {
   const isForest = obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
+  const isDestroyed = Boolean(obstacle.isDestroyed);
 
-  const borderColor = isHighlightedForAmbush
+  const borderColor = isDestroyed
+    ? 'rgba(100, 116, 139, 0.4)'
+    : isHighlightedForAmbush
     ? 'rgba(74, 222, 128, 0.9)'
     : isForest
     ? 'rgba(34, 197, 94, 0.38)'
@@ -29,7 +32,9 @@ export function RenderObstacleGround({
     ? 'rgba(148, 163, 184, 0.38)'
     : 'rgba(56, 189, 248, 0.38)';
 
-  const groundBg = isForest
+  const groundBg = isDestroyed
+    ? 'radial-gradient(ellipse at center, rgba(30, 41, 59, 0.4) 0%, rgba(15, 23, 42, 0.2) 65%, transparent 100%)'
+    : isForest
     ? 'radial-gradient(ellipse at center, rgba(20, 83, 45, 0.55) 0%, rgba(6, 78, 59, 0.25) 65%, transparent 100%)'
     : isRock
     ? 'radial-gradient(ellipse at center, rgba(51, 65, 85, 0.6) 0%, rgba(30, 41, 59, 0.28) 65%, transparent 100%)'
@@ -38,6 +43,7 @@ export function RenderObstacleGround({
   return (
     <div
       data-obstacle-ground-id={obstacle.id}
+      data-destroyed={isDestroyed ? 'true' : 'false'}
       style={{
         position: 'absolute',
         left: `${obstacle.x}%`,
@@ -48,14 +54,17 @@ export function RenderObstacleGround({
         borderRadius: '50%',
         background: groundBg,
         border: `1.5px dashed ${borderColor}`,
-        boxShadow: isHighlightedForAmbush
+        opacity: isDestroyed ? 0.6 : 1,
+        boxShadow: isDestroyed
+          ? 'none'
+          : isHighlightedForAmbush
           ? '0 0 18px rgba(74, 222, 128, 0.55), inset 0 0 14px rgba(34, 197, 94, 0.35)'
           : 'inset 0 0 16px rgba(0, 0, 0, 0.65)',
         pointerEvents: 'none',
         zIndex: 5,
       }}
     >
-      {/* 根元の幹・岩柱シルエット（カメラを動かして傘がズレた時に見える地面側の支柱） */}
+      {/* 根元の幹・岩柱シルエット（破壊時は切り株や砕けた残骸に変化） */}
       <div
         style={{
           position: 'absolute',
@@ -65,7 +74,9 @@ export function RenderObstacleGround({
           width: '28px',
           height: '20px',
           borderRadius: '50%',
-          backgroundColor: isForest
+          backgroundColor: isDestroyed
+            ? 'rgba(40, 30, 20, 0.75)'
+            : isForest
             ? 'rgba(63, 46, 33, 0.85)'
             : isRock
             ? 'rgba(30, 41, 59, 0.9)'
@@ -79,11 +90,33 @@ export function RenderObstacleGround({
           color: 'rgba(255,255,255,0.6)',
         }}
       >
-        {isForest ? '🪵' : isRock ? '🪨' : '💎'}
+        {isDestroyed ? '🪵💥' : isForest ? '🪵' : isRock ? '🪨' : '💎'}
       </div>
 
+      {/* 破壊済みバッジ */}
+      {isDestroyed && (
+        <div
+          style={{
+            position: 'absolute',
+            bottom: '-14px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(51, 65, 85, 0.9)',
+            color: '#94a3b8',
+            fontSize: '8.5px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '4px',
+            border: '1px solid #64748b',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          💥 粉砕残骸 (通行可)
+        </div>
+      )}
+
       {/* 自陣側の奇襲ボーナスガイド */}
-      {isHighlightedForAmbush && (
+      {!isDestroyed && isHighlightedForAmbush && (
         <div
           style={{
             position: 'absolute',
@@ -128,6 +161,10 @@ export function RenderObstacleCanopy({
   hasHiddenEnemy,
   peekProgress,
 }: RenderObstacleCanopyProps) {
+  // 障害物が破壊された場合、天蓋（傘）は吹き飛ぶ
+  if (obstacle.isDestroyed) {
+    return null;
+  }
   const proj = computeCanopyProjection(obstacle, camera);
   const isForest = obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';

@@ -56,6 +56,15 @@ export function GuideContent() {
               </div>
             </div>
             <div style={styles.tipBox}>
+              <div style={styles.tipTitle}>🌲 障害物アクション（スライド・ジャンプ・粉砕）</div>
+              <div style={styles.tipText}>
+                木や岩などの障害物にぶつかった際のアクションはユニットの個性によって異なります！
+                ネコ・柴犬・忍者・猟犬は上下にするりと【スライド迂回】して前進を継続し、
+                コウモリは【ジャンプ飛び越え】で頭上を華麗にクリア。
+                イノシシやドラゴンは【激突粉砕】で障害物を木っ端微塵になぎ倒して味方の進軍路を開拓します！
+              </div>
+            </div>
+            <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🐗 イノシシと柴犬のチャージ突撃</div>
               <div style={styles.tipText}>
                 通常ユニットは攻撃チャージ中に足を止めますが、イノシシと柴犬ラン丸はチャージ中も止まらずに前進・突進します！イノシシは走り込んで激突時に相手をノックバックさせ、柴犬は走り込みながら移動距離ボーナスを稼いで強力な一撃を叩き込みます。

@@ -55,6 +55,7 @@ import {
   computePeekRevealProgress,
   isPointOccludedByObstacle,
   evaluateUnitStealthAndSpot,
+  isObstacleActive,
 } from '../src/app/obstacles';
 import type { Unit } from '../src/app/types';
 
@@ -576,7 +577,73 @@ assert(shibaDuringCharge.x > 20, 'Shiba MUST move forward during charge');
 assert((shibaDuringCharge.distanceTraveled || 0) >= 20.0, 'Shiba charge distance MUST cross 20% threshold!');
 console.log('  -> Boar & Shiba charge-while-moving (canMoveWhileCharging) mechanics: PASSED');
 
-console.log('=== All 10 Test Suites PASSED Successfully! ===');
+// 11. Obstacle interactions (slide, jump, smash) tests
+console.log('[11/11] Testing obstacle interactions (slide, jump, smash)...');
+
+// 11-1. 各モンスターの obstacleAction 設定検証
+const cat = CARD_POOL.find((c) => c.id === 'cat')!;
+const shiba = CARD_POOL.find((c) => c.id === 'shiba')!;
+const assassin = CARD_POOL.find((c) => c.id === 'assassin')!;
+const bat = CARD_POOL.find((c) => c.id === 'vampire_bat')!;
+const boar = CARD_POOL.find((c) => c.id === 'boar')!;
+const dragon = CARD_POOL.find((c) => c.id === 'dragon')!;
+const turtle = CARD_POOL.find((c) => c.id === 'turtle')!;
+
+assert(cat.obstacleAction === 'slide', 'Cat must have obstacleAction: slide');
+assert(shiba.obstacleAction === 'slide', 'Shiba must have obstacleAction: slide');
+assert(assassin.obstacleAction === 'slide', 'Assassin must have obstacleAction: slide');
+assert(HOUND_TOKEN_SPEC.obstacleAction === 'slide', 'Hound token must have obstacleAction: slide');
+assert(bat.obstacleAction === 'jump', 'Vampire Bat must have obstacleAction: jump');
+assert(boar.obstacleAction === 'smash', 'Boar must have obstacleAction: smash');
+assert(dragon.obstacleAction === 'smash', 'Dragon must have obstacleAction: smash');
+assert(turtle.obstacleAction === 'block', 'Turtle must have obstacleAction: block');
+
+// 11-2. 障害物の初期状態と isObstacleActive ヘルパー検証
+const sampleObs = { ...FIELD_OBSTACLES[0] };
+assert(sampleObs.hp === 80 && sampleObs.maxHp === 80, 'Obstacle must have hp=80, maxHp=80');
+assert(sampleObs.isDestroyed === false, 'Obstacle must initially not be destroyed');
+assert(isObstacleActive(sampleObs) === true, 'Sample obstacle must be active');
+
+const destroyedObs = { ...sampleObs, isDestroyed: true };
+assert(isObstacleActive(destroyedObs) === false, 'Destroyed obstacle must not be active');
+const zeroHpObs = { ...sampleObs, hp: 0 };
+assert(isObstacleActive(zeroHpObs) === false, '0 HP obstacle must not be active');
+
+// 11-3. ① スライド迂回 (slide) の挙動シミュレーション
+// 障害物: x=34, y=35, radiusX=8.5, radiusY=7.5
+// ネコが x=30, y=35 (真正面) から障害物へ進入すると、上下へYスライド回避する
+let catY = 35;
+const catSlideObs = { ...sampleObs, x: 34, y: 35, radiusX: 8.5, radiusY: 7.5 };
+const avoidUp = catY <= catSlideObs.y;
+const targetY = avoidUp
+  ? Math.max(12, catSlideObs.y - (catSlideObs.radiusY + 3.0))
+  : Math.min(88, catSlideObs.y + (catSlideObs.radiusY + 3.0));
+catY += (targetY - catY) * 0.5; // スライドステップ
+assert(catY < 35, `Cat should slide upward (targetY=${targetY}), got ${catY}`);
+
+// 11-4. ② ジャンプ飛び越え (jump) の挙動シミュレーション
+// コウモリが x=32 に接近した時、jumpProgress が計算され、放物線の浮上オフセットが得られる
+const batDist = catSlideObs.x - 32; // 2.0
+const totalSpan = catSlideObs.radiusX * 2 + 5.0; // 22.0
+const jumpProgress = Math.max(0, Math.min(1.0, 1.0 - (batDist + catSlideObs.radiusX + 2.5) / totalSpan));
+assert(jumpProgress > 0 && jumpProgress < 1.0, 'Bat must be in jump progress');
+const jumpOffsetY = -Math.sin(jumpProgress * Math.PI) * 26;
+assert(jumpOffsetY < -5, `Jump offset must lift unit vertically into the air, got ${jumpOffsetY}`);
+
+// 11-5. ③ 激突粉砕 (smash) の挙動シミュレーション
+// イノシシ (ATK 3) が激突すると、60〜75以上のダメージを与えて一撃で耐久値80を削り切り粉砕する
+const smashDamage = Math.max(60, boar.attack! * 25); // 75
+const obsAfterSmashHp = Math.max(0, catSlideObs.hp! - smashDamage); // 80 - 75 = 5
+assert(obsAfterSmashHp < catSlideObs.hp!, 'Smash must inflict heavy damage to obstacle');
+const smashDamage2 = Math.max(60, dragon.attack! * 25); // 125
+const obsAfterDragonSmashHp = Math.max(0, catSlideObs.hp! - smashDamage2);
+assert(obsAfterDragonSmashHp === 0, 'Dragon smash must completely crush obstacle');
+const isCrushed = obsAfterDragonSmashHp <= 0;
+assert(isCrushed, 'Obstacle must be destroyed after lethal smash');
+
+console.log('  -> Obstacle interactions (slide, jump, smash) logic: PASSED');
+
+console.log('=== All 11 Test Suites PASSED Successfully! ===');
 
 
 

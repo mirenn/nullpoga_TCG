@@ -34,6 +34,14 @@ export interface FieldObstacle {
   radiusY: number;
   /** 3D空間での高さ (px相当: 大きいほどカメラ移動時の視差シフトが大きい) */
   heightZ: number;
+  /** 耐久値・HP (未指定時は 80) */
+  hp?: number;
+  /** 最大耐久値 */
+  maxHp?: number;
+  /** イノシシなどの激突粉砕によって破壊されたか */
+  isDestroyed?: boolean;
+  /** 被弾・激突演出用タイムスタンプ */
+  lastHitTime?: number;
 }
 
 /** 3D箱庭カメラの状態 */
@@ -89,6 +97,9 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 8.5,
     radiusY: 7.5,
     heightZ: 68,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
   {
     id: 'obs_player_lower_rock',
@@ -100,6 +111,9 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 8.5,
     radiusY: 7.5,
     heightZ: 68,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
   // 中央交戦エリア（中立の立体遮蔽物）
   {
@@ -112,6 +126,9 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 9.0,
     radiusY: 8.0,
     heightZ: 76,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
   {
     id: 'obs_mid_lower_crystal',
@@ -123,6 +140,9 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 9.0,
     radiusY: 8.0,
     heightZ: 76,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
   // 敵陣奥（CPUの出撃予兆や忍びアサシンの出撃を隠す死角遮蔽物: x=88, radiusX=9.5 -> x=78.5〜97.5%をカバー）
   {
@@ -135,6 +155,9 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 9.5,
     radiusY: 8.5,
     heightZ: 84,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
   {
     id: 'obs_cpu_lower_rock',
@@ -146,8 +169,16 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 9.5,
     radiusY: 8.5,
     heightZ: 84,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
   },
 ];
+
+/** 障害物が現在有効（未破壊かつHP>0）かどうか判定 */
+export function isObstacleActive(obs: FieldObstacle): boolean {
+  return !obs.isDestroyed && (obs.hp === undefined || obs.hp > 0);
+}
 
 export function clampCameraPanX(panX: number): number {
   return Math.max(CAMERA_PAN_X_MIN, Math.min(CAMERA_PAN_X_MAX, Math.round(panX)));

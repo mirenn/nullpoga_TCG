@@ -59,12 +59,14 @@ import {
 } from './inhibitors';
 import {
   FIELD_OBSTACLES,
+  FieldObstacle,
   DEFAULT_CAMERA_3D,
   Camera3DState,
   SPOT_AMBUSH_STUN_MS,
   AMBUSH_DEPLOY_ATK_BONUS,
   findPlayerAmbushObstacle,
   evaluateUnitStealthAndSpot,
+  isObstacleActive,
 } from './obstacles';
 
 
@@ -208,6 +210,12 @@ export function useRealtimeGame() {
   }, [pendingLightningHits]);
   // 烈火の呪文の上下延焼状態
   const activeFireSpellsRef = useRef<ActiveFireSpell[]>([]);
+  // フィールド立体遮蔽物（木・岩・結晶群）とその耐久・破壊状態
+  const [obstacles, setObstacles] = useState<FieldObstacle[]>(FIELD_OBSTACLES);
+  const obstaclesRef = useRef<FieldObstacle[]>(FIELD_OBSTACLES);
+  useEffect(() => {
+    obstaclesRef.current = obstacles;
+  }, [obstacles]);
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -457,6 +465,7 @@ export function useRealtimeGame() {
           range: card.range || 3,
           canMoveWhileCharging: card.canMoveWhileCharging,
           isCircularRange: card.isCircularRange,
+          obstacleAction: card.obstacleAction,
           hitRange: card.hitRange,
           attackCooldown: 0,
           attackInterval: Math.max(0.1, (card.attackInterval ?? 1.0) - counterBonusInterval),
@@ -486,6 +495,7 @@ export function useRealtimeGame() {
             attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
             speed: HOUND_TOKEN_SPEC.speed,
             range: HOUND_TOKEN_SPEC.range,
+            obstacleAction: HOUND_TOKEN_SPEC.obstacleAction,
             attackCooldown: 0,
             attackInterval: Math.max(0.1, HOUND_TOKEN_SPEC.attackInterval - counterBonusInterval),
             attackWindup: HOUND_TOKEN_SPEC.attackWindup,
@@ -809,6 +819,7 @@ export function useRealtimeGame() {
                 range: w.card.range || 3,
                 canMoveWhileCharging: w.card.canMoveWhileCharging,
                 isCircularRange: w.card.isCircularRange,
+                obstacleAction: w.card.obstacleAction,
                 hitRange: w.card.hitRange,
                 attackCooldown: 0,
                 attackInterval: Math.max(0.1, (w.card.attackInterval ?? 1.0) - counterBonusInterval),
@@ -836,6 +847,7 @@ export function useRealtimeGame() {
                   attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk,
                   speed: HOUND_TOKEN_SPEC.speed,
                   range: HOUND_TOKEN_SPEC.range,
+                  obstacleAction: HOUND_TOKEN_SPEC.obstacleAction,
                   attackCooldown: 0,
                   attackInterval: Math.max(0.1, HOUND_TOKEN_SPEC.attackInterval - counterBonusInterval),
                   attackWindup: HOUND_TOKEN_SPEC.attackWindup,
@@ -1378,34 +1390,128 @@ export function useRealtimeGame() {
           const isSprinting =
             !isHolding && unit.cardNo === 8 && enemiesInFrontLane.length === 0 && !unit.isSpotted;
 
-          // 移動計算 (X軸方向)
+          // 移動計算 (X軸方向 & 障害物インタラクション)
           const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
           const moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
-          if (isHolding) {
-            // 待機中は移動しない
-          } else if (unit.owner === 'player') {
-            let maxXMove = x + moveDelta;
+          y = unit.y;
+          let isJumping = false;
+          let jumpProgress = 0;
+          let maxXMove = x;
+
+          if (!isHolding) {
+            maxXMove = unit.owner === 'player' ? x + moveDelta : x - moveDelta;
+
             if (blockingObstacle) {
-              const enemyWall = (blockingObstacle as CombatTarget).x - 7.5;
-              maxXMove = Math.min(maxXMove, enemyWall);
+              const enemyWall = unit.owner === 'player'
+                ? (blockingObstacle as CombatTarget).x - 7.5
+                : (blockingObstacle as CombatTarget).x + 7.5;
+              maxXMove = unit.owner === 'player'
+                ? Math.min(maxXMove, enemyWall)
+                : Math.max(maxXMove, enemyWall);
             }
             if (targetAlly) {
-              const allyWall = (targetAlly as Unit).x - ALLY_MIN_GAP;
-              maxXMove = Math.min(maxXMove, allyWall);
+              const allyWall = unit.owner === 'player'
+                ? (targetAlly as Unit).x - ALLY_MIN_GAP
+                : (targetAlly as Unit).x + ALLY_MIN_GAP;
+              maxXMove = unit.owner === 'player'
+                ? Math.min(maxXMove, allyWall)
+                : Math.max(maxXMove, allyWall);
             }
-            x = Math.min(95, maxXMove);
-          } else {
-            let maxXMove = x - moveDelta;
-            if (blockingObstacle) {
-              const enemyWall = (blockingObstacle as CombatTarget).x + 7.5;
-              maxXMove = Math.max(maxXMove, enemyWall);
+
+            // 立体障害物（木・岩・結晶群）との衝突・相互作用判定
+            const activeObstacles = obstaclesRef.current.filter(isObstacleActive);
+            let nearestObs: FieldObstacle | null = null;
+            let minObsFwdDist = 999;
+
+            for (const obs of activeObstacles) {
+              // Y軸の接近判定（障害物の縦半径 + 2.0%以内）
+              if (Math.abs(y - obs.y) <= obs.radiusY + 2.0) {
+                const fwdDist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
+                // 障害物の前後にいるか（手前から奥まで）
+                if (fwdDist >= -obs.radiusX - 2.5 && fwdDist <= obs.radiusX + 3.0) {
+                  if (fwdDist < minObsFwdDist) {
+                    minObsFwdDist = fwdDist;
+                    nearestObs = obs;
+                  }
+                }
+              }
             }
-            if (targetAlly) {
-              const allyWall = (targetAlly as Unit).x + ALLY_MIN_GAP;
-              maxXMove = Math.max(maxXMove, allyWall);
+
+            if (nearestObs) {
+              const obsAction = unit.obstacleAction ?? 'block';
+
+              if (obsAction === 'smash') {
+                // ③ 激突粉砕 (smash): イノシシやドラゴンなど。接触時に大ダメージを与えて破壊！
+                const contactDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
+                if (contactDist <= nearestObs.radiusX + 1.5 && contactDist >= -nearestObs.radiusX) {
+                  const smashDamage = Math.max(60, unit.attack * 25);
+                  const curHp = nearestObs.hp ?? 80;
+                  const nextHp = Math.max(0, curHp - smashDamage);
+                  nearestObs.hp = nextHp;
+                  nearestObs.lastHitTime = now;
+
+                  if (nextHp <= 0 && !nearestObs.isDestroyed) {
+                    nearestObs.isDestroyed = true;
+                    // 粉砕インパクトエフェクト
+                    newAttackEffects.push({
+                      id: `smash_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                      attackerId: unit.id,
+                      fromY: nearestObs.y,
+                      toY: nearestObs.y,
+                      fromX: unit.x,
+                      toX: nearestObs.x,
+                      owner: unit.owner,
+                      effectType: 'headbutt',
+                      damage: unit.attack,
+                      createdAt: now,
+                      duration: 400,
+                    });
+                  }
+                }
+                // smashユニットは障害物で減速・停止せず直進
+              } else if (obsAction === 'jump') {
+                // ② ジャンプ飛び越え (jump): コウモリなど。立体放物線で飛び越える
+                const jumpDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
+                const totalSpan = nearestObs.radiusX * 2 + 5.0;
+                const progress = Math.max(0, Math.min(1.0, 1.0 - (jumpDist + nearestObs.radiusX + 2.5) / totalSpan));
+                isJumping = true;
+                jumpProgress = progress;
+                // jumpユニットは障害物で停止しない
+              } else if (obsAction === 'slide') {
+                // ① スライド迂回 (slide): ネコ、柴犬、忍者、猟犬など。上下の隙間に滑らかに回り込む
+                const slideDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
+                if (slideDist <= nearestObs.radiusX + 2.5 && slideDist >= -nearestObs.radiusX - 2.0) {
+                  const avoidUp = y <= nearestObs.y;
+                  const targetY = avoidUp
+                    ? Math.max(12, nearestObs.y - (nearestObs.radiusY + 3.0))
+                    : Math.min(88, nearestObs.y + (nearestObs.radiusY + 3.0));
+                  
+                  // Y軸方向へスムーズにスライド回避
+                  y += (targetY - y) * Math.min(1.0, dt * 7.0);
+                }
+              } else {
+                // block: 通常ユニットは未破壊障害物の手前で停止
+                const blockDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
+                if (blockDist >= 0 && blockDist <= nearestObs.radiusX + 1.5) {
+                  const obsWall = unit.owner === 'player'
+                    ? nearestObs.x - nearestObs.radiusX - 1.2
+                    : nearestObs.x + nearestObs.radiusX + 1.2;
+                  if (unit.owner === 'player') {
+                    maxXMove = Math.min(maxXMove, obsWall);
+                  } else {
+                    maxXMove = Math.max(maxXMove, obsWall);
+                  }
+                }
+              }
+            } else {
+              // 障害物がない場合、元のレーン（lane）に向かって自然に復帰
+              if (unit.lane !== undefined && Math.abs(y - unit.lane) > 0.4) {
+                y += (unit.lane - y) * Math.min(1.0, dt * 2.5);
+              }
             }
-            x = Math.max(5, maxXMove);
           }
+
+          x = unit.owner === 'player' ? Math.min(95, maxXMove) : Math.max(5, maxXMove);
           distance += moveDelta;
 
           if (unit.cardNo === 2) {
@@ -1416,6 +1522,7 @@ export function useRealtimeGame() {
           return {
             ...unit,
             x,
+            y,
             attack,
             distanceTraveled: distance,
             attackCooldown: cooldown,
@@ -1423,6 +1530,8 @@ export function useRealtimeGame() {
             isCharging,
             chargeStartTime,
             isSprinting,
+            isJumping,
+            jumpProgress,
           };
         });
 
@@ -1612,6 +1721,9 @@ export function useRealtimeGame() {
     const freshInhibitors = createInitialInhibitors();
     inhibitorsRef.current = freshInhibitors;
     setInhibitors(freshInhibitors);
+    const freshObstacles = FIELD_OBSTACLES.map((o) => ({ ...o, hp: o.maxHp ?? 80, isDestroyed: false, lastHitTime: undefined }));
+    obstaclesRef.current = freshObstacles;
+    setObstacles(freshObstacles);
     setSpellEffects([]);
     setAttackEffects([]);
     setPendingLightningHits([]);
@@ -1655,7 +1767,7 @@ export function useRealtimeGame() {
     setSelectedCardIndex,
     units,
     inhibitors,
-    obstacles: FIELD_OBSTACLES,
+    obstacles,
     camera3D,
     setCamera3D,
     resetCamera3D,
