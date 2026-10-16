@@ -153,16 +153,19 @@ export function BattleField({
     if (!isPanningCamera) return;
 
     const onWindowMouseMove = (e: MouseEvent) => {
-      if (!panStartRef.current) return;
-      const dx = e.clientX - panStartRef.current.clientX;
-      const dy = e.clientY - panStartRef.current.clientY;
+      const panStart = panStartRef.current;
+      if (!panStart) return;
+      const dx = e.clientX - panStart.clientX;
+      const dy = e.clientY - panStart.clientY;
       if (Math.hypot(dx, dy) > 3) {
         didPanDuringPressRef.current = true;
       }
+      const nextPanX = clampCameraPanX(panStart.startPanX + dx);
+      const nextPanY = clampCameraPanY(panStart.startPanY + dy);
       updateCamera((prev) => ({
         ...prev,
-        panX: clampCameraPanX(panStartRef.current!.startPanX + dx),
-        panY: clampCameraPanY(panStartRef.current!.startPanY + dy),
+        panX: nextPanX,
+        panY: nextPanY,
       }));
     };
 
@@ -182,7 +185,6 @@ export function BattleField({
   // マウスホイールによる3D箱庭ズームイン・ズームアウト
   const handleWheel = useCallback(
     (e: React.WheelEvent<HTMLDivElement>) => {
-      e.preventDefault();
       const zoomDelta = e.deltaY < 0 ? 0.08 : -0.08;
       updateCamera((prev) => ({
         ...prev,
