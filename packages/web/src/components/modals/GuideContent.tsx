@@ -56,9 +56,9 @@ export function GuideContent() {
               </div>
             </div>
             <div style={styles.tipBox}>
-              <div style={styles.tipTitle}>🐗 背水の陣バフ</div>
+              <div style={styles.tipTitle}>🐗 イノシシと柴犬のチャージ突撃</div>
               <div style={styles.tipText}>
-                イノシシは味方拠点が瀕死なほど攻撃力が上がり、土壇場で敵本拠地の一撃粉砕を狙えます。
+                通常ユニットは攻撃チャージ中に足を止めますが、イノシシと柴犬ラン丸はチャージ中も止まらずに前進・突進します！イノシシは走り込んで激突時に相手をノックバックさせ、柴犬は走り込みながら移動距離ボーナスを稼いで強力な一撃を叩き込みます。
               </div>
             </div>
             <div style={styles.tipBox}>
@@ -120,8 +120,8 @@ export function GuideContent() {
                       <span>❤️ {c.life}</span>
                       <span>👟 {c.speed}</span>
                       <span>🎯 {c.range}%</span>
-                      <span title={c.attackWindup ? `攻撃間隔: ${c.attackInterval ?? 1.0}s / チャージ(前隙): ${c.attackWindup}s` : '攻撃間隔'}>
-                        ⏱️ {c.attackInterval ?? 1.0}s{c.attackWindup ? ` (蓄${c.attackWindup}s)` : ''}
+                      <span title={c.attackWindup ? `攻撃間隔: ${c.attackInterval ?? 1.0}s / チャージ(前隙): ${c.attackWindup}s${c.canMoveWhileCharging ? ' (チャージ中移動可能)' : ''}` : '攻撃間隔'}>
+                        ⏱️ {c.attackInterval ?? 1.0}s{c.attackWindup ? ` (${c.canMoveWhileCharging ? '🏃' : '蓄'}${c.attackWindup}s)` : ''}
                       </span>
                     </div>
                   )}

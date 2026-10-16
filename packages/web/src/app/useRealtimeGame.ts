@@ -455,6 +455,7 @@ export function useRealtimeGame() {
           attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
           speed: card.speed || 10,
           range: card.range || 3,
+          canMoveWhileCharging: card.canMoveWhileCharging,
           isCircularRange: card.isCircularRange,
           hitRange: card.hitRange,
           attackCooldown: 0,
@@ -806,6 +807,7 @@ export function useRealtimeGame() {
                 attack: (w.card.attack || 1) + comboBonusAtk + counterBonusAtk,
                 speed: w.card.speed || 10,
                 range: w.card.range || 3,
+                canMoveWhileCharging: w.card.canMoveWhileCharging,
                 isCircularRange: w.card.isCircularRange,
                 hitRange: w.card.hitRange,
                 attackCooldown: 0,
@@ -1081,13 +1083,13 @@ export function useRealtimeGame() {
                 return isWithinCollisionY(t.y, unit.y);
               });
 
-          obstacleCandidates.forEach((obs) => {
+          for (const obs of obstacleCandidates) {
             const dist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
             if (dist >= -1 && dist < minBlockDist) {
               minBlockDist = Math.max(0, dist);
               blockingObstacle = obs;
             }
-          });
+          }
 
           // 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
           const isAllyStopped = (ally: Unit): boolean => {
@@ -1227,12 +1229,15 @@ export function useRealtimeGame() {
               chargeStartTime = undefined;
             }
 
+            const obstacleDist = blockingObstacle
+              ? (unit.owner === 'player'
+                  ? blockingObstacle.x - unit.x
+                  : unit.x - blockingObstacle.x)
+              : 999;
+            const canMoveDuringCharge = Boolean(unit.canMoveWhileCharging && isCharging);
             const canMoveWhileAttacking =
-              Boolean(unit.isCircularRange || unit.cardNo === 8) &&
-              (!blockingObstacle ||
-                (unit.owner === 'player'
-                  ? (blockingObstacle as CombatTarget).x - unit.x
-                  : unit.x - (blockingObstacle as CombatTarget).x) > 5.0);
+              (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 5.0) ||
+              canMoveDuringCharge;
 
             if (!canMoveWhileAttacking) {
               return {

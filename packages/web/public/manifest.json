@@ -1,0 +1,17 @@
+{
+  "name": "Nullpoga TCG - 5レーン・リアルタイムカードバトル",
+  "short_name": "Nullpoga TCG",
+  "description": "リアルタイムにマナを溜め、5レーンにユニットを展開して敵拠点を攻略するリアルタイムTCG",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b1120",
+  "theme_color": "#0b1120",
+  "orientation": "landscape",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

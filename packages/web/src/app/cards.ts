@@ -40,10 +40,11 @@ export const CARD_POOL: DemoCard[] = [
     attack: 1,
     life: 2,
     speed: 5, // じっくり前進（旧10から調整）
-    range: 8,
+    range: 10, // 走り込みバイト射程（チャージしながら接近）
     attackInterval: 3.2,
     attackWindup: 0.8, // 攻撃前隙（構え0.8秒）
-    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。0.8秒の構えから力強く噛みつく。',
+    canMoveWhileCharging: true, // 構え・チャージ中も低姿勢で走り込みながら前進
+    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。敵を捉えると立ち止まらずに低姿勢で走り込みながらチャージし、力強く噛みつく。',
     icon: '🐕',
   },
   {
@@ -84,10 +85,11 @@ export const CARD_POOL: DemoCard[] = [
     attack: 3,
     life: 4,
     speed: 7, // 突破突進（旧13から調整）
-    range: 8,
+    range: 12, // 突進探知射程（チャージしながら激突まで猛ダッシュ）
     attackInterval: 3.6,
     attackWindup: 1.0, // 攻撃前隙（ブルチャージタメ1.0秒）
-    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。1.0秒のタメ後に強烈なかち上げ突進で相手をノックバックさせる。',
+    canMoveWhileCharging: true, // チャージ中も猛突進して敵に激突
+    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。敵を捉えると立ち止まらずに猛突進しながらチャージし、激突時に強烈なかち上げで相手をノックバックさせる。',
     icon: '🐗',
   },
   {

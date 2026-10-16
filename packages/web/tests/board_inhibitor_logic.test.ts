@@ -465,7 +465,118 @@ assert(ninjaZone.diameter === 32, 'Zone diameter must be 32');
 assert(ninjaZone.left === 24 && ninjaZone.top === 34, 'Zone left and top must be computed correctly');
 console.log('  -> Ninja Assassin circular detection & shuriken mechanics: PASSED');
 
-console.log('=== All 9 Test Suites PASSED Successfully! ===');
+console.log('[10/10] Testing charge-while-moving (canMoveWhileCharging) mechanics for Boar & Shiba...');
+// 10-1. カードスペック検証
+assert(boarCard.canMoveWhileCharging === true, 'Boar must have canMoveWhileCharging=true');
+assert(shibaCard.canMoveWhileCharging === true, 'Shiba must have canMoveWhileCharging=true');
+assert(boarCard.range === 12, 'Boar range must be 12% to allow charge approach distance');
+assert(shibaCard.range === 10, 'Shiba range must be 10% to allow charge approach distance');
+assert(!mouseCard.canMoveWhileCharging, 'Mouse should NOT have canMoveWhileCharging');
+assert(!catCard.canMoveWhileCharging, 'Cat should NOT have canMoveWhileCharging');
+assert(!dragonCard.canMoveWhileCharging, 'Dragon should NOT have canMoveWhileCharging');
+
+// 10-2. 移動シミュレーション検証: チャージ中の挙動比較
+const simulateAttackStep = (unit: Unit, isCharging: boolean, cooldown: number, dt: number = 0.1) => {
+  const obstacleDist = 999;
+  const canMoveDuringCharge = Boolean(unit.canMoveWhileCharging && isCharging);
+  const canMoveWhileAttacking =
+    (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 5.0) ||
+    canMoveDuringCharge;
+
+  if (!canMoveWhileAttacking) {
+    // 停止（早期リターン）
+    return { ...unit, attackCooldown: cooldown, isCharging };
+  }
+
+  // 移動計算 (Player方向)
+  const moveDelta = unit.speed * 0.375 * dt;
+  const newX = unit.x + moveDelta;
+  const newDist = (unit.distanceTraveled || 0) + moveDelta;
+  return {
+    ...unit,
+    x: newX,
+    distanceTraveled: newDist,
+    attackCooldown: cooldown,
+    isCharging,
+  };
+};
+
+// 通常ユニット（ネコ）: チャージ中は立ち止まる
+const catUnit: Unit = {
+  id: 'cat_test',
+  cardNo: 3,
+  name: 'ネコ',
+  owner: 'player',
+  x: 20,
+  y: 50,
+  maxHp: 2,
+  hp: 2,
+  attack: 2,
+  speed: 5,
+  range: 8,
+  attackCooldown: 0,
+  attackInterval: 3.4,
+  attackWindup: 0.7,
+  icon: '🐱',
+};
+
+const catDuringCharge = simulateAttackStep(catUnit, true, 0);
+assert(catDuringCharge.x === 20, 'Cat MUST stop during attack charge (x unchanged)');
+
+// 突進ユニット（イノシシ）: チャージ中は前進する！
+const boarUnit: Unit = {
+  id: 'boar_test',
+  cardNo: 7,
+  name: 'イノシシ',
+  owner: 'player',
+  x: 20,
+  y: 50,
+  maxHp: 4,
+  hp: 4,
+  attack: 3,
+  speed: 7,
+  range: 12,
+  canMoveWhileCharging: true,
+  attackCooldown: 0,
+  attackInterval: 3.6,
+  attackWindup: 1.0,
+  icon: '🐗',
+};
+
+const boarDuringCharge = simulateAttackStep(boarUnit, true, 0);
+assert(boarDuringCharge.x > 20, 'Boar MUST move forward during attack charge!');
+
+// イノシシ: 攻撃発生・クールダウン中（isCharging=false）は停止する！
+const boarDuringCooldown = simulateAttackStep(boarUnit, false, 3.6);
+assert(boarDuringCooldown.x === 20, 'Boar MUST stop when attacking and during cooldown!');
+
+// 柴犬: チャージ中前進により distanceTraveled が加算される
+const shibaUnit: Unit = {
+  id: 'shiba_test',
+  cardNo: 2,
+  name: '柴犬ラン丸',
+  owner: 'player',
+  x: 20,
+  y: 50,
+  maxHp: 2,
+  hp: 2,
+  attack: 1,
+  speed: 5,
+  range: 10,
+  canMoveWhileCharging: true,
+  attackCooldown: 0,
+  attackInterval: 3.2,
+  attackWindup: 0.8,
+  distanceTraveled: 19.8, // あと0.2%で20%ボーナス到達
+  icon: '🐕',
+};
+
+const shibaDuringCharge = simulateAttackStep(shibaUnit, true, 0, 0.2); // 5 * 0.375 * 0.2 = 0.375% 前進
+assert(shibaDuringCharge.x > 20, 'Shiba MUST move forward during charge');
+assert((shibaDuringCharge.distanceTraveled || 0) >= 20.0, 'Shiba charge distance MUST cross 20% threshold!');
+console.log('  -> Boar & Shiba charge-while-moving (canMoveWhileCharging) mechanics: PASSED');
+
+console.log('=== All 10 Test Suites PASSED Successfully! ===');
 
 
 

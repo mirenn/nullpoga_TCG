@@ -13,6 +13,7 @@ export interface DemoCard {
   range?: number; // 射程 (%単位)
   attackInterval?: number; // 攻撃間隔・クールダウン (秒)
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 1.0)
+  canMoveWhileCharging?: boolean; // 攻撃チャージ中（attackWindup）も立ち止まらずに前進・突進可能か（猪・柴犬など）
   isCircularRange?: boolean; // 円形探知範囲（忍者など）
   effectDesc: string;
   icon: string;
@@ -45,6 +46,7 @@ export interface Unit {
   speed: number; // 1秒あたりの移動量 (%)
   hitRange?: number; // 実ヒット距離 (%)。未指定なら range と同じ
   range: number; // 射程 (%)
+  canMoveWhileCharging?: boolean; // 攻撃チャージ中も前進可能か
   isCircularRange?: boolean; // 円形全方位探知（忍者など）
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）

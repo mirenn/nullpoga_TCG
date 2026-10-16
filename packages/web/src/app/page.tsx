@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { styles } from './page.styles';
 import './realtime-battle.css';
 import { useRealtimeGame } from './useRealtimeGame';
@@ -11,6 +11,7 @@ import { BattleField } from '../components/battle/BattleField';
 import { PlayerCommandBar } from '../components/battle/PlayerCommandBar';
 import { GameResultModal } from '../components/modals/GameResultModal';
 import { MANA_SPEED_PRESETS } from './cards';
+import { clampSpawnX, clampSpawnY, clampPlayerSpawnX } from './board';
 
 export default function RealtimeDemoPage() {
   const {
@@ -57,6 +58,13 @@ export default function RealtimeDemoPage() {
   const [showDesktopSidePanel, setShowDesktopSidePanel] = useState(true);
   const [showUnitRange, setShowUnitRange] = useState(false);
 
+  // iPad等のタブレット（画面幅1280px未満）では、初期表示時にサイドパネルを収納してアリーナを最大化
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+      setShowDesktopSidePanel(false);
+    }
+  }, []);
+
   // 初回マウント時に URL クエリパラメータ (?range=1 / ?range=true) または localStorage から射程表示設定を復元
   useEffect(() => {
     try {
@@ -93,11 +101,22 @@ export default function RealtimeDemoPage() {
     });
   }, []);
   
-  // ドラッグ＆ドロップ用ステート
+  // ドラッグ＆ドロップ用ステート (HTML5 D&D & タッチPointer共通)
+  const battleFieldRef = useRef<HTMLDivElement>(null);
   const [draggedCardIndex, setDraggedCardIndex] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOverLaneIndex, setDragOverLaneIndex] = useState<number | null>(null);
   const [spawnRippleLane, setSpawnRippleLane] = useState<number | null>(null);
+  const [touchDragPos, setTouchDragPos] = useState<{ clientX: number; clientY: number } | null>(null);
+  const [externalHoverPos, setExternalHoverPos] = useState<{ x: number; y: number } | null>(null);
+
+  const pointerDragStateRef = useRef<{
+    pointerId: number;
+    cardIdx: number;
+    startX: number;
+    startY: number;
+    hasMoved: boolean;
+  } | null>(null);
 
   const [displayCombo, setDisplayCombo] = useState<{ count: number; visible: boolean }>({ count: 0, visible: false });
 
@@ -118,14 +137,146 @@ export default function RealtimeDemoPage() {
 
   // ゲームリセット（D&D状態もクリア）
   const handleReset = useCallback(() => {
+    pointerDragStateRef.current = null;
     setDraggedCardIndex(null);
     setIsDragging(false);
     setDragOverLaneIndex(null);
     setSpawnRippleLane(null);
+    setTouchDragPos(null);
+    setExternalHoverPos(null);
     resetGame();
   }, [resetGame]);
 
-  // ドラッグ開始
+  // タッチデバイス・ポインター用ドラッグ開始
+  const handleCardPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>, idx: number) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      const validation = checkCanPlayCard(idx);
+      if (!validation.canPlay || gameResult !== 'playing') return;
+
+      pointerDragStateRef.current = {
+        pointerId: e.pointerId,
+        cardIdx: idx,
+        startX: e.clientX,
+        startY: e.clientY,
+        hasMoved: false,
+      };
+    },
+    [checkCanPlayCard, gameResult]
+  );
+
+  // ウィンドウ全体でタッチ・ポインタードラッグをスムーズに追従・出撃判定
+  useEffect(() => {
+    const onPointerMove = (e: PointerEvent) => {
+      const state = pointerDragStateRef.current;
+      if (!state || e.pointerId !== state.pointerId) return;
+
+      const dx = e.clientX - state.startX;
+      const dy = e.clientY - state.startY;
+
+      // 8px以上の移動でドラッグ状態へ移行
+      if (!state.hasMoved && Math.hypot(dx, dy) > 8) {
+        state.hasMoved = true;
+        setDraggedCardIndex(state.cardIdx);
+        setIsDragging(true);
+      }
+
+      if (state.hasMoved) {
+        setTouchDragPos({ clientX: e.clientX, clientY: e.clientY });
+
+        if (battleFieldRef.current) {
+          const rect = battleFieldRef.current.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom &&
+            rect.width > 0 &&
+            rect.height > 0
+          ) {
+            const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+            const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+            setExternalHoverPos({
+              x: clampSpawnX(rawX),
+              y: clampSpawnY(rawY),
+            });
+          } else {
+            setExternalHoverPos(null);
+          }
+        }
+      }
+    };
+
+    const onPointerUp = (e: PointerEvent) => {
+      const state = pointerDragStateRef.current;
+      if (!state || e.pointerId !== state.pointerId) return;
+
+      if (state.hasMoved) {
+        // ドラッグして戦場上で指を離した ➔ 出撃実行！
+        if (battleFieldRef.current) {
+          const rect = battleFieldRef.current.getBoundingClientRect();
+          if (
+            e.clientX >= rect.left &&
+            e.clientX <= rect.right &&
+            e.clientY >= rect.top &&
+            e.clientY <= rect.bottom &&
+            rect.width > 0 &&
+            rect.height > 0
+          ) {
+            const rawX = ((e.clientX - rect.left) / rect.width) * 100;
+            const rawY = ((e.clientY - rect.top) / rect.height) * 100;
+            const card = hand[state.cardIdx];
+            if (card) {
+              const x = card.type === 'MONSTER'
+                ? clampPlayerSpawnX(rawX)
+                : clampSpawnX(rawX, 15, 85);
+              const y = clampSpawnY(rawY);
+              const validation = checkCanPlayCard(state.cardIdx, rawX, y);
+              if (validation.canPlay) {
+                if (playCardAt) {
+                  playCardAt(x, y, state.cardIdx);
+                } else if (playCardAtX) {
+                  playCardAtX(x, state.cardIdx);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        // 移動距離がわずかなタップ操作 ➔ 選択切り替え
+        const idx = state.cardIdx;
+        setSelectedCardIndex((prev) => (prev === idx ? null : idx));
+      }
+
+      pointerDragStateRef.current = null;
+      setDraggedCardIndex(null);
+      setIsDragging(false);
+      setTouchDragPos(null);
+      setExternalHoverPos(null);
+    };
+
+    const onPointerCancel = (e: PointerEvent) => {
+      const state = pointerDragStateRef.current;
+      if (state && e.pointerId === state.pointerId) {
+        pointerDragStateRef.current = null;
+        setDraggedCardIndex(null);
+        setIsDragging(false);
+        setTouchDragPos(null);
+        setExternalHoverPos(null);
+      }
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerCancel);
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerCancel);
+    };
+  }, [hand, checkCanPlayCard, playCardAt, playCardAtX, setSelectedCardIndex]);
+
+  // ドラッグ開始 (HTML5 Drag & Drop)
   const handleDragStart = (e: React.DragEvent, idx: number) => {
     const validation = checkCanPlayCard(idx);
     if (!validation.canPlay) {
@@ -140,9 +291,12 @@ export default function RealtimeDemoPage() {
 
   // ドラッグ終了
   const handleDragEnd = useCallback(() => {
+    pointerDragStateRef.current = null;
     setDraggedCardIndex(null);
     setIsDragging(false);
     setDragOverLaneIndex(null);
+    setTouchDragPos(null);
+    setExternalHoverPos(null);
   }, []);
 
   // ブラウザ外ドロップやドラッグ中断時にも確実に状態をリセット
@@ -334,6 +488,8 @@ export default function RealtimeDemoPage() {
 
           {/* 2. オープンフィールド戦場アリーナ (flex: 1 で全画面収容) */}
           <BattleField
+            containerRef={battleFieldRef}
+            externalHoverPos={externalHoverPos}
             units={units}
             inhibitors={inhibitors}
             obstacles={obstacles}
@@ -387,6 +543,7 @@ export default function RealtimeDemoPage() {
             setSelectedCardIndex={setSelectedCardIndex}
             handleDragStart={handleDragStart}
             handleDragEnd={handleDragEnd}
+            handleCardPointerDown={handleCardPointerDown}
           />
         </div>
 
@@ -407,6 +564,44 @@ export default function RealtimeDemoPage() {
           />
         )}
       </div>
+
+      {/* タッチドラッグ中の指追従フローティングカードゴースト */}
+      {isDragging && touchDragPos && activeDraggedCard && (
+        <div
+          style={{
+            position: 'fixed',
+            left: touchDragPos.clientX,
+            top: touchDragPos.clientY,
+            transform: 'translate(-50%, -85%) scale(1.08)',
+            pointerEvents: 'none',
+            zIndex: 9999,
+            boxShadow: '0 12px 30px rgba(0,0,0,0.7), 0 0 20px rgba(56, 189, 248, 0.6)',
+            borderRadius: '8px',
+            backgroundColor: '#0f172a',
+            border: '2px solid #38bdf8',
+            padding: '6px 8px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '2px',
+            width: '74px',
+            height: '92px',
+            boxSizing: 'border-box',
+            opacity: 0.95,
+            transition: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px', color: '#60a5fa', fontWeight: 'bold' }}>
+            <span>⚡{activeDraggedCard.manaCost}</span>
+            <span style={{ fontSize: '9px', color: '#94a3b8' }}>{activeDraggedCard.type === 'SPELL' ? '✨呪文' : '⚔️'}</span>
+          </div>
+          <span style={{ fontSize: '28px', lineHeight: 1.1 }}>{activeDraggedCard.icon}</span>
+          <span style={{ fontSize: '10.5px', color: '#f8fafc', fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '64px' }}>
+            {activeDraggedCard.name}
+          </span>
+        </div>
+      )}
 
       {/* モバイル用ガイドモーダル */}
       <GuideModal isOpen={showGuideModal} onClose={() => setShowGuideModal(false)} />

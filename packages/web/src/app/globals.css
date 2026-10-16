@@ -6,9 +6,15 @@
 html,
 body {
   max-width: 100vw;
-  overflow-x: hidden;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
   color: #0f172a;
-  background-color: #f8fafc;
+  background-color: #0b1120;
 }
 
 body {

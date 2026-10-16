@@ -2,16 +2,20 @@ import type React from 'react';
 
 export const styles: Record<string, React.CSSProperties> = {
   container: {
-    height: '100vh',
+    height: '100dvh',
     maxHeight: '100dvh',
     overflow: 'hidden',
     backgroundColor: '#0b1120',
     color: '#f8fafc',
     display: 'flex',
     flexDirection: 'column',
-    padding: '6px 10px',
+    paddingTop: 'max(6px, env(safe-area-inset-top))',
+    paddingBottom: 'max(6px, env(safe-area-inset-bottom))',
+    paddingLeft: 'max(10px, env(safe-area-inset-left))',
+    paddingRight: 'max(10px, env(safe-area-inset-right))',
     fontFamily: 'system-ui, -apple-system, sans-serif',
     boxSizing: 'border-box',
+    touchAction: 'manipulation',
   },
   manaSpeedSelector: {
     display: 'flex',
@@ -681,9 +685,11 @@ export const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     transition: 'all 0.15s ease',
     userSelect: 'none',
+    WebkitUserSelect: 'none',
+    WebkitTouchCallout: 'none',
     boxSizing: 'border-box',
     overflow: 'hidden',
-    touchAction: 'manipulation',
+    touchAction: 'none',
   },
   cardSelected: {
     borderColor: '#3b82f6',

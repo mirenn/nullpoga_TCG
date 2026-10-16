@@ -4,24 +4,18 @@
 
 To maintain high development velocity while preventing merge conflicts and race conditions across concurrent sessions/agents:
 
-### 1. Default Workflow (Single Session)
-- When the working tree is clean and no concurrent sessions are modifying files, develop directly in the repository (using short-lived feature branches `feat/*` or `fix/*`).
-- Do **not** create git worktrees unnecessarily to avoid filesystem clutter and overhead.
+### 1. Default Workflow (Direct on Main)
+- Develop directly on `main` by default, verifying changes with typecheck/tests and committing/pushing directly.
+- Feature branches (`feat/*`) are **not required** for normal tasks to eliminate merge overhead, PR drift, and branch clutter.
+- Keep development fast, simple, and unified on `main`.
 
-### 2. When to Use Git Worktree (On-Demand Worktree)
-Create and switch to a dedicated `git worktree` when:
-- Another session, subagent, or external tool (e.g., Jules) is actively working or running tasks in the repository.
-- The working directory has uncommitted changes belonging to another ongoing task (`git status --porcelain` is dirty).
-- Explicitly instructed by the user to work in parallel with other sessions.
-
-#### Worktree Commands:
-- Create worktree adjacent to the project directory:
+### 2. Multi-Session & Parallel Tasks Awareness
+- **Parallel Work Check**: Before making changes, check `git status`. If another session, subagent, or external tool (e.g., Jules) is actively modifying files or has uncommitted work (`git status --porcelain` is dirty), be careful not to overwrite or conflict with their changes.
+- When working concurrently with other active sessions or when explicitly instructed, use a short-lived branch or dedicated `git worktree`:
   ```bash
-  git worktree add ../nullpoga_worktrees/<branch-name> -b feat/<branch-name>
-  ```
-- Remove worktree after completion and push:
-  ```bash
-  git worktree remove ../nullpoga_worktrees/<branch-name>
+  # Optional: worktree for parallel isolated work
+  git worktree add ../nullpoga_worktrees/<task-name> -b feat/<task-name>
+  git worktree remove ../nullpoga_worktrees/<task-name>
   ```
 
 ### 3. Modular Architecture (Conflict Prevention)

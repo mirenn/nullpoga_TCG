@@ -42,6 +42,8 @@ import {
 import { SPAWN_MIN_SPACE } from '../../app/cards';
 
 export interface BattleFieldProps {
+  containerRef?: React.RefObject<HTMLDivElement | null>;
+  externalHoverPos?: { x: number; y: number } | null;
   units: Unit[];
   inhibitors: Inhibitor[];
   obstacles?: FieldObstacle[];
@@ -77,6 +79,8 @@ export interface BattleFieldProps {
 }
 
 export function BattleField({
+  containerRef: externalContainerRef,
+  externalHoverPos,
   units,
   inhibitors,
   obstacles = FIELD_OBSTACLES,
@@ -103,7 +107,8 @@ export function BattleField({
   toggleUnitHold,
   handleDragEnd,
 }: BattleFieldProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const internalContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = externalContainerRef ?? internalContainerRef;
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [ripplePos, setRipplePos] = useState<{ x: number; y: number } | null>(null);
 
@@ -195,6 +200,67 @@ export function BattleField({
     },
     [updateCamera]
   );
+
+  // タッチデバイス（iPad等）での2本指ピンチズーム＆スワイプパン
+  const touchStateRef = useRef<{
+    initialDist: number;
+    initialZoom: number;
+    initialMidX: number;
+    initialMidY: number;
+    initialPanX: number;
+    initialPanY: number;
+  } | null>(null);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+      touchStateRef.current = {
+        initialDist: Math.max(10, dist),
+        initialZoom: camera.zoom,
+        initialMidX: midX,
+        initialMidY: midY,
+        initialPanX: camera.panX,
+        initialPanY: camera.panY,
+      };
+    }
+  }, [camera.zoom, camera.panX, camera.panY]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2 && touchStateRef.current) {
+      e.preventDefault();
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      const midX = (t1.clientX + t2.clientX) / 2;
+      const midY = (t1.clientY + t2.clientY) / 2;
+
+      const scaleFactor = dist / touchStateRef.current.initialDist;
+      const newZoom = clampCameraZoom(touchStateRef.current.initialZoom * scaleFactor);
+
+      const deltaX = midX - touchStateRef.current.initialMidX;
+      const deltaY = midY - touchStateRef.current.initialMidY;
+      const newPanX = clampCameraPanX(touchStateRef.current.initialPanX + deltaX);
+      const newPanY = clampCameraPanY(touchStateRef.current.initialPanY + deltaY);
+
+      updateCamera((prev) => ({
+        ...prev,
+        zoom: newZoom,
+        panX: newPanX,
+        panY: newPanY,
+      }));
+    }
+  }, [updateCamera]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) {
+      touchStateRef.current = null;
+    }
+  }, []);
 
   // マウス/タッチ座標からフィールドの横パーセント (SPAWN_X_MIN〜SPAWN_X_MAX) を算出
   const calculateXPercent = useCallback((clientX: number): number => {
@@ -298,8 +364,9 @@ export function BattleField({
 
   const activeCard = isDragging ? activeDraggedCard : selectedCard;
   const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
-  const hoverX = hoverPos?.x ?? null;
-  const hoverY = hoverPos?.y ?? null;
+  const effectiveHoverPos = externalHoverPos !== undefined ? externalHoverPos : hoverPos;
+  const hoverX = effectiveHoverPos?.x ?? null;
+  const hoverY = effectiveHoverPos?.y ?? null;
   const rawTargetX = hoverX ?? (activeCard?.type === 'SPELL' ? 50 : PLAYER_DEFAULT_SPAWN_X);
   const rawTargetY = hoverY ?? 50;
 
@@ -348,6 +415,10 @@ export function BattleField({
     <div
       onMouseDown={handleMouseDown}
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
       onContextMenu={(e) => {
         // 右ドラッグでもカメラ移動できるようにコンテキストメニューを抑止
         e.preventDefault();
@@ -364,6 +435,8 @@ export function BattleField({
           'radial-gradient(circle at 50% 40%, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 1) 100%)',
         overflow: 'hidden',
         userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'none',
         perspective: camera.is3DMode ? '1100px' : undefined,
         cursor: isPanningCamera
           ? 'grabbing'
@@ -447,6 +520,44 @@ export function BattleField({
         >
           👁️ 死角を覗く
         </button>
+
+        {/* タッチデバイスでもワンタップで操作できるズームイン・アウトボタン */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+          <button
+            type="button"
+            onClick={() => updateCamera((prev) => ({ ...prev, zoom: clampCameraZoom(prev.zoom - 0.1) }))}
+            style={{
+              backgroundColor: '#1e293b',
+              color: '#cbd5e1',
+              border: '1px solid #475569',
+              borderRadius: '999px',
+              padding: '2px 6px',
+              fontSize: '9.5px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+            title="ズームアウト (縮小)"
+          >
+            🔍−
+          </button>
+          <button
+            type="button"
+            onClick={() => updateCamera((prev) => ({ ...prev, zoom: clampCameraZoom(prev.zoom + 0.1) }))}
+            style={{
+              backgroundColor: '#1e293b',
+              color: '#cbd5e1',
+              border: '1px solid #475569',
+              borderRadius: '999px',
+              padding: '2px 6px',
+              fontSize: '9.5px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+            title="ズームイン (拡大)"
+          >
+            🔍＋
+          </button>
+        </div>
 
         {isCameraMoved && (
           <button
@@ -882,6 +993,8 @@ export function BattleField({
                 >
                   {isShieldUnit
                     ? `🛡️${unit.range}%`
+                    : unit.canMoveWhileCharging
+                    ? `🏃突進${unit.range}%`
                     : hitZone
                     ? `👁探知${unit.range}%`
                     : `🎯${unit.range}%`}
@@ -1653,7 +1766,11 @@ export function BattleField({
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isShield ? `🛡️射程 ${previewRange}%` : `🎯射程 ${previewRange}%`}
+                  {activeCard.canMoveWhileCharging
+                    ? `🏃突進射程 ${previewRange}%`
+                    : isShield
+                    ? `🛡️射程 ${previewRange}%`
+                    : `🎯射程 ${previewRange}%`}
                 </span>
               </div>
               {/* 実ヒット距離(hitRange)が探知距離より短いカードは、内側に命中範囲を重ねて表示 */}
