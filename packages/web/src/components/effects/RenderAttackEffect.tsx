@@ -271,6 +271,48 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         </div>
       )}
 
+      {/* 森の狩人: 矢の飛翔 ＆ 着弾ヒットフラッシュ */}
+      {effect.effectType === 'arrow' && (() => {
+        const dx = effect.toX - effect.fromX;
+        const dy = effect.toY - effect.fromY;
+        const angleDeg = Math.round((Math.atan2(dy, dx) * 180) / Math.PI);
+        const arrowFlight = effect.flightDuration ?? 180;
+        return (
+          <>
+            <div
+              className="arrow-projectile"
+              style={{
+                '--from-y': `${effect.fromY}%`,
+                '--to-y': `${effect.toY}%`,
+                '--from-x': fromLeft,
+                '--to-x': targetLeft,
+                '--flight-duration': `${arrowFlight}ms`,
+                '--arrow-angle': `${angleDeg}deg`,
+              } as React.CSSProperties}
+            >
+              <svg width="26" height="10" viewBox="0 0 26 10" fill="none" style={{ filter: 'drop-shadow(0 0 4px #eab308)' }}>
+                <line x1="2" y1="5" x2="20" y2="5" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" />
+                <polygon points="19,1 25,5 19,9" fill="#f8fafc" />
+                <line x1="2" y1="2" x2="6" y2="5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
+                <line x1="2" y1="8" x2="6" y2="5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
+              </svg>
+            </div>
+            <div
+              className="arrow-impact-effect"
+              style={{
+                top: `${effect.toY}%`,
+                left: targetLeft,
+                '--impact-delay': `${arrowFlight}ms`,
+              } as React.CSSProperties}
+            >
+              <span style={{ fontSize: '24px', display: 'block', filter: 'drop-shadow(0 0 10px #eab308)' }}>
+                💥
+              </span>
+            </div>
+          </>
+        );
+      })()}
+
       {/* 共通近接スラッシュ（フォールバック） */}
       {effect.effectType === 'slash' && (
         <div

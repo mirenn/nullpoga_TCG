@@ -15,6 +15,7 @@ import {
   DeckState,
   createDeterministicDeckState,
   createRandomDeckState,
+  HOUND_TOKEN_SPEC,
 } from './cards';
 import { computeCpuAction } from './cpuAi';
 import {
@@ -466,7 +467,37 @@ export function useRealtimeGame() {
           comboCount: newComboCount > 1 ? newComboCount : undefined,
           killCount: 0,
         };
-        const next = [...unitsRef.current, newUnit];
+        const spawnedUnits: Unit[] = [newUnit];
+        if (card.cardNo === 12) {
+          const houndX = Math.min(PLAYER_SPAWN_X_MAX, spawnX + 2.5);
+          const houndUnit: Unit = {
+            id: `player_hound_${Date.now()}_${Math.random()}`,
+            cardNo: HOUND_TOKEN_SPEC.cardNo,
+            name: HOUND_TOKEN_SPEC.name,
+            owner: 'player',
+            x: houndX,
+            lane: spawnY,
+            y: spawnY,
+            maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp,
+            hp: HOUND_TOKEN_SPEC.life + comboBonusHp,
+            attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
+            speed: HOUND_TOKEN_SPEC.speed,
+            range: HOUND_TOKEN_SPEC.range,
+            attackCooldown: 0,
+            attackInterval: Math.max(0.1, HOUND_TOKEN_SPEC.attackInterval - counterBonusInterval),
+            attackWindup: HOUND_TOKEN_SPEC.attackWindup,
+            isCharging: false,
+            chargeStartTime: undefined,
+            icon: HOUND_TOKEN_SPEC.icon,
+            distanceTraveled: 0,
+            isCounterDeploy: isCounterDeploy,
+            isAmbushDeploy,
+            comboCount: newComboCount > 1 ? newComboCount : undefined,
+            killCount: 0,
+          };
+          spawnedUnits.push(houndUnit);
+        }
+        const next = [...unitsRef.current, ...spawnedUnits];
         unitsRef.current = next;
         setUnits(next);
       } else if (card.type === 'SPELL') {
@@ -733,7 +764,7 @@ export function useRealtimeGame() {
             }
           }
           if (spawningWarnings.length > 0) {
-            spawnedCpuUnits = spawningWarnings.map((w) => {
+            spawnedCpuUnits = spawningWarnings.flatMap((w) => {
               const spawnY = w.targetY ?? w.y ?? (w.lane ?? 50);
               // カウンターデプロイ判定 (CPU): プレイヤーが1.5秒以内に同じレーン(Y)に出撃したか
               let isCounterDeploy = false;
@@ -760,7 +791,7 @@ export function useRealtimeGame() {
               // スポーン記録
               cpuSpawnTimestampsRef.current.push({ x: 95, y: spawnY, time: now });
               
-              return {
+              const hunterUnit: Unit = {
                 id: `cpu_${Date.now()}_${Math.random()}`,
                 cardNo: w.card.cardNo,
                 name: w.card.name,
@@ -785,6 +816,36 @@ export function useRealtimeGame() {
                 comboCount: comboCount > 1 ? comboCount : undefined,
                 killCount: 0,
               };
+
+              if (w.card.cardNo === 12) {
+                const houndUnit: Unit = {
+                  id: `cpu_hound_${Date.now()}_${Math.random()}`,
+                  cardNo: HOUND_TOKEN_SPEC.cardNo,
+                  name: HOUND_TOKEN_SPEC.name,
+                  owner: 'cpu' as const,
+                  x: 93, // CPU側前衛（左方向へ先行）
+                  lane: spawnY,
+                  y: spawnY,
+                  maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp,
+                  hp: HOUND_TOKEN_SPEC.life + comboBonusHp,
+                  attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk,
+                  speed: HOUND_TOKEN_SPEC.speed,
+                  range: HOUND_TOKEN_SPEC.range,
+                  attackCooldown: 0,
+                  attackInterval: Math.max(0.1, HOUND_TOKEN_SPEC.attackInterval - counterBonusInterval),
+                  attackWindup: HOUND_TOKEN_SPEC.attackWindup,
+                  isCharging: false,
+                  chargeStartTime: undefined,
+                  icon: HOUND_TOKEN_SPEC.icon,
+                  distanceTraveled: 0,
+                  isCounterDeploy: isCounterDeploy,
+                  comboCount: comboCount > 1 ? comboCount : undefined,
+                  killCount: 0,
+                };
+                return [hunterUnit, houndUnit];
+              }
+
+              return [hunterUnit];
             });
             // クリーンアップ
             cpuSpawnTimestampsRef.current = cpuSpawnTimestampsRef.current.filter(s => now - s.time <= 3000);
@@ -1074,6 +1135,14 @@ export function useRealtimeGame() {
                   } else if (unit.cardNo === 9) {
                     effectType = 'blood_bite';
                     duration = 320;
+                  } else if (unit.cardNo === 12) {
+                    effectType = 'arrow';
+                    const distRatio = Math.min(1, minDistance / 25);
+                    flightMs = Math.round(100 + distRatio * 150);
+                    duration = flightMs + 300;
+                  } else if (unit.cardNo === 13) {
+                    effectType = 'bite';
+                    duration = 260;
                   }
 
                   const primaryTarget = targetEnemy as CombatTarget;
@@ -1164,6 +1233,15 @@ export function useRealtimeGame() {
                     const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
                     baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
                     duration = baseFlightMs + 450;
+                  } else if (unit.cardNo === 12) {
+                    effectType = 'arrow';
+                    const baseDist = Math.abs(unit.x - targetBaseX);
+                    const distRatio = Math.min(1, baseDist / 25);
+                    baseFlightMs = Math.round(100 + distRatio * 150);
+                    duration = baseFlightMs + 300;
+                  } else if (unit.cardNo === 13) {
+                    effectType = 'bite';
+                    duration = 260;
                   }
 
                   newAttackEffects.push({

@@ -109,6 +109,15 @@ export function computeCpuAction(
           } else {
             score -= 4;
           }
+        } else if (card.cardNo === 12) {
+          // 森の狩人と猟犬: 前衛猟犬が敵を足止めし、狩人が後方から迎撃
+          if (nearbyEnemies.length > 0) {
+            score += 12;
+            score += closeEnemies.length * 8;
+          } else {
+            score += 4;
+            if (enemyInhibitor) score += 6;
+          }
         } else {
           // 通常ユニット: 迫る敵への迎撃
           score += nearbyEnemies.length * 4;

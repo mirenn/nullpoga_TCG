@@ -853,3 +853,59 @@
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+
+        /* 森の狩人: 矢の飛翔アニメーション */
+        @keyframes arrow-fly {
+          0% {
+            top: var(--from-y);
+            left: var(--from-x, 50%);
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(var(--arrow-angle, 0deg)) scale(0.9);
+          }
+          90% {
+            top: var(--to-y);
+            left: var(--to-x, 50%);
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(var(--arrow-angle, 0deg)) scale(1.0);
+          }
+          100% {
+            top: var(--to-y);
+            left: var(--to-x, 50%);
+            opacity: 0;
+            transform: translate(-50%, -50%) rotate(var(--arrow-angle, 0deg)) scale(0.5);
+          }
+        }
+        .arrow-projectile {
+          position: absolute;
+          left: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 40;
+          animation: arrow-fly var(--flight-duration, 200ms) linear forwards;
+        }
+
+        /* 矢の着弾ヒットフラッシュ */
+        @keyframes arrow-impact-flash {
+          0% {
+            transform: translate(-50%, -50%) scale(0.5);
+            opacity: 1;
+          }
+          50% {
+            transform: translate(-50%, -50%) scale(1.4);
+            opacity: 0.9;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(1.8);
+            opacity: 0;
+          }
+        }
+        .arrow-impact-effect {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+          z-index: 41;
+          animation: arrow-impact-flash 0.3s ease-out forwards;
+          animation-delay: var(--impact-delay, 0ms);
+        }

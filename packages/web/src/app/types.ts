@@ -86,7 +86,8 @@ export type AttackEffectType =
   | 'tackle'
   | 'headbutt'
   | 'shadow_slash'
-  | 'blood_bite';
+  | 'blood_bite'
+  | 'arrow';
 
 export interface AttackEffect {
   id: string;

@@ -38,7 +38,7 @@ import {
   CPU_INHIBITOR_X,
 } from '../src/app/inhibitors';
 import { computeCpuAction } from '../src/app/cpuAi';
-import { CARD_POOL } from '../src/app/cards';
+import { CARD_POOL, HOUND_TOKEN_SPEC } from '../src/app/cards';
 import { deriveAnimationState, getAttackAnimDuration } from '../src/components/units/animationLogic';
 import {
   FIELD_OBSTACLES,
@@ -202,7 +202,7 @@ console.log('[5/5] Testing unit attack windup, animation state & SVG renderers..
 // 5-1. 各モンスターの attackWindup と attackInterval
 const monsterCards = CARD_POOL.filter((c) => c.type === 'MONSTER');
 const attackingMonsters = monsterCards.filter((c) => (c.attack ?? 0) > 0);
-assert(attackingMonsters.length === 8, 'There should be 8 attacking monster cards');
+assert(attackingMonsters.length === 9, 'There should be 9 attacking monster cards');
 attackingMonsters.forEach((c) => {
   assert(
     typeof c.attackWindup === 'number' && c.attackWindup > 0,
@@ -223,6 +223,7 @@ const assassinCard = CARD_POOL.find((c) => c.id === 'assassin')!;
 const batCard = CARD_POOL.find((c) => c.id === 'vampire_bat')!;
 const jellyfishCard = CARD_POOL.find((c) => c.id === 'jellyfish')!;
 const dragonCard = CARD_POOL.find((c) => c.id === 'dragon')!;
+const hunterMonsterCard = CARD_POOL.find((c) => c.id === 'hunter')!;
 
 assert(mouseCard.attackWindup === 0.5, 'Mouse windup must be 0.5s');
 assert(catCard.attackWindup === 0.7, 'Cat windup must be 0.7s');
@@ -232,6 +233,7 @@ assert(assassinCard.attackWindup === 0.6, 'Assassin windup must be 0.6s');
 assert(batCard.attackWindup === 0.7, 'Bat windup must be 0.7s');
 assert(jellyfishCard.attackWindup === 2.0, 'Jellyfish windup must be 2.0s');
 assert(dragonCard.attackWindup === 1.6, 'Dragon windup must be 1.6s');
+assert(hunterMonsterCard.attackWindup === 0.6, 'Hunter windup must be 0.6s');
 
 // 5-2. deriveAnimationState 状態遷移テスト
 const baseUnit: Unit = {
@@ -363,5 +365,56 @@ assert(ambushObs !== null && ambushObs.id === 'obs_player_upper_forest', 'Spawni
 assert(findPlayerAmbushObstacle(15, 50) === null, 'Spawning at open lane (15,50) should not trigger ambush obstacle');
 console.log('  -> 3D obstacles, parallax canopy projection & camera peeking SPOT logic: PASSED');
 
-console.log('=== All 7 Test Suites PASSED Successfully! ===');
+console.log('[8/8] Testing Hunter & Hound (Card 12 & Token 13) specs and roles...');
+const hunterCard = CARD_POOL.find((c) => c.cardNo === 12);
+assert(hunterCard !== undefined, 'Card 12 (森の狩人と猟犬) must exist in CARD_POOL');
+assert(hunterCard!.manaCost === 3, 'Hunter mana cost must be 3');
+assert(hunterCard!.attack === 2, 'Hunter attack must be 2');
+assert(hunterCard!.life === 2, 'Hunter life must be 2');
+assert(hunterCard!.range === 22, 'Hunter range must be 22 (ranged backline)');
+assert(hunterCard!.speed === 3.5, 'Hunter speed must be 3.5');
+
+assert(HOUND_TOKEN_SPEC.cardNo === 13, 'Hound token cardNo must be 13');
+assert(HOUND_TOKEN_SPEC.attack === 1, 'Hound token attack must be 1 (weaker token)');
+assert(HOUND_TOKEN_SPEC.life === 2, 'Hound token life must be 2');
+assert(HOUND_TOKEN_SPEC.range === 8, 'Hound token range must be 8 (melee frontline)');
+assert(HOUND_TOKEN_SPEC.speed === 6.5, 'Hound token speed must be 6.5');
+
+// 役割分担の検証: 猟犬は弱トークン(ATK 1 < 2)であり、足が速く(6.5 > 3.5)前衛に飛び出し、狩人は後方支援(range 22 > 8)
+assert(HOUND_TOKEN_SPEC.attack < hunterCard!.attack!, 'Hound token must have lower attack than Hunter');
+assert(HOUND_TOKEN_SPEC.speed > hunterCard!.speed!, 'Hound token must move faster than Hunter to form frontline');
+assert(hunterCard!.range! > HOUND_TOKEN_SPEC.range, 'Hunter must have longer range than Hound token');
+
+// CPU AI が敵接近時に狩人カードを高く評価するかテスト
+const cpuActionWithHunter = computeCpuAction(
+  5,
+  [hunterCard!],
+  [
+    {
+      id: 'p_cat',
+      cardNo: 3,
+      name: 'ネコ',
+      owner: 'player',
+      x: 70, // CPUに接近
+      y: 50,
+      lane: 50,
+      hp: 2,
+      maxHp: 2,
+      attack: 2,
+      speed: 5,
+      range: 8,
+      attackCooldown: 0,
+      attackInterval: 3.4,
+      icon: '🐱',
+    },
+  ],
+  [],
+  []
+);
+assert(cpuActionWithHunter !== null, 'CPU AI must consider Hunter when mana is sufficient');
+assert(cpuActionWithHunter!.card.cardNo === 12, 'CPU AI should pick Hunter card');
+console.log('  -> Hunter & Hound specs, roles, and CPU AI evaluation: PASSED');
+
+console.log('=== All 8 Test Suites PASSED Successfully! ===');
+
 

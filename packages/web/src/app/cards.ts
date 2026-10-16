@@ -137,6 +137,21 @@ export const CARD_POOL: DemoCard[] = [
     icon: '🐉',
   },
   {
+    id: 'hunter',
+    cardNo: 12,
+    name: '森の狩人と猟犬',
+    type: 'MONSTER',
+    manaCost: 3,
+    attack: 2,
+    life: 2,
+    speed: 3.5, // 後方支援ペース
+    range: 22, // 遠距離射撃
+    attackInterval: 2.6,
+    attackWindup: 0.6, // 弓の引き絞り0.6秒
+    effectDesc: '出撃時に前衛として「猟犬」(HP2/ATK1)を召喚。猟犬が敵を足止めしている間に、遠距離から矢を放って援護する。',
+    icon: '🏹',
+  },
+  {
     id: 'haste_spell',
     cardNo: 102,
     name: '疾風の号令',
@@ -188,6 +203,19 @@ export const SPAWN_MIN_SPACE = 8.0; // 召喚時の最小専有空間（%単位�
 // 出撃後の味方同士の最小間隔: 出撃時の必要スペースの半分まで詰められる（0.5重なり）
 export const ALLY_MIN_GAP = SPAWN_MIN_SPACE * 0.5;
 
+export const HOUND_TOKEN_SPEC = {
+  cardNo: 13,
+  name: '猟犬',
+  attack: 1,
+  life: 2,
+  speed: 6.5,
+  range: 8,
+  attackInterval: 2.0,
+  attackWindup: 0.3,
+  icon: '🐕‍🦺',
+  effectDesc: '狩人に付き従う俊敏な猟犬。素早く前進して敵を足止めする。',
+} as const;
+
 export const createDefault15Deck = (): DemoCard[] => {
   const cardMap: Record<string, DemoCard> = {};
   CARD_POOL.forEach((c) => {
@@ -198,7 +226,7 @@ export const createDefault15Deck = (): DemoCard[] => {
     cardMap['cat'],
     cardMap['shiba'],
     cardMap['turtle'], cardMap['heal_spell'],
-    cardMap['vampire_bat'], cardMap['vampire_bat'],
+    cardMap['hunter'], cardMap['vampire_bat'],
     cardMap['jellyfish'], cardMap['jellyfish'],
     cardMap['assassin'],
     cardMap['boar'],
