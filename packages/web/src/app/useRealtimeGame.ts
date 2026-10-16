@@ -921,9 +921,27 @@ export function useRealtimeGame() {
               }
             });
 
-          // 前方にいる味方を探す（追い越し防止・重なり防止: 縦幅 ±COLLISION_HALF_WIDTH_Y）
+          // 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
+          const isAllyStopped = (ally: Unit): boolean => {
+            const fwd = (tx: number) => (ally.owner === 'player' ? tx - ally.x : ally.x - tx);
+            const enemyInReach = unitsAfterHits.some(
+              (e) => e.owner !== ally.owner && e.hp > 0 && isWithinEngageY(e.y, ally.y) && fwd(e.x) >= -2 && fwd(e.x) <= ally.range
+            );
+            if (enemyInReach) return true;
+            return inhibitorsRef.current.some(
+              (i) => i.owner !== ally.owner && i.hp > 0 && inhibitorEngageableY(i, ally.y) && fwd(i.x) >= -2 && fwd(i.x) <= ally.range
+            );
+          };
+
+          // 前方にいる味方を探す（重なり防止: 縦幅 ±COLLISION_HALF_WIDTH_Y）
+          // 停止中（攻撃中）の味方はすり抜け可能なので壁にしない
           const alliesInFront = unitsAfterHits.filter(
-            (u) => isWithinCollisionY(u.y, unit.y) && u.owner === unit.owner && u.id !== unit.id && u.hp > 0
+            (u) =>
+              isWithinCollisionY(u.y, unit.y) &&
+              u.owner === unit.owner &&
+              u.id !== unit.id &&
+              u.hp > 0 &&
+              !isAllyStopped(u)
           );
           let targetAlly: Unit | null = null;
           let minAllyDist = 999;
