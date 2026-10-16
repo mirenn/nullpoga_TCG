@@ -24,6 +24,8 @@ import {
   PLAYER_DEFAULT_SPAWN_X,
   getSpawnDepthRole,
   computeUnitRangeZone,
+  isWithinCircularRange,
+  computeUnitCircularRangeZone,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
@@ -229,7 +231,7 @@ assert(mouseCard.attackWindup === 0.5, 'Mouse windup must be 0.5s');
 assert(catCard.attackWindup === 0.7, 'Cat windup must be 0.7s');
 assert(shibaCard.attackWindup === 0.8, 'Shiba windup must be 0.8s');
 assert(boarCard.attackWindup === 1.0, 'Boar windup must be 1.0s');
-assert(assassinCard.attackWindup === 0.6, 'Assassin windup must be 0.6s');
+assert(assassinCard.attackWindup === 0.5, 'Assassin windup must be 0.5s');
 assert(batCard.attackWindup === 0.7, 'Bat windup must be 0.7s');
 assert(jellyfishCard.attackWindup === 2.0, 'Jellyfish windup must be 2.0s');
 assert(dragonCard.attackWindup === 1.6, 'Dragon windup must be 1.6s');
@@ -415,6 +417,55 @@ assert(cpuActionWithHunter !== null, 'CPU AI must consider Hunter when mana is s
 assert(cpuActionWithHunter!.card.cardNo === 12, 'CPU AI should pick Hunter card');
 console.log('  -> Hunter & Hound specs, roles, and CPU AI evaluation: PASSED');
 
-console.log('=== All 8 Test Suites PASSED Successfully! ===');
+// 9. Testing Ninja Assassin Circular Detection, Shuriken Mechanics & Specs
+console.log('[9/9] Testing Ninja Assassin circular range & shuriken mechanics...');
+const ninjaCard = CARD_POOL.find((c) => c.id === 'assassin')!;
+assert(ninjaCard.cardNo === 8, 'Ninja cardNo must be 8');
+assert(ninjaCard.range === 16, 'Ninja range must be 16% (circular detection)');
+assert(ninjaCard.isCircularRange === true, 'Ninja must have isCircularRange=true');
+assert(ninjaCard.attackWindup === 0.5, 'Ninja attackWindup must be 0.5s');
+assert(ninjaCard.attackInterval === 2.6, 'Ninja attackInterval must be 2.6s');
+
+// 円形探知 (isWithinCircularRange) の検証:
+// 忍者 (x=40, y=50) に対して、少し下 (y=62, Y差12%) をすれ違う敵
+const ninjaX = 40;
+const ninjaY = 50;
+const enemyBelowX = 40;
+const enemyBelowY = 62;
+
+// 従来の交戦判定(isWithinEngageY)では別レーン扱い(Y差12% > 6.5%)で探知不可
+assert(
+  !isWithinEngageY(ninjaY, enemyBelowY),
+  'Traditional isWithinEngageY should NOT detect enemy 12% below'
+);
+
+// 新しい円形全方位探知(isWithinCircularRange)では距離12% <= 16%で正確に探知可能！
+assert(
+  isWithinCircularRange(ninjaX, ninjaY, enemyBelowX, enemyBelowY, ninjaCard.range!),
+  'isWithinCircularRange MUST detect enemy 12% below within 16% radius'
+);
+
+// 斜め下をすれ違う敵 (x=48, y=60: dist = hypot(8, 10) = 12.8% <= 16%)
+assert(
+  isWithinCircularRange(ninjaX, ninjaY, 48, 60, ninjaCard.range!),
+  'isWithinCircularRange MUST detect diagonal enemy at (48, 60)'
+);
+
+// 射程外の遠い敵 (x=40, y=75: Y差25% > 16%)
+assert(
+  !isWithinCircularRange(ninjaX, ninjaY, 40, 75, ninjaCard.range!),
+  'isWithinCircularRange should NOT detect enemy out of 16% radius'
+);
+
+// 円形ジオメトリ計算 (computeUnitCircularRangeZone)
+const ninjaZone = computeUnitCircularRangeZone(ninjaX, ninjaY, ninjaCard.range!);
+assert(ninjaZone.centerX === 40 && ninjaZone.centerY === 50, 'Zone center must match ninja pos');
+assert(ninjaZone.radius === 16, 'Zone radius must be 16');
+assert(ninjaZone.diameter === 32, 'Zone diameter must be 32');
+assert(ninjaZone.left === 24 && ninjaZone.top === 34, 'Zone left and top must be computed correctly');
+console.log('  -> Ninja Assassin circular detection & shuriken mechanics: PASSED');
+
+console.log('=== All 9 Test Suites PASSED Successfully! ===');
+
 
 

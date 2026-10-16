@@ -99,10 +99,11 @@ export const CARD_POOL: DemoCard[] = [
     attack: 2,
     life: 2,
     speed: 5, // 通常速度5（敵不在時は3倍速の15）
-    range: 8, // 近接接触
-    attackInterval: 2.8,
-    attackWindup: 0.6, // 攻撃前隙（居合い構え0.6秒）
-    effectDesc: '敵がいないレーンを走ると移動速度が3倍（超高速）になる。0.6秒の居合いの構えから一閃で斬りつける。',
+    range: 16, // 全方位円形探知・手裏剣射程 16%
+    isCircularRange: true, // 円形全方位探知
+    attackInterval: 2.6,
+    attackWindup: 0.5, // 手裏剣投擲の振りかぶり構え0.5秒
+    effectDesc: '全方位円形（半径16%）の敵を探知し、すれ違いざまに手裏剣を投擲して攻撃する。進路に対向敵がいない時は移動速度が3倍（疾走）。',
     icon: '🥷',
   },
   {

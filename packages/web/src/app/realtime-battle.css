@@ -909,3 +909,60 @@
           animation: arrow-impact-flash 0.3s ease-out forwards;
           animation-delay: var(--impact-delay, 0ms);
         }
+
+        /* 忍びアサシン: 手裏剣の高速回転飛翔アニメーション */
+        @keyframes shuriken-fly {
+          0% {
+            top: var(--from-y);
+            left: var(--from-x, 50%);
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(0deg) scale(0.85);
+          }
+          90% {
+            top: var(--to-y);
+            left: var(--to-x, 50%);
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(720deg) scale(1.1);
+          }
+          100% {
+            top: var(--to-y);
+            left: var(--to-x, 50%);
+            opacity: 0;
+            transform: translate(-50%, -50%) rotate(800deg) scale(0.5);
+          }
+        }
+        .shuriken-projectile {
+          position: absolute;
+          left: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 40;
+          animation: shuriken-fly var(--flight-duration, 180ms) linear forwards;
+        }
+
+        /* 手裏剣の着弾火花＆鋭い斬光 */
+        @keyframes shuriken-impact-flash {
+          0% {
+            transform: translate(-50%, -50%) scale(0.4) rotate(0deg);
+            opacity: 1;
+          }
+          40% {
+            transform: translate(-50%, -50%) scale(1.5) rotate(45deg);
+            opacity: 1;
+          }
+          100% {
+            transform: translate(-50%, -50%) scale(2.0) rotate(90deg);
+            opacity: 0;
+          }
+        }
+        .shuriken-impact-effect {
+          position: absolute;
+          transform: translate(-50%, -50%);
+          pointer-events: none;
+          z-index: 41;
+          animation: shuriken-impact-flash 0.3s ease-out forwards;
+          animation-delay: var(--impact-delay, 0ms);
+        }
+

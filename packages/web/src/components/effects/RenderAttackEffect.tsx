@@ -313,6 +313,53 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
         );
       })()}
 
+      {/* 忍びアサシン: 手裏剣の高速回転飛翔 ＆ 着弾鋭利スラッシュ */}
+      {effect.effectType === 'shuriken' && (() => {
+        const shurikenFlight = effect.flightDuration ?? 160;
+        return (
+          <>
+            <div
+              className="shuriken-projectile"
+              style={{
+                '--from-y': `${effect.fromY}%`,
+                '--to-y': `${effect.toY}%`,
+                '--from-x': fromLeft,
+                '--to-x': targetLeft,
+                '--flight-duration': `${shurikenFlight}ms`,
+              } as React.CSSProperties}
+            >
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 0 6px #00f0ff)' }}>
+                {/* 4枚刃の鋭利な手裏剣 */}
+                <path
+                  d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"
+                  fill="#e2e8f0"
+                  stroke="#0284c7"
+                  strokeWidth="1.2"
+                />
+                <path
+                  d="M12 5 L13.5 10.5 L19 12 L13.5 13.5 L12 19 L10.5 13.5 L5 12 L10.5 10.5 Z"
+                  fill="#38bdf8"
+                  opacity="0.8"
+                />
+                <circle cx="12" cy="12" r="2.5" fill="#0f172a" stroke="#38bdf8" strokeWidth="1" />
+              </svg>
+            </div>
+            <div
+              className="shuriken-impact-effect"
+              style={{
+                top: `${effect.toY}%`,
+                left: targetLeft,
+                '--impact-delay': `${shurikenFlight}ms`,
+              } as React.CSSProperties}
+            >
+              <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 12px #00f0ff)' }}>
+                ⚡🗡️
+              </span>
+            </div>
+          </>
+        );
+      })()}
+
       {/* 共通近接スラッシュ（フォールバック） */}
       {effect.effectType === 'slash' && (
         <div

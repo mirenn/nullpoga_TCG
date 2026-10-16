@@ -151,6 +151,47 @@ export function isWithinMeteorRange(
   return Math.hypot(unitX - targetX, unitY - targetY) <= radius;
 }
 
+/** 2つの座標が円形探知範囲内にあるか（全方位ユークリッド距離） */
+export function isWithinCircularRange(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  radius: number
+): boolean {
+  return Math.hypot(x1 - x2, y1 - y2) <= radius;
+}
+
+/** 円形探知ユニットの射程範囲ジオメトリ情報 (%単位) */
+export interface UnitCircularRangeZone {
+  centerX: number;
+  centerY: number;
+  radius: number;
+  left: number;
+  top: number;
+  diameter: number;
+}
+
+/**
+ * 円形探知ユニットの現在座標 (x, y)・射程 (range) から、
+ * フィールド上の円形射程範囲（半径 range%）を算出する
+ */
+export function computeUnitCircularRangeZone(
+  x: number,
+  y: number,
+  range: number
+): UnitCircularRangeZone {
+  const radius = Math.max(0, range);
+  return {
+    centerX: x,
+    centerY: y,
+    radius,
+    left: x - radius,
+    top: y - radius,
+    diameter: radius * 2,
+  };
+}
+
 // === 互換性エイリアス ===
 export const ENGAGE_HALF_WIDTH_X = ENGAGE_HALF_WIDTH_Y;
 export const COLLISION_HALF_WIDTH_X = COLLISION_HALF_WIDTH_Y;

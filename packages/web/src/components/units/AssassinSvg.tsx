@@ -103,19 +103,19 @@ export const AssassinSvg: React.FC<UnitSvgProps> = ({
           <rect x="13" y="24" width="3.5" height="8" rx="1.75" fill={suitColor} />
         </g>
 
-        {/* === 刀 / クナイ（抜刀・納刀） === */}
+        {/* === 武器（手裏剣・忍刀） === */}
         <g className={bladeClass} style={{ transformOrigin: '21px 19px' }}>
           {isAttacking ? (
-            // 攻撃時: 刀身が前方に光の軌跡とともに突き出される
+            // 攻撃時: 腕を振り抜いて手裏剣を投擲したスナップモーション
             <g filter={`url(#assassin-glow-${isPlayer ? 'p' : 'c'})`}>
-              <path d="M21,19 L33,14 L32,16 L21,20 Z" fill={bladeColor} />
-              <line x1="21" y1="19" x2="34" y2="13" stroke={bladeGlow} strokeWidth="1.2" strokeLinecap="round" />
+              <line x1="19" y1="18" x2="31" y2="15" stroke={bladeGlow} strokeWidth="2" strokeLinecap="round" />
+              <polygon points="28,12 34,15 28,18 30,15" fill={bladeColor} />
             </g>
           ) : isCharging ? (
-            // チャージ時: 刀の柄に手を当て光が収束
-            <g>
-              <rect x="18" y="16" width="7" height="2" rx="1" fill={bladeColor} stroke={bladeGlow} strokeWidth="0.8" />
-              <circle cx="25" cy="17" r="1.5" fill={bladeGlow} />
+            // チャージ時: 手元で手裏剣を振りかぶり輝きをチャージ
+            <g filter={`url(#assassin-glow-${isPlayer ? 'p' : 'c'})`}>
+              <circle cx="23" cy="18" r="3" fill="none" stroke={bladeGlow} strokeWidth="1" strokeDasharray="2 2" />
+              <polygon points="23,15 25,18 23,21 21,18" fill={bladeColor} />
             </g>
           ) : (
             // 通常時: 背中の忍刀

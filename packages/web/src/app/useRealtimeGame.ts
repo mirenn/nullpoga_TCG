@@ -26,6 +26,7 @@ import {
   FIRE_SPELL_SPREAD_SPEED_Y,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
+  isWithinCircularRange,
   clampSpawnX,
   clampSpawnY,
   clampPlayerSpawnX,
@@ -454,6 +455,7 @@ export function useRealtimeGame() {
           attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
           speed: card.speed || 10,
           range: card.range || 3,
+          isCircularRange: card.isCircularRange,
           hitRange: card.hitRange,
           attackCooldown: 0,
           attackInterval: Math.max(0.1, (card.attackInterval ?? 1.0) - counterBonusInterval),
@@ -804,6 +806,7 @@ export function useRealtimeGame() {
                 attack: (w.card.attack || 1) + comboBonusAtk + counterBonusAtk,
                 speed: w.card.speed || 10,
                 range: w.card.range || 3,
+                isCircularRange: w.card.isCircularRange,
                 hitRange: w.card.hitRange,
                 attackCooldown: 0,
                 attackInterval: Math.max(0.1, (w.card.attackInterval ?? 1.0) - counterBonusInterval),
@@ -999,6 +1002,8 @@ export function useRealtimeGame() {
             ? shibaBaseAtk + Math.min(4, Math.floor(distance / 20))
             : unit.attack;
           let lastAttack = unit.lastAttackEffectTime;
+          let isCharging = unit.isCharging || false;
+          let chargeStartTime = unit.chargeStartTime;
 
           if (isStunned) {
             return {
@@ -1010,48 +1015,79 @@ export function useRealtimeGame() {
             };
           }
 
-          // 交戦範囲（縦のずれ isWithinEngageY）の対向敵を探す
-          const enemiesInRange = unitsAfterHits.filter(
-            (u) => isWithinEngageY(u.y, unit.y) && u.owner !== unit.owner && u.hp > 0
-          );
-          // 進路・交戦範囲の敵インヒビター（攻撃対象 兼 壁）
-          const enemyInhibitorsInPath = inhibitorsRef.current.filter(
-            (i) => i.owner !== unit.owner && inhibitorEngageableY(i, unit.y) && i.hp > 0
-          );
-          const targetCandidates: CombatTarget[] = [
-            ...enemiesInRange.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
-            ...enemyInhibitorsInPath.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
-          ];
-
-          // 進行方向の前方にいる最も近い敵を探す（攻撃対象）
+          // 敵ターゲット候補の探索
+          let targetCandidates: CombatTarget[];
           let targetEnemy: CombatTarget | null = null;
           let minDistance = 999;
-          targetCandidates.forEach((enemy) => {
-            const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
-            if (dist >= -2 && dist < minDistance) {
-              minDistance = Math.max(0, dist);
-              targetEnemy = enemy;
-            }
-          });
+
+          if (unit.isCircularRange || unit.cardNo === 8) {
+            // 円形全方位探知ユニット（忍者など）: 全敵ユニット・全敵インヒビターからユークリッド距離で探知
+            const allEnemies = unitsAfterHits.filter(
+              (u) => u.owner !== unit.owner && u.hp > 0
+            );
+            const allInhibitors = inhibitorsRef.current.filter(
+              (i) => i.owner !== unit.owner && i.hp > 0
+            );
+            targetCandidates = [
+              ...allEnemies.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+              ...allInhibitors.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
+            ];
+            // ユークリッド距離が射程(unit.range)以内かつ最も近い敵を主標的とする
+            targetCandidates.forEach((enemy) => {
+              const dist = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
+              if (dist <= unit.range && dist < minDistance) {
+                minDistance = dist;
+                targetEnemy = enemy;
+              }
+            });
+          } else {
+            // 通常ユニット: 交戦範囲（縦のずれ isWithinEngageY）の対向敵・インヒビターを探す
+            const enemiesInRange = unitsAfterHits.filter(
+              (u) => isWithinEngageY(u.y, unit.y) && u.owner !== unit.owner && u.hp > 0
+            );
+            const enemyInhibitorsInPath = inhibitorsRef.current.filter(
+              (i) => i.owner !== unit.owner && inhibitorEngageableY(i, unit.y) && i.hp > 0
+            );
+            targetCandidates = [
+              ...enemiesInRange.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+              ...enemyInhibitorsInPath.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
+            ];
+            targetCandidates.forEach((enemy) => {
+              const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
+              if (dist >= -2 && dist < minDistance) {
+                minDistance = Math.max(0, dist);
+                targetEnemy = enemy;
+              }
+            });
+          }
 
           // 前方にいる敵ユニットまたはインヒビター（物理衝突・前進ストップ壁: 縦幅 ±COLLISION_HALF_WIDTH_Y または inhibitorBlocksY）
           let blockingObstacle: CombatTarget | null = null;
           let minBlockDist = 999;
-          targetCandidates
-            .filter((t) => {
-              if (t.isStructure) {
-                const foundInhib = inhibitorsRef.current.find((i) => i.id === t.id);
-                return foundInhib ? inhibitorBlocksY(foundInhib, unit.y) : isWithinCollisionY(t.y, unit.y);
-              }
-              return isWithinCollisionY(t.y, unit.y);
-            })
-            .forEach((obs) => {
-              const dist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
-              if (dist >= -1 && dist < minBlockDist) {
-                minBlockDist = Math.max(0, dist);
-                blockingObstacle = obs;
-              }
-            });
+          const obstacleCandidates = (unit.isCircularRange || unit.cardNo === 8)
+            ? [
+                ...unitsAfterHits
+                  .filter((u) => u.owner !== unit.owner && u.hp > 0 && isWithinCollisionY(u.y, unit.y))
+                  .map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+                ...inhibitorsRef.current
+                  .filter((i) => i.owner !== unit.owner && i.hp > 0 && inhibitorBlocksY(i, unit.y))
+                  .map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
+              ]
+            : targetCandidates.filter((t) => {
+                if (t.isStructure) {
+                  const foundInhib = inhibitorsRef.current.find((i) => i.id === t.id);
+                  return foundInhib ? inhibitorBlocksY(foundInhib, unit.y) : isWithinCollisionY(t.y, unit.y);
+                }
+                return isWithinCollisionY(t.y, unit.y);
+              });
+
+          obstacleCandidates.forEach((obs) => {
+            const dist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
+            if (dist >= -1 && dist < minBlockDist) {
+              minBlockDist = Math.max(0, dist);
+              blockingObstacle = obs;
+            }
+          });
 
           // 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
           const isAllyStopped = (ally: Unit): boolean => {
@@ -1085,21 +1121,19 @@ export function useRealtimeGame() {
             }
           });
 
-          // 敵が射程内にいる場合：停止して攻撃
+          // 敵が射程内にいる場合：攻撃処理（通常ユニットは停止、忍者はすれ違い移動しながら投擲可能）
           if (targetEnemy && minDistance <= unit.range) {
             const windup = unit.attackWindup || 0;
-            let isCharging = unit.isCharging || false;
-            let chargeStartTime = unit.chargeStartTime;
 
             if (cooldown <= 0) {
               if (windup > 0 && !isCharging) {
-                // AAチャージモーション開始
+                // AAチャージ・投擲構えモーション開始
                 isCharging = true;
                 chargeStartTime = now;
               } else {
                 const chargeElapsed = isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
                 if (windup === 0 || chargeElapsed >= windup) {
-                  // チャージ完了 -> 従来の攻撃・弾発射モーションへ移行
+                  // チャージ完了 -> 攻撃・弾発射モーションへ移行
                   isCharging = false;
                   chargeStartTime = undefined;
                   cooldown = unit.attackInterval;
@@ -1130,8 +1164,10 @@ export function useRealtimeGame() {
                     effectType = 'headbutt';
                     duration = 380;
                   } else if (unit.cardNo === 8) {
-                    effectType = 'shadow_slash';
-                    duration = 300;
+                    effectType = 'shuriken';
+                    const distRatio = Math.min(1, minDistance / 16);
+                    flightMs = Math.round(110 + distRatio * 110);
+                    duration = flightMs + 320;
                   } else if (unit.cardNo === 9) {
                     effectType = 'blood_bite';
                     duration = 320;
@@ -1190,13 +1226,29 @@ export function useRealtimeGame() {
               isCharging = false;
               chargeStartTime = undefined;
             }
-            return {
-              ...unit,
-              attackCooldown: cooldown,
-              lastAttackEffectTime: lastAttack,
-              isCharging,
-              chargeStartTime,
-            };
+
+            const canMoveWhileAttacking =
+              Boolean(unit.isCircularRange || unit.cardNo === 8) &&
+              (!blockingObstacle ||
+                (unit.owner === 'player'
+                  ? (blockingObstacle as CombatTarget).x - unit.x
+                  : unit.x - (blockingObstacle as CombatTarget).x) > 5.0);
+
+            if (!canMoveWhileAttacking) {
+              return {
+                ...unit,
+                attackCooldown: cooldown,
+                lastAttackEffectTime: lastAttack,
+                isCharging,
+                chargeStartTime,
+              };
+            }
+          } else {
+            // 敵が射程内にいない場合はチャージを解除
+            if (isCharging) {
+              isCharging = false;
+              chargeStartTime = undefined;
+            }
           }
 
           // 敵陣最奥に到達しているか？ (Playerは右端 x>=94, CPUは左端 x<=6)
@@ -1233,6 +1285,12 @@ export function useRealtimeGame() {
                     const distRatio = Math.min(1, baseDist / LIGHTNING_MAX_RANGE);
                     baseFlightMs = Math.round(LIGHTNING_FLIGHT_MIN_MS + distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS));
                     duration = baseFlightMs + 450;
+                  } else if (unit.cardNo === 8) {
+                    effectType = 'shuriken';
+                    const baseDist = Math.abs(unit.x - targetBaseX);
+                    const distRatio = Math.min(1, baseDist / 16);
+                    baseFlightMs = Math.round(110 + distRatio * 110);
+                    duration = baseFlightMs + 320;
                   } else if (unit.cardNo === 12) {
                     effectType = 'arrow';
                     const baseDist = Math.abs(unit.x - targetBaseX);
@@ -1302,10 +1360,18 @@ export function useRealtimeGame() {
             };
           }
 
-          // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がおらず、かつカメラで看破（isSpotted）されていない場合は移動速度が3倍（超高速疾走）
+          // 忍びアサシン（cardNo: 8）：正面進路に対向敵がおらず、かつカメラで看破（isSpotted）されていない場合は移動速度が3倍（超高速疾走）
+          // ※正面レーン（isWithinEngageY）の前方に敵がいなければ、すれ違う敵に手裏剣を投げながら疾走可能
+          const enemiesInFrontLane = unitsAfterHits.filter(
+            (u) =>
+              isWithinEngageY(u.y, unit.y) &&
+              u.owner !== unit.owner &&
+              u.hp > 0 &&
+              (unit.owner === 'player' ? u.x > unit.x - 2 : u.x < unit.x + 2)
+          );
           const isHolding = unit.owner === 'player' && Boolean(unit.isHolding);
           const isSprinting =
-            !isHolding && unit.cardNo === 8 && enemiesInRange.length === 0 && !unit.isSpotted;
+            !isHolding && unit.cardNo === 8 && enemiesInFrontLane.length === 0 && !unit.isSpotted;
 
           // 移動計算 (X軸方向)
           const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
@@ -1348,8 +1414,9 @@ export function useRealtimeGame() {
             attack,
             distanceTraveled: distance,
             attackCooldown: cooldown,
-            isCharging: false,
-            chargeStartTime: undefined,
+            lastAttackEffectTime: lastAttack,
+            isCharging,
+            chargeStartTime,
             isSprinting,
           };
         });
@@ -1369,7 +1436,7 @@ export function useRealtimeGame() {
             const primary = attackTargets.get(attacker.id);
             if (!primary || primary.isStructure) return;
 
-            // 主標的は必ず命中。それ以外は「主標的のY近傍」で射程内の敵にも巻き込みヒット
+            // 主標的は必ず命中。それ以外は「主標的のY近傍」で射程内の敵にも巻き込みヒット（忍者は単体狙撃のため巻き込みなし）
             const isPrimary = primary.id === unit.id;
             const dist = attacker.owner === 'player' ? unit.x - attacker.x : attacker.x - unit.x;
             // hitRange 指定ユニット（ドラゴン等）は、発射時点で実ヒット距離外にいる相手には空振りする
@@ -1377,7 +1444,12 @@ export function useRealtimeGame() {
             // hitRange 指定ユニット（ドラゴン等）は範囲攻撃：実ヒット距離内・縦幅は従来(±4%)のまま、主標的以外は減衰ダメージ
             const isAreaAttacker = attacker.hitRange !== undefined;
             const splashReach = isAreaAttacker ? (attacker.hitRange as number) : attacker.range + 2;
-            const isSplash = isWithinEngageY(unit.y, primary.y, 4.0) && dist >= -2 && dist <= splashReach;
+            const isSplash =
+              !attacker.isCircularRange &&
+              attacker.cardNo !== 8 &&
+              isWithinEngageY(unit.y, primary.y, 4.0) &&
+              dist >= -2 &&
+              dist <= splashReach;
             if (isPrimary || isSplash) {
               const hadHp = currentHp > 0;
               const dealt =

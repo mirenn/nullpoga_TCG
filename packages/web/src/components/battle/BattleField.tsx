@@ -745,7 +745,8 @@ export function BattleField({
 
         const isPlayer = unit.owner === 'player';
         const isShieldUnit = unit.attack === 0;
-        const rangeZone = showUnitRange && !isUnitConcealed
+        const isCircularUnit = Boolean(unit.isCircularRange || unit.cardNo === 8);
+        const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit
           ? computeUnitRangeZone(unit.x, unit.y, unit.range, unit.owner)
           : null;
         const hitZone =
@@ -774,6 +775,52 @@ export function BattleField({
 
         return (
           <React.Fragment key={unit.id}>
+            {/* 円形全方位探知ユニット（忍者など）の射程サークル */}
+            {showUnitRange && !isUnitConcealed && isCircularUnit && (
+              <div
+                data-unit-range-id={unit.id}
+                data-unit-range={unit.range}
+                data-unit-owner={unit.owner}
+                style={{
+                  position: 'absolute',
+                  top: `${unit.y}%`,
+                  left: `${unit.x}%`,
+                  transform: 'translate(-50%, -50%)',
+                  width: `${unit.range * 2}%`,
+                  height: `${unit.range * 2}%`,
+                  borderRadius: '50%',
+                  background: isPlayer
+                    ? 'radial-gradient(circle, rgba(0, 240, 255, 0.05) 0%, rgba(0, 240, 255, 0.22) 100%)'
+                    : 'radial-gradient(circle, rgba(244, 63, 94, 0.05) 0%, rgba(244, 63, 94, 0.22) 100%)',
+                  border: isPlayer ? '2px dashed #00f0ff' : '2px dashed #f43f5e',
+                  boxShadow: isPlayer
+                    ? '0 0 16px rgba(0, 240, 255, 0.4), inset 0 0 12px rgba(0, 240, 255, 0.2)'
+                    : '0 0 16px rgba(244, 63, 94, 0.4), inset 0 0 12px rgba(244, 63, 94, 0.2)',
+                  pointerEvents: 'none',
+                  zIndex: 6,
+                }}
+              >
+                <span
+                  style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '12px',
+                    fontSize: '8.5px',
+                    fontWeight: 'bold',
+                    color: '#f8fafc',
+                    backgroundColor: isPlayer ? 'rgba(12, 74, 110, 0.92)' : 'rgba(136, 19, 55, 0.92)',
+                    border: isPlayer ? '1px solid #00f0ff' : '1px solid #f43f5e',
+                    borderRadius: '3px',
+                    padding: '0 4px',
+                    lineHeight: '13px',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  🎯円形探知 {unit.range}%
+                </span>
+              </div>
+            )}
+
             {/* 各ユニットの射程範囲 (X軸: 前方unit.range%, Y軸: 交戦幅±ENGAGE_HALF_WIDTH_Y%) */}
             {rangeZone && rangeZone.width > 0 && (
               <div
@@ -1513,13 +1560,60 @@ export function BattleField({
           {/* モンスター出撃プレビュー時の射程範囲表示 (showUnitRange有効時) */}
           {showUnitRange && activeCard.type === 'MONSTER' && (() => {
             const previewRange = activeCard.range ?? 8;
-            const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, previewRange, 'player');
+            const isCircular = Boolean(activeCard.isCircularRange || activeCard.cardNo === 8);
             const isShield = (activeCard.attack ?? 0) === 0;
             const previewColor = isTargetBlocked
               ? '#ef4444'
+              : isCircular
+              ? '#00f0ff'
               : isShield
               ? '#10b981'
               : '#38bdf8';
+
+            if (isCircular) {
+              return (
+                <div
+                  data-spawn-circular-preview={previewRange}
+                  style={{
+                    position: 'absolute',
+                    top: `${currentTargetY}%`,
+                    left: `${currentTargetX}%`,
+                    transform: 'translate(-50%, -50%)',
+                    width: `${previewRange * 2}%`,
+                    height: `${previewRange * 2}%`,
+                    borderRadius: '50%',
+                    background: isTargetBlocked
+                      ? 'radial-gradient(circle, rgba(239, 68, 68, 0.06) 0%, rgba(239, 68, 68, 0.28) 100%)'
+                      : 'radial-gradient(circle, rgba(0, 240, 255, 0.06) 0%, rgba(0, 240, 255, 0.28) 100%)',
+                    border: `2px dashed ${previewColor}`,
+                    boxShadow: `0 0 16px ${previewColor}`,
+                    pointerEvents: 'none',
+                    zIndex: 19,
+                  }}
+                >
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '6px',
+                      right: '12px',
+                      fontSize: '9px',
+                      fontWeight: 'bold',
+                      color: '#ffffff',
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                      border: `1px solid ${previewColor}`,
+                      borderRadius: '3px',
+                      padding: '0px 4px',
+                      lineHeight: '13px',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    🎯円形探知 {previewRange}%
+                  </span>
+                </div>
+              );
+            }
+
+            const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, previewRange, 'player');
             return (
               <>
               <div

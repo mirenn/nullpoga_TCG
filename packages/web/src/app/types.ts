@@ -13,6 +13,7 @@ export interface DemoCard {
   range?: number; // 射程 (%単位)
   attackInterval?: number; // 攻撃間隔・クールダウン (秒)
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 1.0)
+  isCircularRange?: boolean; // 円形探知範囲（忍者など）
   effectDesc: string;
   icon: string;
 }
@@ -44,6 +45,7 @@ export interface Unit {
   speed: number; // 1秒あたりの移動量 (%)
   hitRange?: number; // 実ヒット距離 (%)。未指定なら range と同じ
   range: number; // 射程 (%)
+  isCircularRange?: boolean; // 円形全方位探知（忍者など）
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒)
@@ -87,7 +89,8 @@ export type AttackEffectType =
   | 'headbutt'
   | 'shadow_slash'
   | 'blood_bite'
-  | 'arrow';
+  | 'arrow'
+  | 'shuriken';
 
 export interface AttackEffect {
   id: string;
