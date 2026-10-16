@@ -1077,11 +1077,18 @@ export function useRealtimeGame() {
                   const primaryTarget = targetEnemy as CombatTarget;
                   attackTargets.set(unit.id, primaryTarget);
 
+                  // 実ヒット距離(hitRange)を持つユニットは、攻撃エフェクトの到達点も実ヒット距離までに制限する
+                  const dirSign = unit.owner === 'player' ? 1 : -1;
+                  const effectToX =
+                    unit.hitRange !== undefined && minDistance > unit.hitRange
+                      ? unit.x + dirSign * unit.hitRange
+                      : primaryTarget.x;
+
                   newAttackEffects.push({
                     id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
                     attackerId: unit.id,
                     fromX: unit.x,
-                    toX: primaryTarget.x,
+                    toX: effectToX,
                     lane: unit.lane ?? unit.y,
                     toLane: primaryTarget.lane ?? primaryTarget.y,
                     fromY: unit.y,
