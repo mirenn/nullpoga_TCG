@@ -1,9 +1,10 @@
-import React, { useRef, useState, useCallback } from 'react';
+import React, { useRef, useState, useCallback, useEffect } from 'react';
 import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor } from '../../app/types';
 import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
+import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
 import {
   clampSpawnX,
   clampPlayerSpawnX,
@@ -23,11 +24,31 @@ import {
   PLAYER_SPAWN_X_MAX,
   PLAYER_DEFAULT_SPAWN_X,
 } from '../../app/board';
+import {
+  FIELD_OBSTACLES,
+  DEFAULT_CAMERA_3D,
+  FieldObstacle,
+  Camera3DState,
+  clampCameraPanX,
+  clampCameraPanY,
+  clampCameraZoom,
+  isStealthCapableCard,
+  isPointInObstacleFootprint,
+  findPlayerAmbushObstacle,
+  computePeekRevealProgress,
+  isPointOccludedByObstacle,
+  evaluateUnitStealthAndSpot,
+} from '../../app/obstacles';
 import { SPAWN_MIN_SPACE } from '../../app/cards';
 
 export interface BattleFieldProps {
   units: Unit[];
   inhibitors: Inhibitor[];
+  obstacles?: FieldObstacle[];
+  camera3D?: Camera3DState;
+  setCamera3D?: (updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)) => void;
+  resetCamera3D?: () => void;
+  spottedCount?: number;
   spellEffects: SpellEffect[];
   attackEffects: AttackEffect[];
   cpuSpawnWarnings: CpuSpawnWarning[];
@@ -57,6 +78,11 @@ export interface BattleFieldProps {
 export function BattleField({
   units,
   inhibitors,
+  obstacles = FIELD_OBSTACLES,
+  camera3D: externalCamera3D,
+  setCamera3D: externalSetCamera3D,
+  resetCamera3D: externalResetCamera3D,
+  spottedCount = 0,
   spellEffects,
   attackEffects,
   cpuSpawnWarnings,
@@ -78,6 +104,93 @@ export function BattleField({
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverPos, setHoverPos] = useState<{ x: number; y: number } | null>(null);
   const [ripplePos, setRipplePos] = useState<{ x: number; y: number } | null>(null);
+
+  // フォールバック用のローカルカメラState
+  const [localCamera, setLocalCamera] = useState<Camera3DState>(DEFAULT_CAMERA_3D);
+  const camera = externalCamera3D ?? localCamera;
+  const updateCamera = externalSetCamera3D ?? setLocalCamera;
+
+  // ミドルドラッグ（または右ドラッグ）によるカメラ平行移動の状態管理
+  const [isPanningCamera, setIsPanningCamera] = useState(false);
+  const panStartRef = useRef<{ clientX: number; clientY: number; startPanX: number; startPanY: number } | null>(null);
+  const didPanDuringPressRef = useRef<boolean>(false);
+
+  const handleResetCamera = useCallback(() => {
+    if (externalResetCamera3D) {
+      externalResetCamera3D();
+    } else {
+      updateCamera((prev) => ({ ...DEFAULT_CAMERA_3D, is3DMode: prev.is3DMode }));
+    }
+  }, [externalResetCamera3D, updateCamera]);
+
+  const handleToggle3DMode = useCallback(() => {
+    updateCamera((prev) => ({
+      ...prev,
+      is3DMode: !prev.is3DMode,
+    }));
+  }, [updateCamera]);
+
+  // 3DCCソフト風ミドルマウスボタン押し込み（button===1）または右ボタン（button===2）で平行移動開始
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (e.button === 1 || e.button === 2 || (e.button === 0 && (e.altKey || e.shiftKey))) {
+        e.preventDefault();
+        setIsPanningCamera(true);
+        didPanDuringPressRef.current = false;
+        panStartRef.current = {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          startPanX: camera.panX,
+          startPanY: camera.panY,
+        };
+      }
+    },
+    [camera.panX, camera.panY]
+  );
+
+  // ウィンドウ全体でミドルドラッグ移動＆ボタン解放を追跡（フィールド外にカーソルが出ても滑らかに追従）
+  useEffect(() => {
+    if (!isPanningCamera) return;
+
+    const onWindowMouseMove = (e: MouseEvent) => {
+      if (!panStartRef.current) return;
+      const dx = e.clientX - panStartRef.current.clientX;
+      const dy = e.clientY - panStartRef.current.clientY;
+      if (Math.hypot(dx, dy) > 3) {
+        didPanDuringPressRef.current = true;
+      }
+      updateCamera((prev) => ({
+        ...prev,
+        panX: clampCameraPanX(panStartRef.current!.startPanX + dx),
+        panY: clampCameraPanY(panStartRef.current!.startPanY + dy),
+      }));
+    };
+
+    const onWindowMouseUp = () => {
+      setIsPanningCamera(false);
+      panStartRef.current = null;
+    };
+
+    window.addEventListener('mousemove', onWindowMouseMove);
+    window.addEventListener('mouseup', onWindowMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onWindowMouseMove);
+      window.removeEventListener('mouseup', onWindowMouseUp);
+    };
+  }, [isPanningCamera, updateCamera]);
+
+  // マウスホイールによる3D箱庭ズームイン・ズームアウト
+  const handleWheel = useCallback(
+    (e: React.WheelEvent<HTMLDivElement>) => {
+      e.preventDefault();
+      const zoomDelta = e.deltaY < 0 ? 0.08 : -0.08;
+      updateCamera((prev) => ({
+        ...prev,
+        zoom: clampCameraZoom(prev.zoom + zoomDelta),
+      }));
+    },
+    [updateCamera]
+  );
 
   // マウス/タッチ座標からフィールドの横パーセント (SPAWN_X_MIN〜SPAWN_X_MAX) を算出
   const calculateXPercent = useCallback((clientX: number): number => {
@@ -123,6 +236,7 @@ export function BattleField({
 
   // ホバー追従 (X, Y)
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isPanningCamera) return;
     const x = calculateXPercent(e.clientX);
     const y = calculateYPercent(e.clientY);
     setHoverPos({ x, y });
@@ -134,7 +248,10 @@ export function BattleField({
 
   // フィールドクリック時の出撃
   const handleClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (isDragging) return;
+    if (isDragging || isPanningCamera || didPanDuringPressRef.current) {
+      didPanDuringPressRef.current = false;
+      return;
+    }
     if (selectedCardIndex === null || !selectedCard) return;
     const x = calculateXPercent(e.clientX);
     const y = calculateYPercent(e.clientY);
@@ -188,6 +305,10 @@ export function BattleField({
   const currentTargetY = clampSpawnY(rawTargetY);
 
   const depthRole = getSpawnDepthRole(currentTargetX);
+  const targetAmbushObstacle =
+    activeCard?.type === 'MONSTER'
+      ? findPlayerAmbushObstacle(currentTargetX, currentTargetY, obstacles)
+      : null;
 
   const validation = activeCard && activeCardIdx !== null
     ? checkCanPlayCard(activeCardIdx, rawTargetX, currentTargetY)
@@ -196,39 +317,205 @@ export function BattleField({
   const isTargetBlocked = !validation.canPlay;
   const isSpaceBlocked = isTargetBlocked && validation.reason === '出撃スペース不足';
 
+  // いずれかの遮蔽物の死角に未発見の敵隠密ユニットまたは召喚予兆が潜んでいるか集計
+  const hasAnyHiddenEnemy = obstacles.some((obs) => {
+    const hiddenUnit = units.some(
+      (u) =>
+        u.owner === 'cpu' &&
+        !u.isSpotted &&
+        isStealthCapableCard(u.cardNo) &&
+        isPointOccludedByObstacle(u.x, u.y, obs, camera)
+    );
+    const hiddenWarning = cpuSpawnWarnings.some(
+      (w) =>
+        isStealthCapableCard(w.card.cardNo) &&
+        isPointOccludedByObstacle(w.x ?? 95, w.y ?? 50, obs, camera)
+    );
+    return hiddenUnit || hiddenWarning;
+  });
+
+  const isCameraMoved = Math.abs(camera.panX) > 2 || Math.abs(camera.panY) > 2 || Math.abs(camera.zoom - 1) > 0.02;
+
+  // カメラの平行移動に伴う少しの角度変化（覗き込みチルト）
+  const effectiveTiltX = camera.is3DMode ? camera.tiltDeg - camera.panY * 0.035 : 0;
+  const effectiveTiltY = camera.is3DMode ? camera.panX * 0.04 : 0;
+
   return (
     <div
-      ref={containerRef}
-      onClick={handleClick}
-      onPointerMove={handlePointerMove}
-      onPointerLeave={handlePointerLeave}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      onMouseDown={handleMouseDown}
+      onWheel={handleWheel}
+      onContextMenu={(e) => {
+        // 右ドラッグでもカメラ移動できるようにコンテキストメニューを抑止
+        e.preventDefault();
+      }}
       style={{
         flex: 1,
         minHeight: '340px',
         position: 'relative',
         margin: '6px 0',
-        borderRadius: '10px',
+        borderRadius: '12px',
         border: '1px solid #334155',
-        backgroundColor: '#0a0f1d',
-        backgroundImage: `
-          radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.16) 0%, transparent 60%),
-          radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.14) 0%, transparent 60%),
-          linear-gradient(to right, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255, 255, 255, 0.035) 1px, transparent 1px)
-        `,
-        backgroundSize: '100% 100%, 100% 100%, 24px 24px, 24px 24px',
+        backgroundColor: '#050811',
+        backgroundImage:
+          'radial-gradient(circle at 50% 40%, rgba(15, 23, 42, 0.9) 0%, rgba(2, 6, 23, 1) 100%)',
         overflow: 'hidden',
         userSelect: 'none',
-        cursor: activeCard ? (validation.canPlay ? 'crosshair' : 'not-allowed') : 'default',
-        boxShadow: activeCard
-          ? 'inset 0 0 24px rgba(59, 130, 246, 0.25), 0 0 16px rgba(15, 23, 42, 0.9)'
-          : 'inset 0 0 14px rgba(0, 0, 0, 0.6)',
+        perspective: camera.is3DMode ? '1100px' : undefined,
+        cursor: isPanningCamera
+          ? 'grabbing'
+          : activeCard
+          ? validation.canPlay
+            ? 'crosshair'
+            : 'not-allowed'
+          : 'grab',
       }}
-      data-field="battle-arena"
     >
+      {/* 3D箱庭カメラ操作HUDバー（上部中央オーバーレイ） */}
+      <div
+        onClick={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        style={{
+          position: 'absolute',
+          top: '6px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 60,
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          backgroundColor: 'rgba(15, 23, 42, 0.9)',
+          border: hasAnyHiddenEnemy
+            ? '1px solid rgba(250, 204, 21, 0.85)'
+            : '1px solid rgba(71, 85, 105, 0.75)',
+          borderRadius: '999px',
+          padding: '3px 10px',
+          boxShadow: hasAnyHiddenEnemy
+            ? '0 4px 14px rgba(250, 204, 21, 0.35)'
+            : '0 4px 12px rgba(0, 0, 0, 0.65)',
+          fontSize: '10px',
+          color: '#e2e8f0',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        <button
+          type="button"
+          onClick={handleToggle3DMode}
+          style={{
+            backgroundColor: camera.is3DMode ? '#0284c7' : '#334155',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '999px',
+            padding: '2px 8px',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+          }}
+          title="3D箱庭パースペクティブ表示のON/OFF"
+        >
+          {camera.is3DMode ? '🧊 3D箱庭ON' : '🗺️ 2D平面'}
+        </button>
+
+        <span style={{ color: '#94a3b8', fontSize: '9.5px' }}>
+          🖱️中ボタンドラッグ(または右ドラッグ): <b>平行移動・死角覗き込み</b>
+        </span>
+
+        {/* トラックパッド環境等でもワンクリックで死角を覗き込めるクイック覗き込みボタン */}
+        <button
+          type="button"
+          onClick={() =>
+            updateCamera((prev) => ({
+              ...prev,
+              panX: prev.panX === -95 ? 95 : -95,
+              panY: prev.panY === -55 ? 55 : -55,
+            }))
+          }
+          style={{
+            backgroundColor: hasAnyHiddenEnemy ? '#ca8a04' : '#1e293b',
+            color: '#fefce8',
+            border: '1px solid rgba(250, 204, 21, 0.6)',
+            borderRadius: '999px',
+            padding: '2px 7px',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+          }}
+          title="カメラ角度をずらして遮蔽物の死角を覗き込む"
+        >
+          👁️ 死角を覗く
+        </button>
+
+        {isCameraMoved && (
+          <button
+            type="button"
+            onClick={handleResetCamera}
+            style={{
+              backgroundColor: '#334155',
+              color: '#f8fafc',
+              border: '1px solid #64748b',
+              borderRadius: '999px',
+              padding: '2px 7px',
+              fontSize: '9.5px',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+            }}
+            title="カメラ位置・ズームを初期位置へ戻す"
+          >
+            🎯 視点リセット ({camera.panX},{camera.panY} / {Math.round(camera.zoom * 100)}%)
+          </button>
+        )}
+
+        {spottedCount > 0 && (
+          <span
+            style={{
+              backgroundColor: 'rgba(202, 138, 4, 0.25)',
+              border: '1px solid #facc15',
+              color: '#fde047',
+              padding: '1px 6px',
+              borderRadius: '999px',
+              fontSize: '9.5px',
+              fontWeight: 'bold',
+            }}
+          >
+            👁️ 看破: {spottedCount}
+          </span>
+        )}
+      </div>
+
+      {/* 3D箱庭ボード本体（perspective内で平行移動・ズーム・チルトが適用される盤面） */}
+      <div
+        ref={containerRef}
+        onClick={handleClick}
+        onPointerMove={handlePointerMove}
+        onPointerLeave={handlePointerLeave}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        style={{
+          position: 'absolute',
+          inset: camera.is3DMode ? '14px 18px 18px 18px' : '0',
+          borderRadius: '10px',
+          border: '2px solid #475569',
+          backgroundColor: '#0a0f1d',
+          backgroundImage: `
+            radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.18) 0%, transparent 60%),
+            radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.16) 0%, transparent 60%),
+            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: '100% 100%, 100% 100%, 24px 24px, 24px 24px',
+          transform: `translate3d(${camera.panX}px, ${camera.panY}px, 0px) scale(${camera.zoom}) rotateX(${effectiveTiltX.toFixed(2)}deg) rotateY(${effectiveTiltY.toFixed(2)}deg)`,
+          transformStyle: 'preserve-3d',
+          transition: isPanningCamera ? 'none' : 'transform 0.16s cubic-bezier(0.22, 1, 0.36, 1)',
+          boxShadow: camera.is3DMode
+            ? activeCard
+              ? '0 14px 0 #1e293b, 0 22px 36px rgba(0, 0, 0, 0.85), inset 0 0 24px rgba(59, 130, 246, 0.25)'
+              : '0 14px 0 #1e293b, 0 22px 36px rgba(0, 0, 0, 0.85), inset 0 0 14px rgba(0, 0, 0, 0.6)'
+            : activeCard
+            ? 'inset 0 0 24px rgba(59, 130, 246, 0.25), 0 0 16px rgba(15, 23, 42, 0.9)'
+            : 'inset 0 0 14px rgba(0, 0, 0, 0.6)',
+        }}
+        data-field="battle-arena"
+      >
       {/* 互換用レーンスロット（旧テスト・セレクタ対応） */}
       {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((idx) => {
         const slotX = 10 + idx * 10;
@@ -397,27 +684,52 @@ export function BattleField({
         <RenderInhibitor key={inhib.id} inhibitor={inhib} />
       ))}
 
-      {/* 3. CPU召喚予兆（詠唱魔方陣・右端x=95%付近に表示） */}
-      {cpuSpawnWarnings.map((w) => (
-        <div
-          key={w.id}
-          style={{
-            ...styles.cpuSpawnCircle,
-            left: `${w.x ?? 95}%`,
-            top: `${w.y ?? 50}%`,
-            transform: 'translate(-50%, -50%)',
-          }}
-          className="cpu-spawn-pulse"
-          title={`相手の召喚予告: ${w.card.name}`}
-        >
-          <div style={styles.cpuSpawnRing} />
-          <span style={styles.cpuSpawnIcon}>{w.card.icon}</span>
-          <div style={styles.cpuSpawnBadge}>召喚予兆</div>
-        </div>
+      {/* 2.5. 立体遮蔽物の地面ベース層（幹・岩の根元・奇襲エリアサークル） */}
+      {obstacles.map((obs) => (
+        <RenderObstacleGround
+          key={`ground_${obs.id}`}
+          obstacle={obs}
+          isHighlightedForAmbush={
+            Boolean(activeCard && activeCard.type === 'MONSTER' && obs.side !== 'cpu')
+          }
+        />
       ))}
+
+      {/* 3. CPU召喚予兆（詠唱魔方陣・右端x=95%付近に表示。死角の小型ユニット予兆は覗き込むまで隠れる） */}
+      {cpuSpawnWarnings.map((w) => {
+        const wx = w.x ?? 95;
+        const wy = w.y ?? 50;
+        const isWarningConcealed =
+          isStealthCapableCard(w.card.cardNo) &&
+          obstacles.some((obs) => isPointOccludedByObstacle(wx, wy, obs, camera));
+
+        return (
+          <div
+            key={w.id}
+            style={{
+              ...styles.cpuSpawnCircle,
+              left: `${wx}%`,
+              top: `${wy}%`,
+              transform: 'translate(-50%, -50%)',
+              opacity: isWarningConcealed ? 0.1 : 1,
+              filter: isWarningConcealed ? 'blur(2px)' : undefined,
+              transition: 'opacity 0.18s ease-out',
+            }}
+            className="cpu-spawn-pulse"
+            title={isWarningConcealed ? '遮蔽物の死角に隠れた召喚予兆' : `相手の召喚予告: ${w.card.name}`}
+          >
+            <div style={styles.cpuSpawnRing} />
+            <span style={styles.cpuSpawnIcon}>{w.card.icon}</span>
+            <div style={styles.cpuSpawnBadge}>召喚予兆</div>
+          </div>
+        );
+      })}
 
       {/* 4. フィールド上のユニット描画 & 射程範囲可視化 */}
       {units.map((unit) => {
+        const stealthEval = evaluateUnitStealthAndSpot(unit, camera, obstacles);
+        const isUnitConcealed = stealthEval.isConcealed;
+
         const isFireTargeted =
           activeCard?.id === 'fire_spell' &&
           unit.owner === 'cpu' &&
@@ -429,7 +741,7 @@ export function BattleField({
 
         const isPlayer = unit.owner === 'player';
         const isShieldUnit = unit.attack === 0;
-        const rangeZone = showUnitRange
+        const rangeZone = showUnitRange && !isUnitConcealed
           ? computeUnitRangeZone(unit.x, unit.y, unit.range, unit.owner)
           : null;
 
@@ -520,6 +832,7 @@ export function BattleField({
 
             <RenderUnit
               unit={unit}
+              isConcealed={isUnitConcealed}
               isBlockingSpawn={
                 isSpaceBlocked &&
                 unit.owner === 'player' &&
@@ -603,6 +916,32 @@ export function BattleField({
               </div>
             )}
           </React.Fragment>
+        );
+      })}
+
+      {/* 4.5. 立体遮蔽物の「上空キャノピー（樹冠・岩の天蓋）」レイヤー（カメラ移動で視差シフトし、裏側を覗き込める！） */}
+      {obstacles.map((obs) => {
+        const hasHiddenUnit = units.some(
+          (u) =>
+            u.owner === 'cpu' &&
+            !u.isSpotted &&
+            isStealthCapableCard(u.cardNo) &&
+            isPointOccludedByObstacle(u.x, u.y, obs, camera)
+        );
+        const hasHiddenWarning = cpuSpawnWarnings.some(
+          (w) =>
+            isStealthCapableCard(w.card.cardNo) &&
+            isPointOccludedByObstacle(w.x ?? 95, w.y ?? 50, obs, camera)
+        );
+        const peekProgress = computePeekRevealProgress(obs.x, obs.y, obs, camera);
+        return (
+          <RenderObstacleCanopy
+            key={`canopy_${obs.id}`}
+            obstacle={obs}
+            camera={camera}
+            hasHiddenEnemy={hasHiddenUnit || hasHiddenWarning}
+            peekProgress={peekProgress}
+          />
         );
       })}
 
@@ -1237,7 +1576,7 @@ export function BattleField({
             <span style={{ fontSize: '18px' }}>{activeCard.icon}</span>
           </div>
 
-          {/* ガイドバッジ（出撃可能 / 理由表示 ＆ 奥行きロール [前衛/中衛/後衛]） */}
+          {/* ガイドバッジ（出撃可能 / 理由表示 ＆ 奥行きロール [前衛/中衛/後衛] / 奇襲出撃ボーナス） */}
           <div
             style={{
               position: 'absolute',
@@ -1250,6 +1589,8 @@ export function BattleField({
                   : '#ef4444'
                 : activeCard.type === 'SPELL'
                 ? '#8b5cf6'
+                : targetAmbushObstacle
+                ? '#15803d'
                 : '#2563eb',
               color: '#ffffff',
               fontSize: '10px',
@@ -1271,6 +1612,8 @@ export function BattleField({
                 ? '☄️ ドロップで範囲隕石！'
                 : activeCard.type === 'SPELL'
                 ? '✨ ドロップ発動'
+                : targetAmbushObstacle
+                ? `🌲 奇襲ドロップ出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
                 : `🎯 ドロップ出撃 [${depthRole.label}]`
               : activeCard.id === 'fire_spell'
               ? '🔥 クリックで縦一列業火！'
@@ -1278,10 +1621,13 @@ export function BattleField({
               ? '☄️ クリックで範囲隕石！'
               : activeCard.type === 'SPELL'
               ? '✨ クリック発動'
+              : targetAmbushObstacle
+              ? `🌲 奇襲クリック出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
               : `🎯 クリック出撃 [${depthRole.label}]`}
           </div>
         </>
       )}
+      </div>
     </div>
   );
 }

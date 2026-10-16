@@ -57,6 +57,9 @@ export interface Unit {
   isSprinting?: boolean; // 前方敵不在で疾走中（3倍速）
   killCount?: number; // 敵ユニット撃破数（吸血コウモリ等）
   lastKillTime?: number; // 撃破・ステータス向上エフェクト描画用
+  isSpotted?: boolean; // カメラ平行移動（覗き込み）によって遮蔽物の死角から看破されたか
+  lastSpottedTime?: number; // スポット（看破）演出用タイムスタンプ
+  isAmbushDeploy?: boolean; // 自陣遮蔽物の陰から奇襲出撃したバフ適用中か
   lane?: number; // 互換エイリアス
 }
 

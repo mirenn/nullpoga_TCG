@@ -33,6 +33,11 @@ export default function RealtimeDemoPage() {
     setSelectedCardIndex,
     units,
     inhibitors,
+    obstacles,
+    camera3D,
+    setCamera3D,
+    resetCamera3D,
+    spottedCount,
     playerManaRegenMultiplier,
     cpuManaRegenMultiplier,
     spellEffects,
@@ -330,6 +335,11 @@ export default function RealtimeDemoPage() {
           <BattleField
             units={units}
             inhibitors={inhibitors}
+            obstacles={obstacles}
+            camera3D={camera3D}
+            setCamera3D={setCamera3D}
+            resetCamera3D={resetCamera3D}
+            spottedCount={spottedCount}
             spellEffects={spellEffects}
             attackEffects={attackEffects}
             cpuSpawnWarnings={cpuSpawnWarnings}

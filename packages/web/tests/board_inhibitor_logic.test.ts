@@ -40,6 +40,20 @@ import {
 import { computeCpuAction } from '../src/app/cpuAi';
 import { CARD_POOL } from '../src/app/cards';
 import { deriveAnimationState, getAttackAnimDuration } from '../src/components/units/animationLogic';
+import {
+  FIELD_OBSTACLES,
+  DEFAULT_CAMERA_3D,
+  clampCameraPanX,
+  clampCameraPanY,
+  clampCameraZoom,
+  isStealthCapableCard,
+  findCoveringObstacleGround,
+  findPlayerAmbushObstacle,
+  computeCanopyProjection,
+  computePeekRevealProgress,
+  isPointOccludedByObstacle,
+  evaluateUnitStealthAndSpot,
+} from '../src/app/obstacles';
 import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
@@ -289,4 +303,65 @@ assert(clampedPlayerZone.width === 15, 'Clamped width should be 15%');
 assert(clampedPlayerZone.top === 0, 'Range zone top must clamp at 0%');
 console.log('  -> Unit attack range zone geometry: PASSED');
 
-console.log('=== All 6 Test Suites PASSED Successfully! ===');
+// 7. 3D Diorama Obstacles, Parallax Projection & Camera Peeking (SPOT!) tests
+console.log('[7/7] Testing 3D obstacles, parallax canopy projection & camera peeking SPOT logic...');
+assert(FIELD_OBSTACLES.length === 6, 'Should define 6 strategic 3D obstacles along gap corridors');
+assert(isStealthCapableCard(8) === true, 'Ninja Assassin (cardNo=8) must be stealth-capable');
+assert(isStealthCapableCard(1) === true, 'Mouse (cardNo=1) must be stealth-capable');
+assert(isStealthCapableCard(11) === false, 'Dragon (cardNo=11) is too large to hide in cover');
+assert(isStealthCapableCard(4) === false, 'Turtle (cardNo=4) is too large to hide in cover');
+
+// カメラクランプテスト
+assert(clampCameraPanX(500) === 260, 'PanX should clamp to max 260');
+assert(clampCameraPanY(-500) === -180, 'PanY should clamp to min -180');
+assert(clampCameraZoom(3.0) === 1.65, 'Zoom should clamp to max 1.65');
+
+// CPU上奥の遮蔽物 (x=88, y=35) で隠密ユニット (忍びアサシン) が初期カメラ(pan=0,0)では死角に隠れることを確認
+const cpuUpperObs = FIELD_OBSTACLES.find((o) => o.id === 'obs_cpu_upper_forest')!;
+assert(Boolean(cpuUpperObs), 'obs_cpu_upper_forest should exist');
+assert(findCoveringObstacleGround(90, 35)?.id === 'obs_cpu_upper_forest', 'Point (90,35) should be inside CPU upper forest');
+
+const defaultProj = computeCanopyProjection(cpuUpperObs, DEFAULT_CAMERA_3D);
+assert(defaultProj.canopyX === cpuUpperObs.x && defaultProj.canopyY === cpuUpperObs.y, 'At pan(0,0), canopy should be directly above ground center');
+assert(isPointOccludedByObstacle(90, 35, cpuUpperObs, DEFAULT_CAMERA_3D) === true, 'At pan(0,0), point (90,35) should be occluded by canopy');
+
+const hiddenAssassin: Unit = {
+  ...baseUnit,
+  id: 'cpu_assassin_test',
+  cardNo: 8,
+  name: '忍びアサシン',
+  owner: 'cpu',
+  x: 90,
+  y: 35,
+  isSpotted: false,
+};
+
+// 初期カメラでは死角に隠れており、まだSPOTされない
+const evalAtDefault = evaluateUnitStealthAndSpot(hiddenAssassin, DEFAULT_CAMERA_3D);
+assert(evalAtDefault.isConcealed === true, 'Enemy assassin in cover must be concealed at default camera');
+assert(evalAtDefault.newlySpotted === false, 'Enemy assassin must not be spotted at default camera');
+
+// ミドルドラッグでカメラを大きく平行移動 (panX = -95, panY = 55) した時、視差で死角が解消され SPOT! が発動することを確認
+const pannedCamera = { ...DEFAULT_CAMERA_3D, panX: -95, panY: 55 };
+const pannedProj = computeCanopyProjection(cpuUpperObs, pannedCamera);
+assert(pannedProj.canopyX !== cpuUpperObs.x && pannedProj.canopyY !== cpuUpperObs.y, 'Canopy projection must shift with parallax when camera pans');
+assert(computePeekRevealProgress(90, 35, cpuUpperObs, pannedCamera) >= 1.0, 'Peeking camera must achieve reveal progress >= 1.0');
+
+const evalWhenPeeked = evaluateUnitStealthAndSpot(hiddenAssassin, pannedCamera);
+assert(evalWhenPeeked.isConcealed === false, 'Enemy assassin should no longer be concealed when camera peeks');
+assert(evalWhenPeeked.newlySpotted === true, 'Enemy assassin should trigger newlySpotted=true when camera peeks!');
+
+// 一度SPOTされたユニットは、カメラを初期位置(0,0)に戻しても常時可視化（isConcealed=false）が維持されることを確認
+const spottedAssassin: Unit = { ...hiddenAssassin, isSpotted: true };
+const evalAfterSpotted = evaluateUnitStealthAndSpot(spottedAssassin, DEFAULT_CAMERA_3D);
+assert(evalAfterSpotted.isConcealed === false, 'Spotted unit must remain visible even after camera returns to (0,0)');
+assert(evalAfterSpotted.newlySpotted === false, 'Already spotted unit should not re-trigger newlySpotted');
+
+// 自陣遮蔽物エリア (x=34, y=35) での奇襲出撃（アンブッシュ）判定テスト
+const ambushObs = findPlayerAmbushObstacle(34, 35);
+assert(ambushObs !== null && ambushObs.id === 'obs_player_upper_forest', 'Spawning at (34,35) should match player upper forest ambush zone');
+assert(findPlayerAmbushObstacle(15, 50) === null, 'Spawning at open lane (15,50) should not trigger ambush obstacle');
+console.log('  -> 3D obstacles, parallax canopy projection & camera peeking SPOT logic: PASSED');
+
+console.log('=== All 7 Test Suites PASSED Successfully! ===');
+

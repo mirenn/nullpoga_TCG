@@ -55,6 +55,15 @@ import {
   inhibitorBlocksX,
   inhibitorEngageableX,
 } from './inhibitors';
+import {
+  FIELD_OBSTACLES,
+  DEFAULT_CAMERA_3D,
+  Camera3DState,
+  SPOT_AMBUSH_STUN_MS,
+  AMBUSH_DEPLOY_ATK_BONUS,
+  findPlayerAmbushObstacle,
+  evaluateUnitStealthAndSpot,
+} from './obstacles';
 
 
 // re-export for external consumers
@@ -158,6 +167,30 @@ export function useRealtimeGame() {
   // インヒビター（左・中・右 × 両陣営）
   const [inhibitors, setInhibitors] = useState<Inhibitor[]>(createInitialInhibitors);
   const inhibitorsRef = useRef<Inhibitor[]>(inhibitors);
+
+  // 3D箱庭カメラ状態（ミドルドラッグ平行移動・ズーム・チルト）
+  const [camera3D, setCamera3DState] = useState<Camera3DState>(DEFAULT_CAMERA_3D);
+  const camera3DRef = useRef<Camera3DState>(DEFAULT_CAMERA_3D);
+  const [spottedCount, setSpottedCount] = useState<number>(0);
+
+  const setCamera3D = useCallback((updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)) => {
+    setCamera3DState((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      camera3DRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const resetCamera3D = useCallback(() => {
+    setCamera3DState((prev) => {
+      const next: Camera3DState = {
+        ...DEFAULT_CAMERA_3D,
+        is3DMode: prev.is3DMode,
+      };
+      camera3DRef.current = next;
+      return next;
+    });
+  }, []);
 
   // スペルエフェクト
   const [spellEffects, setSpellEffects] = useState<SpellEffect[]>([]);
@@ -393,6 +426,11 @@ export function useRealtimeGame() {
           counterBonusInterval = 0.2;
         }
 
+        // 自陣・中立の立体遮蔽物エリアからの奇襲出撃（アンブッシュ）判定
+        const ambushObstacle = findPlayerAmbushObstacle(spawnX, spawnY);
+        const isAmbushDeploy = Boolean(ambushObstacle);
+        const ambushBonusAtk = isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0;
+
         // スポーン記録
         playerSpawnTimestampsRef.current.push({ x: spawnX, y: spawnY, time: now });
         playerSpawnTimestampsRef.current = playerSpawnTimestampsRef.current.filter(
@@ -410,7 +448,7 @@ export function useRealtimeGame() {
           y: spawnY,
           maxHp: (card.life || 1) + comboBonusHp,
           hp: (card.life || 1) + comboBonusHp,
-          attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk,
+          attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
           speed: card.speed || 10,
           range: card.range || 3,
           attackCooldown: 0,
@@ -421,6 +459,7 @@ export function useRealtimeGame() {
           icon: card.icon,
           distanceTraveled: 0,
           isCounterDeploy: isCounterDeploy,
+          isAmbushDeploy,
           comboCount: newComboCount > 1 ? newComboCount : undefined,
           killCount: 0,
         };
@@ -849,6 +888,29 @@ export function useRealtimeGame() {
           );
         }
 
+        // B3. 3D箱庭カメラの平行移動（覗き込み）による死角看破（SPOT!）判定
+        let newlySpottedInFrame = 0;
+        const currentCam = camera3DRef.current;
+        const unitsAfterSpot = unitsAfterFire.map((unit) => {
+          const evalResult = evaluateUnitStealthAndSpot(unit, currentCam, FIELD_OBSTACLES);
+          if (evalResult.newlySpotted) {
+            newlySpottedInFrame += 1;
+            const spotStunUntil = Math.max(unit.isStunnedUntil || 0, now + SPOT_AMBUSH_STUN_MS);
+            return {
+              ...unit,
+              isSpotted: true,
+              lastSpottedTime: now,
+              isSprinting: false,
+              isStunnedUntil: spotStunUntil,
+              isStunned: true,
+            };
+          }
+          return unit;
+        });
+        if (newlySpottedInFrame > 0) {
+          setSpottedCount((c) => c + newlySpottedInFrame);
+        }
+
         // C. 各ユニットの移動・攻撃・クールダウン更新
         const newAttackEffects: AttackEffect[] = [];
         const newPendingHits: PendingLightningHit[] = [];
@@ -857,14 +919,19 @@ export function useRealtimeGame() {
         // このフレームで攻撃を放ったユニット → 主標的
         const attackTargets = new Map<string, CombatTarget>();
 
-        const updatedUnits = unitsAfterFire.map((unit) => {
+        const updatedUnits = unitsAfterSpot.map((unit) => {
           const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
           let cooldown = Math.max(0, unit.attackCooldown - dt);
           let x = unit.x;
           let y = unit.y;
           let distance = unit.distanceTraveled || 0;
+          const shibaBaseAtk =
+            1 +
+            (unit.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0) +
+            (unit.isCounterDeploy ? 1 : 0) +
+            ((unit.comboCount || 0) >= 3 ? 1 : 0);
           let attack = unit.cardNo === 2
-            ? 1 + Math.min(4, Math.floor(distance / 20))
+            ? shibaBaseAtk + Math.min(4, Math.floor(distance / 20))
             : unit.attack;
           let lastAttack = unit.lastAttackEffectTime;
 
@@ -1146,8 +1213,8 @@ export function useRealtimeGame() {
             };
           }
 
-          // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がいない場合は移動速度が3倍（超高速疾走）
-          const isSprinting = unit.cardNo === 8 && enemiesInRange.length === 0;
+          // 忍びアサシン（cardNo: 8）：交戦範囲に対向敵がおらず、かつカメラで看破（isSpotted）されていない場合は移動速度が3倍（超高速疾走）
+          const isSprinting = unit.cardNo === 8 && enemiesInRange.length === 0 && !unit.isSpotted;
 
           // 移動計算 (X軸方向)
           const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
@@ -1179,7 +1246,7 @@ export function useRealtimeGame() {
 
           if (unit.cardNo === 2) {
             const bonus = Math.min(4, Math.floor(distance / 20));
-            attack = 1 + bonus;
+            attack = shibaBaseAtk + bonus;
           }
 
           return {
@@ -1374,6 +1441,9 @@ export function useRealtimeGame() {
     playerComboRef.current = { count: 0, lastTime: 0 };
     cpuComboRef.current = { count: 0, lastTime: 0 };
     setPlayerCombo({ count: 0, lastTime: 0 });
+    setCamera3DState(DEFAULT_CAMERA_3D);
+    camera3DRef.current = DEFAULT_CAMERA_3D;
+    setSpottedCount(0);
   }, []);
 
   return {
@@ -1397,6 +1467,11 @@ export function useRealtimeGame() {
     setSelectedCardIndex,
     units,
     inhibitors,
+    obstacles: FIELD_OBSTACLES,
+    camera3D,
+    setCamera3D,
+    resetCamera3D,
+    spottedCount,
     playerManaRegenMultiplier: manaRegenMultiplier(inhibitors, 'player'),
     cpuManaRegenMultiplier: manaRegenMultiplier(inhibitors, 'cpu'),
     spellEffects,

@@ -163,12 +163,21 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 }
 
 // ユニット描画サブコンポーネント
-export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSpawn?: boolean }) {
+export function RenderUnit({
+  unit,
+  isBlockingSpawn,
+  isConcealed = false,
+}: {
+  unit: Unit;
+  isBlockingSpawn?: boolean;
+  isConcealed?: boolean;
+}) {
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
   const hasBuff = unit.cardNo === 2 && (unit.attack || 0) > 1; // 柴犬バフ
   const hasBatBuff = unit.cardNo === 9 && (unit.killCount || 0) > 0; // 吸血コウモリ撃破バフ
   const isRecentKill = Boolean(unit.lastKillTime && Date.now() - unit.lastKillTime < 800);
+  const isRecentSpot = Boolean(unit.lastSpottedTime && Date.now() - unit.lastSpottedTime < 1800);
 
   // SVG アニメーション状態を算出
   const animState = deriveAnimationState(unit);
@@ -197,13 +206,44 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
       data-cooldown={unit.attackCooldown}
       data-interval={unit.attackInterval}
       data-kill-count={unit.killCount || 0}
+      data-spotted={unit.isSpotted ? 'true' : 'false'}
+      data-concealed={isConcealed ? 'true' : 'false'}
       style={{
         ...styles.unitWrapper,
         left: `${unit.x}%`,
         top: `${unit.y}%`,
         transform: 'translate(-50%, -50%)',
+        opacity: isConcealed ? 0.12 : 1,
+        filter: isConcealed ? 'blur(1.5px) brightness(0.5)' : undefined,
+        zIndex: unit.isSpotted ? 31 : styles.unitWrapper.zIndex,
+        transition: 'opacity 0.18s ease-out, filter 0.18s ease-out',
       }}
     >
+      {/* カメラ覗き込みによる奇襲看破（SPOT!）ポップアップ */}
+      {isRecentSpot && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-28px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#ca8a04',
+            color: '#fefce8',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            padding: '2px 7px',
+            borderRadius: '999px',
+            border: '1.5px solid #fef08a',
+            boxShadow: '0 0 14px rgba(250, 204, 21, 0.95)',
+            whiteSpace: 'nowrap',
+            zIndex: 40,
+            pointerEvents: 'none',
+          }}
+        >
+          👁️ SPOT! 奇襲看破!!
+        </div>
+      )}
+
       {/* 吸血・撃破フロートポップアップ */}
       {isRecentKill && (
         <div style={styles.unitKillPopup}>
@@ -227,11 +267,13 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
         className={attackClass}
         style={{
           ...styles.unitBody,
-          border: 'none',
+          border: unit.isSpotted ? '1.5px solid #facc15' : 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
           transform: isPlayer ? 'none' : 'scaleX(-1)',
           boxShadow: isBlockingSpawn
             ? '0 0 12px #ea580c'
+            : unit.isSpotted
+            ? '0 0 14px #facc15, 0 0 22px rgba(234, 179, 8, 0.85)'
             : isStunned
             ? '0 0 10px #eab308'
             : hasBatBuff
@@ -269,6 +311,40 @@ export function RenderUnit({ unit, isBlockingSpawn }: { unit: Unit; isBlockingSp
       <div style={styles.unitBadges}>
         <span data-badge="atk" style={styles.unitAtkBadge}>{unit.attack}</span>
         <span data-badge="hp" style={styles.unitHpBadge}>{unit.hp}</span>
+        {unit.isSpotted && (
+          <span
+            data-badge="spotted"
+            style={{
+              fontSize: '9px',
+              backgroundColor: '#ca8a04',
+              color: '#fff',
+              padding: '0 3px',
+              borderRadius: '2px',
+              lineHeight: '13px',
+              fontWeight: 'bold',
+            }}
+            title="看破済み: 遮蔽物を透過して常時可視化＆疾走無効"
+          >
+            👁️看破
+          </span>
+        )}
+        {unit.isAmbushDeploy && (
+          <span
+            data-badge="ambush"
+            style={{
+              fontSize: '9px',
+              backgroundColor: '#15803d',
+              color: '#dcfce7',
+              padding: '0 3px',
+              borderRadius: '2px',
+              lineHeight: '13px',
+              fontWeight: 'bold',
+            }}
+            title="森隠れ奇襲出撃ボーナス (攻撃力+1)"
+          >
+            🌲奇襲
+          </span>
+        )}
         {hasBatBuff && (
           <span data-badge="kill" style={{ fontSize: '9px', backgroundColor: '#9333ea', color: '#fff', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title={`吸血成長: 撃破${unit.killCount}体 (+${unit.killCount}/+${unit.killCount})`}>🩸x{unit.killCount}</span>
         )}
