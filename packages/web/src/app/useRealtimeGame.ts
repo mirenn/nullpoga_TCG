@@ -84,6 +84,8 @@ export type { DeckState };
 const INITIAL_LIFE = 20;
 const INITIAL_MANA = 3;
 const MAX_MANA = 10;
+// 範囲攻撃ユニット(hitRange指定)の、主標的以外への巻き込みダメージ倍率
+const AREA_SPLASH_DAMAGE_RATIO = 0.7;
 
 // 電気クラゲの雷撃飛行時間（距離に比例: 最小220ms〜最大380ms、目で弾道をしっかり追えるスピード感）
 const LIGHTNING_FLIGHT_MIN_MS = 220;
@@ -1294,10 +1296,17 @@ export function useRealtimeGame() {
             const dist = attacker.owner === 'player' ? unit.x - attacker.x : attacker.x - unit.x;
             // hitRange 指定ユニット（ドラゴン等）は、発射時点で実ヒット距離外にいる相手には空振りする
             if (attacker.hitRange !== undefined && dist > attacker.hitRange) return;
-            const isSplash = isWithinEngageY(unit.y, primary.y, 4.0) && dist >= -2 && dist <= attacker.range + 2;
+            // hitRange 指定ユニット（ドラゴン等）は範囲攻撃：実ヒット距離内・縦幅は従来(±4%)のまま、主標的以外は減衰ダメージ
+            const isAreaAttacker = attacker.hitRange !== undefined;
+            const splashReach = isAreaAttacker ? (attacker.hitRange as number) : attacker.range + 2;
+            const isSplash = isWithinEngageY(unit.y, primary.y, 4.0) && dist >= -2 && dist <= splashReach;
             if (isPrimary || isSplash) {
               const hadHp = currentHp > 0;
-              currentHp -= attacker.attack;
+              const dealt =
+                isAreaAttacker && !isPrimary
+                  ? Math.round(attacker.attack * AREA_SPLASH_DAMAGE_RATIO)
+                  : attacker.attack;
+              currentHp -= dealt;
               if (hadHp && currentHp <= 0) {
                 // attacker が unit にとどめを刺した！
                 killCountMap.set(attacker.id, (killCountMap.get(attacker.id) || 0) + 1);
