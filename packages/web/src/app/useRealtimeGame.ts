@@ -1050,7 +1050,7 @@ export function useRealtimeGame() {
 
                   if (unit.cardNo === 11) {
                     effectType = 'fireball';
-                    duration = 550;
+                    duration = 1350; // 火柱が順に噴き上がる演出時間
                   } else if (unit.cardNo === 6) {
                     effectType = 'lightning';
                     const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
@@ -1157,7 +1157,7 @@ export function useRealtimeGame() {
 
                   if (unit.cardNo === 11) {
                     effectType = 'fireball';
-                    duration = 550;
+                    duration = 1350; // 火柱が順に噴き上がる演出時間
                   } else if (unit.cardNo === 6) {
                     effectType = 'lightning';
                     const baseDist = Math.abs(unit.x - targetBaseX);

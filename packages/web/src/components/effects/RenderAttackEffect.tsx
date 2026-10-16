@@ -2,6 +2,10 @@ import React from 'react';
 import type { AttackEffect } from '../../app/types';
 import { LightningImpactSvg } from './LightningImpactSvg';
 
+// ドラゴンの火柱: 柱同士の横間隔(%)と、ドラゴン側から順に噴き上がる時間差(ms)
+const FIRE_PILLAR_SPACING_X = 5;
+const FIRE_PILLAR_STAGGER_MS = 70;
+
 export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら0ms）
   const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 0);
@@ -16,66 +20,73 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
 
   return (
     <>
-      {/* 1. 炎のドラゴン（長距離火炎ブレス流線 ＆ 着弾大爆発） */}
-      {effect.effectType === 'fireball' && (
-        <>
-          {/* ドラゴンから標的へ噴射される火炎ブレスの流線 (横方向) */}
-          <div
-            className="fire-breath-stream"
-            style={{
-              position: 'absolute',
-              left: `${minX}%`,
-              width: `${widthX}%`,
-              top: beamTop,
-              height: '14px',
-              transform: 'translateY(-50%)',
-              background: 'linear-gradient(to right, #fef08a, #f97316 25%, #ea580c 50%, #dc2626 75%, #fef08a)',
-              boxShadow: '0 0 16px #f97316, 0 0 32px #ea580c, 0 0 48px #fef08a',
-              borderRadius: '7px',
-              pointerEvents: 'none',
-              zIndex: 35,
-              animation: 'fire-stream-flicker 0.5s ease-out forwards',
-            }}
-          />
+      {/* 1. 炎のドラゴン（ドラゴンの足元から前方へ順番に噴き上がる火柱） */}
+      {effect.effectType === 'fireball' && (() => {
+        const dirSign = effect.toX >= effect.fromX ? 1 : -1;
+        const reach = Math.abs(effect.toX - effect.fromX);
+        const pillarCount = Math.max(2, Math.ceil(reach / FIRE_PILLAR_SPACING_X));
+        const stepX = reach / pillarCount;
+        return (
+          <>
+            {Array.from({ length: pillarCount }, (_, i) => {
+              const px = effect.fromX + dirSign * stepX * (i + 1);
+              const delayMs = i * FIRE_PILLAR_STAGGER_MS;
+              return (
+                <div
+                  key={`dragon_pillar_${i}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${px}%`,
+                    top: `${effect.fromY}%`,
+                    transform: 'translate(-50%, -50%)',
+                    width: `${Math.max(3.5, stepX * 1.1)}%`,
+                    height: '18%',
+                    pointerEvents: 'none',
+                    zIndex: 36,
+                  }}
+                >
+                  {/* 地面の噴出孔光輪 */}
+                  <div
+                    className="fire-ground-vent"
+                    style={{
+                      animation: 'fire-ground-vent-pulse 0.95s ease-out forwards',
+                      animationDelay: `${delayMs}ms`,
+                    }}
+                  />
+                  {/* 吹き上がる火柱本体 */}
+                  <div
+                    className="fire-pillar-body"
+                    style={{
+                      animation: 'fire-pillar-erupt 0.85s cubic-bezier(0.12, 0.9, 0.25, 1) forwards',
+                      animationDelay: `${delayMs}ms`,
+                    }}
+                  >
+                    <div className="fire-pillar-inner-core" />
+                  </div>
+                </div>
+              );
+            })}
 
-          {/* 発射元（ドラゴンの口元）の炎熱オーラ */}
-          <div
-            style={{
-              position: 'absolute',
-              top: `${effect.fromY}%`,
-              left: fromLeft,
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none',
-              zIndex: 36,
-            }}
-          >
-            <div className="fireball-glow">
-              <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 10px #f97316)' }}>
-                🔥
-              </span>
+            {/* 発射元（ドラゴンの口元）の炎熱オーラ */}
+            <div
+              style={{
+                position: 'absolute',
+                top: `${effect.fromY}%`,
+                left: fromLeft,
+                transform: 'translate(-50%, -50%)',
+                pointerEvents: 'none',
+                zIndex: 37,
+              }}
+            >
+              <div className="fireball-glow">
+                <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 10px #f97316)' }}>
+                  🔥
+                </span>
+              </div>
             </div>
-          </div>
-
-          {/* 着弾地点の火炎大爆発＆衝撃波リング */}
-          <div
-            style={{
-              position: 'absolute',
-              top: `${effect.toY}%`,
-              left: targetLeft,
-              transform: 'translate(-50%, -50%)',
-              pointerEvents: 'none',
-              zIndex: 38,
-            }}
-          >
-            <div className="shockwave-ring-orange" />
-            <div className="fireball-impact-effect">
-              <span style={{ fontSize: '36px', display: 'block', filter: 'drop-shadow(0 0 16px #ea580c)' }}>
-                💥🔥
-              </span>
-            </div>
-          </div>
-        </>
-      )}
+          </>
+        );
+      })()}
 
       {/* 2. 電気クラゲ（電撃弾の高速飛翔 ＆ 着弾バチバチ放電スパーク） */}
       {effect.effectType === 'lightning' && (
