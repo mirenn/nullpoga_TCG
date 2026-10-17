@@ -190,6 +190,8 @@ export default function RealtimeDemoPage() {
 
   // ウィンドウ全体でタッチ・ポインタードラッグをスムーズに追従・出撃判定
   useEffect(() => {
+    let lastDragUpdateMs = 0;
+
     const onPointerMove = (e: PointerEvent) => {
       const state = pointerDragStateRef.current;
       if (!state || e.pointerId !== state.pointerId) return;
@@ -205,6 +207,11 @@ export default function RealtimeDemoPage() {
       }
 
       if (state.hasMoved) {
+        // iPadの120Hzポインターイベントで毎フレームReact全体が再コミット(68+ commits/sec)するのを防ぐため約30fps(32ms)にスロットリング
+        const now = performance.now();
+        if (now - lastDragUpdateMs < 32) return;
+        lastDragUpdateMs = now;
+
         setTouchDragPos({ clientX: e.clientX, clientY: e.clientY });
 
         if (battleFieldRef.current) {

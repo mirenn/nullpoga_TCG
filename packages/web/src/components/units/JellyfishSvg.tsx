@@ -36,11 +36,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
   const isAttacking = state === 'attacking';
   const isStunned = state === 'stunned';
 
-  const rootClass = [
-    isStunned ? 'unit-svg-stunned' : '',
-    isStunned ? 'jelly-stunned-glow' : '',
-    isCharging ? 'jelly-charging-root' : '',
-  ].filter(Boolean).join(' ');
+  const rootClass = isStunned ? 'unit-svg-stunned' : '';
 
   const floatClass = isSwimming ? 'jelly-swim-float' : '';
   const bellClass = isSwimming
@@ -60,11 +56,11 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
 
   // 触手パス（5本）
   const tentacles = [
-    { x: 10, d: 'M10,19 C8,23 12,26 10,30 C9,32 9.5,34 9.5,34', delay: 'd1' },
-    { x: 14.5, d: 'M14.5,19 C13,23 16,27 14.5,31 C14,33 14,34.5 14,34.5', delay: 'd2' },
-    { x: 18, d: 'M18,19 C16.5,23 19.5,27 18,31 C17.5,33 18,35 18,35', delay: 'd3' },
-    { x: 21.5, d: 'M21.5,19 C23,23 20,27 21.5,31 C22,33 22,34.5 22,34.5', delay: 'd4' },
-    { x: 26, d: 'M26,19 C28,23 24,26 26,30 C27,32 26.5,34 26.5,34', delay: 'd1' },
+    { x: 10, d: 'M10,19 C8,23 12,26 10,30 C9,32 9.5,34 9.5,34' },
+    { x: 14.5, d: 'M14.5,19 C13,23 16,27 14.5,31 C14,33 14,34.5 14,34.5' },
+    { x: 18, d: 'M18,19 C16.5,23 19.5,27 18,31 C17.5,33 18,35 18,35' },
+    { x: 21.5, d: 'M21.5,19 C23,23 20,27 21.5,31 C22,33 22,34.5 22,34.5' },
+    { x: 26, d: 'M26,19 C28,23 24,26 26,30 C27,32 26.5,34 26.5,34' },
   ];
 
   // 放電ジグザグパス（攻撃時のみ表示）
@@ -84,15 +80,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
       className={rootClass}
       style={{ overflow: 'visible' }}
     >
-      {/* SVG フィルタ: 放電グロー */}
       <defs>
-        <filter id="zap-glow" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
         {/* 傘のグラデーション */}
         <radialGradient id={`bell-grad-${isPlayer ? 'p' : 'c'}`} cx="50%" cy="30%">
           <stop offset="0%" stopColor={bellHighlight} />
@@ -101,7 +89,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
       </defs>
 
       <g className={floatClass}>
-        {/* === 触手（傘の後ろ） === */}
+        {/* === 触手（傘の後ろ：グループ単位で1回だけアニメーションさせ、個別パスの重複アニメ負荷を削減） === */}
         <g className={tentacleBaseClass}>
           {tentacles.map((t, i) => (
             <path
@@ -111,11 +99,6 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
               strokeWidth="1.5"
               fill="none"
               strokeLinecap="round"
-              className={
-                isSwimming
-                  ? `jelly-swim-tentacle jelly-swim-tentacle-${t.delay}`
-                  : ''
-              }
               opacity="0.7"
             />
           ))}
@@ -163,7 +146,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
 
         {/* === チャージエフェクト（攻撃前隙2.0秒のエネルギー凝縮） === */}
         {isCharging && (
-          <g className="jelly-charge-zap" filter="url(#zap-glow)">
+          <g className="jelly-charge-zap">
             {/* 傘周辺に収束する青・黄のスパーク */}
             <circle cx="18" cy="11" r="3.5" fill="none" stroke="#38bdf8" strokeWidth="1" opacity="0.9" />
             <path d="M12,7 L15,10 M24,7 L21,10 M18,3 L18,7" stroke="#38bdf8" strokeWidth="1.2" strokeLinecap="round" opacity="0.8" />
@@ -173,7 +156,7 @@ export const JellyfishSvg: React.FC<UnitSvgProps> = ({
 
         {/* === 放電エフェクト（攻撃時のみ） === */}
         {isAttacking && (
-          <g className="jelly-attack-zap" filter="url(#zap-glow)">
+          <g className="jelly-attack-zap">
             {zapPaths.map((d, i) => (
               <path
                 key={i}

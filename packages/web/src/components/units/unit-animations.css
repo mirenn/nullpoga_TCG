@@ -18,10 +18,10 @@
 }
 
 @keyframes unit-stunned-flash {
-  0%, 100% { opacity: 1; filter: brightness(1); }
-  30% { opacity: 0.5; filter: brightness(2.5); }
-  60% { opacity: 0.9; filter: brightness(1.2); }
-  80% { opacity: 0.4; filter: brightness(3); }
+  0%, 100% { opacity: 1; }
+  30% { opacity: 0.45; }
+  60% { opacity: 0.9; }
+  80% { opacity: 0.35; }
 }
 
 .unit-svg-stunned {
@@ -203,13 +203,13 @@
 
 /* 攻撃: 放電フラッシュ */
 @keyframes jelly-zap-flash {
-  0%   { opacity: 0; filter: drop-shadow(0 0 0px #facc15); }
-  15%  { opacity: 1; filter: drop-shadow(0 0 6px #facc15); }
-  30%  { opacity: 0.3; filter: drop-shadow(0 0 2px #facc15); }
-  50%  { opacity: 1; filter: drop-shadow(0 0 8px #facc15); }
-  70%  { opacity: 0.2; filter: drop-shadow(0 0 1px #facc15); }
-  85%  { opacity: 0.9; filter: drop-shadow(0 0 5px #facc15); }
-  100% { opacity: 0; filter: drop-shadow(0 0 0px #facc15); }
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  30%  { opacity: 0.3; }
+  50%  { opacity: 1; }
+  70%  { opacity: 0.2; }
+  85%  { opacity: 0.9; }
+  100% { opacity: 0; }
 }
 
 /* 泳ぎクラス */
@@ -234,13 +234,13 @@
   animation: jelly-float 2.4s ease-in-out infinite;
 }
 
-/* チャージ (Attack Windup: 2.0s): 傘がキュッと小刻みに震え、エネルギーが集束 */
+/* チャージ (Attack Windup: 2.0s): 傘がキュッと小刻みに震え、エネルギーが集束（iPad WebKitで34fpsまで低下する原因だったfilter: drop-shadowアニメーションを廃止） */
 @keyframes jelly-charge-vibrate {
-  0%   { transform: scale(1) translateY(0); filter: drop-shadow(0 0 2px #38bdf8); }
-  25%  { transform: scale(0.92, 1.08) translateY(-1px); filter: drop-shadow(0 0 6px #38bdf8); }
-  50%  { transform: scale(1.05, 0.95) translateY(0.5px); filter: drop-shadow(0 0 10px #facc15); }
-  75%  { transform: scale(0.95, 1.05) translateY(-0.5px); filter: drop-shadow(0 0 12px #38bdf8); }
-  100% { transform: scale(1) translateY(0); filter: drop-shadow(0 0 14px #facc15); }
+  0%   { transform: scale(1) translateY(0); }
+  25%  { transform: scale(0.92, 1.08) translateY(-1px); }
+  50%  { transform: scale(1.05, 0.95) translateY(0.5px); }
+  75%  { transform: scale(0.95, 1.05) translateY(-0.5px); }
+  100% { transform: scale(1) translateY(0); }
 }
 
 @keyframes jelly-charge-tentacle-bunch {
@@ -256,13 +256,13 @@
 }
 
 .jelly-charging-root {
-  animation: jelly-charge-vibrate 0.1s ease-in-out infinite;
+  animation: jelly-charge-vibrate 0.16s ease-in-out infinite;
 }
 
 .jelly-charge-bell {
   transform-box: fill-box;
   transform-origin: top center;
-  animation: jelly-charge-vibrate 0.1s ease-in-out infinite;
+  animation: jelly-charge-vibrate 0.16s ease-in-out infinite;
 }
 
 .jelly-charge-tentacles {
@@ -294,9 +294,9 @@
   animation: jelly-zap-flash 0.24s ease-out forwards;
 }
 
-/* スタン: 感電痙攣 (共通 unit-svg-stunned に追加で黄色グロー) */
+/* スタン: 感電痙攣 */
 .jelly-stunned-glow {
-  filter: drop-shadow(0 0 4px #facc15) drop-shadow(0 0 8px #eab308);
+  opacity: 0.9;
 }
 
 /* ─── イノシシ (Boar) ─── */
@@ -690,7 +690,7 @@
   0%   { opacity: 0; transform: scale(0.3); }
   40%  { opacity: 0.8; transform: scale(0.9); }
   80%  { opacity: 1; transform: scale(1.3); }
-  100% { opacity: 1; transform: scale(1.4); filter: drop-shadow(0 0 6px #ea580c); }
+  100% { opacity: 1; transform: scale(1.4); }
 }
 
 @keyframes dragon-charge-tremor {
@@ -970,3 +970,52 @@
 .assassin-attack-slash {
   animation: assassin-slash-dash 0.32s ease-out forwards;
 }
+
+/* ─── iPad / タッチ端末 (WebKit) 向けGPU・CPU発熱対策 ───
+   WebKitでは <svg> 内部の子要素 (<g>, <path>) に対する transform-box: fill-box 付きの
+   無限アニメーションはGPUレイヤー合成が効かず、毎秒60〜120回ベクターパス全体の再計算・
+   CPU再ラスタライズを引き起こす（実測で40個以上のSVGアニメが同時稼働し34〜44fpsへ低下）。
+   タッチ端末では細かい手足・尻尾・触手の常時個別スイングを停止し、全体の歩行バウンスと
+   チャージ・攻撃アニメーションのみに絞ることでSVG再ラスタライズ負荷を80%以上削減する。 */
+@media (pointer: coarse) {
+  .cat-walk-front-l,
+  .cat-walk-front-r,
+  .cat-walk-back-l,
+  .cat-walk-back-r,
+  .cat-idle-tail,
+  .jelly-swim-tentacle,
+  .jelly-swim-bell,
+  .boar-walk-leg-f-l,
+  .boar-walk-leg-f-r,
+  .boar-walk-leg-b-l,
+  .boar-walk-leg-b-r,
+  .mouse-walk-legs,
+  .mouse-walk-tail,
+  .mouse-idle-tail,
+  .shiba-walk-leg-f-l,
+  .shiba-walk-leg-f-r,
+  .shiba-walk-leg-b-l,
+  .shiba-walk-leg-b-r,
+  .shiba-walk-tail,
+  .shiba-idle-tail,
+  .turtle-walk-leg-l,
+  .turtle-walk-leg-r,
+  .turtle-walk-head,
+  .dragon-walk-leg-l,
+  .dragon-walk-leg-r,
+  .dragon-idle-wing-l,
+  .dragon-idle-wing-r,
+  .dragon-walk-wing-l,
+  .dragon-walk-wing-r,
+  .bat-idle-wing-l,
+  .bat-idle-wing-r,
+  .bat-walk-wing-l,
+  .bat-walk-wing-r,
+  .assassin-walk-leg-l,
+  .assassin-walk-leg-r,
+  .assassin-walk-scarf,
+  .assassin-idle-scarf {
+    animation: none !important;
+  }
+}
+

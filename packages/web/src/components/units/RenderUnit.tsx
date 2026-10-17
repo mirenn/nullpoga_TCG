@@ -45,9 +45,6 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           fill="none"
           stroke={shieldColor}
           strokeWidth="2.5"
-          style={{
-            filter: `drop-shadow(0 0 3px ${shieldColor})`,
-          }}
         />
       </svg>
     );
@@ -58,15 +55,17 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
   const isCharging = Boolean(unit.isCharging);
 
   // チャージ中は前隙（タメ時間）の進行度を0〜100%で表現し、それ以外はクールダウン復帰度
-  let progress = 1;
+  let rawProgress = 1;
   if (isCharging && unit.chargeStartTime && unit.attackWindup && unit.attackWindup > 0) {
     const elapsed = (Date.now() - unit.chargeStartTime) / 1000;
-    progress = Math.min(1, Math.max(0, elapsed / unit.attackWindup));
+    rawProgress = Math.min(1, Math.max(0, elapsed / unit.attackWindup));
   } else if (interval > 0) {
-    progress = Math.min(1, Math.max(0, 1 - cooldown / interval));
+    rawProgress = Math.min(1, Math.max(0, 1 - cooldown / interval));
   }
 
-  const isReady = !isCharging && progress >= 0.999;
+  const isReady = !isCharging && rawProgress >= 0.999;
+  // iPad WebKitでの毎Tick SVG属性再計算・再ラスタライズ負荷を抑えるため20段階(5%刻み)に量子化
+  const progress = isReady ? 1 : Math.round(rawProgress * 20) / 20;
 
   // トラック（下地の溝）: 白系の半透明にして、暗い背景でも未充填部分が見えるようにする
   let trackColor = 'rgba(255, 255, 255, 0.28)';
@@ -75,20 +74,15 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
 
   // ゲージの色: リロード中はオレンジ（陣営色と区別）、攻撃準備完了で陣営色に変化
   let gaugeColor = '#fb923c';
-  let glowColor = 'rgba(251, 146, 60, 0.9)';
 
   if (isBlockingSpawn) {
     gaugeColor = '#ea580c';
-    glowColor = '#ea580c';
   } else if (isStunned) {
     gaugeColor = '#eab308';
-    glowColor = '#eab308';
   } else if (isCharging) {
     gaugeColor = '#facc15';
-    glowColor = '#facc15';
   } else if (isReady) {
     gaugeColor = isPlayer ? '#00f0ff' : '#ff1744';
-    glowColor = isPlayer ? 'rgba(0, 240, 255, 0.95)' : 'rgba(255, 23, 68, 0.95)';
   }
 
   const strokeDashoffset = COOLDOWN_RING_CIRCUMFERENCE * (1 - progress);
@@ -134,7 +128,6 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           stroke={gaugeColor}
           strokeWidth="3.2"
           strokeDasharray="4 3"
-          style={{ filter: `drop-shadow(0 0 4px ${glowColor})` }}
         />
       ) : (
         // クールダウン進行ゲージ（上部12時から時計回りに満ちる。iPad SafariでのGPUフィルタ負荷を避けるためfilter: drop-shadowを使わず鮮明なストロークで描画）
@@ -230,13 +223,8 @@ export const RenderUnit = React.memo(function RenderUnit({
         top: `${unit.y}%`,
         transform: `translate(-50%, calc(-50% + ${jumpOffsetY}px)) scale(${jumpScale})`,
         opacity: isConcealed ? 0.12 : isCpuHiddenInCloud ? 0.32 : isPlayerInCloud ? 0.78 : 1,
-        filter: isConcealed
-          ? 'blur(1.5px) brightness(0.5)'
-          : isCpuHiddenInCloud
-          ? 'blur(1.8px) contrast(1.4) brightness(0.25)'
-          : undefined,
         zIndex: isJumping ? 45 : unit.isSpotted ? 31 : styles.unitWrapper.zIndex,
-        transition: isJumping ? 'none' : 'opacity 0.2s ease-out, filter 0.2s ease-out',
+        transition: isJumping ? 'none' : 'opacity 0.2s ease-out',
       }}
     >
       {/* 雲の死角（未看破の敵）インジケーター */}
@@ -511,7 +499,7 @@ export const RenderUnit = React.memo(function RenderUnit({
 
         {/* SVG コンポーネント or 絵文字フォールバック (雲の死角の敵は「❓」シルエット) */}
         {isCpuHiddenInCloud ? (
-          <span style={{ fontSize: '20px', filter: 'drop-shadow(0 0 6px #000)', opacity: 0.9 }}>❓</span>
+          <span style={{ fontSize: '20px', textShadow: '0 0 6px #000', opacity: 0.9 }}>❓</span>
         ) : hasSvg ? (
           <UnitSvgRenderer
             cardNo={unit.cardNo}

@@ -97,7 +97,6 @@
           35% {
             transform: translate(-50%, -50%) scale(1.7);
             opacity: 1;
-            filter: drop-shadow(0 0 20px #f97316);
           }
           70% {
             transform: translate(-50%, -50%) scale(2.2);
@@ -140,7 +139,7 @@
         /* 電気クラゲ: 放電電撃弾グロー（発射元の閃光） */
         @keyframes lightning-source-glow {
           0% { transform: scale(0.6); opacity: 0.2; }
-          30% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 16px #38bdf8); }
+          30% { transform: scale(1.4); opacity: 1; }
           100% { transform: scale(0.8); opacity: 0; }
         }
         .lightning-glow {
@@ -219,7 +218,7 @@
         .lightning-orb-spark {
           font-size: 16px;
           line-height: 1;
-          filter: drop-shadow(0 0 6px #ffffff);
+          text-shadow: 0 0 6px #ffffff;
           animation: lightning-trail-pulse 0.15s linear infinite;
         }
 
@@ -274,12 +273,10 @@
           15% {
             transform: translate(-50%, -50%) scale(1.15) rotate(6deg);
             opacity: 1;
-            filter: drop-shadow(0 0 10px #38bdf8) drop-shadow(0 0 14px #facc15);
           }
           40% {
             transform: translate(-50%, -50%) scale(1.0) rotate(-4deg);
             opacity: 1;
-            filter: drop-shadow(0 0 12px #38bdf8) drop-shadow(0 0 16px #facc15);
           }
           70% {
             transform: translate(-50%, -50%) scale(1.05) rotate(3deg);
@@ -335,7 +332,6 @@
           35% {
             transform: translate(-50%, -50%) scale(1.5) rotate(10deg);
             opacity: 1;
-            filter: drop-shadow(0 0 10px #f59e0b);
           }
           100% {
             transform: translate(-50%, -50%) scale(1.8) rotate(35deg);
@@ -355,7 +351,6 @@
           30% {
             transform: translate(-50%, -50%) scale(1.4) rotate(0deg);
             opacity: 1;
-            filter: drop-shadow(0 0 12px #f59e0b) drop-shadow(0 0 4px #fbbf24);
           }
           100% {
             transform: translate(-50%, -50%) scale(1.7) rotate(15deg);
@@ -375,7 +370,6 @@
           40% {
             transform: translate(-50%, -50%) scale(1.35);
             opacity: 1;
-            filter: drop-shadow(0 0 8px #facc15);
           }
           100% {
             transform: translate(-50%, -50%) scale(1.6);
@@ -395,7 +389,6 @@
           40% {
             transform: translate(-50%, -50%) scale(1.5) rotate(0deg);
             opacity: 1;
-            filter: drop-shadow(0 0 12px #ea580c);
           }
           100% {
             transform: translate(-50%, -50%) scale(1.8) rotate(10deg);
@@ -415,7 +408,6 @@
           35% {
             transform: translate(-50%, -50%) scale(1.7) translateY(-4px);
             opacity: 1;
-            filter: drop-shadow(0 0 16px #f97316) drop-shadow(0 0 8px #78716c);
           }
           100% {
             transform: translate(-50%, -50%) scale(2.2) translateY(-8px);
@@ -435,7 +427,6 @@
           30% {
             transform: translate(-50%, -50%) scaleX(1.8) scaleY(1.1) rotate(-35deg);
             opacity: 1;
-            filter: drop-shadow(0 0 14px #00f0ff) drop-shadow(0 0 6px #38bdf8);
           }
           100% {
             transform: translate(-50%, -50%) scaleX(2.4) scaleY(0.6) rotate(-35deg);
@@ -455,7 +446,6 @@
           35% {
             transform: translate(-50%, -50%) scale(1.4);
             opacity: 1;
-            filter: drop-shadow(0 0 14px #dc2626) drop-shadow(0 0 6px #9333ea);
           }
           100% {
             transform: translate(-50%, -50%) scale(1.7);
@@ -475,7 +465,6 @@
           50% {
             transform: translate(-50%, -50%) scale(1.6);
             opacity: 1;
-            filter: drop-shadow(0 0 14px #ef4444);
           }
           100% {
             transform: translate(-50%, -50%) scale(2.2);
@@ -531,16 +520,16 @@
         @keyframes meteor-explosion-anim {
           0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
           75% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-          80% { transform: translate(-50%, -50%) scale(2); opacity: 1; filter: drop-shadow(0 0 20px #ef4444); }
-          90% { transform: translate(-50%, -50%) scale(2.5); opacity: 1; filter: drop-shadow(0 0 30px #f97316); }
+          80% { transform: translate(-50%, -50%) scale(2); opacity: 1; }
+          90% { transform: translate(-50%, -50%) scale(2.5); opacity: 1; }
           100% { transform: translate(-50%, -50%) scale(3); opacity: 0; }
         }
 
         /* スペル演出: 烈火の炎 (Burn) */
         @keyframes burn-spell-anim {
           0% { transform: translate(-50%, 50%) scale(0.8); opacity: 0; }
-          30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; filter: drop-shadow(0 0 25px #ea580c); }
-          70% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; filter: drop-shadow(0 0 15px #f97316); }
+          30% { transform: translate(-50%, -50%) scale(1.6); opacity: 1; }
+          70% { transform: translate(-50%, -50%) scale(1.4); opacity: 0.9; }
           100% { transform: translate(-50%, -80%) scale(1.8); opacity: 0; }
         }
 
@@ -548,11 +537,9 @@
         @keyframes fire-column-pulse {
           0%, 100% {
             opacity: 0.7;
-            box-shadow: 0 0 16px rgba(249, 115, 22, 0.45), inset 0 0 16px rgba(239, 68, 68, 0.35);
           }
           50% {
             opacity: 0.95;
-            box-shadow: 0 0 28px rgba(249, 115, 22, 0.75), inset 0 0 28px rgba(239, 68, 68, 0.55);
           }
         }
 
@@ -561,22 +548,18 @@
           0% {
             opacity: 0;
             transform: translateX(-50%) scaleX(0.5);
-            filter: brightness(2) drop-shadow(0 0 20px #ef4444);
           }
           20% {
             opacity: 1;
             transform: translateX(-50%) scaleX(1.1);
-            filter: brightness(2.2) drop-shadow(0 0 35px #f97316);
           }
           65% {
             opacity: 0.9;
             transform: translateX(-50%) scaleX(1.0);
-            filter: brightness(1.7) drop-shadow(0 0 25px #ea580c);
           }
           100% {
             opacity: 0;
             transform: translateX(-50%) scaleX(1.35);
-            filter: brightness(1) drop-shadow(0 0 10px transparent);
           }
         }
 
@@ -585,37 +568,30 @@
           0% {
             opacity: 0;
             transform: translate(-50%, 20%) scaleY(0.05) scaleX(0.4);
-            filter: brightness(3.5) drop-shadow(0 0 10px #ffffff);
           }
           12% {
             opacity: 1;
             transform: translate(-50%, -30%) scaleY(1.4) scaleX(1.2);
-            filter: brightness(2.8) drop-shadow(0 0 35px #fef08a) drop-shadow(0 0 55px #f97316);
           }
           28% {
             opacity: 1;
             transform: translate(-50%, -20%) scaleY(1.18) scaleX(1.05);
-            filter: brightness(2.2) drop-shadow(0 0 30px #f97316);
           }
           55% {
             opacity: 0.95;
             transform: translate(-50%, -15%) scaleY(1.0) scaleX(0.95);
-            filter: brightness(1.7) drop-shadow(0 0 22px #ea580c);
           }
           75% {
             opacity: 0.7;
             transform: translate(-50%, -25%) scaleY(0.9) scaleX(0.85);
-            filter: brightness(1.3) drop-shadow(0 0 14px #dc2626);
           }
           90% {
             opacity: 0.3;
             transform: translate(-50%, -40%) scaleY(0.7) scaleX(0.7);
-            filter: brightness(1.0);
           }
           100% {
             opacity: 0;
             transform: translate(-50%, -55%) scaleY(0.3) scaleX(0.5);
-            filter: brightness(0.6);
           }
         }
 
@@ -628,7 +604,6 @@
           15% {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1.3);
-            filter: drop-shadow(0 0 20px #fef08a) drop-shadow(0 0 35px #f97316);
           }
           50% {
             opacity: 0.85;
@@ -647,16 +622,16 @@
         /* 烈火の呪文: 起点から上下へ伝播する灼熱の地割れライン (Lava Fissure) */
         @keyframes fire-fissure-expand-up {
           0% { transform: scaleY(0); opacity: 0.5; }
-          25% { opacity: 1; filter: brightness(2.5) drop-shadow(0 0 20px #f97316); }
+          25% { opacity: 1; }
           60% { transform: scaleY(1); opacity: 0.9; }
-          100% { transform: scaleY(1); opacity: 0; filter: brightness(1); }
+          100% { transform: scaleY(1); opacity: 0; }
         }
 
         @keyframes fire-fissure-expand-down {
           0% { transform: scaleY(0); opacity: 0.5; }
-          25% { opacity: 1; filter: brightness(2.5) drop-shadow(0 0 20px #f97316); }
+          25% { opacity: 1; }
           60% { transform: scaleY(1); opacity: 0.9; }
-          100% { transform: scaleY(1); opacity: 0; filter: brightness(1); }
+          100% { transform: scaleY(1); opacity: 0; }
         }
 
         /* 烈火の火柱クラス定義 */
@@ -685,7 +660,6 @@
           bottom: 8%;
           background: linear-gradient(to top, #ffffff 0%, #fef08a 50%, rgba(249, 115, 22, 0) 100%);
           border-radius: 50% 50% 20% 20%;
-          filter: blur(2px);
           pointer-events: none;
         }
 
@@ -705,9 +679,9 @@
         /* 烈火の呪文: 起点インパクトバースト */
         @keyframes fire-origin-burst {
           0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0; }
-          15% { transform: translate(-50%, -50%) scale(1.45); opacity: 1; filter: drop-shadow(0 0 32px #f59e0b) brightness(2.2); }
-          50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.95; filter: drop-shadow(0 0 22px #ea580c) brightness(1.6); }
-          100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; filter: drop-shadow(0 0 10px transparent); }
+          15% { transform: translate(-50%, -50%) scale(1.45); opacity: 1; }
+          50% { transform: translate(-50%, -50%) scale(1.15); opacity: 0.95; }
+          100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; }
         }
 
         /* 烈火の呪文: プレビュー時の上下矢印パルス */
@@ -737,7 +711,7 @@
         /* スペル演出: 疾風の号令 (Haste) */
         @keyframes haste-spell-anim {
           0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
-          20% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; filter: drop-shadow(0 0 20px #22c55e); }
+          20% { transform: translate(-50%, -50%) scale(1.4); opacity: 1; }
           50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
           80% { transform: translate(-50%, -50%) scale(1.3); opacity: 0.8; }
           100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
@@ -746,7 +720,7 @@
         /* スペル演出: 癒やしの雨 (Heal) */
         @keyframes heal-spell-anim {
           0% { transform: translate(-50%, -100%) scale(0.8); opacity: 0; }
-          30% { transform: translate(-50%, -40%) scale(1.3); opacity: 1; filter: drop-shadow(0 0 20px #38bdf8); }
+          30% { transform: translate(-50%, -40%) scale(1.3); opacity: 1; }
           60% { transform: translate(-50%, -30%) scale(1.1); opacity: 0.9; }
           100% { transform: translate(-50%, 20%) scale(1.5); opacity: 0; }
         }
@@ -972,19 +946,17 @@
         /* 巨獣スタンピード: 警戒ストライプ点滅 */
         @keyframes stampede-warning-pulse {
           0% {
-            opacity: 0.75;
-            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.4));
+            opacity: 0.72;
           }
           100% {
             opacity: 1.0;
-            filter: drop-shadow(0 0 24px rgba(239, 68, 68, 0.95));
           }
         }
 
         /* 巨獣スタンピード: 警報灯点滅 */
         @keyframes stampede-light-blink {
           0% { transform: scale(0.9); opacity: 0.5; }
-          100% { transform: scale(1.15); opacity: 1.0; filter: drop-shadow(0 0 8px #ef4444); }
+          100% { transform: scale(1.15); opacity: 1.0; }
         }
 
         /* 巨獣スタンピード: 巨獣の激走ステップ揺れ */
@@ -1003,21 +975,22 @@
         /* 立ち止まりインセンティブ: 待ち伏せ集中完了オーラ（金色のオーラと構え） */
         @keyframes unit-ambush-charge-pulse {
           0% {
-            box-shadow: 0 0 10px #f59e0b, 0 0 18px rgba(245, 158, 11, 0.7);
+            opacity: 0.9;
           }
           50% {
-            box-shadow: 0 0 20px #fbbf24, 0 0 32px rgba(251, 191, 36, 0.95), inset 0 0 10px #fef08a;
+            opacity: 1;
           }
           100% {
-            box-shadow: 0 0 10px #f59e0b, 0 0 18px rgba(245, 158, 11, 0.7);
+            opacity: 0.9;
           }
         }
 
         /* 待ち伏せ解除後の奇襲ダッシュトレイル */
         @keyframes ambush-dash-trail {
-          0% { filter: drop-shadow(-8px 0 6px #f59e0b); }
-          50% { filter: drop-shadow(-14px 0 12px #fbbf24); }
-          100% { filter: drop-shadow(-8px 0 6px #f59e0b); }
+          0% { transform: translateX(0); opacity: 0.92; }
+          50% { transform: translateX(2px); opacity: 1; }
+          100% { transform: translateX(0); opacity: 0.92; }
         }
+
 
 

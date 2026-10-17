@@ -57,21 +57,10 @@ export const AssassinSvg: React.FC<UnitSvgProps> = ({
       className={rootClass}
       style={{ overflow: 'visible' }}
     >
-      <defs>
-        {/* チャージ・攻撃時のオーラグロー */}
-        <filter id={`assassin-glow-${isPlayer ? 'p' : 'c'}`} x="-40%" y="-40%" width="180%" height="180%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.2" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
       <g className={bodyClass}>
         {/* === チャージ時の影のオーラ === */}
         {isCharging && (
-          <g className="assassin-charge-aura" filter={`url(#assassin-glow-${isPlayer ? 'p' : 'c'})`}>
+          <g className="assassin-charge-aura">
             <ellipse cx="18" cy="30" rx="14" ry="4" fill="none" stroke={bladeGlow} strokeWidth="1.2" opacity="0.8" />
             <path d="M7,28 Q18,22 29,28" stroke={bladeGlow} strokeWidth="1" fill="none" opacity="0.6" />
             <line x1="12" y1="26" x2="10" y2="20" stroke={bladeGlow} strokeWidth="1" strokeLinecap="round" opacity="0.7" />
@@ -107,13 +96,13 @@ export const AssassinSvg: React.FC<UnitSvgProps> = ({
         <g className={bladeClass} style={{ transformOrigin: '21px 19px' }}>
           {isAttacking ? (
             // 攻撃時: 腕を振り抜いて手裏剣を投擲したスナップモーション
-            <g filter={`url(#assassin-glow-${isPlayer ? 'p' : 'c'})`}>
+            <g>
               <line x1="19" y1="18" x2="31" y2="15" stroke={bladeGlow} strokeWidth="2" strokeLinecap="round" />
               <polygon points="28,12 34,15 28,18 30,15" fill={bladeColor} />
             </g>
           ) : isCharging ? (
             // チャージ時: 手元で手裏剣を振りかぶり輝きをチャージ
-            <g filter={`url(#assassin-glow-${isPlayer ? 'p' : 'c'})`}>
+            <g>
               <circle cx="23" cy="18" r="3" fill="none" stroke={bladeGlow} strokeWidth="1" strokeDasharray="2 2" />
               <polygon points="23,15 25,18 23,21 21,18" fill={bladeColor} />
             </g>

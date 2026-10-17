@@ -313,9 +313,15 @@ export function BattleField({
     [checkCanPlayCard, playCardAt, playCardAtX]
   );
 
-  // ホバー追従 (X, Y)
+  const lastHoverMoveMsRef = useRef<number>(0);
+
+  // ホバー追従 (X, Y) — カード未選択かつ非ドラッグ時は無駄な再レンダリングを行わない
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isPanningCamera) return;
+    if (selectedCardIndex === null && !isDragging) return;
+    const now = performance.now();
+    if (now - lastHoverMoveMsRef.current < 32) return;
+    lastHoverMoveMsRef.current = now;
     const x = calculateXPercent(e.clientX);
     const y = calculateYPercent(e.clientY);
     setHoverPos({ x, y });
@@ -855,7 +861,6 @@ export function BattleField({
               top: `${wy}%`,
               transform: 'translate(-50%, -50%)',
               opacity: isWarningConcealed ? 0.1 : 1,
-              filter: isWarningConcealed ? 'blur(2px)' : undefined,
               transition: 'opacity 0.18s ease-out',
             }}
             className="cpu-spawn-pulse"
