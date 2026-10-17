@@ -35,6 +35,7 @@ export default function RealtimeDemoPage() {
     units,
     inhibitors,
     obstacles,
+    stampede,
     camera3D,
     setCamera3D,
     resetCamera3D,
@@ -112,11 +113,13 @@ export default function RealtimeDemoPage() {
 
   const pointerDragStateRef = useRef<{
     pointerId: number;
+    pointerType: string;
     cardIdx: number;
     startX: number;
     startY: number;
     hasMoved: boolean;
   } | null>(null);
+  const ignoreNextCardClickRef = useRef<boolean>(false);
 
   const [displayCombo, setDisplayCombo] = useState<{ count: number; visible: boolean }>({ count: 0, visible: false });
 
@@ -138,6 +141,7 @@ export default function RealtimeDemoPage() {
   // ゲームリセット（D&D状態もクリア）
   const handleReset = useCallback(() => {
     pointerDragStateRef.current = null;
+    ignoreNextCardClickRef.current = false;
     setDraggedCardIndex(null);
     setIsDragging(false);
     setDragOverLaneIndex(null);
@@ -156,6 +160,7 @@ export default function RealtimeDemoPage() {
 
       pointerDragStateRef.current = {
         pointerId: e.pointerId,
+        pointerType: e.pointerType,
         cardIdx: idx,
         startX: e.clientX,
         startY: e.clientY,
@@ -163,6 +168,18 @@ export default function RealtimeDemoPage() {
       };
     },
     [checkCanPlayCard, gameResult]
+  );
+
+  // カードクリック時の選択トグル（タッチ操作やポインタードラッグ直後の重複発火を防止）
+  const handleCardClick = useCallback(
+    (idx: number) => {
+      if (ignoreNextCardClickRef.current) {
+        ignoreNextCardClickRef.current = false;
+        return;
+      }
+      setSelectedCardIndex((prev) => (prev === idx ? null : idx));
+    },
+    [setSelectedCardIndex]
   );
 
   // ウィンドウ全体でタッチ・ポインタードラッグをスムーズに追従・出撃判定
@@ -212,7 +229,13 @@ export default function RealtimeDemoPage() {
       if (!state || e.pointerId !== state.pointerId) return;
 
       if (state.hasMoved) {
-        // ドラッグして戦場上で指を離した ➔ 出撃実行！
+        // ポインタードラッグ完了直後の click イベント誤爆を抑止
+        ignoreNextCardClickRef.current = true;
+        setTimeout(() => {
+          ignoreNextCardClickRef.current = false;
+        }, 300);
+
+        // ドラッグして戦場上で指/マウスを離した ➔ 出撃実行！
         if (battleFieldRef.current) {
           const rect = battleFieldRef.current.getBoundingClientRect();
           if (
@@ -242,8 +265,12 @@ export default function RealtimeDemoPage() {
             }
           }
         }
-      } else {
-        // 移動距離がわずかなタップ操作 ➔ 選択切り替え
+      } else if (state.pointerType !== 'mouse') {
+        // タッチデバイスで移動距離がわずかなタップ操作 ➔ 選択切り替え（直後の合成clickは抑止）
+        ignoreNextCardClickRef.current = true;
+        setTimeout(() => {
+          ignoreNextCardClickRef.current = false;
+        }, 350);
         const idx = state.cardIdx;
         setSelectedCardIndex((prev) => (prev === idx ? null : idx));
       }
@@ -278,11 +305,20 @@ export default function RealtimeDemoPage() {
 
   // ドラッグ開始 (HTML5 Drag & Drop)
   const handleDragStart = (e: React.DragEvent, idx: number) => {
-    const validation = checkCanPlayCard(idx);
-    if (!validation.canPlay) {
+    // タッチ操作中（touch / pen）に長押し等でブラウザのネイティブD&Dが発火した場合は抑止し、ポインター追従ドラッグを継続
+    if (pointerDragStateRef.current && pointerDragStateRef.current.pointerType !== 'mouse') {
       e.preventDefault();
       return;
     }
+    const validation = checkCanPlayCard(idx);
+    if (!validation.canPlay || gameResult !== 'playing') {
+      e.preventDefault();
+      return;
+    }
+    // マウスでネイティブHTML5 D&Dが開始された場合は、直後に発火する pointercancel でドラッグ状態がリセットされないよう pointerDragStateRef を解除
+    pointerDragStateRef.current = null;
+    setTouchDragPos(null);
+    setExternalHoverPos(null);
     e.dataTransfer.setData('text/plain', String(idx));
     e.dataTransfer.effectAllowed = 'copyMove';
     setDraggedCardIndex(idx);
@@ -493,6 +529,7 @@ export default function RealtimeDemoPage() {
             units={units}
             inhibitors={inhibitors}
             obstacles={obstacles}
+            stampede={stampede}
             camera3D={camera3D}
             setCamera3D={setCamera3D}
             resetCamera3D={resetCamera3D}
@@ -544,6 +581,7 @@ export default function RealtimeDemoPage() {
             handleDragStart={handleDragStart}
             handleDragEnd={handleDragEnd}
             handleCardPointerDown={handleCardPointerDown}
+            handleCardClick={handleCardClick}
           />
         </div>
 

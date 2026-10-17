@@ -107,6 +107,12 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                   直前味方ユニットとの出撃スペース確保、ドラゴン1体制限、連続召喚誤爆防止（約0.12秒）の制限があります。
                 </div>
               </div>
+              <div style={styles.tipBox}>
+                <div style={styles.tipTitle}>🦣 巨獣スタンピード ＆ 🛑 タップ待機（待ち伏せ集中）</div>
+                <div style={styles.tipText}>
+                  フィールド中央（x=45〜55%）には定期的に巨獣の大群が突進！警報（🚨）が鳴ったらユニットをタップして待機（HOLD）させ、手前でやり過ごしましょう。2秒以上待機すると「待ち伏せ集中」が完了し、解除時に奇襲ダッシュ＆初回攻撃力+2！敵をおびき寄せてスタンピードに轢かせるトレインキルも爽快です。
+                </div>
+              </div>
             </div>
           ) : (
             <div style={styles.catalogList}>

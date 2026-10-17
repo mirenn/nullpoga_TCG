@@ -1,10 +1,11 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor } from '../../app/types';
+import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor, StampedeState } from '../../app/types';
 import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
 import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
+import { RenderStampede } from './RenderStampede';
 import {
   clampSpawnX,
   clampPlayerSpawnX,
@@ -44,9 +45,11 @@ import { SPAWN_MIN_SPACE } from '../../app/cards';
 export interface BattleFieldProps {
   containerRef?: React.RefObject<HTMLDivElement | null>;
   externalHoverPos?: { x: number; y: number } | null;
+  hand?: DemoCard[];
   units: Unit[];
   inhibitors: Inhibitor[];
   obstacles?: FieldObstacle[];
+  stampede?: StampedeState;
   camera3D?: Camera3DState;
   setCamera3D?: (updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)) => void;
   resetCamera3D?: () => void;
@@ -81,9 +84,11 @@ export interface BattleFieldProps {
 export function BattleField({
   containerRef: externalContainerRef,
   externalHoverPos,
+  hand,
   units,
   inhibitors,
   obstacles = FIELD_OBSTACLES,
+  stampede,
   camera3D: externalCamera3D,
   setCamera3D: externalSetCamera3D,
   resetCamera3D: externalResetCamera3D,
@@ -346,10 +351,15 @@ export function BattleField({
   // ドロップ時の出撃
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    e.stopPropagation();
     const data = e.dataTransfer.getData('text/plain');
     const cardIdx = data !== '' ? parseInt(data, 10) : draggedCardIndex;
     if (cardIdx !== null && cardIdx !== undefined && !isNaN(cardIdx)) {
-      const card = isDragging ? activeDraggedCard : selectedCard;
+      const card =
+        (isDragging ? activeDraggedCard : null) ??
+        (hand && cardIdx >= 0 && cardIdx < hand.length ? hand[cardIdx] : null) ??
+        activeDraggedCard ??
+        selectedCard;
       if (card) {
         const x = calculateXPercent(e.clientX);
         const y = calculateYPercent(e.clientY);
@@ -364,7 +374,7 @@ export function BattleField({
 
   const activeCard = isDragging ? activeDraggedCard : selectedCard;
   const activeCardIdx = isDragging ? draggedCardIndex : selectedCardIndex;
-  const effectiveHoverPos = externalHoverPos !== undefined ? externalHoverPos : hoverPos;
+  const effectiveHoverPos = externalHoverPos ?? hoverPos;
   const hoverX = effectiveHoverPos?.x ?? null;
   const hoverY = effectiveHoverPos?.y ?? null;
   const rawTargetX = hoverX ?? (activeCard?.type === 'SPELL' ? 50 : PLAYER_DEFAULT_SPAWN_X);
@@ -419,6 +429,9 @@ export function BattleField({
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       onTouchCancel={handleTouchEnd}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       onContextMenu={(e) => {
         // 右ドラッグでもカメラ移動できるようにコンテキストメニューを抑止
         e.preventDefault();
@@ -798,6 +811,9 @@ export function BattleField({
       {inhibitors.map((inhib) => (
         <RenderInhibitor key={inhib.id} inhibitor={inhib} />
       ))}
+
+      {/* 2.2. 巨獣スタンピード回廊（中央危険ゾーン & 突進する巨獣群） */}
+      {stampede && <RenderStampede stampede={stampede} />}
 
       {/* 2.5. 立体遮蔽物の地面ベース層（幹・岩の根元・奇襲エリアサークル） */}
       {obstacles.map((obs) => (

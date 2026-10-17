@@ -320,6 +320,8 @@ export function RenderUnit({
           transform: isPlayer ? 'none' : 'scaleX(-1)',
           boxShadow: isBlockingSpawn
             ? '0 0 12px #ea580c'
+            : unit.hasAmbushCharge
+            ? '0 0 18px #f59e0b, 0 0 28px rgba(251, 191, 36, 0.95)'
             : unit.isSpotted
             ? '0 0 14px #facc15, 0 0 22px rgba(234, 179, 8, 0.85)'
             : isStunned
@@ -333,6 +335,7 @@ export function RenderUnit({
             : isReady
             ? (isPlayer ? '0 0 8px rgba(56, 189, 248, 0.6)' : '0 0 8px rgba(244, 63, 94, 0.6)')
             : '0 2px 4px rgba(0,0,0,0.5)',
+          animation: unit.hasAmbushCharge ? 'unit-ambush-charge-pulse 1.2s infinite alternate' : undefined,
           // SVG の尻尾・触手がはみ出せるように
           overflow: hasSvg ? 'visible' : undefined,
         }}
@@ -350,6 +353,29 @@ export function RenderUnit({
 
         {/* 状態異常・バフ表示 */}
         {isHolding && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-18px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '9px',
+              fontWeight: 'bold',
+              color: unit.hasAmbushCharge ? '#fef08a' : '#fffbeb',
+              backgroundColor: unit.hasAmbushCharge ? '#854d0e' : '#b45309',
+              border: unit.hasAmbushCharge ? '1px solid #facc15' : '1px solid #d97706',
+              boxShadow: unit.hasAmbushCharge ? '0 0 10px #facc15' : undefined,
+              padding: '1px 5px',
+              borderRadius: '999px',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              zIndex: 35,
+            }}
+          >
+            {unit.hasAmbushCharge ? '🎯 待ち伏せ完了!(+2/突撃)' : `⏸ 集中中... (${Math.min(2.0, unit.holdDuration || 0).toFixed(1)}/2.0s)`}
+          </div>
+        )}
+        {Boolean(unit.ambushDashUntil && Date.now() < unit.ambushDashUntil) && !isHolding && (
           <span
             style={{
               position: 'absolute',
@@ -358,15 +384,18 @@ export function RenderUnit({
               transform: 'translateX(-50%)',
               fontSize: '9px',
               fontWeight: 'bold',
-              color: '#fffbeb',
-              backgroundColor: '#b45309',
+              color: '#fef08a',
+              backgroundColor: '#ca8a04',
+              border: '1px solid #fef08a',
+              boxShadow: '0 0 8px #facc15',
               padding: '0 4px',
               borderRadius: '4px',
               whiteSpace: 'nowrap',
               pointerEvents: 'none',
+              zIndex: 35,
             }}
           >
-            ⏸ HOLD
+            ⚡ 奇襲突撃!
           </span>
         )}
         {isStunned && <span style={styles.statusStun}>⚡麻痺</span>}

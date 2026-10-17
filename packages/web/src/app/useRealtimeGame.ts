@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning, Inhibitor, Owner } from './types';
+import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning, Inhibitor, Owner, StampedeState } from './types';
 import {
   CARD_POOL,
   MANA_SPEED_PRESETS,
@@ -68,6 +68,17 @@ import {
   evaluateUnitStealthAndSpot,
   isObstacleActive,
 } from './obstacles';
+import {
+  createInitialStampedeState,
+  updateStampede,
+  shouldCpuUnitHoldForStampede,
+  HOLD_AMBUSH_CHARGE_TIME_SEC,
+  HOLD_AMBUSH_ATTACK_BONUS,
+  HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
+  HOLD_AMBUSH_DASH_DURATION_SEC,
+  STAMPEDE_CRUSH_DAMAGE,
+} from './stampede';
+
 
 
 // re-export for external consumers
@@ -216,6 +227,9 @@ export function useRealtimeGame() {
   useEffect(() => {
     obstaclesRef.current = obstacles;
   }, [obstacles]);
+  // 巨獣スタンピード（中央危険回廊）状態
+  const [stampede, setStampede] = useState<StampedeState>(createInitialStampedeState());
+  const stampedeRef = useRef<StampedeState>(createInitialStampedeState());
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -1386,12 +1400,33 @@ export function useRealtimeGame() {
               u.hp > 0 &&
               (unit.owner === 'player' ? u.x > unit.x - 2 : u.x < unit.x + 2)
           );
-          const isHolding = unit.owner === 'player' && Boolean(unit.isHolding);
+          // スタンピード危険時のCPU一時停止判定
+          const isCpuHolding = shouldCpuUnitHoldForStampede(unit, stampedeRef.current);
+          const isHolding = (unit.owner === 'player' && Boolean(unit.isHolding)) || isCpuHolding;
+
+          // 待機（ホールド）による集中チャージ蓄積
+          let holdDuration = unit.holdDuration || 0;
+          let hasAmbushCharge = Boolean(unit.hasAmbushCharge);
+          if (isHolding) {
+            holdDuration += dt;
+            if (holdDuration >= HOLD_AMBUSH_CHARGE_TIME_SEC) {
+              hasAmbushCharge = true;
+            }
+          } else if (!unit.ambushDashUntil || now >= unit.ambushDashUntil) {
+            holdDuration = 0;
+          }
+
+          // 奇襲ダッシュ判定
+          const isAmbushDashing = !isHolding && Boolean(unit.ambushDashUntil && now < unit.ambushDashUntil);
+
           const isSprinting =
             !isHolding && unit.cardNo === 8 && enemiesInFrontLane.length === 0 && !unit.isSpotted;
 
           // 移動計算 (X軸方向 & 障害物インタラクション)
-          const currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
+          let currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
+          if (isAmbushDashing) {
+            currentSpeed *= HOLD_AMBUSH_DASH_SPEED_MULTIPLIER;
+          }
           const moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
           y = unit.y;
           let isJumping = false;
@@ -1529,6 +1564,10 @@ export function useRealtimeGame() {
             lastAttackEffectTime: lastAttack,
             isCharging,
             chargeStartTime,
+            isHolding,
+            holdDuration,
+            hasAmbushCharge,
+            ambushDashUntil: unit.ambushDashUntil,
             isSprinting,
             isJumping,
             jumpProgress,
@@ -1566,10 +1605,15 @@ export function useRealtimeGame() {
               dist <= splashReach;
             if (isPrimary || isSplash) {
               const hadHp = currentHp > 0;
+              // 待ち伏せ集中完了または奇襲ダッシュ中の初回攻撃ボーナス (+2)
+              const hasAmbushBonus = Boolean(
+                attacker.hasAmbushCharge || (attacker.ambushDashUntil && now < attacker.ambushDashUntil)
+              );
+              const effectiveAttack = hasAmbushBonus ? attacker.attack + HOLD_AMBUSH_ATTACK_BONUS : attacker.attack;
               const dealt =
                 isAreaAttacker && !isPrimary
-                  ? Math.round(attacker.attack * AREA_SPLASH_DAMAGE_RATIO)
-                  : attacker.attack;
+                  ? Math.round(effectiveAttack * AREA_SPLASH_DAMAGE_RATIO)
+                  : effectiveAttack;
               currentHp -= dealt;
               if (hadHp && currentHp <= 0) {
                 // attacker が unit にとどめを刺した！
@@ -1633,36 +1677,86 @@ export function useRealtimeGame() {
         const finalUnits = unitsAfterDamage
           .filter((u) => u.hp > 0)
           .map((unit) => {
+            // 攻撃実行時に待ち伏せ奇襲ボーナスを消費
+            let updated = unit;
+            if (unit.lastAttackEffectTime === now && (unit.hasAmbushCharge || unit.ambushDashUntil)) {
+              updated = {
+                ...updated,
+                hasAmbushCharge: false,
+                ambushDashUntil: undefined,
+              };
+            }
+
             const kills = killCountMap.get(unit.id) || 0;
             if (kills > 0) {
-              const newKillCount = (unit.killCount || 0) + kills;
+              const newKillCount = (updated.killCount || 0) + kills;
               // 吸血コウモリ（cardNo: 9）：相手ユニットにとどめを刺した時に吸血成長（攻撃力+1、最大HP+1、HP+1）
-              if (unit.cardNo === 9) {
+              if (updated.cardNo === 9) {
                 const bonusAtk = kills * 1;
                 const bonusHp = kills * 1;
-                const nextMaxHp = unit.maxHp + bonusHp;
-                const nextHp = Math.min(nextMaxHp, unit.hp + bonusHp);
+                const nextMaxHp = updated.maxHp + bonusHp;
+                const nextHp = Math.min(nextMaxHp, updated.hp + bonusHp);
                 return {
-                  ...unit,
+                  ...updated,
                   killCount: newKillCount,
-                  attack: unit.attack + bonusAtk,
+                  attack: updated.attack + bonusAtk,
                   maxHp: nextMaxHp,
                   hp: nextHp,
                   lastKillTime: now,
                 };
               }
               return {
-                ...unit,
+                ...updated,
                 killCount: newKillCount,
                 lastKillTime: now,
               };
             }
-            return unit;
+            return updated;
           });
 
+        // 巨獣スタンピードの進行更新 & 激突判定
+        const stampedeRes = updateStampede(dt, stampedeRef.current, finalUnits);
+        stampedeRef.current = stampedeRes.nextState;
+        setStampede(stampedeRes.nextState);
+
+        let unitsAfterStampede = finalUnits;
+        if (stampedeRes.crushedUnitIds.length > 0) {
+          const crushedSet = new Set(stampedeRes.crushedUnitIds);
+          unitsAfterStampede = finalUnits
+            .map((u) => {
+              if (crushedSet.has(u.id)) {
+                newAttackEffects.push({
+                  id: `stampede_hit_${now}_${u.id}`,
+                  attackerId: 'stampede',
+                  fromX: u.x,
+                  toX: u.x,
+                  lane: u.lane ?? u.y,
+                  toLane: u.lane ?? u.y,
+                  fromY: u.y,
+                  toY: u.y,
+                  owner: u.owner === 'player' ? 'cpu' : 'player',
+                  effectType: 'base_hit',
+                  damage: STAMPEDE_CRUSH_DAMAGE,
+                  createdAt: now,
+                  duration: 400,
+                });
+                const knockback = u.owner === 'player' ? -10 : 10;
+                return {
+                  ...u,
+                  hp: Math.max(0, u.hp - STAMPEDE_CRUSH_DAMAGE),
+                  x: Math.max(5, Math.min(95, u.x + knockback)),
+                  isStunnedUntil: now + 1500,
+                  isStunned: true,
+                };
+              }
+              return u;
+            })
+            .filter((u) => u.hp > 0);
+        }
+
         // E. 状態の一括反映
-        unitsRef.current = finalUnits;
-        setUnits(finalUnits);
+        unitsRef.current = unitsAfterStampede;
+        setUnits(unitsAfterStampede);
 
         if (pDamageToCpu > 0) {
           setCpuHp((h) => {
@@ -1703,9 +1797,28 @@ export function useRealtimeGame() {
 
   // ユニットのクリックによる待機／再前進トグル（プレイヤーユニットのみ）
   const toggleUnitHold = useCallback((unitId: string) => {
-    const next = unitsRef.current.map((u) =>
-      u.id === unitId && u.owner === 'player' ? { ...u, isHolding: !u.isHolding } : u
-    );
+    const now = Date.now();
+    const next = unitsRef.current.map((u) => {
+      if (u.id === unitId && u.owner === 'player') {
+        const willHold = !u.isHolding;
+        if (!willHold && u.hasAmbushCharge) {
+          // 待機集中完了から再前進 -> 奇襲ダッシュ発動！
+          return {
+            ...u,
+            isHolding: false,
+            hasAmbushCharge: false,
+            holdDuration: 0,
+            ambushDashUntil: now + HOLD_AMBUSH_DASH_DURATION_SEC * 1000,
+          };
+        }
+        return {
+          ...u,
+          isHolding: willHold,
+          holdDuration: willHold ? 0 : u.holdDuration,
+        };
+      }
+      return u;
+    });
     unitsRef.current = next;
     setUnits(next);
   }, []);
@@ -1724,6 +1837,9 @@ export function useRealtimeGame() {
     const freshObstacles = FIELD_OBSTACLES.map((o) => ({ ...o, hp: o.maxHp ?? 80, isDestroyed: false, lastHitTime: undefined }));
     obstaclesRef.current = freshObstacles;
     setObstacles(freshObstacles);
+    const freshStampede = createInitialStampedeState();
+    stampedeRef.current = freshStampede;
+    setStampede(freshStampede);
     setSpellEffects([]);
     setAttackEffects([]);
     setPendingLightningHits([]);
@@ -1768,6 +1884,7 @@ export function useRealtimeGame() {
     units,
     inhibitors,
     obstacles,
+    stampede,
     camera3D,
     setCamera3D,
     resetCamera3D,

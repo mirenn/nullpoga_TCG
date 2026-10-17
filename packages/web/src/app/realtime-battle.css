@@ -966,3 +966,55 @@
           animation-delay: var(--impact-delay, 0ms);
         }
 
+        /* 巨獣スタンピード: 警戒ストライプ点滅 */
+        @keyframes stampede-warning-pulse {
+          0% {
+            opacity: 0.75;
+            filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.4));
+          }
+          100% {
+            opacity: 1.0;
+            filter: drop-shadow(0 0 24px rgba(239, 68, 68, 0.95));
+          }
+        }
+
+        /* 巨獣スタンピード: 警報灯点滅 */
+        @keyframes stampede-light-blink {
+          0% { transform: scale(0.9); opacity: 0.5; }
+          100% { transform: scale(1.15); opacity: 1.0; filter: drop-shadow(0 0 8px #ef4444); }
+        }
+
+        /* 巨獣スタンピード: 巨獣の激走ステップ揺れ */
+        @keyframes stampede-beast-bob {
+          0% { transform: scale(1.0) translateY(0); }
+          100% { transform: scale(1.08, 0.92) translateY(-4px); }
+        }
+
+        /* 巨獣スタンピード: ALL CLEARバウンス */
+        @keyframes stampede-clear-bounce {
+          0% { transform: scale(0.6); opacity: 0; }
+          60% { transform: scale(1.15); opacity: 1; }
+          100% { transform: scale(1.0); opacity: 1; }
+        }
+
+        /* 立ち止まりインセンティブ: 待ち伏せ集中完了オーラ（金色のオーラと構え） */
+        @keyframes unit-ambush-charge-pulse {
+          0% {
+            box-shadow: 0 0 10px #f59e0b, 0 0 18px rgba(245, 158, 11, 0.7);
+          }
+          50% {
+            box-shadow: 0 0 20px #fbbf24, 0 0 32px rgba(251, 191, 36, 0.95), inset 0 0 10px #fef08a;
+          }
+          100% {
+            box-shadow: 0 0 10px #f59e0b, 0 0 18px rgba(245, 158, 11, 0.7);
+          }
+        }
+
+        /* 待ち伏せ解除後の奇襲ダッシュトレイル */
+        @keyframes ambush-dash-trail {
+          0% { filter: drop-shadow(-8px 0 6px #f59e0b); }
+          50% { filter: drop-shadow(-14px 0 12px #fbbf24); }
+          100% { filter: drop-shadow(-8px 0 6px #f59e0b); }
+        }
+
+

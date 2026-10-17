@@ -21,6 +21,7 @@ interface PlayerCommandBarProps {
   handleDragStart: (e: React.DragEvent, idx: number) => void;
   handleDragEnd: () => void;
   handleCardPointerDown?: (e: React.PointerEvent<HTMLDivElement>, idx: number) => void;
+  handleCardClick?: (idx: number) => void;
 }
 
 export function PlayerCommandBar({
@@ -42,6 +43,7 @@ export function PlayerCommandBar({
   handleDragStart,
   handleDragEnd,
   handleCardPointerDown,
+  handleCardClick,
 }: PlayerCommandBarProps) {
   const isBoosted = manaRegenMultiplier > 1;
   const boostPercent = Math.round((manaRegenMultiplier - 1) * 100);
@@ -169,12 +171,12 @@ export function PlayerCommandBar({
                             }
                           }}
                           onClick={() => {
-                            if (!handleCardPointerDown) {
-                              if (isSelected) {
-                                setSelectedCardIndex(null);
-                              } else {
-                                setSelectedCardIndex(idx);
-                              }
+                            if (handleCardClick) {
+                              handleCardClick(idx);
+                            } else if (isSelected) {
+                              setSelectedCardIndex(null);
+                            } else {
+                              setSelectedCardIndex(idx);
                             }
                           }}
                           title={canPlay ? 'ドラッグ＆ドロップ または クリックで配置' : validation.reason}

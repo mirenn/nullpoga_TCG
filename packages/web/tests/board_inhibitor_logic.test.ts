@@ -57,6 +57,20 @@ import {
   evaluateUnitStealthAndSpot,
   isObstacleActive,
 } from '../src/app/obstacles';
+import {
+  STAMPEDE_ZONE_X_MIN,
+  STAMPEDE_ZONE_X_MAX,
+  STAMPEDE_CRUSH_DAMAGE,
+  HOLD_AMBUSH_CHARGE_TIME_SEC,
+  HOLD_AMBUSH_ATTACK_BONUS,
+  HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
+  createInitialStampedeState,
+  isUnitInStampedeZone,
+  isPlayerUnitSafeBeforeZone,
+  isCpuUnitSafeBeforeZone,
+  shouldCpuUnitHoldForStampede,
+  updateStampede,
+} from '../src/app/stampede';
 import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
@@ -643,7 +657,113 @@ assert(isCrushed, 'Obstacle must be destroyed after lethal smash');
 
 console.log('  -> Obstacle interactions (slide, jump, smash) logic: PASSED');
 
-console.log('=== All 11 Test Suites PASSED Successfully! ===');
+// 12. 巨獣スタンピード＆タップ待機インセンティブ（待ち伏せ集中）テスト
+console.log('[12/12] Testing Stampede corridor and Hold Ambush mechanics...');
+
+// 12-1. スタンピード初期状態と回廊座標判定
+const stampedeInitial = createInitialStampedeState();
+assert(stampedeInitial.phase === 'idle', 'Initial stampede phase must be idle');
+assert(stampedeInitial.zoneXMin === 45 && stampedeInitial.zoneXMax === 55, 'Corridor must span 45% to 55%');
+assert(stampedeInitial.beasts.length > 0, 'Beast presets must be generated');
+assert(isUnitInStampedeZone(50) === true, 'Center X=50 must be in stampede zone');
+assert(isUnitInStampedeZone(45) === true, 'X=45 must be in stampede zone');
+assert(isUnitInStampedeZone(55) === true, 'X=55 must be in stampede zone');
+assert(isUnitInStampedeZone(44.9) === false, 'X=44.9 must be outside stampede zone');
+assert(isUnitInStampedeZone(55.1) === false, 'X=55.1 must be outside stampede zone');
+
+// 12-2. プレイヤー/CPUの安全退避境界判定
+assert(isPlayerUnitSafeBeforeZone(40) === true, 'Player unit at x=40 is safe before zone');
+assert(isPlayerUnitSafeBeforeZone(46) === false, 'Player unit at x=46 is inside/beyond zone');
+assert(isCpuUnitSafeBeforeZone(60) === true, 'CPU unit at x=60 is safe before zone');
+assert(isCpuUnitSafeBeforeZone(52) === false, 'CPU unit at x=52 is inside zone');
+
+// 12-3. CPU AIのスタンピード退避判断
+const warningState = { ...stampedeInitial, phase: 'warning' as const, phaseTimer: 3.0 };
+const idleState = { ...stampedeInitial, phase: 'idle' as const };
+
+const cpuTurtle: Unit = {
+  id: 'cpu_turtle',
+  cardNo: 5,
+  name: '亀',
+  owner: 'cpu',
+  x: 60, // 回廊手前 (55%〜66%)
+  y: 50,
+  hp: 7,
+  maxHp: 7,
+  attack: 0,
+  speed: 2.5,
+  range: 8,
+  attackCooldown: 0,
+  attackInterval: 4.0,
+  icon: '🐢',
+};
+const cpuBoar: Unit = {
+  ...cpuTurtle,
+  id: 'cpu_boar',
+  cardNo: 7,
+  name: 'イノシシ',
+  attack: 3,
+  speed: 7,
+  icon: '🐗',
+};
+const cpuMouse: Unit = {
+  ...cpuTurtle,
+  id: 'cpu_mouse',
+  cardNo: 1,
+  name: 'ネズミ',
+  attack: 1,
+  speed: 8,
+  icon: '🐭',
+};
+
+// 警告中は知能の高い亀は手前で止まる
+assert(shouldCpuUnitHoldForStampede(cpuTurtle, warningState) === true, 'CPU Turtle must hold before corridor during warning');
+// 猪突猛進イノシシやパニックネズミは止まらず突っ込む
+assert(shouldCpuUnitHoldForStampede(cpuBoar, warningState) === false, 'CPU Boar must rush through recklessly');
+assert(shouldCpuUnitHoldForStampede(cpuMouse, warningState) === false, 'CPU Mouse must rush through recklessly');
+// 通常時 (idle) は誰も止まらない
+assert(shouldCpuUnitHoldForStampede(cpuTurtle, idleState) === false, 'No unit should hold during idle phase');
+
+// 12-4. 突進フェーズ (rush) での激突判定
+const rushState = { ...stampedeInitial, phase: 'rush' as const, phaseTimer: 2.0, phaseDuration: 2.0 };
+const playerWaitingSafe: Unit = {
+  ...cpuTurtle,
+  id: 'player_safe',
+  owner: 'player',
+  x: 40, // 手前で待機して安全
+};
+const playerCaughtInZone: Unit = {
+  ...cpuTurtle,
+  id: 'player_caught',
+  owner: 'player',
+  x: 50, // 回廊内
+};
+
+const updateRes = updateStampede(0.016, rushState, [playerWaitingSafe, playerCaughtInZone, cpuBoar]);
+assert(!updateRes.crushedUnitIds.includes('player_safe'), 'Safe waiting unit must not be crushed');
+assert(updateRes.crushedUnitIds.includes('player_caught'), 'Unit in zone must be crushed');
+assert(updateRes.crushedUnitIds.includes('cpu_boar') === false, 'CPU Boar at x=60 has not entered zone yet');
+
+// 12-5. 立ち止まりインセンティブ（待機集中チャージ & 奇襲ダッシュ & 奇襲攻撃力+2）
+let holdTimer = 0;
+holdTimer += 2.0; // 2秒待機
+const hasAmbushCharge = holdTimer >= HOLD_AMBUSH_CHARGE_TIME_SEC;
+assert(hasAmbushCharge === true, 'Holding for 2.0s must activate Ambush Charge');
+
+// 奇襲ダッシュ中の速度倍率
+const baseSpeed = 5;
+const ambushDashSpeed = baseSpeed * HOLD_AMBUSH_DASH_SPEED_MULTIPLIER;
+assert(ambushDashSpeed === 9, `Ambush dash speed must be 1.8x (got ${ambushDashSpeed})`);
+
+// 奇襲攻撃力ボーナス (+2)
+const baseAttack = 2;
+const ambushAttack = baseAttack + HOLD_AMBUSH_ATTACK_BONUS;
+assert(ambushAttack === 4, `Ambush attack must add +2 (got ${ambushAttack})`);
+
+console.log('  -> Stampede corridor and Hold Ambush mechanics: PASSED');
+
+console.log('=== All 12 Test Suites PASSED Successfully! ===');
+
 
 
 

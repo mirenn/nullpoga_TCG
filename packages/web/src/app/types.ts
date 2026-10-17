@@ -67,6 +67,9 @@ export interface Unit {
   isCounterDeploy?: boolean; // カウンターデプロイバフ適用中
   comboCount?: number; // コンボボーナス段階 (2=2コンボ, 3=3コンボ)
   isHolding?: boolean; // クリックで待機中（移動のみ停止。射程内なら攻撃は継続）
+  holdDuration?: number; // 待機（ホールド）継続秒数
+  hasAmbushCharge?: boolean; // 2秒以上待機でチャージ完了（次の攻撃力+2＆解除後1.5秒ダッシュ）
+  ambushDashUntil?: number; // チャージ解除後の奇襲ダッシュ終了タイムスタンプ (ms)
   isSprinting?: boolean; // 前方敵不在で疾走中（3倍速）
   killCount?: number; // 敵ユニット撃破数（吸血コウモリ等）
   lastKillTime?: number; // 撃破・ステータス向上エフェクト描画用
@@ -74,6 +77,30 @@ export interface Unit {
   lastSpottedTime?: number; // スポット（看破）演出用タイムスタンプ
   isAmbushDeploy?: boolean; // 自陣遮蔽物の陰から奇襲出撃したバフ適用中か
   lane?: number; // 互換エイリアス
+}
+
+export type StampedePhase = 'idle' | 'warning' | 'rush' | 'cooldown';
+
+export interface StampedeBeast {
+  id: string;
+  icon: string;
+  name: string;
+  xOffsetPercent: number; // 回廊中心(50%)からのXオフセット (-3% 〜 +3%)
+  yProgressOffset: number; // 突進進行度のズレ (0〜0.3)
+  speedFactor: number;
+  size: number;
+}
+
+export interface StampedeState {
+  phase: StampedePhase;
+  phaseTimer: number; // 現在フェーズの残り秒数
+  phaseDuration: number; // 現在フェーズの規定秒数
+  nextStampedeIn: number; // 次の突進開始（warning含む）までの秒数
+  zoneXMin: number; // 危険回廊左端 (%)
+  zoneXMax: number; // 危険回廊右端 (%)
+  rushProgress: number; // 0.0 〜 1.0 (rushフェーズの進行率)
+  beasts: StampedeBeast[]; // 巨獣群のデータ
+  hitUnitIds: Record<string, boolean>; // この突進で既に被弾したユニットID
 }
 
 export interface SpellEffect {
