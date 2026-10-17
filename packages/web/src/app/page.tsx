@@ -441,6 +441,7 @@ export default function RealtimeDemoPage() {
               <div style={styles.manaSpeedSelector}>
                 <span style={styles.manaSpeedLabel}>⚡速度:</span>
                 <select
+                  suppressHydrationWarning
                   style={styles.manaSpeedSelect}
                   value={manaRegenRate}
                   onChange={(e) => setManaRegenRate(Number(e.target.value))}

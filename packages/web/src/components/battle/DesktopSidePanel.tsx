@@ -128,6 +128,7 @@ export function DesktopSidePanel({
             <span style={styles.manaSpeedLabel} className="mana-speed-label-full">⚡速度:</span>
             <span style={styles.manaSpeedLabel} className="mana-speed-label-short">⚡</span>
             <select
+              suppressHydrationWarning
               value={manaRegenRate}
               onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
               style={styles.manaSpeedSelect}

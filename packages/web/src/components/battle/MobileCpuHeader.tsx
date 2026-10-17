@@ -110,6 +110,7 @@ export function MobileCpuHeader({
             ⚡
           </span>
           <select
+            suppressHydrationWarning
             value={manaRegenRate}
             onChange={(e) => setManaRegenRate(parseFloat(e.target.value))}
             style={styles.manaSpeedSelect}
