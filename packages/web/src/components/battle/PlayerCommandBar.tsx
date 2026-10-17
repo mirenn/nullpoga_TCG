@@ -24,7 +24,7 @@ interface PlayerCommandBarProps {
   handleCardClick?: (idx: number) => void;
 }
 
-export function PlayerCommandBar({
+export const PlayerCommandBar = React.memo(function PlayerCommandBar({
   playerHp,
   playerMana,
   maxMana,
@@ -257,4 +257,30 @@ export function PlayerCommandBar({
                 </div>
     </>
   );
-}
+}, (prev, next) => {
+  if (
+    prev.playerHp !== next.playerHp ||
+    Math.floor(prev.playerMana * 10) !== Math.floor(next.playerMana * 10) ||
+    prev.manaRegenMultiplier !== next.manaRegenMultiplier ||
+    prev.displayCombo.visible !== next.displayCombo.visible ||
+    prev.displayCombo.count !== next.displayCombo.count ||
+    prev.nextCard !== next.nextCard ||
+    prev.deckCount !== next.deckCount ||
+    prev.discardCount !== next.discardCount ||
+    prev.hand !== next.hand ||
+    prev.selectedCardIndex !== next.selectedCardIndex ||
+    prev.draggedCardIndex !== next.draggedCardIndex ||
+    prev.isDragging !== next.isDragging ||
+    prev.gameResult !== next.gameResult
+  ) {
+    return false;
+  }
+  for (let i = 0; i < next.hand.length; i++) {
+    const prevCheck = prev.checkCanPlayCard(i);
+    const nextCheck = next.checkCanPlayCard(i);
+    if (prevCheck.canPlay !== nextCheck.canPlay || prevCheck.reason !== nextCheck.reason) {
+      return false;
+    }
+  }
+  return true;
+});

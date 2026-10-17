@@ -60,12 +60,16 @@ export default function RealtimeDemoPage() {
   const [showDesktopSidePanel, setShowDesktopSidePanel] = useState(true);
   const [showUnitRange, setShowUnitRange] = useState(false);
 
-  // iPad等のタブレット（画面幅1280px未満）では、初期表示時にサイドパネルを収納してアリーナを最大化
+  // iPad等のタブレット端末では、初期表示時にサイドパネルを収納し、GPU発熱を抑える2D平面モードをデフォルト化
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.innerWidth < 1280) {
+    if (
+      typeof window !== 'undefined' &&
+      (window.innerWidth < 1280 || (window.innerWidth <= 1366 && navigator.maxTouchPoints > 1))
+    ) {
       setShowDesktopSidePanel(false);
+      setCamera3D((prev) => ({ ...prev, is3DMode: false }));
     }
-  }, []);
+  }, [setCamera3D]);
 
   // 初回マウント時に URL クエリパラメータ (?range=1 / ?range=true) または localStorage から射程表示設定を復元
   useEffect(() => {

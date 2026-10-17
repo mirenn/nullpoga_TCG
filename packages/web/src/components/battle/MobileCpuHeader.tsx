@@ -17,7 +17,7 @@ interface MobileCpuHeaderProps {
   onOpenGuide: () => void;
 }
 
-export function MobileCpuHeader({
+export const MobileCpuHeader = React.memo(function MobileCpuHeader({
   cpuHp,
   cpuMana,
   maxMana,
@@ -162,4 +162,14 @@ export function MobileCpuHeader({
       </div>
     </div>
   );
-}
+}, (prev, next) => {
+  return (
+    prev.cpuHp === next.cpuHp &&
+    Math.floor(prev.cpuMana * 10) === Math.floor(next.cpuMana * 10) &&
+    prev.cpuManaRegenMultiplier === next.cpuManaRegenMultiplier &&
+    prev.cpuHandCount === next.cpuHandCount &&
+    prev.cpuDeckCount === next.cpuDeckCount &&
+    prev.manaRegenRate === next.manaRegenRate &&
+    prev.showUnitRange === next.showUnitRange
+  );
+});

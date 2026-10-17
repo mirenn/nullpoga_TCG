@@ -7,6 +7,7 @@ import {
 interface RenderObstacleGroundProps {
   obstacle: FieldObstacle;
   isHighlightedForAmbush?: boolean;
+  is3DMode?: boolean;
 }
 
 type VoxelMaterial =
@@ -40,6 +41,8 @@ interface VoxelBoxDef {
 
 interface MaterialColors {
   topBg: string;
+  flatBg: string;
+  flatSideBorder: string;
   frontBg: string;
   sideBg: string;
   border: string;
@@ -52,6 +55,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'repeating-radial-gradient(circle at 50% 50%, #d6b388 0px, #d6b388 3px, #8c5832 3px, #8c5832 5px)',
+        flatBg: '#784725',
+        flatSideBorder: '#472b16',
         frontBg:
           'repeating-linear-gradient(90deg, #5c3a21 0px, #5c3a21 4px, #472b16 4px, #472b16 8px, #6e472b 8px, #6e472b 12px)',
         sideBg:
@@ -62,6 +67,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'repeating-radial-gradient(circle at 50% 50%, #e6c89c 0px, #e6c89c 3px, #9c6639 3px, #9c6639 5px, #5c3a21 5px, #5c3a21 7px)',
+        flatBg: '#b88655',
+        flatSideBorder: '#5c3a21',
         frontBg:
           'repeating-linear-gradient(90deg, #5c3a21 0px, #5c3a21 4px, #422713 4px, #422713 8px)',
         sideBg:
@@ -72,6 +79,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#22c55e 25%, #16a34a 0 50%, #4ade80 0 75%, #15803d 0)',
+        flatBg: '#16a34a',
+        flatSideBorder: '#14532d',
         frontBg:
           'conic-gradient(#16a34a 25%, #15803d 0 50%, #22c55e 0 75%, #14532d 0)',
         sideBg:
@@ -83,6 +92,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#16a34a 25%, #15803d 0 50%, #22c55e 0 75%, #14532d 0)',
+        flatBg: '#15803d',
+        flatSideBorder: '#064e3b',
         frontBg:
           'conic-gradient(#15803d 25%, #14532d 0 50%, #166534 0 75%, #064e3b 0)',
         sideBg:
@@ -94,6 +105,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#4ade80 25%, #22c55e 0 50%, #16a34a 0 75%, #86efac 0)',
+        flatBg: '#22c55e',
+        flatSideBorder: '#15803d',
         frontBg:
           'conic-gradient(#22c55e 25%, #15803d 0 50%, #16a34a 0 75%, #14532d 0)',
         sideBg:
@@ -105,6 +118,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#94a3b8 25%, #cbd5e1 0 50%, #64748b 0 75%, #94a3b8 0)',
+        flatBg: '#64748b',
+        flatSideBorder: '#334155',
         frontBg:
           'conic-gradient(#64748b 25%, #475569 0 50%, #94a3b8 0 75%, #334155 0)',
         sideBg:
@@ -116,6 +131,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#64748b 25%, #475569 0 50%, #94a3b8 0 75%, #334155 0)',
+        flatBg: '#475569',
+        flatSideBorder: '#1e293b',
         frontBg:
           'conic-gradient(#475569 25%, #334155 0 50%, #1e293b 0 75%, #0f172a 0)',
         sideBg:
@@ -127,6 +144,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#22c55e 25%, #15803d 0 50%, #4ade80 0 75%, #166534 0)',
+        flatBg: '#16a34a',
+        flatSideBorder: '#334155',
         frontBg:
           'linear-gradient(180deg, #16a34a 0%, #15803d 45%, #475569 45%, #334155 100%)',
         sideBg:
@@ -138,6 +157,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#e0f2fe 25%, #67e8f9 0 50%, #38bdf8 0 75%, #bae6fd 0)',
+        flatBg: '#38bdf8',
+        flatSideBorder: '#0284c7',
         frontBg:
           'linear-gradient(180deg, #67e8f9 0%, #22d3ee 40%, #0284c7 100%)',
         sideBg:
@@ -150,6 +171,8 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
       return {
         topBg:
           'conic-gradient(#15803d 25%, #166534 0 50%, #14532d 0 75%, #16a34a 0)',
+        flatBg: '#15803d',
+        flatSideBorder: '#3e2513',
         frontBg:
           'linear-gradient(180deg, #15803d 0%, #15803d 35%, #5c3a21 35%, #3e2513 100%)',
         sideBg:
@@ -162,17 +185,19 @@ function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
 
 /**
  * 単一の3Dボクセル直方体（CSS preserve-3d による上面・前面・左面・右面の4面体）
- * ※カメラは常に盤面手前・上空から見下ろすため、完全死角となる背面(Back Face)を省略して
- *   iPad Safari (WebKit) の preserve-3d 平面ソート負荷を20%削減。
+ * - 3Dモード時: 完全死角となる背面(Back Face)を省略した4面体
+ * - 2D平面モード時 (is3DMode=false): CSS 3D変形やconic-gradientを使わず、単一の2Dフラット矩形1枚のみで超軽量描画！
  */
 const VoxelBox = React.memo(function VoxelBox({
   box,
   opacity = 1,
   highlightGlow = false,
+  is3DMode = true,
 }: {
   box: VoxelBoxDef;
   opacity?: number;
   highlightGlow?: boolean;
+  is3DMode?: boolean;
 }) {
   const { ox, oy, oz, w, d, h, mat } = box;
   const style = getVoxelMaterialStyle(mat);
@@ -181,6 +206,29 @@ const VoxelBox = React.memo(function VoxelBox({
     : mat === 'crystal'
     ? '0 0 10px rgba(56, 189, 248, 0.55)'
     : undefined;
+
+  if (!is3DMode) {
+    const heightOffsetY = Math.round(oz * 0.42);
+    const bevelThickness = Math.max(2, Math.round(h * 0.32));
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox - w / 2}px`,
+          top: `${oy - d / 2 - heightOffsetY}px`,
+          width: `${w}px`,
+          height: `${d}px`,
+          backgroundColor: style.flatBg,
+          border: style.border,
+          borderBottom: `${bevelThickness}px solid ${style.flatSideBorder}`,
+          borderRadius: '2px',
+          opacity,
+          boxShadow: glowShadow,
+          boxSizing: 'border-box',
+        }}
+      />
+    );
+  }
 
   return (
     <React.Fragment>
@@ -256,13 +304,14 @@ const VoxelBox = React.memo(function VoxelBox({
 });
 
 /**
- * 遮蔽物の地面土台＆根元・切り株レイヤー（zIndex: 5, preserve-3d）
+ * 遮蔽物の地面土台＆根元・切り株レイヤー（zIndex: 5）
  * - 生存中は地面の草ブロック土台＋木の幹の根元が地面から生える
  * - 破壊後は立体的なボクセル切り株・砕けた岩ブロックが地面に残る
  */
 export const RenderObstacleGround = React.memo(function RenderObstacleGround({
   obstacle,
   isHighlightedForAmbush = false,
+  is3DMode = true,
 }: RenderObstacleGroundProps) {
   const isForest = obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
@@ -313,7 +362,7 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
         top: `${obstacle.y}%`,
         width: '0px',
         height: '0px',
-        transformStyle: 'preserve-3d',
+        transformStyle: is3DMode ? 'preserve-3d' : undefined,
         pointerEvents: 'none',
         zIndex: 5,
       }}
@@ -336,23 +385,25 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
           boxShadow:
             !isDestroyed && isHighlightedForAmbush
               ? '0 0 18px rgba(74, 222, 128, 0.5)'
-              : '0 6px 14px rgba(0, 0, 0, 0.65)',
-          transform: 'translateZ(1px)',
+              : is3DMode
+              ? '0 6px 14px rgba(0, 0, 0, 0.65)'
+              : undefined,
+          transform: is3DMode ? 'translateZ(1px)' : undefined,
         }}
       />
 
-      {/* 立体ボクセルブロック群（斜めアイソメ角度を少しつけて常に3面が見えるようにする） */}
+      {/* 立体ボクセルブロック群（2Dモード時は3D回転とpreserve-3dを完全オフ） */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           top: 0,
-          transformStyle: 'preserve-3d',
-          transform: 'rotateX(14deg) rotateZ(-10deg)',
+          transformStyle: is3DMode ? 'preserve-3d' : undefined,
+          transform: is3DMode ? 'rotateX(14deg) rotateZ(-10deg)' : undefined,
         }}
       >
         {groundBlocks.map((b, i) => (
-          <VoxelBox key={i} box={b} />
+          <VoxelBox key={i} box={b} is3DMode={is3DMode} />
         ))}
       </div>
 
@@ -363,7 +414,7 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
             position: 'absolute',
             left: '0px',
             top: '36px',
-            transform: 'translate(-50%, 0) translateZ(8px)',
+            transform: is3DMode ? 'translate(-50%, 0) translateZ(8px)' : 'translate(-50%, 0)',
             backgroundColor: 'rgba(20, 83, 45, 0.92)',
             color: '#dcfce7',
             fontSize: '8.5px',
@@ -408,6 +459,7 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
 
   const isForest = obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
+  const is3DMode = camera.is3DMode;
 
   // 覗き込み時はボクセルの葉や上部ブロックを半透明にして裏側のユニットを透視可能にする
   // ※ CSS preserve-3d が親の opacity でフラット化されないよう、各 VoxelBox の面に直接渡す！
@@ -421,11 +473,14 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
     obstacle.lastHitTime && Date.now() - obstacle.lastHitTime < 260
   );
 
-  // 2D平面モード時でも3Dブロックの立体面（上面・前面・側面）がしっかり見えるようベース角度を付与
-  const baseTiltX = camera.is3DMode ? 14 : 30;
-  const canopyTransform = isRecentlyHit
-    ? `rotateX(${baseTiltX}deg) rotateZ(-10deg) scale3d(0.92, 0.92, 0.92)`
-    : `rotateX(${baseTiltX}deg) rotateZ(-10deg)`;
+  // 3D箱庭モード時は3D回転を適用、2D平面モード時はGPU負荷の高い3D回転・preserve-3dを完全オフ
+  const canopyTransform = is3DMode
+    ? isRecentlyHit
+      ? 'rotateX(14deg) rotateZ(-10deg) scale3d(0.92, 0.92, 0.92)'
+      : 'rotateX(14deg) rotateZ(-10deg)'
+    : isRecentlyHit
+    ? 'scale(0.92)'
+    : undefined;
 
   // 種別ごとの3Dボクセルブロック構成（地面 z=0 から上空 z=66px まで積み上がる）
   const voxelBlocks: VoxelBoxDef[] = isForest
@@ -485,18 +540,18 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
         top: `${obstacle.y}%`,
         width: '0px',
         height: '0px',
-        transformStyle: 'preserve-3d',
+        transformStyle: is3DMode ? 'preserve-3d' : undefined,
         pointerEvents: 'none',
         zIndex: 28,
       }}
     >
-      {/* 3Dボクセル構造体本体（地面座標に固定され、真上に立体ブロックとして伸びる） */}
+      {/* 3Dボクセル構造体本体（2Dモード時はフラット2Dレイヤーとして描画） */}
       <div
         style={{
           position: 'absolute',
           left: 0,
           top: 0,
-          transformStyle: 'preserve-3d',
+          transformStyle: is3DMode ? 'preserve-3d' : undefined,
           transform: canopyTransform,
           transition: 'transform 0.12s ease-out',
         }}
@@ -507,18 +562,19 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
             box={b}
             opacity={peekFade}
             highlightGlow={hasHiddenEnemy && idx === 0}
+            is3DMode={is3DMode}
           />
         ))}
       </div>
 
-      {/* イノシシやドラゴンに激突されてHPが減っている時の3D耐久バー */}
+      {/* イノシシやドラゴンに激突されてHPが減っている時の耐久バー */}
       {isDamaged && (
         <div
           style={{
             position: 'absolute',
             left: '0px',
             top: '-38px',
-            transform: 'translate(-50%, -50%) translateZ(68px)',
+            transform: is3DMode ? 'translate(-50%, -50%) translateZ(68px)' : 'translate(-50%, -50%)',
             width: '48px',
             height: '6px',
             backgroundColor: 'rgba(15, 23, 42, 0.92)',
@@ -545,7 +601,7 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
             position: 'absolute',
             left: '0px',
             top: '-46px',
-            transform: 'translate(-50%, -50%) translateZ(72px)',
+            transform: is3DMode ? 'translate(-50%, -50%) translateZ(72px)' : 'translate(-50%, -50%)',
             backgroundColor: 'rgba(202, 138, 4, 0.95)',
             color: '#fefce8',
             fontSize: '9px',

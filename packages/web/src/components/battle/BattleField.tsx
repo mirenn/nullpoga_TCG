@@ -635,8 +635,12 @@ export function BattleField({
           backgroundImage:
             'radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.18) 0%, transparent 60%), radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.16) 0%, transparent 60%), linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
           backgroundSize: '100% 100%, 100% 100%, 24px 24px, 24px 24px',
-          transform: `translate3d(${camera.panX}px, ${camera.panY}px, 0px) scale(${camera.zoom}) rotateX(${effectiveTiltX.toFixed(2)}deg) rotateY(${effectiveTiltY.toFixed(2)}deg)`,
-          transformStyle: 'preserve-3d',
+          transform: camera.is3DMode
+            ? `translate3d(${camera.panX}px, ${camera.panY}px, 0px) scale(${camera.zoom}) rotateX(${effectiveTiltX.toFixed(2)}deg) rotateY(${effectiveTiltY.toFixed(2)}deg)`
+            : camera.panX === 0 && camera.panY === 0 && camera.zoom === 1
+            ? undefined
+            : `translate(${camera.panX}px, ${camera.panY}px) scale(${camera.zoom})`,
+          transformStyle: camera.is3DMode ? 'preserve-3d' : undefined,
           transition: isPanningCamera ? 'none' : 'transform 0.16s cubic-bezier(0.22, 1, 0.36, 1)',
           boxShadow: camera.is3DMode
             ? activeCard
@@ -827,6 +831,7 @@ export function BattleField({
         <RenderObstacleGround
           key={`ground_${obs.id}`}
           obstacle={obs}
+          is3DMode={camera.is3DMode}
           isHighlightedForAmbush={
             Boolean(activeCard && activeCard.type === 'MONSTER' && obs.side !== 'cpu')
           }
