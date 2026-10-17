@@ -5,7 +5,7 @@ interface RenderStampedeProps {
   stampede: StampedeState;
 }
 
-export const RenderStampede: React.FC<RenderStampedeProps> = ({ stampede }) => {
+export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function RenderStampede({ stampede }) {
   const { phase, phaseTimer, phaseDuration, zoneXMin, zoneXMax, rushProgress, beasts } = stampede;
   const widthPercent = zoneXMax - zoneXMin;
 
@@ -270,4 +270,10 @@ export const RenderStampede: React.FC<RenderStampedeProps> = ({ stampede }) => {
       )}
     </div>
   );
-};
+}, (prev, next) =>
+  prev.stampede.phase === 'idle' &&
+  next.stampede.phase === 'idle' &&
+  prev.stampede.zoneXMin === next.stampede.zoneXMin &&
+  prev.stampede.zoneXMax === next.stampede.zoneXMax
+);
+

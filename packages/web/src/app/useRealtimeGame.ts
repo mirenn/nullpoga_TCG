@@ -64,18 +64,21 @@ export function useRealtimeGame() {
     return unsubscribe;
   }, [engine]);
 
-  // メインゲームループ（毎フレーム engine.tick(dt) を呼ぶだけ）
+  // メインゲームループ（iPad Proの120Hz ProMotion等での過剰な再レンダリング＆発熱を防ぐため約30fps=32ms間隔に制限）
   useEffect(() => {
     let animId: number;
+    const MIN_TICK_INTERVAL_MS = 32; // ~30fps
 
     const gameLoop = (timestamp: number) => {
       if (lastTimeRef.current === 0) {
         lastTimeRef.current = timestamp;
       }
-      const dt = Math.min((timestamp - lastTimeRef.current) / 1000, 0.1);
-      lastTimeRef.current = timestamp;
-
-      engine.tick(dt, Date.now());
+      const elapsedMs = timestamp - lastTimeRef.current;
+      if (elapsedMs >= MIN_TICK_INTERVAL_MS) {
+        const dt = Math.min(elapsedMs / 1000, 0.1);
+        lastTimeRef.current = timestamp;
+        engine.tick(dt, Date.now());
+      }
       animId = requestAnimationFrame(gameLoop);
     };
 

@@ -137,33 +137,29 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           style={{ filter: `drop-shadow(0 0 4px ${glowColor})` }}
         />
       ) : (
-        // クールダウン進行ゲージ（上部12時から時計回りに満ちる。太く鮮やかにして欠けを一目で分かるように）
+        // クールダウン進行ゲージ（上部12時から時計回りに満ちる。iPad SafariでのGPUフィルタ負荷を避けるためfilter: drop-shadowを使わず鮮明なストロークで描画）
         <circle
           cx={RING_CENTER}
           cy={RING_CENTER}
           r={COOLDOWN_RING_RADIUS}
           fill="none"
           stroke={gaugeColor}
-          strokeWidth={isReady || isCharging ? 3.4 : 3.0}
+          strokeWidth={isReady || isCharging ? 3.5 : 3.0}
           strokeDasharray={COOLDOWN_RING_CIRCUMFERENCE}
           strokeDashoffset={strokeDashoffset}
           strokeLinecap={progress > 0.05 ? 'round' : 'butt'}
           transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
-          style={{
-            filter: `drop-shadow(0 0 ${isReady ? '5px' : '2.5px'} ${glowColor})`,
-            transition: 'stroke-dashoffset 0.04s linear',
-          }}
         />
       )}
       {showTip && (
-        <circle cx={tipX} cy={tipY} r="2.6" fill="#fff" style={{ filter: `drop-shadow(0 0 3px ${glowColor})` }} />
+        <circle cx={tipX} cy={tipY} r="2.6" fill="#fff" stroke={gaugeColor} strokeWidth="1" />
       )}
     </svg>
   );
 }
 
 // ユニット描画サブコンポーネント
-export function RenderUnit({
+export const RenderUnit = React.memo(function RenderUnit({
   unit,
   isBlockingSpawn,
   isConcealed = false,
@@ -657,7 +653,8 @@ export function RenderUnit({
       )}
     </div>
   );
-}
+});
+
 
 
 // 攻撃エフェクト（電撃ビーム・火炎ブレス・着弾放電スパーク・火炎爆発・ダメージポップアップ）描画サブコンポーネント
