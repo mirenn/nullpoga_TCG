@@ -22,6 +22,7 @@ import {
   RealtimeGameState,
   validateCanPlayCard,
 } from './engine';
+import { usePerfTelemetry } from './usePerfTelemetry';
 
 // re-export for external consumers & tests
 export {
@@ -55,6 +56,12 @@ export function useRealtimeGame() {
   const [state, setState] = useState<RealtimeGameState>(() => engine.state);
   const lastTimeRef = useRef<number>(0);
 
+  const { recordRaf, recordEngineTick, onProfilerRender } = usePerfTelemetry({
+    unitsCount: state.units.length,
+    is3DMode: state.camera3D.is3DMode,
+    gameResult: state.gameResult,
+  });
+
   // エンジンの状態更新をReact Stateへ同期
   useEffect(() => {
     const unsubscribe = engine.subscribe(() => {
@@ -71,6 +78,7 @@ export function useRealtimeGame() {
     const MIN_TICK_INTERVAL_MS = 32; // ~30fps
 
     const gameLoop = (timestamp: number) => {
+      recordRaf(timestamp);
       if (lastTimeRef.current === 0) {
         lastTimeRef.current = timestamp;
       }
@@ -78,14 +86,17 @@ export function useRealtimeGame() {
       if (elapsedMs >= MIN_TICK_INTERVAL_MS) {
         const dt = Math.min(elapsedMs / 1000, 0.1);
         lastTimeRef.current = timestamp;
+        const t0 = performance.now();
         engine.tick(dt, Date.now());
+        const t1 = performance.now();
+        recordEngineTick(t1 - t0);
       }
       animId = requestAnimationFrame(gameLoop);
     };
 
     animId = requestAnimationFrame(gameLoop);
     return () => cancelAnimationFrame(animId);
-  }, [engine]);
+  }, [engine, recordRaf, recordEngineTick]);
 
   const setManaRegenRate = useCallback(
     (updater: number | ((prev: number) => number)) => {
@@ -194,5 +205,6 @@ export function useRealtimeGame() {
     toggleUnitHold,
     comboCount: state.playerCombo.count,
     lastComboTime: state.playerCombo.lastTime,
+    onProfilerRender,
   };
 }

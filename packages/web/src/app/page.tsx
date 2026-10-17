@@ -54,6 +54,7 @@ export default function RealtimeDemoPage() {
     toggleUnitHold,
     comboCount,
     lastComboTime,
+    onProfilerRender,
   } = useRealtimeGame();
 
   const [showGuideModal, setShowGuideModal] = useState(false);
@@ -422,7 +423,8 @@ export default function RealtimeDemoPage() {
   }, [handleKeyDown]);
 
   return (
-    <div style={styles.container} className="realtime-demo-container">
+    <React.Profiler id="RealtimeDemoPage" onRender={onProfilerRender}>
+      <div style={styles.container} className="realtime-demo-container">
       {/* 画面内CSS (レスポンシブ & アニメーション) */}
 
       {/* メインゲーム領域 (100vh収容・レスポンシブ2カラム) */}
@@ -656,6 +658,7 @@ export default function RealtimeDemoPage() {
       {gameResult !== 'playing' && (
         <GameResultModal gameResult={gameResult} onReset={handleReset} />
       )}
-    </div>
+      </div>
+    </React.Profiler>
   );
 }
