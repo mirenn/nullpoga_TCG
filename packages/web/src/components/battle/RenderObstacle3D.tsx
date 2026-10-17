@@ -344,7 +344,7 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
       {/* 立体ボクセルブロック群（斜めアイソメ角度を少しつけて常に3面が見えるようにする） */}
       <div
         style={{
-          position: ' absolute' as 'absolute',
+          position: 'absolute',
           left: 0,
           top: 0,
           transformStyle: 'preserve-3d',
@@ -423,7 +423,9 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
 
   // 2D平面モード時でも3Dブロックの立体面（上面・前面・側面）がしっかり見えるようベース角度を付与
   const baseTiltX = camera.is3DMode ? 14 : 30;
-  const hitScale = isRecentlyHit ? 'scale3d(0.92, 0.92, 0.92)' : '';
+  const canopyTransform = isRecentlyHit
+    ? `rotateX(${baseTiltX}deg) rotateZ(-10deg) scale3d(0.92, 0.92, 0.92)`
+    : `rotateX(${baseTiltX}deg) rotateZ(-10deg)`;
 
   // 種別ごとの3Dボクセルブロック構成（地面 z=0 から上空 z=66px まで積み上がる）
   const voxelBlocks: VoxelBoxDef[] = isForest
@@ -495,7 +497,7 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
           left: 0,
           top: 0,
           transformStyle: 'preserve-3d',
-          transform: `rotateX(${baseTiltX}deg) rotateZ(-10deg) ${hitScale}`,
+          transform: canopyTransform,
           transition: 'transform 0.12s ease-out',
         }}
       >

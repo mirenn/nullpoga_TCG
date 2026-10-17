@@ -632,12 +632,8 @@ export function BattleField({
           borderRadius: '10px',
           border: '2px solid #475569',
           backgroundColor: '#0a0f1d',
-          backgroundImage: `
-            radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.18) 0%, transparent 60%),
-            radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.16) 0%, transparent 60%),
-            linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)
-          `,
+          backgroundImage:
+            'radial-gradient(ellipse at 25% 50%, rgba(30, 58, 138, 0.18) 0%, transparent 60%), radial-gradient(ellipse at 75% 50%, rgba(153, 27, 27, 0.16) 0%, transparent 60%), linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px)',
           backgroundSize: '100% 100%, 100% 100%, 24px 24px, 24px 24px',
           transform: `translate3d(${camera.panX}px, ${camera.panY}px, 0px) scale(${camera.zoom}) rotateX(${effectiveTiltX.toFixed(2)}deg) rotateY(${effectiveTiltY.toFixed(2)}deg)`,
           transformStyle: 'preserve-3d',

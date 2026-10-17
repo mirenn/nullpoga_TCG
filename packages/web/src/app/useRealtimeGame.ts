@@ -20,6 +20,7 @@ import {
   MAX_MANA,
   RealtimeGameEngine,
   RealtimeGameState,
+  validateCanPlayCard,
 } from './engine';
 
 // re-export for external consumers & tests
@@ -113,9 +114,9 @@ export function useRealtimeGame() {
 
   const checkCanPlayCard = useCallback(
     (cardIndex: number, spawnX?: number, spawnY?: number) => {
-      return engine.checkCanPlayCard(cardIndex, spawnX, spawnY, Date.now());
+      return validateCanPlayCard(state, cardIndex, spawnX, spawnY, Date.now());
     },
-    [engine]
+    [state]
   );
 
   const playCardAt = useCallback(

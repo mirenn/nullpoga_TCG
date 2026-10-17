@@ -127,8 +127,11 @@ export class RealtimeGameEngine {
 
   /** クライアント初回マウント時などに両者のデッキをランダムシャッフルする */
   public randomizeDecks(): void {
-    this.state.deckState = createRandomDeckState();
-    this.state.cpuDeckState = createRandomDeckState();
+    this.state = {
+      ...this.state,
+      deckState: createRandomDeckState(),
+      cpuDeckState: createRandomDeckState(),
+    };
     this.notify();
   }
 
@@ -143,7 +146,7 @@ export class RealtimeGameEngine {
     updater: number | ((prev: number) => number)
   ): void {
     const next = typeof updater === 'function' ? updater(this.state.manaRegenRate) : updater;
-    this.state.manaRegenRate = next;
+    this.state = { ...this.state, manaRegenRate: next };
     this.notify();
   }
 
@@ -152,7 +155,7 @@ export class RealtimeGameEngine {
     updater: number | null | ((prev: number | null) => number | null)
   ): void {
     const next = typeof updater === 'function' ? updater(this.state.selectedCardIndex) : updater;
-    this.state.selectedCardIndex = next;
+    this.state = { ...this.state, selectedCardIndex: next };
     this.notify();
   }
 
@@ -161,15 +164,18 @@ export class RealtimeGameEngine {
     updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)
   ): void {
     const next = typeof updater === 'function' ? updater(this.state.camera3D) : updater;
-    this.state.camera3D = next;
+    this.state = { ...this.state, camera3D: next };
     this.notify();
   }
 
   /** 3D/2Dモードを維持したままカメラ位置・角度をリセット */
   public resetCamera3D(): void {
-    this.state.camera3D = {
-      ...DEFAULT_CAMERA_3D,
-      is3DMode: this.state.camera3D.is3DMode,
+    this.state = {
+      ...this.state,
+      camera3D: {
+        ...DEFAULT_CAMERA_3D,
+        is3DMode: this.state.camera3D.is3DMode,
+      },
     };
     this.notify();
   }
