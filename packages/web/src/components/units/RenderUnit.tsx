@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Unit } from '../../app/types';
-import { UnitSvgRenderer, deriveAnimationState } from './UnitSvgRenderer';
+import { UnitSvgRenderer, hasUnitSvg, deriveAnimationState } from './UnitSvgRenderer';
 import { styles } from '../../app/page.styles';
 
 // ユニット本体(36px)の外側に一回り大きいリングを描き、アイコンと重ならず一目でゲージと分かるようにする
@@ -191,13 +191,7 @@ export const RenderUnit = React.memo(function RenderUnit({
   const cooldown = Math.max(0, unit.attackCooldown || 0);
   const isReady = interval > 0 ? (cooldown / interval) <= 0.001 : true;
 
-  const svgElement = UnitSvgRenderer({
-    cardNo: unit.cardNo,
-    state: animState,
-    isPlayer,
-    size: 36,
-  });
-  const hasSvg = svgElement !== null;
+  const hasSvg = hasUnitSvg(unit.cardNo);
 
   const isJumping = Boolean(unit.isJumping);
   const isSliding = Boolean(unit.isSliding);
@@ -518,8 +512,15 @@ export const RenderUnit = React.memo(function RenderUnit({
         {/* SVG コンポーネント or 絵文字フォールバック (雲の死角の敵は「❓」シルエット) */}
         {isCpuHiddenInCloud ? (
           <span style={{ fontSize: '20px', filter: 'drop-shadow(0 0 6px #000)', opacity: 0.9 }}>❓</span>
+        ) : hasSvg ? (
+          <UnitSvgRenderer
+            cardNo={unit.cardNo}
+            state={animState}
+            isPlayer={isPlayer}
+            size={36}
+          />
         ) : (
-          svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>
+          <span style={styles.unitIconText}>{unit.icon}</span>
         )}
 
         {/* 状態異常・バフ表示 */}
