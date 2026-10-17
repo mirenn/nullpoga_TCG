@@ -18,7 +18,7 @@ export { getAttackAnimDuration, deriveAnimationState } from './animationLogic';
  * cardNo に対応する SVG コンポーネントを返すディスパッチャ。
  * SVG が未実装のカードの場合は null を返す（呼び出し側で絵文字フォールバック）。
  */
-export function UnitSvgRenderer({
+export const UnitSvgRenderer = React.memo(function UnitSvgRenderer({
   cardNo,
   ...svgProps
 }: { cardNo: number } & UnitSvgProps): React.ReactElement | null {
@@ -44,4 +44,5 @@ export function UnitSvgRenderer({
     default:
       return null;
   }
-}
+});
+

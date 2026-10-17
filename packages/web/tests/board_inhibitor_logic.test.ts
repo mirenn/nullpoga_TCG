@@ -1013,9 +1013,55 @@ assert(enemyAfterCloud.isCloudSpotted === false, 'Spotted flag must be reset aft
 
 console.log('  -> Drifting Clouds, moving shadow corridor, and dynamic Fog of War concealment / proximity spotting: PASSED');
 
-console.log('=== All 14 Test Suites PASSED Successfully! ===');
+// =========================================================================
+// 15. Headless RealtimeGameEngine (Pure TypeScript Engine) Verification
+// =========================================================================
+console.log('[15/15] Testing Pure TypeScript RealtimeGameEngine headless simulation...');
 
+import { RealtimeGameEngine } from '../src/app/engine';
 
+const engine = new RealtimeGameEngine(false);
+assert(engine.state.playerHp === 20 && engine.state.cpuHp === 20, 'Engine initializes with 20 HP');
+assert(engine.state.deckState.hand.length === 4, 'Engine initializes with 4 cards in hand');
 
+// マナを最大にして手札0番（ネズミ cost:1）をプレイ
+engine.state.playerMana = 10;
+const simStartTime = 1_000_000;
+const playedOk = engine.playCardAt(15, 50, 0, simStartTime);
+assert(playedOk === true, 'Engine playCardAt should succeed for valid monster deploy');
+assert(engine.state.units.length === 1, '1 unit should be spawned on board');
+const spawnedPlayerUnit = engine.state.units[0];
+assert(spawnedPlayerUnit.owner === 'player' && spawnedPlayerUnit.x === 15, 'Spawned unit is at x=15');
 
+// 待機トグル -> 2秒間 tick を進めて集中チャージ完了 -> 再前進で奇襲ダッシュ発動
+engine.toggleUnitHold(spawnedPlayerUnit.id, simStartTime + 10);
+assert(engine.state.units[0].isHolding === true, 'Unit enters holding state');
 
+let simNow = simStartTime + 10;
+for (let i = 0; i < 25; i++) {
+  simNow += 100;
+  engine.tick(0.1, simNow);
+}
+const heldUnit = engine.state.units.find((u) => u.id === spawnedPlayerUnit.id)!;
+assert(heldUnit.hasAmbushCharge === true, 'Holding for 2.5s grants ambush charge');
+
+engine.toggleUnitHold(spawnedPlayerUnit.id, simNow);
+const dashingUnit = engine.state.units.find((u) => u.id === spawnedPlayerUnit.id)!;
+assert(dashingUnit.isHolding === false, 'Unit resumes advancing');
+assert(Boolean(dashingUnit.ambushDashUntil && dashingUnit.ambushDashUntil > simNow), 'Unit activates ambush dash');
+
+// さらに10フレーム進めて前進を確認
+const xBeforeMove = dashingUnit.x;
+for (let i = 0; i < 10; i++) {
+  simNow += 50;
+  engine.tick(0.05, simNow);
+}
+const movedUnit = engine.state.units.find((u) => u.id === spawnedPlayerUnit.id)!;
+assert(movedUnit.x > xBeforeMove, `Unit should advance on X axis (${xBeforeMove} -> ${movedUnit.x})`);
+
+// リセット検証
+engine.reset(false);
+assert(engine.state.units.length === 0 && engine.state.playerHp === 20, 'Engine reset restores initial state');
+
+console.log('  -> Pure TypeScript RealtimeGameEngine headless simulation: PASSED');
+console.log('=== All 15 Test Suites PASSED Successfully! ===');

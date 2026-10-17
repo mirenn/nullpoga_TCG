@@ -7,7 +7,7 @@ import { INHIBITOR_DESTROY_MANA_BONUS, INHIBITOR_REGEN_BONUS_PER_KILL } from '..
  * - 生存中: クリスタル + HPバー（被弾時にフラッシュ）
  * - 破壊後: 瓦礫表示（通行可能）
  */
-export function RenderInhibitor({ inhibitor }: { inhibitor: Inhibitor }) {
+export const RenderInhibitor = React.memo(function RenderInhibitor({ inhibitor }: { inhibitor: Inhibitor }) {
   const isPlayer = inhibitor.owner === 'player';
   const isDestroyed = inhibitor.hp <= 0;
   const isRecentlyHit = Boolean(inhibitor.lastHitTime && Date.now() - inhibitor.lastHitTime < 180);
@@ -94,4 +94,5 @@ export function RenderInhibitor({ inhibitor }: { inhibitor: Inhibitor }) {
       )}
     </div>
   );
-}
+});
+
