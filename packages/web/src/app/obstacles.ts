@@ -64,7 +64,7 @@ export const CAMERA_PAN_Y_MIN = -180;
 export const CAMERA_PAN_Y_MAX = 180;
 export const CAMERA_ZOOM_MIN = 0.75;
 export const CAMERA_ZOOM_MAX = 1.65;
-export const DEFAULT_TILT_DEG = 22;
+export const DEFAULT_TILT_DEG = 30;
 
 export const DEFAULT_CAMERA_3D: Camera3DState = {
   panX: 0,

@@ -417,9 +417,13 @@ export function BattleField({
 
   const isCameraMoved = Math.abs(camera.panX) > 2 || Math.abs(camera.panY) > 2 || Math.abs(camera.zoom - 1) > 0.02;
 
-  // カメラの平行移動に伴う少しの角度変化（覗き込みチルト）
-  const effectiveTiltX = camera.is3DMode ? camera.tiltDeg - camera.panY * 0.035 : 0;
-  const effectiveTiltY = camera.is3DMode ? camera.panX * 0.04 : 0;
+  // カメラの平行移動に伴う角度変化（3Dボクセルオブジェクトの側面・死角覗き込みチルト）
+  const effectiveTiltX = camera.is3DMode
+    ? Math.max(14, Math.min(48, camera.tiltDeg - camera.panY * 0.08))
+    : 0;
+  const effectiveTiltY = camera.is3DMode
+    ? Math.max(-18, Math.min(18, camera.panX * 0.08))
+    : 0;
 
   return (
     <div

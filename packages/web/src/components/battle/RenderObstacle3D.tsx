@@ -2,7 +2,6 @@ import React from 'react';
 import {
   FieldObstacle,
   Camera3DState,
-  computeCanopyProjection,
 } from '../../app/obstacles';
 
 interface RenderObstacleGroundProps {
@@ -10,9 +9,277 @@ interface RenderObstacleGroundProps {
   isHighlightedForAmbush?: boolean;
 }
 
+type VoxelMaterial =
+  | 'trunk'
+  | 'stumpTop'
+  | 'leaf'
+  | 'leafDark'
+  | 'bush'
+  | 'stone'
+  | 'stoneDark'
+  | 'moss'
+  | 'crystal'
+  | 'dirt';
+
+interface VoxelBoxDef {
+  /** 中心Xオフセット (px) */
+  ox: number;
+  /** 中心Yオフセット (px) */
+  oy: number;
+  /** 地面からの底面Z高さ (px: 0が地面) */
+  oz: number;
+  /** X幅 (px) */
+  w: number;
+  /** Y奥行 (px) */
+  d: number;
+  /** Z高さ (px: 地面から垂直に立ち上がる高さ) */
+  h: number;
+  /** ブロック素材 */
+  mat: VoxelMaterial;
+}
+
+interface MaterialColors {
+  topBg: string;
+  frontBg: string;
+  sideBg: string;
+  border: string;
+  bgSize?: string;
+}
+
+function getVoxelMaterialStyle(mat: VoxelMaterial): MaterialColors {
+  switch (mat) {
+    case 'trunk':
+      return {
+        topBg:
+          'repeating-radial-gradient(circle at 50% 50%, #d6b388 0px, #d6b388 3px, #8c5832 3px, #8c5832 5px)',
+        frontBg:
+          'repeating-linear-gradient(90deg, #5c3a21 0px, #5c3a21 4px, #472b16 4px, #472b16 8px, #6e472b 8px, #6e472b 12px)',
+        sideBg:
+          'repeating-linear-gradient(90deg, #3e2513 0px, #3e2513 4px, #2d1a0c 4px, #2d1a0c 8px, #4a2e19 8px, #4a2e19 12px)',
+        border: '1px solid rgba(28, 16, 8, 0.85)',
+      };
+    case 'stumpTop':
+      return {
+        topBg:
+          'repeating-radial-gradient(circle at 50% 50%, #e6c89c 0px, #e6c89c 3px, #9c6639 3px, #9c6639 5px, #5c3a21 5px, #5c3a21 7px)',
+        frontBg:
+          'repeating-linear-gradient(90deg, #5c3a21 0px, #5c3a21 4px, #422713 4px, #422713 8px)',
+        sideBg:
+          'repeating-linear-gradient(90deg, #3e2513 0px, #3e2513 4px, #29170a 4px, #29170a 8px)',
+        border: '1px solid rgba(28, 16, 8, 0.9)',
+      };
+    case 'leaf':
+      return {
+        topBg:
+          'conic-gradient(#22c55e 25%, #16a34a 0 50%, #4ade80 0 75%, #15803d 0)',
+        frontBg:
+          'conic-gradient(#16a34a 25%, #15803d 0 50%, #22c55e 0 75%, #14532d 0)',
+        sideBg:
+          'conic-gradient(#14532d 25%, #064e3b 0 50%, #15803d 0 75%, #052e16 0)',
+        border: '1px solid rgba(5, 46, 22, 0.8)',
+        bgSize: '10px 10px',
+      };
+    case 'leafDark':
+      return {
+        topBg:
+          'conic-gradient(#16a34a 25%, #15803d 0 50%, #22c55e 0 75%, #14532d 0)',
+        frontBg:
+          'conic-gradient(#15803d 25%, #14532d 0 50%, #166534 0 75%, #064e3b 0)',
+        sideBg:
+          'conic-gradient(#064e3b 25%, #052e16 0 50%, #14532d 0 75%, #022c22 0)',
+        border: '1px solid rgba(2, 44, 34, 0.85)',
+        bgSize: '10px 10px',
+      };
+    case 'bush':
+      return {
+        topBg:
+          'conic-gradient(#4ade80 25%, #22c55e 0 50%, #16a34a 0 75%, #86efac 0)',
+        frontBg:
+          'conic-gradient(#22c55e 25%, #15803d 0 50%, #16a34a 0 75%, #14532d 0)',
+        sideBg:
+          'conic-gradient(#15803d 25%, #064e3b 0 50%, #14532d 0 75%, #052e16 0)',
+        border: '1px solid rgba(5, 46, 22, 0.85)',
+        bgSize: '8px 8px',
+      };
+    case 'stone':
+      return {
+        topBg:
+          'conic-gradient(#94a3b8 25%, #cbd5e1 0 50%, #64748b 0 75%, #94a3b8 0)',
+        frontBg:
+          'conic-gradient(#64748b 25%, #475569 0 50%, #94a3b8 0 75%, #334155 0)',
+        sideBg:
+          'conic-gradient(#334155 25%, #1e293b 0 50%, #475569 0 75%, #0f172a 0)',
+        border: '1px solid rgba(15, 23, 42, 0.85)',
+        bgSize: '12px 12px',
+      };
+    case 'stoneDark':
+      return {
+        topBg:
+          'conic-gradient(#64748b 25%, #475569 0 50%, #94a3b8 0 75%, #334155 0)',
+        frontBg:
+          'conic-gradient(#475569 25%, #334155 0 50%, #1e293b 0 75%, #0f172a 0)',
+        sideBg:
+          'conic-gradient(#1e293b 25%, #0f172a 0 50%, #334155 0 75%, #020617 0)',
+        border: '1px solid rgba(2, 6, 23, 0.9)',
+        bgSize: '10px 10px',
+      };
+    case 'moss':
+      return {
+        topBg:
+          'conic-gradient(#22c55e 25%, #15803d 0 50%, #4ade80 0 75%, #166534 0)',
+        frontBg:
+          'linear-gradient(180deg, #16a34a 0%, #15803d 45%, #475569 45%, #334155 100%)',
+        sideBg:
+          'linear-gradient(180deg, #15803d 0%, #14532d 45%, #334155 45%, #1e293b 100%)',
+        border: '1px solid rgba(15, 23, 42, 0.8)',
+        bgSize: '8px 8px',
+      };
+    case 'crystal':
+      return {
+        topBg:
+          'conic-gradient(#e0f2fe 25%, #67e8f9 0 50%, #38bdf8 0 75%, #bae6fd 0)',
+        frontBg:
+          'linear-gradient(180deg, #67e8f9 0%, #22d3ee 40%, #0284c7 100%)',
+        sideBg:
+          'linear-gradient(180deg, #0ea5e9 0%, #0369a1 50%, #0c4a6e 100%)',
+        border: '1px solid rgba(186, 230, 253, 0.75)',
+        bgSize: '8px 8px',
+      };
+    case 'dirt':
+    default:
+      return {
+        topBg:
+          'conic-gradient(#15803d 25%, #166534 0 50%, #14532d 0 75%, #16a34a 0)',
+        frontBg:
+          'linear-gradient(180deg, #15803d 0%, #15803d 35%, #5c3a21 35%, #3e2513 100%)',
+        sideBg:
+          'linear-gradient(180deg, #14532d 0%, #14532d 35%, #472b16 35%, #29170a 100%)',
+        border: '1px solid rgba(20, 83, 45, 0.7)',
+        bgSize: '12px 12px',
+      };
+  }
+}
+
 /**
- * 遮蔽物の地面ベース層（木の根元と下草・岩盤の土台・茂みの根・破壊後の切り株や瓦礫）
- * ユニットより下（zIndex: 5）に描画される
+ * 単一の3Dボクセル直方体（CSS preserve-3d による上面・前面・背面・左面・右面の5面体）
+ * 地面 (z=0) から +Z 方向（画面手前・上空）へ垂直に立ち上がる。
+ */
+function VoxelBox({
+  box,
+  opacity = 1,
+  highlightGlow = false,
+}: {
+  box: VoxelBoxDef;
+  opacity?: number;
+  highlightGlow?: boolean;
+}) {
+  const { ox, oy, oz, w, d, h, mat } = box;
+  const style = getVoxelMaterialStyle(mat);
+  const glowShadow = highlightGlow
+    ? '0 0 10px rgba(250, 204, 21, 0.65)'
+    : mat === 'crystal'
+    ? '0 0 10px rgba(56, 189, 248, 0.55)'
+    : undefined;
+
+  return (
+    <React.Fragment>
+      {/* 1. 上面 (Top Face: z = oz + h) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox - w / 2}px`,
+          top: `${oy - d / 2}px`,
+          width: `${w}px`,
+          height: `${d}px`,
+          backgroundImage: style.topBg,
+          backgroundSize: style.bgSize,
+          border: style.border,
+          opacity,
+          boxShadow: glowShadow,
+          transform: `translateZ(${oz + h}px)`,
+          backfaceVisibility: 'visible',
+        }}
+      />
+
+      {/* 2. 前面 (Front Face: y = oy + d/2, z = oz .. oz + h) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox - w / 2}px`,
+          top: `${oy + d / 2 - h}px`,
+          width: `${w}px`,
+          height: `${h}px`,
+          backgroundImage: style.frontBg,
+          backgroundSize: style.bgSize,
+          border: style.border,
+          opacity,
+          transformOrigin: '50% 100%',
+          transform: `translateZ(${oz}px) rotateX(-90deg)`,
+          backfaceVisibility: 'visible',
+        }}
+      />
+
+      {/* 3. 背面 (Back Face: y = oy - d/2, z = oz .. oz + h) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox - w / 2}px`,
+          top: `${oy - d / 2 - h}px`,
+          width: `${w}px`,
+          height: `${h}px`,
+          backgroundImage: style.sideBg,
+          backgroundSize: style.bgSize,
+          border: style.border,
+          opacity,
+          transformOrigin: '50% 100%',
+          transform: `translateZ(${oz}px) rotateX(-90deg)`,
+          backfaceVisibility: 'visible',
+        }}
+      />
+
+      {/* 4. 左側面 (Left Face: x = ox - w/2, z = oz .. oz + h) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox - w / 2 - d / 2}px`,
+          top: `${oy - h}px`,
+          width: `${d}px`,
+          height: `${h}px`,
+          backgroundImage: style.sideBg,
+          backgroundSize: style.bgSize,
+          border: style.border,
+          opacity,
+          transformOrigin: '50% 100%',
+          transform: `translateZ(${oz}px) rotateZ(90deg) rotateX(-90deg)`,
+          backfaceVisibility: 'visible',
+        }}
+      />
+
+      {/* 5. 右側面 (Right Face: x = ox + w/2, z = oz .. oz + h) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${ox + w / 2 - d / 2}px`,
+          top: `${oy - h}px`,
+          width: `${d}px`,
+          height: `${h}px`,
+          backgroundImage: style.frontBg,
+          backgroundSize: style.bgSize,
+          border: style.border,
+          opacity,
+          transformOrigin: '50% 100%',
+          transform: `translateZ(${oz}px) rotateZ(90deg) rotateX(-90deg)`,
+          backfaceVisibility: 'visible',
+        }}
+      />
+    </React.Fragment>
+  );
+}
+
+/**
+ * 遮蔽物の地面土台＆根元・切り株レイヤー（zIndex: 5, preserve-3d）
+ * - 生存中は地面の草ブロック土台＋木の幹の根元が地面から生える
+ * - 破壊後は立体的なボクセル切り株・砕けた岩ブロックが地面に残る
  */
 export function RenderObstacleGround({
   obstacle,
@@ -22,6 +289,41 @@ export function RenderObstacleGround({
   const isRock = obstacle.kind === 'rock';
   const isDestroyed = Boolean(obstacle.isDestroyed);
 
+  // 地面のベースブロック＆破壊時の切り株・瓦礫ボクセル定義
+  const groundBlocks: VoxelBoxDef[] = isDestroyed
+    ? isForest
+      ? [
+          // 折れた大木のボクセル切り株 (年輪が見える上面)
+          { ox: 0, oy: 0, oz: 0, w: 18, d: 18, h: 12, mat: 'stumpTop' },
+          // 左の小さな切り株
+          { ox: -26, oy: 6, oz: 0, w: 12, d: 12, h: 8, mat: 'stumpTop' },
+          // 飛び散った木片・葉のミニキューブ
+          { ox: 22, oy: 10, oz: 0, w: 9, d: 9, h: 6, mat: 'trunk' },
+          { ox: -14, oy: 16, oz: 0, w: 10, d: 10, h: 6, mat: 'leafDark' },
+          { ox: 16, oy: -12, oz: 0, w: 10, d: 10, h: 5, mat: 'leaf' },
+        ]
+      : [
+          // 粉砕された岩・結晶の瓦礫ボクセルキューブ
+          { ox: -18, oy: 4, oz: 0, w: 16, d: 14, h: 9, mat: 'stoneDark' },
+          { ox: 8, oy: 8, oz: 0, w: 18, d: 16, h: 10, mat: 'stone' },
+          { ox: 24, oy: -4, oz: 0, w: 12, d: 12, h: 7, mat: 'stoneDark' },
+          { ox: -6, oy: -10, oz: 0, w: 12, d: 10, h: 6, mat: isRock ? 'stone' : 'crystal' },
+        ]
+    : isForest
+    ? [
+        // 地面から垂直に立ち上がる大木の幹（下部〜中間）
+        { ox: 0, oy: -2, oz: 0, w: 16, d: 16, h: 30, mat: 'trunk' },
+        // 張り出した根っこブロック
+        { ox: -11, oy: 2, oz: 0, w: 8, d: 10, h: 8, mat: 'trunk' },
+        { ox: 11, oy: 2, oz: 0, w: 8, d: 10, h: 7, mat: 'trunk' },
+        // 左の副木の幹
+        { ox: -28, oy: 6, oz: 0, w: 10, d: 10, h: 20, mat: 'trunk' },
+      ]
+    : [
+        // 岩・結晶の地面基礎ブロック
+        { ox: 0, oy: 0, oz: 0, w: 36, d: 26, h: 12, mat: 'stoneDark' },
+      ];
+
   return (
     <div
       data-obstacle-ground-id={obstacle.id}
@@ -30,182 +332,68 @@ export function RenderObstacleGround({
         position: 'absolute',
         left: `${obstacle.x}%`,
         top: `${obstacle.y}%`,
-        width: `${obstacle.radiusX * 2.1}%`,
-        height: `${obstacle.radiusY * 2.1}%`,
-        transform: 'translate(-50%, -50%)',
-        borderRadius: '50%',
-        border:
-          !isDestroyed && isHighlightedForAmbush
-            ? '1.5px dashed rgba(74, 222, 128, 0.85)'
-            : 'none',
-        boxShadow:
-          !isDestroyed && isHighlightedForAmbush
-            ? '0 0 18px rgba(74, 222, 128, 0.35), inset 0 0 14px rgba(34, 197, 94, 0.25)'
-            : 'none',
+        width: '0px',
+        height: '0px',
+        transformStyle: 'preserve-3d',
         pointerEvents: 'none',
         zIndex: 5,
       }}
     >
-      <svg
-        viewBox="0 0 160 110"
-        width="100%"
-        height="100%"
-        style={{ overflow: 'visible', display: 'block' }}
+      {/* 地面に落ちる四角いボクセル影プレート */}
+      <div
+        style={{
+          position: 'absolute',
+          left: '-52px',
+          top: '-30px',
+          width: '104px',
+          height: '60px',
+          backgroundColor: isDestroyed
+            ? 'rgba(2, 6, 23, 0.45)'
+            : 'rgba(2, 6, 23, 0.72)',
+          border:
+            !isDestroyed && isHighlightedForAmbush
+              ? '2px dashed rgba(74, 222, 128, 0.9)'
+              : '1px solid rgba(15, 23, 42, 0.5)',
+          boxShadow:
+            !isDestroyed && isHighlightedForAmbush
+              ? '0 0 18px rgba(74, 222, 128, 0.5)'
+              : '0 6px 14px rgba(0, 0, 0, 0.65)',
+          transform: 'translateZ(1px)',
+        }}
+      />
+
+      {/* 立体ボクセルブロック群（斜めアイソメ角度を少しつけて常に3面が見えるようにする） */}
+      <div
+        style={{
+          position: ' absolute' as 'absolute',
+          left: 0,
+          top: 0,
+          transformStyle: 'preserve-3d',
+          transform: 'rotateX(14deg) rotateZ(-10deg)',
+        }}
       >
-        {/* 地面の自然な落ち影 */}
-        <ellipse
-          cx="80"
-          cy="62"
-          rx={isDestroyed ? '58' : '68'}
-          ry={isDestroyed ? '32' : '38'}
-          fill="rgba(2, 6, 23, 0.65)"
-        />
+        {groundBlocks.map((b, i) => (
+          <VoxelBox key={i} box={b} />
+        ))}
+      </div>
 
-        {isDestroyed ? (
-          isForest ? (
-            /* === 破壊後：折れた切り株・木片・散乱した葉 === */
-            <g opacity="0.88">
-              <ellipse cx="80" cy="60" rx="52" ry="26" fill="rgba(20, 83, 45, 0.28)" />
-              {/* 散らばった葉と木片 */}
-              <ellipse cx="42" cy="66" rx="8" ry="4" fill="#15803d" transform="rotate(-18 42 66)" />
-              <ellipse cx="118" cy="54" rx="9" ry="4.5" fill="#166534" transform="rotate(22 118 54)" />
-              <ellipse cx="62" cy="76" rx="7" ry="3.5" fill="#14532d" />
-              <polygon points="102,70 114,66 110,73 98,74" fill="#78350f" />
-              <polygon points="48,48 58,45 55,51" fill="#92400e" />
-              {/* 左の小さな切り株 */}
-              <path d="M46,62 L50,48 L64,48 L68,62 Z" fill="#5c3a21" />
-              <ellipse cx="57" cy="48" rx="7" ry="3.5" fill="#d6b388" stroke="#5c3a21" strokeWidth="1.5" />
-              {/* 中央の大きな折れた切り株 */}
-              <path
-                d="M64,68 L69,46 L75,50 L81,43 L88,49 L93,45 L98,68 Q81,74 64,68 Z"
-                fill="#4a2e19"
-                stroke="#29180c"
-                strokeWidth="1.5"
-              />
-              <ellipse cx="81" cy="48" rx="12" ry="5.5" fill="#e2c499" stroke="#5c3a21" strokeWidth="1.5" />
-              <ellipse cx="81" cy="48" rx="7" ry="3" fill="none" stroke="#b08968" strokeWidth="1" />
-              <ellipse cx="81" cy="48" rx="3" ry="1.3" fill="#8c6239" />
-            </g>
-          ) : (
-            /* === 破壊後：粉砕された岩・結晶の瓦礫 === */
-            <g opacity="0.85">
-              <ellipse cx="80" cy="60" rx="54" ry="27" fill="rgba(30, 41, 59, 0.45)" />
-              {/* 地面の亀裂 */}
-              <path
-                d="M45,58 L68,62 L85,54 L112,64 M68,62 L76,75"
-                stroke="#0f172a"
-                strokeWidth="2.5"
-                fill="none"
-                strokeLinecap="round"
-              />
-              {/* 砕けた岩の破片群 */}
-              <polygon points="46,64 56,50 68,56 64,68" fill="#475569" stroke="#1e293b" strokeWidth="1.5" />
-              <polygon points="56,50 68,56 62,48" fill="#94a3b8" />
-              <polygon points="75,68 84,52 98,57 94,70" fill="#334155" stroke="#1e293b" strokeWidth="1.5" />
-              <polygon points="84,52 98,57 90,49" fill="#64748b" />
-              <polygon points="102,62 112,53 120,61 114,67" fill="#475569" stroke="#1e293b" strokeWidth="1.2" />
-              <polygon points="58,72 65,66 72,71 67,76" fill="#64748b" />
-            </g>
-          )
-        ) : isForest ? (
-          /* === 生存中（森・木・茂みの根元）：苔むした地面と太い幹・下草 === */
-          <g>
-            {/* 苔・下草のベースパッチ */}
-            <path
-              d="M22,60 Q28,36 58,34 Q82,28 110,36 Q138,42 136,62 Q132,82 98,86 Q64,90 36,80 Q18,74 22,60 Z"
-              fill="rgba(20, 83, 45, 0.48)"
-            />
-            <ellipse cx="80" cy="58" rx="48" ry="24" fill="rgba(6, 78, 59, 0.55)" />
-
-            {/* 根元の低木・草むら（覗き込んだ時にも見える下草） */}
-            <path
-              d="M32,64 Q26,52 35,55 Q34,44 43,53 Q49,45 50,58 Z"
-              fill="#14532d"
-            />
-            <path
-              d="M108,62 Q112,48 119,55 Q124,46 128,57 Q135,51 130,64 Z"
-              fill="#14532d"
-            />
-
-            {/* 左の副木の幹と根 */}
-            <path
-              d="M46,66 Q52,54 53,36 L63,36 Q64,54 70,66 Q58,63 46,66 Z"
-              fill="#4a2e19"
-              stroke="#29180c"
-              strokeWidth="1.2"
-            />
-            {/* 中央の大木の太い幹と張り出した根 */}
-            <path
-              d="M64,72 Q73,56 74,30 L90,30 Q91,56 102,72 L93,74 Q84,65 82,66 Q78,66 71,74 Z"
-              fill="#5c3a21"
-              stroke="#29180c"
-              strokeWidth="1.5"
-            />
-            {/* 幹の樹皮ハイライト */}
-            <path
-              d="M77,34 Q77,50 73,66 M84,36 Q85,50 88,64"
-              stroke="#7c5032"
-              strokeWidth="2"
-              fill="none"
-              strokeLinecap="round"
-            />
-            {/* 根元の小草 */}
-            <path
-              d="M60,72 Q63,62 67,69 Q71,61 74,71 Z"
-              fill="#15803d"
-            />
-            <path
-              d="M88,71 Q92,62 96,69 Q100,63 103,72 Z"
-              fill="#16a34a"
-            />
-          </g>
-        ) : isRock ? (
-          /* === 生存中（巨岩の土台）：岩盤と周囲の小石・苔 === */
-          <g>
-            <path
-              d="M20,62 Q30,38 62,35 Q96,32 124,42 Q142,52 134,68 Q122,84 84,86 Q42,86 24,74 Q16,68 20,62 Z"
-              fill="rgba(30, 41, 59, 0.55)"
-            />
-            {/* 地面に埋まった岩盤ベース */}
-            <polygon
-              points="34,66 48,46 82,42 116,48 128,64 110,76 54,76"
-              fill="#1e293b"
-              stroke="#0f172a"
-              strokeWidth="1.5"
-            />
-            <polygon points="26,68 34,58 44,63 38,72" fill="#475569" />
-            <polygon points="120,68 128,58 136,65 130,72" fill="#334155" />
-          </g>
-        ) : (
-          /* === 生存中（茂み＋結晶岩の土台） === */
-          <g>
-            <path
-              d="M22,60 Q32,36 64,34 Q96,32 126,42 Q140,54 132,70 Q118,84 80,86 Q42,86 24,72 Z"
-              fill="rgba(14, 116, 144, 0.36)"
-            />
-            <ellipse cx="80" cy="60" rx="48" ry="23" fill="rgba(6, 78, 59, 0.45)" />
-            <polygon points="48,66 62,48 98,48 112,66 88,74 62,74" fill="#164e63" />
-          </g>
-        )}
-      </svg>
-
-      {/* 自陣側の奇襲ボーナスガイド（カードを構えている時のみ表示） */}
+      {/* 自陣側の奇襲ボーナスガイド（モンスターカードを構えている時のみ表示） */}
       {!isDestroyed && isHighlightedForAmbush && (
         <div
           style={{
             position: 'absolute',
-            bottom: '-12px',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: '0px',
+            top: '36px',
+            transform: 'translate(-50%, 0) translateZ(8px)',
             backgroundColor: 'rgba(20, 83, 45, 0.92)',
             color: '#dcfce7',
             fontSize: '8.5px',
             fontWeight: 'bold',
             padding: '1px 6px',
-            borderRadius: '4px',
+            borderRadius: '3px',
             border: '1px solid #4ade80',
             whiteSpace: 'nowrap',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.65)',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
           }}
         >
           🌲 奇襲出撃 (+1⚔️)
@@ -225,8 +413,8 @@ interface RenderObstacleCanopyProps {
 }
 
 /**
- * 立体遮蔽物の「メイングラフィック（生い茂る木々・茂み・ゴツゴツした巨岩・結晶叢）」レイヤー
- * UIの丸いプレート表示を廃止し、フィールド上のオブジェクトとしてSVGイラストを描画する。
+ * マインクラフト風の3Dボクセル（低ポリブロック）として地面から垂直に生える
+ * 「大木（Tree）」「茂み（Bush）」「巨岩（Rock）」「結晶岩（Crystal）」オブジェクト
  */
 export function RenderObstacleCanopy({
   obstacle,
@@ -234,21 +422,17 @@ export function RenderObstacleCanopy({
   hasHiddenEnemy,
   peekProgress,
 }: RenderObstacleCanopyProps) {
-  // 障害物が破壊された場合、天蓋（木の上部や巨岩塊）は吹き飛んで切り株・瓦礫のみになる
+  // 破壊された障害物は切り株・瓦礫のみ（RenderObstacleGround側）になる
   if (obstacle.isDestroyed) {
     return null;
   }
 
-  const proj = computeCanopyProjection(obstacle, camera);
   const isForest = obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
 
-  // 視差が大きくなりすぎても根元から不自然に分離しないようマイルドに補正した表示座標
-  const visualX = obstacle.x + proj.shiftXPercent * 0.55;
-  const visualY = obstacle.y + proj.shiftYPercent * 0.55;
-
-  // 覗き込みが進むと葉や岩が半透明になり、下に隠れているユニットが透けて見える
-  const peekFade = Math.max(0.38, 1 - Math.min(1, peekProgress) * 0.52);
+  // 覗き込み時はボクセルの葉や上部ブロックを半透明にして裏側のユニットを透視可能にする
+  // ※ CSS preserve-3d が親の opacity でフラット化されないよう、各 VoxelBox の面に直接渡す！
+  const peekFade = Math.max(0.32, 1 - Math.min(1, peekProgress) * 0.58);
 
   const maxHp = obstacle.maxHp ?? 80;
   const currentHp = obstacle.hp ?? maxHp;
@@ -258,49 +442,108 @@ export function RenderObstacleCanopy({
     obstacle.lastHitTime && Date.now() - obstacle.lastHitTime < 260
   );
 
+  // 2D平面モード時でも3Dブロックの立体面（上面・前面・側面）がしっかり見えるようベース角度を付与
+  const baseTiltX = camera.is3DMode ? 14 : 30;
+  const hitScale = isRecentlyHit ? 'scale3d(0.92, 0.92, 0.92)' : '';
+
+  // 種別ごとの3Dボクセルブロック構成（地面 z=0 から上空 z=66px まで積み上がる）
+  const voxelBlocks: VoxelBoxDef[] = isForest
+    ? [
+        // 1. 中央の大木（Minecraft オークの木スタイル：幹の上に2段の葉ブロック層）
+        { ox: 0, oy: -2, oz: 24, w: 50, d: 38, h: 18, mat: 'leaf' },
+        { ox: 0, oy: -2, oz: 42, w: 34, d: 26, h: 14, mat: 'leaf' },
+        { ox: 0, oy: -2, oz: 56, w: 18, d: 16, h: 9, mat: 'bush' },
+
+        // 2. 左側の副木＆こんもりした茂み（Bush）ブロック（地面から直接生える）
+        { ox: -30, oy: 6, oz: 16, w: 28, d: 24, h: 16, mat: 'leafDark' },
+        { ox: -30, oy: 6, oz: 32, w: 18, d: 16, h: 10, mat: 'leaf' },
+        // 地面から生える茂み（ブッシュ）
+        { ox: -38, oy: 14, oz: 0, w: 22, d: 18, h: 14, mat: 'bush' },
+
+        // 3. 右側の地面から生える大きな茂み（ブッシュ・草むら）ブロック群
+        { ox: 30, oy: 8, oz: 0, w: 28, d: 22, h: 16, mat: 'bush' },
+        { ox: 30, oy: 8, oz: 16, w: 18, d: 14, h: 10, mat: 'leaf' },
+        { ox: 14, oy: 14, oz: 0, w: 20, d: 16, h: 12, mat: 'leafDark' },
+      ]
+    : isRock
+    ? [
+        // 1. 中央にそびえ立つメインの角張った巨岩ピラー（3段ステップ）
+        { ox: 2, oy: -2, oz: 0, w: 36, d: 28, h: 28, mat: 'stone' },
+        { ox: 2, oy: -2, oz: 28, w: 26, d: 20, h: 18, mat: 'stone' },
+        { ox: 0, oy: -2, oz: 46, w: 16, d: 14, h: 12, mat: 'stone' },
+
+        // 2. 左側の苔むした中岩ブロック（地面から生える）
+        { ox: -24, oy: 6, oz: 0, w: 26, d: 22, h: 22, mat: 'stoneDark' },
+        { ox: -24, oy: 6, oz: 22, w: 20, d: 16, h: 6, mat: 'moss' },
+
+        // 3. 右側のゴツゴツした岩塊と手前の小岩ブロック
+        { ox: 26, oy: 6, oz: 0, w: 24, d: 20, h: 18, mat: 'stoneDark' },
+        { ox: -6, oy: 14, oz: 0, w: 20, d: 14, h: 12, mat: 'stone' },
+      ]
+    : [
+        // 茂み（ブッシュ）から突き出すマイクラ風クリスタル鉱石ブロック群
+        // 地面を覆う深い茂みブロック
+        { ox: -26, oy: 6, oz: 0, w: 26, d: 22, h: 16, mat: 'bush' },
+        { ox: 26, oy: 6, oz: 0, w: 26, d: 22, h: 16, mat: 'bush' },
+        { ox: 0, oy: 12, oz: 0, w: 28, d: 18, h: 12, mat: 'leafDark' },
+
+        // 中央＆左右にそびえる角柱クリスタルブロック
+        { ox: 0, oy: -2, oz: 0, w: 22, d: 20, h: 36, mat: 'crystal' },
+        { ox: 0, oy: -2, oz: 36, w: 14, d: 14, h: 16, mat: 'crystal' },
+        { ox: -16, oy: -4, oz: 0, w: 14, d: 14, h: 26, mat: 'crystal' },
+        { ox: 16, oy: -4, oz: 0, w: 14, d: 14, h: 28, mat: 'crystal' },
+      ];
+
   return (
     <div
       data-obstacle-canopy-id={obstacle.id}
       data-has-hidden-enemy={hasHiddenEnemy ? 'true' : 'false'}
       style={{
         position: 'absolute',
-        left: `${visualX}%`,
-        top: `${visualY}%`,
-        width: `${obstacle.radiusX * 2.15}%`,
-        height: `${obstacle.radiusY * 2.25}%`,
-        transform: `translate(-50%, -54%) translateZ(${Math.round(obstacle.heightZ * 0.35)}px) ${
-          isRecentlyHit ? 'scale(0.93)' : 'scale(1)'
-        }`,
-        opacity: peekFade,
+        left: `${obstacle.x}%`,
+        top: `${obstacle.y}%`,
+        width: '0px',
+        height: '0px',
+        transformStyle: 'preserve-3d',
         pointerEvents: 'none',
         zIndex: 28,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        transition: 'opacity 0.14s ease-out, transform 0.1s ease-out',
-        filter: isRecentlyHit
-          ? 'brightness(1.5) drop-shadow(0 0 12px rgba(248, 113, 113, 0.9))'
-          : hasHiddenEnemy
-          ? 'drop-shadow(0 10px 16px rgba(0, 0, 0, 0.85)) drop-shadow(0 0 10px rgba(250, 204, 21, 0.75))'
-          : 'drop-shadow(0 12px 18px rgba(0, 0, 0, 0.82))',
       }}
     >
-      {/* イノシシやドラゴンに激突されてHPが減っている時の耐久バー */}
+      {/* 3Dボクセル構造体本体（地面座標に固定され、真上に立体ブロックとして伸びる） */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          transformStyle: 'preserve-3d',
+          transform: `rotateX(${baseTiltX}deg) rotateZ(-10deg) ${hitScale}`,
+          transition: 'transform 0.12s ease-out',
+        }}
+      >
+        {voxelBlocks.map((b, idx) => (
+          <VoxelBox
+            key={idx}
+            box={b}
+            opacity={peekFade}
+            highlightGlow={hasHiddenEnemy && idx === 0}
+          />
+        ))}
+      </div>
+
+      {/* イノシシやドラゴンに激突されてHPが減っている時の3D耐久バー */}
       {isDamaged && (
         <div
           style={{
             position: 'absolute',
-            top: '-10px',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: '0px',
+            top: '-38px',
+            transform: 'translate(-50%, -50%) translateZ(68px)',
             width: '48px',
-            height: '5px',
-            backgroundColor: 'rgba(15, 23, 42, 0.9)',
-            border: '1px solid rgba(148, 163, 184, 0.6)',
-            borderRadius: '999px',
+            height: '6px',
+            backgroundColor: 'rgba(15, 23, 42, 0.92)',
+            border: '1px solid rgba(248, 250, 252, 0.7)',
+            borderRadius: '2px',
             overflow: 'hidden',
-            zIndex: 32,
           }}
         >
           <div
@@ -314,336 +557,20 @@ export function RenderObstacleCanopy({
         </div>
       )}
 
-      {isForest ? (
-        /* =========================================================
-         * 🌲 木・森・茂み（Bush & Trees）の有機的SVGグラフィック
-         * ========================================================= */
-        <svg
-          viewBox="0 0 160 120"
-          width="100%"
-          height="100%"
-          style={{ overflow: 'visible', display: 'block' }}
-        >
-          <defs>
-            <radialGradient id={`GradLeafMain_${obstacle.id}`} cx="38%" cy="30%" r="65%">
-              <stop offset="0%" stopColor="#4ade80" />
-              <stop offset="45%" stopColor="#16a34a" />
-              <stop offset="85%" stopColor="#15803d" />
-              <stop offset="100%" stopColor="#14532d" />
-            </radialGradient>
-            <radialGradient id={`GradLeafSub_${obstacle.id}`} cx="35%" cy="30%" r="65%">
-              <stop offset="0%" stopColor="#22c55e" />
-              <stop offset="55%" stopColor="#15803d" />
-              <stop offset="100%" stopColor="#064e3b" />
-            </radialGradient>
-            <radialGradient id={`GradBush_${obstacle.id}`} cx="40%" cy="28%" r="70%">
-              <stop offset="0%" stopColor="#86efac" />
-              <stop offset="35%" stopColor="#22c55e" />
-              <stop offset="80%" stopColor="#166534" />
-              <stop offset="100%" stopColor="#052e16" />
-            </radialGradient>
-          </defs>
-
-          {/* 背面の濃い茂みシルエット（奥行き感） */}
-          <circle cx="38" cy="68" r="24" fill="#064e3b" />
-          <circle cx="122" cy="66" r="25" fill="#064e3b" />
-          <circle cx="80" cy="52" r="34" fill="#052e16" />
-
-          {/* チラッと見える木の幹・枝（樹冠と地面をつなぐ立体パーツ） */}
-          <path
-            d="M49,92 L52,66 L58,66 L61,92 Z"
-            fill="#4a2e19"
-          />
-          <path
-            d="M72,96 L76,58 L88,58 L92,96 Z"
-            fill="#5c3a21"
-          />
-          <path
-            d="M102,90 L105,68 L111,68 L114,90 Z"
-            fill="#3e2723"
-          />
-
-          {/* 左側の木・茂みクラスター */}
-          <g>
-            <circle cx="34" cy="66" r="20" fill={`url(#GradLeafSub_${obstacle.id})`} />
-            <circle cx="52" cy="56" r="23" fill={`url(#GradLeafSub_${obstacle.id})`} />
-            <circle cx="42" cy="48" r="18" fill={`url(#GradLeafMain_${obstacle.id})`} />
-            {/* 葉のハイライト */}
-            <ellipse cx="38" cy="41" rx="9" ry="5" fill="#86efac" opacity="0.45" transform="rotate(-12 38 41)" />
-          </g>
-
-          {/* 右側の木・茂みクラスター */}
-          <g>
-            <circle cx="126" cy="66" r="21" fill={`url(#GradLeafSub_${obstacle.id})`} />
-            <circle cx="108" cy="55" r="24" fill={`url(#GradLeafSub_${obstacle.id})`} />
-            <circle cx="116" cy="47" r="18" fill={`url(#GradLeafMain_${obstacle.id})`} />
-            <ellipse cx="112" cy="40" rx="9" ry="5" fill="#86efac" opacity="0.4" transform="rotate(10 112 40)" />
-          </g>
-
-          {/* 中央メインの大樹の樹冠（モコモコした多層リーフ） */}
-          <g>
-            <circle cx="66" cy="54" r="26" fill={`url(#GradLeafMain_${obstacle.id})`} />
-            <circle cx="94" cy="54" r="26" fill={`url(#GradLeafMain_${obstacle.id})`} />
-            <circle cx="80" cy="36" r="27" fill={`url(#GradLeafMain_${obstacle.id})`} />
-            {/* 樹冠頂部の太陽光ハイライト */}
-            <ellipse cx="74" cy="24" rx="14" ry="7" fill="#bbf7d0" opacity="0.45" transform="rotate(-8 74 24)" />
-            <circle cx="60" cy="42" r="8" fill="#4ade80" opacity="0.35" />
-            <circle cx="96" cy="40" r="9" fill="#4ade80" opacity="0.3" />
-          </g>
-
-          {/* 手前下部のこんもりした「茂み（ブッシュ・草むら）」レイヤー */}
-          <g>
-            {/* 左手前の茂み */}
-            <path
-              d="M16,84 Q14,66 28,66 Q34,54 48,60 Q60,56 64,70 Q70,74 66,85 Q42,90 16,84 Z"
-              fill={`url(#GradBush_${obstacle.id})`}
-              stroke="#052e16"
-              strokeWidth="1.2"
-            />
-            {/* 右手前の茂み */}
-            <path
-              d="M92,84 Q90,70 98,64 Q108,54 122,60 Q136,56 142,70 Q148,78 140,86 Q116,90 92,84 Z"
-              fill={`url(#GradBush_${obstacle.id})`}
-              stroke="#052e16"
-              strokeWidth="1.2"
-            />
-            {/* 中央手前の茂み（ブッシュ） */}
-            <path
-              d="M52,88 Q50,72 62,68 Q72,56 86,62 Q98,58 104,70 Q112,78 106,88 Q80,94 52,88 Z"
-              fill={`url(#GradBush_${obstacle.id})`}
-              stroke="#052e16"
-              strokeWidth="1.4"
-            />
-
-            {/* 草の穂先ディテールと木の実・小花アクセント */}
-            <path
-              d="M28,76 L24,67 L32,73 L33,64 L38,73"
-              stroke="#86efac"
-              strokeWidth="1.6"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M72,80 L69,70 L76,76 L79,67 L84,76"
-              stroke="#86efac"
-              strokeWidth="1.8"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            <path
-              d="M116,77 L114,68 L120,74 L124,66 L127,75"
-              stroke="#86efac"
-              strokeWidth="1.6"
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {/* 茂みの赤い木の実・白い小花 */}
-            <circle cx="44" cy="72" r="2.3" fill="#f87171" />
-            <circle cx="49" cy="76" r="2" fill="#ef4444" />
-            <circle cx="92" cy="74" r="2.3" fill="#fef08a" />
-            <circle cx="122" cy="72" r="2.2" fill="#f87171" />
-          </g>
-        </svg>
-      ) : isRock ? (
-        /* =========================================================
-         * 🪨 巨岩・岩場（Jagged 3D Boulders & Moss）のSVGグラフィック
-         * ========================================================= */
-        <svg
-          viewBox="0 0 160 120"
-          width="100%"
-          height="100%"
-          style={{ overflow: 'visible', display: 'block' }}
-        >
-          {/* 奥の暗い岩峰 */}
-          <polygon
-            points="24,84 36,42 58,34 74,50 68,84"
-            fill="#1e293b"
-            stroke="#0f172a"
-            strokeWidth="1.5"
-          />
-          <polygon
-            points="92,84 104,38 128,44 140,68 134,84"
-            fill="#1e293b"
-            stroke="#0f172a"
-            strokeWidth="1.5"
-          />
-
-          {/* 左の中岩（多面体シェーディング） */}
-          <g>
-            {/* ベース面 */}
-            <polygon
-              points="16,86 26,52 50,44 68,62 62,88"
-              fill="#475569"
-              stroke="#0f172a"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            {/* 上部ハイライト面 */}
-            <polygon points="26,52 50,44 56,60 32,64" fill="#94a3b8" />
-            {/* 右側面シャドウ */}
-            <polygon points="50,44 68,62 62,88 46,88 56,60" fill="#334155" />
-          </g>
-
-          {/* 右の中岩（多面体シェーディング） */}
-          <g>
-            <polygon
-              points="96,88 106,48 130,42 146,66 138,88"
-              fill="#475569"
-              stroke="#0f172a"
-              strokeWidth="1.5"
-              strokeLinejoin="round"
-            />
-            <polygon points="106,48 130,42 126,60 104,64" fill="#94a3b8" />
-            <polygon points="130,42 146,66 138,88 118,88 126,60" fill="#1e293b" />
-          </g>
-
-          {/* 中央メインのそびえ立つ巨岩（立体ファセット） */}
-          <g>
-            <polygon
-              points="46,90 56,34 78,20 104,30 116,64 108,92"
-              fill="#64748b"
-              stroke="#0f172a"
-              strokeWidth="1.8"
-              strokeLinejoin="round"
-            />
-            {/* 左上の明るい受光面 */}
-            <polygon points="56,34 78,20 84,46 60,56" fill="#cbd5e1" />
-            {/* 中央正面の中間面 */}
-            <polygon points="60,56 84,46 92,74 54,88 46,90" fill="#64748b" />
-            {/* 右側の深い陰影面 */}
-            <polygon points="78,20 104,30 116,64 108,92 86,92 92,74 84,46" fill="#334155" />
-            {/* 岩の稜線ハイライトと亀裂 */}
-            <polyline
-              points="56,34 78,20 84,46 92,74"
-              fill="none"
-              stroke="#f1f5f9"
-              strokeWidth="1.4"
-               opacity="0.7"
-            />
-            <polyline
-              points="72,38 66,52 74,64"
-              fill="none"
-              stroke="#1e293b"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            />
-          </g>
-
-          {/* 岩の隙間に生える苔・小さな茂み */}
-          <path
-            d="M54,48 Q62,40 70,46 Q78,42 82,50 Q68,54 54,48 Z"
-            fill="#16a34a"
-            opacity="0.85"
-          />
-          <path
-            d="M36,88 Q38,76 48,80 Q54,73 62,82 Q68,78 72,89 Z"
-            fill="#15803d"
-          />
-          <path
-            d="M94,90 Q98,78 106,83 Q112,76 120,85 L124,90 Z"
-            fill="#166534"
-          />
-          {/* 手前の小石 */}
-          <polygon points="28,90 34,80 46,83 42,92" fill="#94a3b8" stroke="#0f172a" strokeWidth="1.2" />
-          <polygon points="112,92 118,81 130,84 126,93" fill="#64748b" stroke="#0f172a" strokeWidth="1.2" />
-        </svg>
-      ) : (
-        /* =========================================================
-         * 🌿💎 深い茂みと蒼晶の岩叢（Mystic Bush & Crystal Crag）のSVGグラフィック
-         * ========================================================= */
-        <svg
-          viewBox="0 0 160 120"
-          width="100%"
-          height="100%"
-          style={{ overflow: 'visible', display: 'block' }}
-        >
-          <defs>
-            <linearGradient id={`GradCrystal_${obstacle.id}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#e0f2fe" />
-              <stop offset="35%" stopColor="#38bdf8" />
-              <stop offset="80%" stopColor="#0284c7" />
-              <stop offset="100%" stopColor="#0369a1" />
-            </linearGradient>
-            <radialGradient id={`GradMysticBush_${obstacle.id}`} cx="40%" cy="30%" r="70%">
-              <stop offset="0%" stopColor="#4ade80" />
-              <stop offset="50%" stopColor="#0d9488" />
-              <stop offset="100%" stopColor="#064e3b" />
-            </radialGradient>
-          </defs>
-
-          {/* 背面の深い茂み（ブッシュ） */}
-          <circle cx="42" cy="64" r="24" fill="#064e3b" />
-          <circle cx="118" cy="64" r="24" fill="#064e3b" />
-          <circle cx="80" cy="56" r="30" fill="#115e59" />
-
-          {/* 左に突き出す結晶柱 */}
-          <polygon
-            points="44,80 34,36 48,24 62,42 58,80"
-            fill={`url(#GradCrystal_${obstacle.id})`}
-            stroke="#0c4a6e"
-            strokeWidth="1.4"
-          />
-          <polygon points="34,36 48,24 52,52 40,60" fill="#bae6fd" opacity="0.65" />
-
-          {/* 右に突き出す結晶柱 */}
-          <polygon
-            points="100,80 104,40 120,26 128,44 116,80"
-            fill={`url(#GradCrystal_${obstacle.id})`}
-            stroke="#0c4a6e"
-            strokeWidth="1.4"
-          />
-          <polygon points="104,40 120,26 116,54 102,60" fill="#bae6fd" opacity="0.6" />
-
-          {/* 中央の大結晶クラスター */}
-          <polygon
-            points="66,84 62,28 80,12 98,28 94,84"
-            fill={`url(#GradCrystal_${obstacle.id})`}
-            stroke="#082f49"
-            strokeWidth="1.6"
-          />
-          <polygon points="62,28 80,12 82,56 66,68" fill="#e0f2fe" opacity="0.7" />
-          <polygon points="80,12 98,28 94,84 80,84" fill="#0369a1" opacity="0.75" />
-
-          {/* 結晶の根元を覆う豊かな茂み（ブッシュ・草むら） */}
-          <path
-            d="M16,86 Q14,66 30,64 Q42,52 58,62 Q76,50 94,62 Q112,50 128,62 Q144,64 142,86 Q80,96 16,86 Z"
-            fill={`url(#GradMysticBush_${obstacle.id})`}
-            stroke="#042f2e"
-            strokeWidth="1.5"
-          />
-          {/* 茂みの草の葉ディテール */}
-          <path
-            d="M34,78 L30,68 L38,74 L41,65 L46,75 M74,82 L71,70 L79,77 L83,67 L88,78 M112,78 L110,68 L117,74 L122,66 L125,76"
-            stroke="#99f6e4"
-            strokeWidth="1.6"
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-          {/* 発光する胞子・光の粒 */}
-          <circle cx="52" cy="72" r="2.2" fill="#38bdf8" />
-          <circle cx="96" cy="74" r="2.4" fill="#7dd3fc" />
-          <circle cx="78" cy="64" r="2" fill="#e0f2fe" />
-        </svg>
-      )}
-
       {/* 死角に敵が潜んでいる時の「ガサガサ…」気配アラート */}
       {hasHiddenEnemy && (
         <div
           style={{
             position: 'absolute',
-            top: '-14px',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            left: '0px',
+            top: '-46px',
+            transform: 'translate(-50%, -50%) translateZ(72px)',
             backgroundColor: 'rgba(202, 138, 4, 0.95)',
             color: '#fefce8',
             fontSize: '9px',
             fontWeight: 'bold',
             padding: '1.5px 7px',
-            borderRadius: '999px',
+            borderRadius: '4px',
             border: '1px solid #fde047',
             boxShadow: '0 0 12px rgba(250, 204, 21, 0.9)',
             whiteSpace: 'nowrap',
