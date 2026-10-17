@@ -49,7 +49,12 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
             50% { opacity: 0.6; }
             100% { opacity: 0; transform: translateX(20px); }
           }
-          @media (pointer: coarse) {
+          .arena-2d-mode .cloud-shadow-item,
+          .arena-2d-mode .cloud-sky-item,
+          .arena-2d-mode .cloud-wind-item {
+            animation: none !important;
+          }
+          @media (any-pointer: coarse), (pointer: coarse) {
             .cloud-shadow-item,
             .cloud-sky-item,
             .cloud-wind-item {

@@ -626,6 +626,7 @@ export function BattleField({
       {/* 3D箱庭ボード本体（perspective内で平行移動・ズーム・チルトが適用される盤面） */}
       <div
         ref={containerRef}
+        className={camera.is3DMode ? 'arena-3d-mode' : 'arena-2d-mode'}
         onClick={handleClick}
         onPointerMove={handlePointerMove}
         onPointerLeave={handlePointerLeave}

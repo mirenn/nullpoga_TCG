@@ -977,10 +977,15 @@
    CPUベクター再ラスタライズが毎秒60回発生する（実測で svgElementAnimations: 10 でも 38.7fps へ低下）。
    タッチ端末では <svg> 内部要素のアニメーションを停止してSVGを静的GPUテクスチャとしてキャッシュさせ、
    外側のHTMLコンテナ (.unit-icon 等) のGPUコンポジット変形のみで滑らかに動かす。 */
-@media (pointer: coarse) {
+.arena-2d-mode svg * {
+  animation: none !important;
+}
+
+@media (any-pointer: coarse), (pointer: coarse) {
   svg * {
     animation: none !important;
   }
 }
+
 
 
