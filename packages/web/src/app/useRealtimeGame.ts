@@ -21,6 +21,7 @@ import { computeCpuAction } from './cpuAi';
 import {
   isWithinEngageY,
   isWithinCollisionY,
+  COLLISION_HALF_WIDTH_Y,
   SPELL_RADIUS,
   FIRE_SPELL_HALF_WIDTH_X,
   FIRE_SPELL_SPREAD_SPEED_Y,
@@ -45,6 +46,8 @@ import {
 
 /** 隕石アニメーション(1s)の着弾タイミング(80%)。ダメージ判定はこの時点で行う */
 const METEOR_IMPACT_DELAY_MS = 800;
+// 烈火の呪文の詠唱予兆（警告の縦帯）を見せてから延焼を開始するまでの時間
+const FIRE_SPELL_CAST_DELAY_MS = 900;
 import {
   createInitialInhibitors,
   inhibitorBlocksY,
@@ -221,6 +224,7 @@ export function useRealtimeGame() {
   }, [pendingLightningHits]);
   // 烈火の呪文の上下延焼状態
   const activeFireSpellsRef = useRef<ActiveFireSpell[]>([]);
+  const fireSpellTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // フィールド立体遮蔽物（木・岩・結晶群）とその耐久・破壊状態
   const [obstacles, setObstacles] = useState<FieldObstacle[]>(FIELD_OBSTACLES);
   const obstaclesRef = useRef<FieldObstacle[]>(FIELD_OBSTACLES);
@@ -396,6 +400,36 @@ export function useRealtimeGame() {
     });
   }, []);
 
+  // 烈火の呪文の詠唱: 先に予兆（警告の縦帯）を表示し、FIRE_SPELL_CAST_DELAY_MS 後に実際の延焼を開始する（プレイヤー/CPU共通）
+  const castFireSpell = useCallback((x: number, y: number, targetOwner: 'player' | 'cpu') => {
+    const castAt = Date.now();
+    const warningId = `burn_warning_${targetOwner}_${castAt}_${Math.random().toString(36).slice(2, 6)}`;
+    setSpellEffects((prev) => [
+      ...prev,
+      { id: warningId, x, y, originY: y, type: 'burn_warning', createdAt: castAt },
+    ]);
+    const timer = setTimeout(() => {
+      fireSpellTimersRef.current = fireSpellTimersRef.current.filter((t) => t !== timer);
+      const startTime = Date.now();
+      const effectId = `burn_${targetOwner}_${startTime}_${Math.random().toString(36).slice(2, 6)}`;
+      setSpellEffects((prev) => [
+        ...prev.filter((e) => e.id !== warningId),
+        { id: effectId, x, y, originY: y, type: 'burn', createdAt: startTime },
+      ]);
+      activeFireSpellsRef.current.push({
+        id: effectId,
+        x,
+        originY: y,
+        targetOwner,
+        startTime,
+        damage: 3,
+        hitUnitIds: new Set<string>(),
+        durationMs: 2000,
+      });
+    }, FIRE_SPELL_CAST_DELAY_MS);
+    fireSpellTimersRef.current.push(timer);
+  }, []);
+
   // プレイヤーがフィールド上の座標 (X, Y) を指定してカードを使用
   const playCardAt = useCallback(
     (rawX: number, rawY?: number, cardIndexOverride?: number) => {
@@ -551,22 +585,8 @@ export function useRealtimeGame() {
             setUnits(next);
           }, METEOR_IMPACT_DELAY_MS);
         } else if (card.id === 'fire_spell') {
-          // ドロップした座標 (spawnX, spawnY) を中心に上下へ火が広がり、到達した敵に3ダメージ
-          const effectId = `burn_${Date.now()}`;
-          setSpellEffects((prev) => [
-            ...prev,
-            { id: effectId, x: spawnX, y: spawnY, originY: spawnY, type: 'burn', createdAt: Date.now() },
-          ]);
-          activeFireSpellsRef.current.push({
-            id: effectId,
-            x: spawnX,
-            originY: spawnY,
-            targetOwner: 'cpu',
-            startTime: Date.now(),
-            damage: 3,
-            hitUnitIds: new Set<string>(),
-            durationMs: 2000,
-          });
+          // ドロップした座標 (spawnX, spawnY) を中心に、詠唱予兆の後で上下へ火が広がり、到達した敵に3ダメージ
+          castFireSpell(spawnX, spawnY, 'cpu');
         } else if (card.id === 'haste_spell') {
           // 指定位置付近の味方ユニットの攻撃クールダウンをリセット
           setSpellEffects((prev) => [
@@ -602,7 +622,7 @@ export function useRealtimeGame() {
       drawCardAfterPlay(cardIdx, card);
       setSelectedCardIndex(null);
     },
-    [selectedCardIndex, hand, checkCanPlayCard, drawCardAfterPlay]
+    [selectedCardIndex, hand, checkCanPlayCard, drawCardAfterPlay, castFireSpell]
   );
 
   // 互換用ラッパー (X座標のみ指定)
@@ -699,22 +719,8 @@ export function useRealtimeGame() {
           setUnits(next);
         }, METEOR_IMPACT_DELAY_MS);
       } else if (chosen.card.id === 'fire_spell') {
-        // 烈火の呪文: 指定位置 (spellX, spellY) を中心に上下へ火が広がり、到達したプレイヤーユニットに3ダメージ
-        const effectId = `cpu_burn_${Date.now()}`;
-        setSpellEffects((prev) => [
-          ...prev,
-          { id: effectId, x: spellX, y: spellY, originY: spellY, type: 'burn', createdAt: Date.now() },
-        ]);
-        activeFireSpellsRef.current.push({
-          id: effectId,
-          x: spellX,
-          originY: spellY,
-          targetOwner: 'player',
-          startTime: Date.now(),
-          damage: 3,
-          hitUnitIds: new Set<string>(),
-          durationMs: 2000,
-        });
+        // 烈火の呪文: 詠唱予兆の後、指定位置 (spellX, spellY) を中心に上下へ火が広がり、到達したプレイヤーユニットに3ダメージ
+        castFireSpell(spellX, spellY, 'player');
       } else if (chosen.card.id === 'haste_spell') {
         // 疾風の号令（指定位置付近のCPUユニットのクールダウンリセット）
         setSpellEffects((prev) => [
@@ -745,7 +751,7 @@ export function useRealtimeGame() {
         setUnits(next);
       }
     }
-  }, [cpuDrawCardAfterPlay]);
+  }, [cpuDrawCardAfterPlay, castFireSpell]);
 
   // メインゲームループ（毎フレーム実行）
   useEffect(() => {
@@ -1015,7 +1021,19 @@ export function useRealtimeGame() {
         // このフレームで攻撃を放ったユニット → 主標的
         const attackTargets = new Map<string, CombatTarget>();
 
-        const updatedUnits = unitsAfterSpot.map((unit) => {
+        // 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
+        const isAllyStopped = (ally: Unit): boolean => {
+          const fwd = (tx: number) => (ally.owner === 'player' ? tx - ally.x : ally.x - tx);
+          const enemyInReach = unitsAfterHits.some(
+            (e) => e.owner !== ally.owner && e.hp > 0 && isWithinEngageY(e.y, ally.y) && fwd(e.x) >= -2 && fwd(e.x) <= ally.range
+          );
+          if (enemyInReach) return true;
+          return inhibitorsRef.current.some(
+            (i) => i.owner !== ally.owner && i.hp > 0 && inhibitorEngageableY(i, ally.y) && fwd(i.x) >= -2 && fwd(i.x) <= ally.range
+          );
+        };
+
+        const rawUpdatedUnits = unitsAfterSpot.map((unit) => {
           const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
           let cooldown = Math.max(0, unit.attackCooldown - dt);
           let x = unit.x;
@@ -1040,6 +1058,11 @@ export function useRealtimeGame() {
               isCharging: false,
               chargeStartTime: undefined,
               isStunned: true,
+              isJumping: false,
+              jumpProgress: 0,
+              isSliding: false,
+              isPushed: false,
+              isPushing: false,
             };
           }
 
@@ -1116,18 +1139,6 @@ export function useRealtimeGame() {
               blockingObstacle = obs;
             }
           }
-
-          // 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
-          const isAllyStopped = (ally: Unit): boolean => {
-            const fwd = (tx: number) => (ally.owner === 'player' ? tx - ally.x : ally.x - tx);
-            const enemyInReach = unitsAfterHits.some(
-              (e) => e.owner !== ally.owner && e.hp > 0 && isWithinEngageY(e.y, ally.y) && fwd(e.x) >= -2 && fwd(e.x) <= ally.range
-            );
-            if (enemyInReach) return true;
-            return inhibitorsRef.current.some(
-              (i) => i.owner !== ally.owner && i.hp > 0 && inhibitorEngageableY(i, ally.y) && fwd(i.x) >= -2 && fwd(i.x) <= ally.range
-            );
-          };
 
           // 前方にいる味方を探す（重なり防止: 縦幅 ±COLLISION_HALF_WIDTH_Y）
           // 停止中（攻撃中）の味方はすり抜け可能なので壁にしない
@@ -1272,6 +1283,11 @@ export function useRealtimeGame() {
                 lastAttackEffectTime: lastAttack,
                 isCharging,
                 chargeStartTime,
+                isJumping: false,
+                jumpProgress: 0,
+                isSliding: false,
+                isPushed: false,
+                isPushing: false,
               };
             }
           } else {
@@ -1375,6 +1391,11 @@ export function useRealtimeGame() {
                     lastAttackEffectTime: lastAttack,
                     isCharging: false,
                     chargeStartTime: undefined,
+                    isJumping: false,
+                    jumpProgress: 0,
+                    isSliding: false,
+                    isPushed: false,
+                    isPushing: false,
                   };
                 }
               }
@@ -1388,6 +1409,11 @@ export function useRealtimeGame() {
               lastAttackEffectTime: lastAttack,
               isCharging,
               chargeStartTime,
+              isJumping: false,
+              jumpProgress: 0,
+              isSliding: false,
+              isPushed: false,
+              isPushing: false,
             };
           }
 
@@ -1422,18 +1448,57 @@ export function useRealtimeGame() {
           const isSprinting =
             !isHolding && unit.cardNo === 8 && enemiesInFrontLane.length === 0 && !unit.isSpotted;
 
-          // 移動計算 (X軸方向 & 障害物インタラクション)
+          // 移動計算 (X軸方向 & 障害物・味方インタラクション)
+          const obsAction = unit.obstacleAction ?? 'block';
           let currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
           if (isAmbushDashing) {
             currentSpeed *= HOLD_AMBUSH_DASH_SPEED_MULTIPLIER;
           }
-          const moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
+          let moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
           y = unit.y;
           let isJumping = false;
           let jumpProgress = 0;
+          let isSliding = false;
           let maxXMove = x;
 
           if (!isHolding) {
+            // 前方味方の追い抜き判定（slide / jump 用）
+            let allyToOvertake: Unit | null = null;
+            if (obsAction === 'slide' || obsAction === 'jump') {
+              let bestDist = 999;
+              for (const u of unitsAfterHits) {
+                if (u.owner !== unit.owner || u.id === unit.id || u.hp <= 0) continue;
+                const sameLaneOrColliding =
+                  isWithinCollisionY(u.y, y) ||
+                  (unit.lane !== undefined && isWithinCollisionY(u.y, unit.lane));
+                if (!sameLaneOrColliding) continue;
+
+                const fwdDist = unit.owner === 'player' ? u.x - unit.x : unit.x - u.x;
+                const isStartingOvertake =
+                  fwdDist >= 0 &&
+                  fwdDist <= ALLY_MIN_GAP + 1.5 &&
+                  (currentSpeed > u.speed || Boolean(u.isHolding) || isAllyStopped(u) || fwdDist <= ALLY_MIN_GAP + 0.2);
+                const isContinuingOvertake =
+                  (Boolean(unit.isSliding) || Boolean(unit.isJumping)) &&
+                  fwdDist >= -(ALLY_MIN_GAP + 0.5) &&
+                  fwdDist <= ALLY_MIN_GAP + 1.5;
+
+                if ((isStartingOvertake || isContinuingOvertake) && Math.abs(fwdDist) < bestDist) {
+                  bestDist = Math.abs(fwdDist);
+                  allyToOvertake = u;
+                }
+              }
+
+              // 追い抜き中（ジャンプ・スライド）は前方の味方を素早くパスできるよう相対速度を確保
+              if (allyToOvertake) {
+                const minOvertakeSpeed = obsAction === 'jump'
+                  ? allyToOvertake.speed + 3.0
+                  : allyToOvertake.speed + 2.0;
+                const boostedSpeed = Math.max(currentSpeed, minOvertakeSpeed);
+                moveDelta = boostedSpeed * MOVE_SPEED_SCALE * dt;
+              }
+            }
+
             maxXMove = unit.owner === 'player' ? x + moveDelta : x - moveDelta;
 
             if (blockingObstacle) {
@@ -1444,7 +1509,10 @@ export function useRealtimeGame() {
                 ? Math.min(maxXMove, enemyWall)
                 : Math.max(maxXMove, enemyWall);
             }
-            if (targetAlly) {
+
+            // blockタイプのユニットのみ、前方の味方の後ろ（ALLY_MIN_GAP）で歩調を合わせる
+            // （slideは横から追い抜き、jumpは頭上を飛び越え、smashは後ろから味方を押し出す）
+            if (targetAlly && obsAction === 'block') {
               const allyWall = unit.owner === 'player'
                 ? (targetAlly as Unit).x - ALLY_MIN_GAP
                 : (targetAlly as Unit).x + ALLY_MIN_GAP;
@@ -1463,7 +1531,11 @@ export function useRealtimeGame() {
               if (Math.abs(y - obs.y) <= obs.radiusY + 2.0) {
                 const fwdDist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
                 // 障害物の前後にいるか（手前から奥まで）
-                if (fwdDist >= -obs.radiusX - 2.5 && fwdDist <= obs.radiusX + 3.0) {
+                const extraSmashReach =
+                  obsAction === 'smash' && targetAlly && minAllyDist <= ALLY_MIN_GAP + 1.5
+                    ? ALLY_MIN_GAP
+                    : 0;
+                if (fwdDist >= -obs.radiusX - 2.5 && fwdDist <= obs.radiusX + 3.0 + extraSmashReach) {
                   if (fwdDist < minObsFwdDist) {
                     minObsFwdDist = fwdDist;
                     nearestObs = obs;
@@ -1473,12 +1545,12 @@ export function useRealtimeGame() {
             }
 
             if (nearestObs) {
-              const obsAction = unit.obstacleAction ?? 'block';
-
               if (obsAction === 'smash') {
-                // ③ 激突粉砕 (smash): イノシシやドラゴンなど。接触時に大ダメージを与えて破壊！
+                // ③ 激突粉砕 (smash): イノシシやドラゴンなど。接触時に大ダメージを与えて破壊！（前方の味方を押している時も粉砕）
                 const contactDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
-                if (contactDist <= nearestObs.radiusX + 1.5 && contactDist >= -nearestObs.radiusX) {
+                const extraSmashReach =
+                  targetAlly && minAllyDist <= ALLY_MIN_GAP + 1.5 ? ALLY_MIN_GAP + 1.0 : 0;
+                if (contactDist <= nearestObs.radiusX + 1.5 + extraSmashReach && contactDist >= -nearestObs.radiusX) {
                   const smashDamage = Math.max(60, unit.attack * 25);
                   const curHp = nearestObs.hp ?? 80;
                   const nextHp = Math.max(0, curHp - smashDamage);
@@ -1516,6 +1588,7 @@ export function useRealtimeGame() {
                 // ① スライド迂回 (slide): ネコ、柴犬、忍者、猟犬など。上下の隙間に滑らかに回り込む
                 const slideDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
                 if (slideDist <= nearestObs.radiusX + 2.5 && slideDist >= -nearestObs.radiusX - 2.0) {
+                  isSliding = true;
                   const avoidUp = y <= nearestObs.y;
                   const targetY = avoidUp
                     ? Math.max(12, nearestObs.y - (nearestObs.radiusY + 3.0))
@@ -1525,9 +1598,16 @@ export function useRealtimeGame() {
                   y += (targetY - y) * Math.min(1.0, dt * 7.0);
                 }
               } else {
-                // block: 通常ユニットは未破壊障害物の手前で停止
+                // block: 通常ユニットは未破壊障害物の手前で停止（ただし後ろからsmash味方に押されている場合は突破）
+                const hasSmashBehind = unitsAfterHits.some((u) => {
+                  if (u.owner !== unit.owner || u.id === unit.id || u.hp <= 0) return false;
+                  if ((u.obstacleAction ?? 'block') !== 'smash') return false;
+                  if (!isWithinCollisionY(u.y, unit.y)) return false;
+                  const behindDist = unit.owner === 'player' ? unit.x - u.x : u.x - unit.x;
+                  return behindDist > 0 && behindDist <= ALLY_MIN_GAP + 1.5;
+                });
                 const blockDist = unit.owner === 'player' ? nearestObs.x - unit.x : unit.x - nearestObs.x;
-                if (blockDist >= 0 && blockDist <= nearestObs.radiusX + 1.5) {
+                if (!hasSmashBehind && blockDist >= 0 && blockDist <= nearestObs.radiusX + 1.5) {
                   const obsWall = unit.owner === 'player'
                     ? nearestObs.x - nearestObs.radiusX - 1.2
                     : nearestObs.x + nearestObs.radiusX + 1.2;
@@ -1538,10 +1618,52 @@ export function useRealtimeGame() {
                   }
                 }
               }
+            } else if (allyToOvertake) {
+              // 障害物がなく、前方の味方ユニットに追いついた場合の移動特性（jump / slide）
+              const allyFwdDist = unit.owner === 'player' ? allyToOvertake.x - unit.x : unit.x - allyToOvertake.x;
+              if (obsAction === 'jump') {
+                // ② 味方の頭上をジャンプ飛び越え (jump)
+                const totalSpan = (ALLY_MIN_GAP + 1.5) + (ALLY_MIN_GAP + 0.5);
+                const progress = Math.max(
+                  0,
+                  Math.min(1.0, 1.0 - (allyFwdDist + ALLY_MIN_GAP + 0.5) / totalSpan)
+                );
+                isJumping = true;
+                jumpProgress = progress;
+              } else if (obsAction === 'slide') {
+                // ① 味方の横をスライド追い抜き (slide)
+                isSliding = true;
+                let avoidUp: boolean;
+                if (Math.abs(y - allyToOvertake.y) > 0.35) {
+                  avoidUp = y < allyToOvertake.y;
+                } else if (allyToOvertake.y <= 22) {
+                  avoidUp = false;
+                } else if (allyToOvertake.y >= 78) {
+                  avoidUp = true;
+                } else {
+                  avoidUp = unit.id.charCodeAt(unit.id.length - 1) % 2 === 0;
+                }
+                const slideOffset = COLLISION_HALF_WIDTH_Y + 1.4;
+                const targetY = avoidUp
+                  ? Math.max(12, allyToOvertake.y - slideOffset)
+                  : Math.min(88, allyToOvertake.y + slideOffset);
+                y += (targetY - y) * Math.min(1.0, dt * 8.0);
+              }
             } else {
-              // 障害物がない場合、元のレーン（lane）に向かって自然に復帰
+              // 障害物も追い抜き対象の味方もいない場合、元のレーン（lane）に向かって自然に復帰
+              // （ただし真横に味方が並走している間は重ならないようレーン復帰を待つ）
               if (unit.lane !== undefined && Math.abs(y - unit.lane) > 0.4) {
-                y += (unit.lane - y) * Math.min(1.0, dt * 2.5);
+                const hasAllyBesideOnLane = unitsAfterHits.some(
+                  (u) =>
+                    u.owner === unit.owner &&
+                    u.id !== unit.id &&
+                    u.hp > 0 &&
+                    Math.abs(u.x - unit.x) < ALLY_MIN_GAP &&
+                    isWithinCollisionY(u.y, unit.lane as number)
+                );
+                if (!hasAllyBesideOnLane) {
+                  y += (unit.lane - y) * Math.min(1.0, dt * 2.5);
+                }
               }
             }
           }
@@ -1571,8 +1693,136 @@ export function useRealtimeGame() {
             isSprinting,
             isJumping,
             jumpProgress,
+            isSliding,
+            isPushed: false,
+            isPushing: false,
           };
         });
+
+        // C2. smashユニット（イノシシ・ドラゴン）による前方味方の押し出し（プッシュ）解決パス
+        const updatedUnits = [...rawUpdatedUnits];
+        for (const owner of ['player', 'cpu'] as const) {
+          const dir = owner === 'player' ? 1 : -1;
+          const ownerIndices = updatedUnits
+            .map((u, idx) => ({ u, idx }))
+            .filter(({ u }) => u.owner === owner && u.hp > 0)
+            .sort((a, b) => (owner === 'player' ? a.u.x - b.u.x : b.u.x - a.u.x))
+            .map(({ idx }) => idx);
+
+          // Pass 1 (後方から前方へ): smashユニット（または連鎖で押された味方）が前方の味方をグイグイ押し出す
+          for (let i = 0; i < ownerIndices.length; i++) {
+            const pusherIdx = ownerIndices[i];
+            const pusher = updatedUnits[pusherIdx];
+            const pusherAction = pusher.obstacleAction ?? 'block';
+            const canPush =
+              (pusherAction === 'smash' || Boolean(pusher.isPushed)) &&
+              !pusher.isStunned &&
+              !pusher.isHolding &&
+              !isAllyStopped(pusher);
+            if (!canPush) continue;
+
+            for (let j = i + 1; j < ownerIndices.length; j++) {
+              const frontIdx = ownerIndices[j];
+              const front = updatedUnits[frontIdx];
+              if (isAllyStopped(front) || front.isJumping || front.isSliding) continue;
+              if (!isWithinCollisionY(front.y, pusher.y)) continue;
+
+              const gap = dir * (front.x - pusher.x);
+              if (gap >= -2.0 && gap < ALLY_MIN_GAP) {
+                // 前方の味方が進める上限（敵・敵インヒビター壁、拠点上限）を算出
+                let frontMaxAllowedX = owner === 'player' ? 95 : 5;
+                for (const enemy of unitsAfterHits) {
+                  if (enemy.owner === owner || enemy.hp <= 0) continue;
+                  if (!isWithinCollisionY(enemy.y, front.y)) continue;
+                  const eDist = dir * (enemy.x - front.x);
+                  if (eDist >= -1) {
+                    const wallX = enemy.x - dir * 7.5;
+                    frontMaxAllowedX =
+                      owner === 'player'
+                        ? Math.min(frontMaxAllowedX, wallX)
+                        : Math.max(frontMaxAllowedX, wallX);
+                  }
+                }
+                for (const inhib of inhibitorsRef.current) {
+                  if (inhib.owner === owner || inhib.hp <= 0) continue;
+                  if (!inhibitorBlocksY(inhib, front.y)) continue;
+                  const iDist = dir * (inhib.x - front.x);
+                  if (iDist >= -1) {
+                    const wallX = inhib.x - dir * 7.5;
+                    frontMaxAllowedX =
+                      owner === 'player'
+                        ? Math.min(frontMaxAllowedX, wallX)
+                        : Math.max(frontMaxAllowedX, wallX);
+                  }
+                }
+
+                const desiredFrontX = pusher.x + dir * ALLY_MIN_GAP;
+                const newFrontX =
+                  owner === 'player'
+                    ? Math.min(desiredFrontX, frontMaxAllowedX)
+                    : Math.max(desiredFrontX, frontMaxAllowedX);
+                const pushedDelta = Math.max(0, dir * (newFrontX - front.x));
+                const nextDist = (front.distanceTraveled || 0) + pushedDelta;
+                let nextFrontAtk = front.attack;
+                if (front.cardNo === 2) {
+                  const frontShibaBaseAtk =
+                    1 +
+                    (front.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0) +
+                    (front.isCounterDeploy ? 1 : 0) +
+                    ((front.comboCount || 0) >= 3 ? 1 : 0);
+                  nextFrontAtk = frontShibaBaseAtk + Math.min(4, Math.floor(nextDist / 20));
+                }
+
+                updatedUnits[frontIdx] = {
+                  ...front,
+                  x: pushedDelta > 0 ? newFrontX : front.x,
+                  distanceTraveled: nextDist,
+                  attack: nextFrontAtk,
+                  isPushed: true,
+                };
+                updatedUnits[pusherIdx] = {
+                  ...updatedUnits[pusherIdx],
+                  isPushing: true,
+                };
+              }
+            }
+          }
+
+          // Pass 2 (前方から後方へ): 前方の味方が敵壁等で止まった場合、後方のプッシュ元も重ならないようクランプ
+          for (let i = ownerIndices.length - 1; i >= 0; i--) {
+            const front = updatedUnits[ownerIndices[i]];
+            if (isAllyStopped(front) || front.isJumping || front.isSliding) continue;
+
+            for (let j = i - 1; j >= 0; j--) {
+              const backIdx = ownerIndices[j];
+              const back = updatedUnits[backIdx];
+              const backAction = back.obstacleAction ?? 'block';
+              if (
+                isAllyStopped(back) ||
+                back.isJumping ||
+                back.isSliding ||
+                backAction === 'slide' ||
+                backAction === 'jump'
+              ) {
+                continue;
+              }
+              if (!isWithinCollisionY(front.y, back.y)) continue;
+
+              const gap = dir * (front.x - back.x);
+              if (gap >= -2.0 && gap < ALLY_MIN_GAP) {
+                const clampedBackX = front.x - dir * ALLY_MIN_GAP;
+                const nextBackX =
+                  owner === 'player'
+                    ? Math.min(back.x, clampedBackX)
+                    : Math.max(back.x, clampedBackX);
+                updatedUnits[backIdx] = {
+                  ...back,
+                  x: nextBackX,
+                };
+              }
+            }
+          }
+        }
 
         // D. ユニット同士の近接攻撃解決（通常ユニット用）
         // 撃破（ラストヒット）を達成した攻撃者IDを記録
@@ -1785,7 +2035,7 @@ export function useRealtimeGame() {
         setPendingLightningHits(nextPendingHits);
 
         // スペルエフェクトの掃除（烈火の炎は火柱噴出完了まで2.0秒、その他は1.2秒）
-        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < (e.type === 'burn' ? 2000 : 1200)));
+        setSpellEffects((prev) => prev.filter((e) => now - e.createdAt < (e.type === 'burn' ? 2000 : e.type === 'burn_warning' ? FIRE_SPELL_CAST_DELAY_MS + 300 : 1200)));
       }
 
       animId = requestAnimationFrame(gameLoop);
@@ -1845,6 +2095,8 @@ export function useRealtimeGame() {
     setPendingLightningHits([]);
     pendingHitsRef.current = [];
     activeFireSpellsRef.current = [];
+    fireSpellTimersRef.current.forEach(clearTimeout);
+    fireSpellTimersRef.current = [];
     setGameResult('playing');
     setSelectedCardIndex(null);
     cooldownRef.current = 0;

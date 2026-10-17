@@ -28,8 +28,8 @@ export const CARD_POOL: DemoCard[] = [
     range: 8,
     attackInterval: 3.4,
     attackWindup: 0.7, // 攻撃前隙（狙い0.7秒）
-    obstacleAction: 'slide', // 障害物に当たると身軽にスライド迂回
-    effectDesc: 'バランスの取れた標準的な歩兵ユニット。障害物に当たると上下にするりとスライド迂回して前進を続ける。0.7秒の狙いから鋭い爪でひっかく。',
+    obstacleAction: 'slide', // 障害物・前方味方に当たると身軽にスライド迂回・追い抜き
+    effectDesc: 'バランスの取れた標準的な歩兵ユニット。障害物や前の味方に追いつくと上下にするりとスライド迂回・追い抜きして前進を続ける。0.7秒の狙いから鋭い爪でひっかく。',
     icon: '🐱',
   },
   {
@@ -45,8 +45,8 @@ export const CARD_POOL: DemoCard[] = [
     attackInterval: 3.2,
     attackWindup: 0.8, // 攻撃前隙（構え0.8秒）
     canMoveWhileCharging: true, // 構え・チャージ中も低姿勢で走り込みながら前進
-    obstacleAction: 'slide', // 障害物をスライド回避しながら走り込む
-    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。障害物に当たるとスライド迂回して駆け抜け、立ち止まらずに低姿勢で走り込みながらチャージして噛みつく。',
+    obstacleAction: 'slide', // 障害物や前方味方をスライド回避・追い抜きしながら走り込む
+    effectDesc: '前進した距離に応じて攻撃力が上昇する（最大+4）。障害物や前の味方に追いつくとスライドして追い抜き、立ち止まらずに低姿勢で走り込みながらチャージして噛みつく。',
     icon: '🐕',
   },
   {
@@ -61,7 +61,7 @@ export const CARD_POOL: DemoCard[] = [
     range: 8,
     attackInterval: 4.0,
     obstacleAction: 'block',
-    effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。',
+    effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。後ろからイノシシ等に押されると高速で前線へ運ばれる。',
     icon: '🐢',
   },
   {
@@ -77,7 +77,7 @@ export const CARD_POOL: DemoCard[] = [
     attackInterval: 8.0, // 攻撃間隔8.0秒（さらに倍に調整）
     attackWindup: 2.0, // 攻撃前隙（チャージモーション2.0秒）
     obstacleAction: 'block',
-    effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。2.0秒のチャージ後に雷撃を放つ。',
+    effectDesc: '遠距離から放電し、相手ユニットを1.2秒間スタン（麻痺）させる。2.0秒のチャージ後に雷撃を放つ。前の味方の後ろについて進軍する。',
     icon: '🪼',
   },
   {
@@ -93,8 +93,8 @@ export const CARD_POOL: DemoCard[] = [
     attackInterval: 3.6,
     attackWindup: 1.0, // 攻撃前隙（ブルチャージタメ1.0秒）
     canMoveWhileCharging: true, // チャージ中も猛突進して敵に激突
-    obstacleAction: 'smash', // 障害物に激突すると粉砕突破
-    effectDesc: '素早い突進力と高い火力を併せ持つ突破ユニット。邪魔な木や岩の障害物に激突すると粉砕（ドカンとなぎ倒す）して直進！ 敵を捉えると立ち止まらずに猛突進してかち上げる。',
+    obstacleAction: 'smash', // 障害物を粉砕突破＆前方の味方を後ろからプッシュ加速！
+    effectDesc: '素早い突進力と高火力の突破ユニット。木や岩の障害物は粉砕して直進し、前の遅い味方に追いつくと後ろからグイグイ押し出して一緒に高速前進させる！',
     icon: '🐗',
   },
   {
@@ -110,8 +110,8 @@ export const CARD_POOL: DemoCard[] = [
     isCircularRange: true, // 円形全方位探知
     attackInterval: 2.6,
     attackWindup: 0.5, // 手裏剣投擲の振りかぶり構え0.5秒
-    obstacleAction: 'slide', // 壁走り・身軽なすり抜け迂回
-    effectDesc: '全方位円形（半径16%）の敵を探知し、すれ違いざまに手裏剣を投擲して攻撃する。障害物に当たると壁走りでスライド迂回。対向敵がいない時は3倍速で疾走。',
+    obstacleAction: 'slide', // 壁走り・身軽なすり抜け迂回・味方追い抜き
+    effectDesc: '全方位円形（半径16%）の敵を探知し、すれ違いざまに手裏剣を投擲して攻撃する。障害物や前の味方に当たるとスライドして追い抜く。対向敵がいない時は3倍速で疾走。',
     icon: '🥷',
   },
   {
@@ -126,8 +126,8 @@ export const CARD_POOL: DemoCard[] = [
     range: 8, // 近接接触
     attackInterval: 3.0,
     attackWindup: 0.7, // 攻撃前隙（急降下狙い0.7秒）
-    obstacleAction: 'jump', // 障害物を羽ばたきで飛び越える
-    effectDesc: '障害物に当たると羽ばたいて飛び越える。0.7秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
+    obstacleAction: 'jump', // 障害物や前の味方を羽ばたきで飛び越える
+    effectDesc: '障害物や前の味方に追いつくと羽ばたいて頭上を飛び越える。0.7秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
     icon: '🦇',
   },
   {
@@ -143,8 +143,8 @@ export const CARD_POOL: DemoCard[] = [
     hitRange: 30, // 実際に炎が届く距離（探知より短い＝射程ギリギリで立ち止まられると空振り）
     attackInterval: 4.8,
     attackWindup: 1.6, // 攻撃前隙（ブレス息吹チャージ1.6秒）
-    obstacleAction: 'smash', // 巨大な質量で障害物をなぎ倒す
-    effectDesc: '巨大な質量で障害物をなぎ倒して進軍。遠距離から火炎ブレスを吐き、前方の敵をまとめて焼く範囲攻撃（主標的以外は70%ダメージ）。',
+    obstacleAction: 'smash', // 巨大な質量で障害物をなぎ倒し、前の遅い味方も押し出す
+    effectDesc: '巨大な質量で障害物をなぎ倒し、前の遅い味方も押し出しながら進軍。遠距離から火炎ブレスを吐き、前方の敵をまとめて焼く範囲攻撃（主標的以外は70%ダメージ）。',
     icon: '🐉',
   },
   {

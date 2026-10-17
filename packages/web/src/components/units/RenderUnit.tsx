@@ -204,6 +204,9 @@ export function RenderUnit({
   const hasSvg = svgElement !== null;
 
   const isJumping = Boolean(unit.isJumping);
+  const isSliding = Boolean(unit.isSliding);
+  const isPushed = Boolean(unit.isPushed);
+  const isPushing = Boolean(unit.isPushing);
   const jumpProgress = unit.jumpProgress ?? 0;
   const jumpOffsetY = isJumping ? -Math.sin(jumpProgress * Math.PI) * 26 : 0;
   const jumpScale = isJumping ? 1 + Math.sin(jumpProgress * Math.PI) * 0.25 : 1;
@@ -218,6 +221,9 @@ export function RenderUnit({
       data-spotted={unit.isSpotted ? 'true' : 'false'}
       data-concealed={isConcealed ? 'true' : 'false'}
       data-jumping={isJumping ? 'true' : 'false'}
+      data-sliding={isSliding ? 'true' : 'false'}
+      data-pushed={isPushed ? 'true' : 'false'}
+      data-pushing={isPushing ? 'true' : 'false'}
       style={{
         ...styles.unitWrapper,
         left: `${unit.x}%`,
@@ -229,7 +235,7 @@ export function RenderUnit({
         transition: isJumping ? 'none' : 'opacity 0.18s ease-out, filter 0.18s ease-out',
       }}
     >
-      {/* 障害物ジャンプ飛び越えバッジ */}
+      {/* 障害物・味方ジャンプ飛び越えバッジ */}
       {isJumping && (
         <div
           style={{
@@ -251,6 +257,56 @@ export function RenderUnit({
           }}
         >
           🦘 飛び越え!
+        </div>
+      )}
+
+      {/* 後方の味方（イノシシ・ドラゴン）による押し出し加速バッジ */}
+      {!isJumping && isPushed && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#c2410c',
+            color: '#fff7ed',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 5px',
+            borderRadius: '999px',
+            border: '1px solid #fb923c',
+            boxShadow: '0 0 10px rgba(249, 115, 22, 0.85)',
+            whiteSpace: 'nowrap',
+            zIndex: 44,
+            pointerEvents: 'none',
+          }}
+        >
+          💨 押し出し加速!
+        </div>
+      )}
+
+      {/* 前方の味方を押し出し中（プッシュ）バッジ */}
+      {!isJumping && !isPushed && isPushing && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#9a3412',
+            color: '#ffedd5',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 5px',
+            borderRadius: '999px',
+            border: '1px solid #f97316',
+            boxShadow: '0 0 8px rgba(234, 88, 12, 0.8)',
+            whiteSpace: 'nowrap',
+            zIndex: 44,
+            pointerEvents: 'none',
+          }}
+        >
+          🐗 プッシュ!
         </div>
       )}
 
