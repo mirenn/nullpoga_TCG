@@ -51,12 +51,13 @@ export interface Unit {
   range: number; // 射程 (%)
   canMoveWhileCharging?: boolean; // 攻撃チャージ中も前進可能か
   isCircularRange?: boolean; // 円形全方位探知（忍者など）
-  obstacleAction?: ObstacleAction; // 障害物・前方味方への接触時の性質（slide=スライド迂回, jump=飛び越え, smash=障害物粉砕＆味方押し出しプッシュ, block=停止・追従）
+  obstacleAction?: ObstacleAction; // 障害物・前方味方への接触時の性質（slide=スライド迂回, jump=飛び越え, smash=障害物粉砕＆味方押し出しプッシュ, block=障害物を攻撃破壊・味方に追従）
   isJumping?: boolean; // 障害物・味方の飛び越え中か
   jumpProgress?: number; // ジャンプ進行度 (0〜1)
   isSliding?: boolean; // 障害物・味方のスライド迂回中か
   isPushed?: boolean; // 後方のsmash味方（イノシシ・ドラゴン）に押されて加速前進中か
   isPushing?: boolean; // 前方の味方を後ろから押し出し（プッシュ）中か
+  isAttackingObstacle?: boolean; // 進路上の障害物（木・岩・結晶）を攻撃して破壊中か
   attackCooldown: number; // 秒
   attackInterval: number; // 攻撃間隔（例: 1.0秒）
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒)

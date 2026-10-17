@@ -226,8 +226,12 @@ export function useRealtimeGame() {
   const activeFireSpellsRef = useRef<ActiveFireSpell[]>([]);
   const fireSpellTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   // フィールド立体遮蔽物（木・岩・結晶群）とその耐久・破壊状態
-  const [obstacles, setObstacles] = useState<FieldObstacle[]>(FIELD_OBSTACLES);
-  const obstaclesRef = useRef<FieldObstacle[]>(FIELD_OBSTACLES);
+  const [obstacles, setObstacles] = useState<FieldObstacle[]>(() =>
+    FIELD_OBSTACLES.map((o) => ({ ...o, hp: o.maxHp ?? 80, isDestroyed: false }))
+  );
+  const obstaclesRef = useRef<FieldObstacle[]>(
+    FIELD_OBSTACLES.map((o) => ({ ...o, hp: o.maxHp ?? 80, isDestroyed: false }))
+  );
   useEffect(() => {
     obstaclesRef.current = obstacles;
   }, [obstacles]);
@@ -1018,6 +1022,7 @@ export function useRealtimeGame() {
         const newPendingHits: PendingLightningHit[] = [];
         let pDamageToCpu = 0;
         let cpuDamageToPlayer = 0;
+        let obstacleMutated = false;
         // このフレームで攻撃を放ったユニット → 主標的
         const attackTargets = new Map<string, CombatTarget>();
 
@@ -1063,6 +1068,7 @@ export function useRealtimeGame() {
               isSliding: false,
               isPushed: false,
               isPushing: false,
+              isAttackingObstacle: false,
             };
           }
 
@@ -1288,11 +1294,12 @@ export function useRealtimeGame() {
                 isSliding: false,
                 isPushed: false,
                 isPushing: false,
+                isAttackingObstacle: false,
               };
             }
           } else {
-            // 敵が射程内にいない場合はチャージを解除
-            if (isCharging) {
+            // 敵が射程内にいない場合はチャージを解除（ただし障害物破壊のためのチャージ中は維持）
+            if (isCharging && !unit.isAttackingObstacle) {
               isCharging = false;
               chargeStartTime = undefined;
             }
@@ -1396,6 +1403,7 @@ export function useRealtimeGame() {
                     isSliding: false,
                     isPushed: false,
                     isPushing: false,
+                    isAttackingObstacle: false,
                   };
                 }
               }
@@ -1414,6 +1422,7 @@ export function useRealtimeGame() {
               isSliding: false,
               isPushed: false,
               isPushing: false,
+              isAttackingObstacle: false,
             };
           }
 
@@ -1459,6 +1468,7 @@ export function useRealtimeGame() {
           let isJumping = false;
           let jumpProgress = 0;
           let isSliding = false;
+          let isAttackingObstacle = false;
           let maxXMove = x;
 
           if (!isHolding) {
@@ -1530,12 +1540,12 @@ export function useRealtimeGame() {
               // Y軸の接近判定（障害物の縦半径 + 2.0%以内）
               if (Math.abs(y - obs.y) <= obs.radiusY + 2.0) {
                 const fwdDist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
-                // 障害物の前後にいるか（手前から奥まで）
-                const extraSmashReach =
-                  obsAction === 'smash' && targetAlly && minAllyDist <= ALLY_MIN_GAP + 1.5
-                    ? ALLY_MIN_GAP
+                // 障害物の前後にいるか（手前から奥まで。blockまたはsmashの味方列の後ろからも探知可能にする）
+                const extraReach =
+                  (obsAction === 'smash' || obsAction === 'block') && targetAlly && minAllyDist <= ALLY_MIN_GAP + 1.5
+                    ? ALLY_MIN_GAP + 1.5
                     : 0;
-                if (fwdDist >= -obs.radiusX - 2.5 && fwdDist <= obs.radiusX + 3.0 + extraSmashReach) {
+                if (fwdDist >= -obs.radiusX - 2.5 && fwdDist <= obs.radiusX + 3.0 + extraReach) {
                   if (fwdDist < minObsFwdDist) {
                     minObsFwdDist = fwdDist;
                     nearestObs = obs;
@@ -1556,6 +1566,7 @@ export function useRealtimeGame() {
                   const nextHp = Math.max(0, curHp - smashDamage);
                   nearestObs.hp = nextHp;
                   nearestObs.lastHitTime = now;
+                  obstacleMutated = true;
 
                   if (nextHp <= 0 && !nearestObs.isDestroyed) {
                     nearestObs.isDestroyed = true;
@@ -1598,7 +1609,8 @@ export function useRealtimeGame() {
                   y += (targetY - y) * Math.min(1.0, dt * 7.0);
                 }
               } else {
-                // block: 通常ユニットは未破壊障害物の手前で停止（ただし後ろからsmash味方に押されている場合は突破）
+                // block: 通常ユニットは未破壊障害物の手前で足止めされ、障害物を攻撃して壊してから進む！
+                // （ただし後ろからsmash味方に押されている場合は粉砕突破）
                 const hasSmashBehind = unitsAfterHits.some((u) => {
                   if (u.owner !== unit.owner || u.id === unit.id || u.hp <= 0) return false;
                   if ((u.obstacleAction ?? 'block') !== 'smash') return false;
@@ -1615,6 +1627,64 @@ export function useRealtimeGame() {
                     maxXMove = Math.min(maxXMove, obsWall);
                   } else {
                     maxXMove = Math.max(maxXMove, obsWall);
+                  }
+                }
+
+                // 障害物によって前進が阻まれている場合（先頭で接触中、またはすぐ前の味方が障害物で詰まっている場合）は障害物を攻撃して破壊する
+                const actualAdvance = Math.abs(maxXMove - x);
+                const maxObsAttackDist = nearestObs.radiusX + 2.0 + (targetAlly ? ALLY_MIN_GAP : 0);
+                if (!hasSmashBehind && blockDist >= -1.0 && blockDist <= maxObsAttackDist && actualAdvance < moveDelta * 0.5) {
+                  isAttackingObstacle = true;
+                  const obsWindup = Math.min(unit.attackWindup || 0.35, 0.5);
+                  const obsInterval = Math.min(unit.attackInterval || 1.5, 1.5);
+
+                  if (cooldown <= 0) {
+                    if (obsWindup > 0 && !isCharging) {
+                      isCharging = true;
+                      chargeStartTime = now;
+                    } else {
+                      const chargeElapsed = isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
+                      if (obsWindup === 0 || chargeElapsed >= obsWindup) {
+                        isCharging = false;
+                        chargeStartTime = undefined;
+                        cooldown = obsInterval;
+                        lastAttack = now;
+
+                        // 障害物への攻撃ダメージ（攻撃力0の亀吉も体当たりで削れるよう最低1相当＝28ダメージ、2〜3発で破壊）
+                        const obsAtkPower = Math.max(1, unit.attack);
+                        const obsHitDamage = Math.max(28, obsAtkPower * 22);
+                        const curHp = nearestObs.hp ?? 80;
+                        const nextHp = Math.max(0, curHp - obsHitDamage);
+                        nearestObs.hp = nextHp;
+                        nearestObs.lastHitTime = now;
+                        obstacleMutated = true;
+
+                        if (nextHp <= 0 && !nearestObs.isDestroyed) {
+                          nearestObs.isDestroyed = true;
+                        }
+
+                        let obsEffectType: AttackEffectType = 'tackle';
+                        if (unit.cardNo === 1 || unit.cardNo === 13) obsEffectType = 'bite';
+                        else if (unit.cardNo === 6) obsEffectType = 'lightning';
+                        else if (unit.cardNo === 12) obsEffectType = 'arrow';
+
+                        newAttackEffects.push({
+                          id: `obs_atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                          attackerId: unit.id,
+                          fromX: unit.x,
+                          toX: nearestObs.x,
+                          lane: unit.lane ?? unit.y,
+                          toLane: nearestObs.y,
+                          fromY: unit.y,
+                          toY: nearestObs.y,
+                          owner: unit.owner,
+                          effectType: obsEffectType,
+                          damage: obsAtkPower,
+                          createdAt: now,
+                          duration: 320,
+                        });
+                      }
+                    }
                   }
                 }
               }
@@ -1668,6 +1738,11 @@ export function useRealtimeGame() {
             }
           }
 
+          if (!isAttackingObstacle && unit.isAttackingObstacle && !targetEnemy) {
+            isCharging = false;
+            chargeStartTime = undefined;
+          }
+
           x = unit.owner === 'player' ? Math.min(95, maxXMove) : Math.max(5, maxXMove);
           distance += moveDelta;
 
@@ -1696,8 +1771,13 @@ export function useRealtimeGame() {
             isSliding,
             isPushed: false,
             isPushing: false,
+            isAttackingObstacle,
           };
         });
+
+        if (obstacleMutated) {
+          setObstacles(obstaclesRef.current.map((o) => ({ ...o })));
+        }
 
         // C2. smashユニット（イノシシ・ドラゴン）による前方味方の押し出し（プッシュ）解決パス
         const updatedUnits = [...rawUpdatedUnits];

@@ -207,6 +207,7 @@ export function RenderUnit({
   const isSliding = Boolean(unit.isSliding);
   const isPushed = Boolean(unit.isPushed);
   const isPushing = Boolean(unit.isPushing);
+  const isAttackingObstacle = Boolean(unit.isAttackingObstacle);
   const jumpProgress = unit.jumpProgress ?? 0;
   const jumpOffsetY = isJumping ? -Math.sin(jumpProgress * Math.PI) * 26 : 0;
   const jumpScale = isJumping ? 1 + Math.sin(jumpProgress * Math.PI) * 0.25 : 1;
@@ -224,6 +225,7 @@ export function RenderUnit({
       data-sliding={isSliding ? 'true' : 'false'}
       data-pushed={isPushed ? 'true' : 'false'}
       data-pushing={isPushing ? 'true' : 'false'}
+      data-attacking-obstacle={isAttackingObstacle ? 'true' : 'false'}
       style={{
         ...styles.unitWrapper,
         left: `${unit.x}%`,
@@ -307,6 +309,31 @@ export function RenderUnit({
           }}
         >
           🐗 プッシュ!
+        </div>
+      )}
+
+      {/* 通常ユニット（block）が障害物を攻撃して撤去中バッジ */}
+      {!isJumping && !isPushed && !isPushing && isAttackingObstacle && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#475569',
+            color: '#f8fafc',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 5px',
+            borderRadius: '999px',
+            border: '1px solid #94a3b8',
+            boxShadow: '0 0 8px rgba(148, 163, 184, 0.7)',
+            whiteSpace: 'nowrap',
+            zIndex: 44,
+            pointerEvents: 'none',
+          }}
+        >
+          ⛏️ 障害物破壊中!
         </div>
       )}
 
