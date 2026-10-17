@@ -526,6 +526,7 @@ export default function RealtimeDemoPage() {
           <BattleField
             containerRef={battleFieldRef}
             externalHoverPos={externalHoverPos}
+            hand={hand}
             units={units}
             inhibitors={inhibitors}
             obstacles={obstacles}

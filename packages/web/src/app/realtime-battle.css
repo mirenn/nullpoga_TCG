@@ -1,6 +1,9 @@
         .realtime-demo-container {
           box-sizing: border-box;
         }
+        .card-item[draggable="true"] {
+          -webkit-user-drag: element;
+        }
 
         /* 出撃ゾーン: ハザード斜線ストライプ（出撃スペース不足時） */
         @keyframes hazard-stripe-scroll {
