@@ -36,6 +36,7 @@ export default function RealtimeDemoPage() {
     inhibitors,
     obstacles,
     stampede,
+    cloudEvent,
     camera3D,
     setCamera3D,
     resetCamera3D,
@@ -531,6 +532,7 @@ export default function RealtimeDemoPage() {
             inhibitors={inhibitors}
             obstacles={obstacles}
             stampede={stampede}
+            cloudEvent={cloudEvent}
             camera3D={camera3D}
             setCamera3D={setCamera3D}
             resetCamera3D={resetCamera3D}

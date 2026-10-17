@@ -1,11 +1,12 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor, StampedeState } from '../../app/types';
+import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor, StampedeState, CloudEventState } from '../../app/types';
 import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
 import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
 import { RenderStampede } from './RenderStampede';
+import { RenderClouds } from './RenderClouds';
 import {
   clampSpawnX,
   clampPlayerSpawnX,
@@ -39,6 +40,7 @@ import {
   computePeekRevealProgress,
   isPointOccludedByObstacle,
   evaluateUnitStealthAndSpot,
+  computeUnitMaxVisionReachX,
 } from '../../app/obstacles';
 import { SPAWN_MIN_SPACE } from '../../app/cards';
 
@@ -50,6 +52,7 @@ export interface BattleFieldProps {
   inhibitors: Inhibitor[];
   obstacles?: FieldObstacle[];
   stampede?: StampedeState;
+  cloudEvent?: CloudEventState;
   camera3D?: Camera3DState;
   setCamera3D?: (updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)) => void;
   resetCamera3D?: () => void;
@@ -89,6 +92,7 @@ export function BattleField({
   inhibitors,
   obstacles = FIELD_OBSTACLES,
   stampede,
+  cloudEvent,
   camera3D: externalCamera3D,
   setCamera3D: externalSetCamera3D,
   resetCamera3D: externalResetCamera3D,
@@ -819,6 +823,9 @@ export function BattleField({
       {/* 2.2. 巨獣スタンピード回廊（中央危険ゾーン & 突進する巨獣群） */}
       {stampede && <RenderStampede stampede={stampede} />}
 
+      {/* 2.3. 流雲イベント（動的死角・地面の影と上空の雲） */}
+      {cloudEvent && <RenderClouds cloudEvent={cloudEvent} />}
+
       {/* 2.5. 立体遮蔽物の地面ベース層（幹・岩の根元・奇襲エリアサークル） */}
       {obstacles.map((obs) => (
         <RenderObstacleGround
@@ -877,12 +884,17 @@ export function BattleField({
         const isPlayer = unit.owner === 'player';
         const isShieldUnit = unit.attack === 0;
         const isCircularUnit = Boolean(unit.isCircularRange || unit.cardNo === 8);
+
+        // 前方に未破壊の木/森（forest）がある場合、視界・探知は木の手前で遮断される
+        const visionReach = computeUnitMaxVisionReachX(unit.x, unit.y, unit.range, unit.owner, obstacles);
+        const effectiveVisionRange = visionReach.effectiveRange;
+
         const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit
-          ? computeUnitRangeZone(unit.x, unit.y, unit.range, unit.owner)
+          ? computeUnitRangeZone(unit.x, unit.y, effectiveVisionRange, unit.owner)
           : null;
         const hitZone =
-          rangeZone && unit.hitRange !== undefined && unit.hitRange < unit.range
-            ? computeUnitRangeZone(unit.x, unit.y, unit.hitRange, unit.owner)
+          rangeZone && unit.hitRange !== undefined && unit.hitRange < effectiveVisionRange
+            ? computeUnitRangeZone(unit.x, unit.y, Math.min(unit.hitRange, effectiveVisionRange), unit.owner)
             : null;
 
         // 陣営・役割ごとの射程カラー
@@ -967,12 +979,12 @@ export function BattleField({
                   background: rangeFillGradient,
                   borderTop: `1px dashed ${rangeBorderSubtle}`,
                   borderBottom: `1px dashed ${rangeBorderSubtle}`,
-                  borderRight: isPlayer ? `2px solid ${rangeAccentColor}` : 'none',
-                  borderLeft: !isPlayer ? `2px solid ${rangeAccentColor}` : 'none',
+                  borderRight: isPlayer ? `2px solid ${visionReach.isBlockedByObstacle ? '#4ade80' : rangeAccentColor}` : 'none',
+                  borderLeft: !isPlayer ? `2px solid ${visionReach.isBlockedByObstacle ? '#4ade80' : rangeAccentColor}` : 'none',
                   borderRadius: isPlayer ? '0 6px 6px 0' : '6px 0 0 6px',
                   boxShadow: isPlayer
-                    ? `inset -6px 0 12px -6px ${rangeAccentColor}`
-                    : `inset 6px 0 12px -6px ${rangeAccentColor}`,
+                    ? `inset -6px 0 12px -6px ${visionReach.isBlockedByObstacle ? '#22c55e' : rangeAccentColor}`
+                    : `inset 6px 0 12px -6px ${visionReach.isBlockedByObstacle ? '#22c55e' : rangeAccentColor}`,
                   pointerEvents: 'none',
                   zIndex: 6,
                 }}
@@ -999,19 +1011,23 @@ export function BattleField({
                     fontSize: '8.5px',
                     fontWeight: 'bold',
                     color: '#f8fafc',
-                    backgroundColor: isShieldUnit
+                    backgroundColor: visionReach.isBlockedByObstacle
+                      ? 'rgba(22, 101, 52, 0.95)'
+                      : isShieldUnit
                       ? 'rgba(6, 95, 70, 0.88)'
                       : isPlayer
                       ? 'rgba(12, 74, 110, 0.88)'
                       : 'rgba(136, 19, 55, 0.88)',
-                    border: `1px solid ${rangeAccentColor}`,
+                    border: `1px solid ${visionReach.isBlockedByObstacle ? '#4ade80' : rangeAccentColor}`,
                     borderRadius: '3px',
                     padding: '0px 4px',
                     lineHeight: '12px',
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {isShieldUnit
+                  {visionReach.isBlockedByObstacle
+                    ? `🌲視界遮断(${effectiveVisionRange.toFixed(1)}%)`
+                    : isShieldUnit
                     ? `🛡️${unit.range}%`
                     : unit.canMoveWhileCharging
                     ? `🏃突進${unit.range}%`
@@ -1237,6 +1253,45 @@ export function BattleField({
                 }}
               >
                 💥
+              </div>
+            </div>
+          );
+        }
+
+        // 烈火の呪文の詠唱予兆: 実際の延焼が始まる前に、着火地点と対象の縦帯を点滅表示
+        if (spell.type === 'burn_warning') {
+          const originY = spell.originY ?? spell.y ?? 50;
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: 0,
+                bottom: 0,
+                left: `${spell.x}%`,
+                width: `${FIRE_SPELL_HALF_WIDTH_X * 2}%`,
+                transform: 'translateX(-50%)',
+                pointerEvents: 'none',
+                zIndex: 34,
+                background:
+                  'linear-gradient(to right, rgba(239,68,68,0) 0%, rgba(239,68,68,0.35) 50%, rgba(239,68,68,0) 100%)',
+                borderLeft: '2px dashed rgba(249, 115, 22, 0.9)',
+                borderRight: '2px dashed rgba(249, 115, 22, 0.9)',
+                animation: 'fire-cast-warning-blink 0.3s ease-in-out infinite alternate',
+              }}
+            >
+              <style>{`@keyframes fire-cast-warning-blink { from { opacity: 0.35; } to { opacity: 1; } }`}</style>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: `${originY}%`,
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  fontSize: '26px',
+                  filter: 'drop-shadow(0 0 10px #f97316)',
+                }}
+              >
+                ⚠️🔥
               </div>
             </div>
           );
@@ -1746,11 +1801,19 @@ export function BattleField({
               );
             }
 
-            const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, previewRange, 'player');
+            const previewVisionReach = computeUnitMaxVisionReachX(
+              currentTargetX,
+              currentTargetY,
+              previewRange,
+              'player',
+              obstacles
+            );
+            const effectivePreviewRange = previewVisionReach.effectiveRange;
+            const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, effectivePreviewRange, 'player');
             return (
               <>
               <div
-                data-spawn-range-preview={previewRange}
+                data-spawn-range-preview={effectivePreviewRange}
                 style={{
                   position: 'absolute',
                   left: `${previewZone.left}%`,
@@ -1764,7 +1827,7 @@ export function BattleField({
                     : 'linear-gradient(to right, rgba(56, 189, 248, 0.08), rgba(56, 189, 248, 0.26))',
                   borderTop: `1.5px dashed ${previewColor}`,
                   borderBottom: `1.5px dashed ${previewColor}`,
-                  borderRight: `2.5px solid ${previewColor}`,
+                  borderRight: `2.5px solid ${previewVisionReach.isBlockedByObstacle ? '#4ade80' : previewColor}`,
                   borderRadius: '0 6px 6px 0',
                   pointerEvents: 'none',
                   zIndex: 19,
@@ -1778,15 +1841,19 @@ export function BattleField({
                     fontSize: '9px',
                     fontWeight: 'bold',
                     color: '#ffffff',
-                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                    border: `1px solid ${previewColor}`,
+                    backgroundColor: previewVisionReach.isBlockedByObstacle
+                      ? 'rgba(22, 101, 52, 0.95)'
+                      : 'rgba(15, 23, 42, 0.9)',
+                    border: `1px solid ${previewVisionReach.isBlockedByObstacle ? '#4ade80' : previewColor}`,
                     borderRadius: '3px',
                     padding: '0px 4px',
                     lineHeight: '13px',
                     whiteSpace: 'nowrap',
                   }}
                 >
-                  {activeCard.canMoveWhileCharging
+                  {previewVisionReach.isBlockedByObstacle
+                    ? `🌲視界遮断(${effectivePreviewRange.toFixed(1)}%)`
+                    : activeCard.canMoveWhileCharging
                     ? `🏃突進射程 ${previewRange}%`
                     : isShield
                     ? `🛡️射程 ${previewRange}%`
@@ -1794,8 +1861,8 @@ export function BattleField({
                 </span>
               </div>
               {/* 実ヒット距離(hitRange)が探知距離より短いカードは、内側に命中範囲を重ねて表示 */}
-              {activeCard.hitRange !== undefined && activeCard.hitRange < previewRange && (() => {
-                const hitZone = computeUnitRangeZone(currentTargetX, currentTargetY, activeCard.hitRange, 'player');
+              {activeCard.hitRange !== undefined && activeCard.hitRange < effectivePreviewRange && (() => {
+                const hitZone = computeUnitRangeZone(currentTargetX, currentTargetY, Math.min(activeCard.hitRange, effectivePreviewRange), 'player');
                 return (
                   <div
                     data-spawn-hit-range-preview={activeCard.hitRange}

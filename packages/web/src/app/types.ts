@@ -80,6 +80,8 @@ export interface Unit {
   isSpotted?: boolean; // カメラ平行移動（覗き込み）によって遮蔽物の死角から看破されたか
   lastSpottedTime?: number; // スポット（看破）演出用タイムスタンプ
   isAmbushDeploy?: boolean; // 自陣遮蔽物の陰から奇襲出撃したバフ適用中か
+  isCloudConcealed?: boolean; // 雲の影に入って死角に隠れているか
+  isCloudSpotted?: boolean; // 雲の中にいるが味方接近等で看破されたか
   lane?: number; // 互換エイリアス
 }
 
@@ -158,5 +160,28 @@ export interface CpuSpawnWarning {
   durationMs: number;
   comboCount?: number;
   lane?: number;
+}
+
+export type CloudEventPhase = 'idle' | 'drifting' | 'cooldown';
+
+export interface CloudEntity {
+  id: string;
+  x: number; // 0〜100% (雲中心のX座標)
+  y: number; // 0〜100% (雲中心のY座標)
+  radiusX: number; // 影・死角の水平半径 (%)
+  radiusY: number; // 影・死角の垂直半径 (%)
+  speedX: number; // 1秒あたりの移動速度 (%/s)
+  speedY: number; // 1秒あたりのY微動速度 (%/s)
+  scale: number; // 表示スケール
+  opacity: number; // 雲の透明度 (0.0〜1.0)
+  shadowOpacity: number; // 地面に落ちる影の濃さ (0.0〜1.0)
+}
+
+export interface CloudEventState {
+  phase: CloudEventPhase;
+  phaseTimer: number; // 現在フェーズの残り秒数
+  phaseDuration: number; // 現在フェーズの規定秒数
+  nextCloudIn: number; // 次の雲発生までの秒数
+  clouds: CloudEntity[]; // 現在流れている雲群
 }
 

@@ -212,6 +212,13 @@ export function RenderUnit({
   const jumpOffsetY = isJumping ? -Math.sin(jumpProgress * Math.PI) * 26 : 0;
   const jumpScale = isJumping ? 1 + Math.sin(jumpProgress * Math.PI) * 0.25 : 1;
 
+  // 雲の影による動的死角の判定
+  const isCloudConcealed = Boolean(unit.isCloudConcealed);
+  const isCloudSpotted = Boolean(unit.isCloudSpotted);
+  const isCpuHiddenInCloud = !isPlayer && isCloudConcealed && !isCloudSpotted;
+  const isCpuRevealedInCloud = !isPlayer && isCloudConcealed && isCloudSpotted;
+  const isPlayerInCloud = isPlayer && isCloudConcealed;
+
   return (
     <div
       data-unit-id={unit.id}
@@ -220,7 +227,8 @@ export function RenderUnit({
       data-interval={unit.attackInterval}
       data-kill-count={unit.killCount || 0}
       data-spotted={unit.isSpotted ? 'true' : 'false'}
-      data-concealed={isConcealed ? 'true' : 'false'}
+      data-concealed={isConcealed || isCpuHiddenInCloud ? 'true' : 'false'}
+      data-cloud-concealed={isCloudConcealed ? 'true' : 'false'}
       data-jumping={isJumping ? 'true' : 'false'}
       data-sliding={isSliding ? 'true' : 'false'}
       data-pushed={isPushed ? 'true' : 'false'}
@@ -231,12 +239,90 @@ export function RenderUnit({
         left: `${unit.x}%`,
         top: `${unit.y}%`,
         transform: `translate(-50%, calc(-50% + ${jumpOffsetY}px)) scale(${jumpScale})`,
-        opacity: isConcealed ? 0.12 : 1,
-        filter: isConcealed ? 'blur(1.5px) brightness(0.5)' : undefined,
+        opacity: isConcealed ? 0.12 : isCpuHiddenInCloud ? 0.32 : isPlayerInCloud ? 0.78 : 1,
+        filter: isConcealed
+          ? 'blur(1.5px) brightness(0.5)'
+          : isCpuHiddenInCloud
+          ? 'blur(1.8px) contrast(1.4) brightness(0.25)'
+          : undefined,
         zIndex: isJumping ? 45 : unit.isSpotted ? 31 : styles.unitWrapper.zIndex,
-        transition: isJumping ? 'none' : 'opacity 0.18s ease-out, filter 0.18s ease-out',
+        transition: isJumping ? 'none' : 'opacity 0.2s ease-out, filter 0.2s ease-out',
       }}
     >
+      {/* 雲の死角（未看破の敵）インジケーター */}
+      {isCpuHiddenInCloud && !isJumping && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(15, 23, 42, 0.95)',
+            color: '#cbd5e1',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '999px',
+            border: '1px dashed #94a3b8',
+            boxShadow: '0 0 10px rgba(0, 0, 0, 0.8)',
+            whiteSpace: 'nowrap',
+            zIndex: 42,
+            pointerEvents: 'none',
+          }}
+        >
+          🌫️ 雲隠れ [???]
+        </div>
+      )}
+
+      {/* 雲の中で味方接近により看破された敵インジケーター */}
+      {isCpuRevealedInCloud && !isJumping && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-24px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#0284c7',
+            color: '#f0f9ff',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '999px',
+            border: '1px solid #38bdf8',
+            boxShadow: '0 0 10px rgba(56, 189, 248, 0.8)',
+            whiteSpace: 'nowrap',
+            zIndex: 42,
+            pointerEvents: 'none',
+          }}
+        >
+          👁️ 雲から看破!
+        </div>
+      )}
+
+      {/* 雲の影に紛れている自軍ユニット */}
+      {isPlayerInCloud && !isJumping && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '-20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: 'rgba(30, 41, 59, 0.88)',
+            color: '#93c5fd',
+            fontSize: '8.5px',
+            fontWeight: 'bold',
+            padding: '1px 5px',
+            borderRadius: '999px',
+            border: '1px solid #60a5fa',
+            whiteSpace: 'nowrap',
+            zIndex: 40,
+            pointerEvents: 'none',
+          }}
+        >
+          ☁️ 雲隠れ中
+        </div>
+      )}
+
       {/* 障害物・味方ジャンプ飛び越えバッジ */}
       {isJumping && (
         <div
@@ -369,16 +455,18 @@ export function RenderUnit({
         </div>
       )}
 
-      {/* HPバー */}
-      <div style={styles.unitHpBarBg}>
-        <div
-          style={{
-            ...styles.unitHpBarFill,
-            width: `${Math.max(0, (unit.hp / unit.maxHp) * 100)}%`,
-            backgroundColor: isPlayer ? '#22c55e' : '#ef4444',
-          }}
-        />
-      </div>
+      {/* HPバー (雲の死角にいる敵ユニットはHP秘匿) */}
+      {!isCpuHiddenInCloud && (
+        <div style={styles.unitHpBarBg}>
+          <div
+            style={{
+              ...styles.unitHpBarFill,
+              width: `${Math.max(0, (unit.hp / unit.maxHp) * 100)}%`,
+              backgroundColor: isPlayer ? '#22c55e' : '#ef4444',
+            }}
+          />
+        </div>
+      )}
 
       {/* ユニット本体アイコン */}
       <div
@@ -431,8 +519,12 @@ export function RenderUnit({
           isBlockingSpawn={isBlockingSpawn}
         />
 
-        {/* SVG コンポーネント or 絵文字フォールバック */}
-        {svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>}
+        {/* SVG コンポーネント or 絵文字フォールバック (雲の死角の敵は「❓」シルエット) */}
+        {isCpuHiddenInCloud ? (
+          <span style={{ fontSize: '20px', filter: 'drop-shadow(0 0 6px #000)', opacity: 0.9 }}>❓</span>
+        ) : (
+          svgElement ?? <span style={styles.unitIconText}>{unit.icon}</span>
+        )}
 
         {/* 状態異常・バフ表示 */}
         {isHolding && (

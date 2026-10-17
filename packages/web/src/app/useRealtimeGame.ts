@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning, Inhibitor, Owner, StampedeState } from './types';
+import { DemoCard, Unit, SpellEffect, AttackEffect, AttackEffectType, CpuSpawnWarning, Inhibitor, Owner, StampedeState, CloudEventState } from './types';
 import {
   CARD_POOL,
   MANA_SPEED_PRESETS,
@@ -70,6 +70,8 @@ import {
   findPlayerAmbushObstacle,
   evaluateUnitStealthAndSpot,
   isObstacleActive,
+  hasLineOfSight,
+  isStealthCapableCard,
 } from './obstacles';
 import {
   createInitialStampedeState,
@@ -81,6 +83,10 @@ import {
   HOLD_AMBUSH_DASH_DURATION_SEC,
   STAMPEDE_CRUSH_DAMAGE,
 } from './stampede';
+import {
+  createInitialCloudEventState,
+  updateCloudEvent,
+} from './cloudEvent';
 
 
 
@@ -141,6 +147,8 @@ interface CombatTarget {
   y: number;
   isStructure: boolean;
   lane?: number;
+  cardNo?: number;
+  isSpotted?: boolean;
 }
 
 export function useRealtimeGame() {
@@ -238,6 +246,9 @@ export function useRealtimeGame() {
   // 巨獣スタンピード（中央危険回廊）状態
   const [stampede, setStampede] = useState<StampedeState>(createInitialStampedeState());
   const stampedeRef = useRef<StampedeState>(createInitialStampedeState());
+  // 流雲イベント（動的死角）状態
+  const [cloudEvent, setCloudEvent] = useState<CloudEventState>(createInitialCloudEventState());
+  const cloudEventRef = useRef<CloudEventState>(createInitialCloudEventState());
   // ゲーム終了ステータス
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
@@ -1078,7 +1089,7 @@ export function useRealtimeGame() {
           let minDistance = 999;
 
           if (unit.isCircularRange || unit.cardNo === 8) {
-            // 円形全方位探知ユニット（忍者など）: 全敵ユニット・全敵インヒビターからユークリッド距離で探知
+            // 円形全方位探知ユニット（忍者など）: 全敵ユニット・全敵インヒビターから視界が通っている相手をユークリッド距離で探知
             const allEnemies = unitsAfterHits.filter(
               (u) => u.owner !== unit.owner && u.hp > 0
             );
@@ -1086,15 +1097,37 @@ export function useRealtimeGame() {
               (i) => i.owner !== unit.owner && i.hp > 0
             );
             targetCandidates = [
-              ...allEnemies.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+              ...allEnemies.map((e) => ({
+                id: e.id,
+                x: e.x,
+                y: e.y,
+                lane: e.y,
+                isStructure: false,
+                cardNo: e.cardNo,
+                isSpotted: e.isSpotted,
+              })),
               ...allInhibitors.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
             ];
-            // ユークリッド距離が射程(unit.range)以内かつ最も近い敵を主標的とする
+            // 視線(Line of Sight)が通っており、射程(unit.range)以内かつ最も近い敵を主標的とする
             targetCandidates.forEach((enemy) => {
               const dist = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
               if (dist <= unit.range && dist < minDistance) {
-                minDistance = dist;
-                targetEnemy = enemy;
+                const sightClear = hasLineOfSight(
+                  unit.x,
+                  unit.y,
+                  enemy.x,
+                  enemy.y,
+                  obstaclesRef.current,
+                  {
+                    isStructure: enemy.isStructure,
+                    isStealthCapable: enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
+                    isSpotted: enemy.isSpotted,
+                  }
+                );
+                if (sightClear) {
+                  minDistance = dist;
+                  targetEnemy = enemy;
+                }
               }
             });
           } else {
@@ -1106,14 +1139,36 @@ export function useRealtimeGame() {
               (i) => i.owner !== unit.owner && inhibitorEngageableY(i, unit.y) && i.hp > 0
             );
             targetCandidates = [
-              ...enemiesInRange.map((e) => ({ id: e.id, x: e.x, y: e.y, lane: e.y, isStructure: false })),
+              ...enemiesInRange.map((e) => ({
+                id: e.id,
+                x: e.x,
+                y: e.y,
+                lane: e.y,
+                isStructure: false,
+                cardNo: e.cardNo,
+                isSpotted: e.isSpotted,
+              })),
               ...enemyInhibitorsInPath.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
             ];
             targetCandidates.forEach((enemy) => {
               const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
               if (dist >= -2 && dist < minDistance) {
-                minDistance = Math.max(0, dist);
-                targetEnemy = enemy;
+                const sightClear = hasLineOfSight(
+                  unit.x,
+                  unit.y,
+                  enemy.x,
+                  enemy.y,
+                  obstaclesRef.current,
+                  {
+                    isStructure: enemy.isStructure,
+                    isStealthCapable: enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
+                    isSpotted: enemy.isSpotted,
+                  }
+                );
+                if (sightClear) {
+                  minDistance = Math.max(0, dist);
+                  targetEnemy = enemy;
+                }
               }
             });
           }
@@ -2084,9 +2139,15 @@ export function useRealtimeGame() {
             .filter((u) => u.hp > 0);
         }
 
+        // 流雲イベントの進行更新 & 雲隠れ（動的死角）判定
+        const cloudRes = updateCloudEvent(dt, cloudEventRef.current, unitsAfterStampede);
+        cloudEventRef.current = cloudRes.nextState;
+        setCloudEvent(cloudRes.nextState);
+        const finalUnitsWithClouds = cloudRes.updatedUnits;
+
         // E. 状態の一括反映
-        unitsRef.current = unitsAfterStampede;
-        setUnits(unitsAfterStampede);
+        unitsRef.current = finalUnitsWithClouds;
+        setUnits(finalUnitsWithClouds);
 
         if (pDamageToCpu > 0) {
           setCpuHp((h) => {
@@ -2170,6 +2231,9 @@ export function useRealtimeGame() {
     const freshStampede = createInitialStampedeState();
     stampedeRef.current = freshStampede;
     setStampede(freshStampede);
+    const freshCloudEvent = createInitialCloudEventState();
+    cloudEventRef.current = freshCloudEvent;
+    setCloudEvent(freshCloudEvent);
     setSpellEffects([]);
     setAttackEffects([]);
     setPendingLightningHits([]);
@@ -2217,6 +2281,7 @@ export function useRealtimeGame() {
     inhibitors,
     obstacles,
     stampede,
+    cloudEvent,
     camera3D,
     setCamera3D,
     resetCamera3D,

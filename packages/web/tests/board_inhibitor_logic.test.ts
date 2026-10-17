@@ -56,6 +56,10 @@ import {
   isPointOccludedByObstacle,
   evaluateUnitStealthAndSpot,
   isObstacleActive,
+  isObstacleBlockingVision,
+  doesSegmentIntersectObstacle,
+  hasLineOfSight,
+  computeUnitMaxVisionReachX,
 } from '../src/app/obstacles';
 import {
   STAMPEDE_ZONE_X_MIN,
@@ -71,6 +75,17 @@ import {
   shouldCpuUnitHoldForStampede,
   updateStampede,
 } from '../src/app/stampede';
+import {
+  CLOUD_INITIAL_DELAY_SEC,
+  CLOUD_INTERVAL_SEC,
+  CLOUD_DRIFT_DURATION_SEC,
+  CLOUD_SPOT_PROXIMITY_DISTANCE,
+  createInitialCloudEventState,
+  isUnitInCloudShadow,
+  isUnitCoveredByAnyCloud,
+  generateClouds,
+  updateCloudEvent,
+} from '../src/app/cloudEvent';
 import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
@@ -762,7 +777,244 @@ assert(ambushAttack === 4, `Ambush attack must add +2 (got ${ambushAttack})`);
 
 console.log('  -> Stampede corridor and Hold Ambush mechanics: PASSED');
 
-console.log('=== All 12 Test Suites PASSED Successfully! ===');
+console.log('[13/13] Testing Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment...');
+// 13-1. 障害物種別による視界遮断判定
+const testForest = FIELD_OBSTACLES.find((o) => o.kind === 'forest')!;
+const testRock = FIELD_OBSTACLES.find((o) => o.kind === 'rock')!;
+const testCrystal = FIELD_OBSTACLES.find((o) => o.kind === 'crystal')!;
+
+assert(isObstacleBlockingVision(testForest) === true, 'Forest obstacle must block vision');
+assert(isObstacleBlockingVision(testRock) === false, 'Rock obstacle must allow vision (user preference)');
+assert(isObstacleBlockingVision(testCrystal) === false, 'Crystal obstacle must allow vision');
+
+// 破壊済み（切り株・瓦礫）は視界を遮らない
+const destroyedForest = { ...testForest, isDestroyed: true };
+assert(isObstacleBlockingVision(destroyedForest) === false, 'Destroyed forest must not block vision');
+const depletedForest = { ...testForest, hp: 0 };
+assert(isObstacleBlockingVision(depletedForest) === false, '0-HP forest must not block vision');
+
+// 13-2. 線分と障害物の交差判定 (doesSegmentIntersectObstacle)
+// 上ルート (y=35) にある翠緑の隠れ森 (x=34, y=35, rx=8.5, ry=7.5) を挟む射線
+assert(
+  doesSegmentIntersectObstacle(20, 35, 50, 35, testForest) === true,
+  'Line across forest (x: 20->50, y=35) must intersect forest'
+);
+// メインレーン (y=50) を直進する射線は y=35 の森と交差しない
+assert(
+  doesSegmentIntersectObstacle(20, 50, 50, 50, testForest) === false,
+  'Line in main lane (y=50) must not intersect forest at y=35'
+);
+
+// 13-3. LoL風の視線判定 (hasLineOfSight)
+// (A) 木を挟んだ奥の敵 (x=45: 自陣の森の後ろ・中央の森の手前): 視線が遮断される
+const losAcrossTree = hasLineOfSight(20, 35, 45, 35, FIELD_OBSTACLES);
+assert(losAcrossTree === false, 'Vision must be blocked when enemy is behind a forest tree');
+
+// (B) 岩を挟んだ奥の敵: 岩は視界を通すため見える (下ルート y=65)
+const losAcrossRock = hasLineOfSight(20, 65, 45, 65, FIELD_OBSTACLES);
+assert(losAcrossRock === true, 'Vision must pass through rocks (rock is transparent to sight)');
+
+// (C) 森（草むら）の中に潜む小型隠密敵: 外のユニットからは見えない
+// 翠緑の隠れ森の中心 (34, 35) にいる未看破ネズミ (cardNo: 1)
+const losToHiddenMouse = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+  isStructure: false,
+  isStealthCapable: true,
+  isSpotted: false,
+});
+assert(losToHiddenMouse === false, 'Unspotted stealth enemy in bush must not be visible from outside');
+
+// (D) 同じ森の中に入れば、森の中の敵が見える（LoLの同じ草むら仕様）
+const losInsideSameBush = hasLineOfSight(33, 35, 35, 35, FIELD_OBSTACLES, {
+  isStructure: false,
+  isStealthCapable: true,
+  isSpotted: false,
+});
+assert(losInsideSameBush === true, 'Enemies inside the same bush must be visible to each other');
+
+// (E) カメラ覗き込み等でSPOT看破された敵、または大型ユニット（ドラゴン cardNo: 11）は森の中にいても見える
+const losToSpottedEnemy = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+  isStructure: false,
+  isStealthCapable: true,
+  isSpotted: true,
+});
+assert(losToSpottedEnemy === true, 'Spotted enemy in bush must be visible from outside');
+
+const losToDragonInBush = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+  isStructure: false,
+  isStealthCapable: false,
+  isSpotted: false,
+});
+assert(losToDragonInBush === true, 'Large non-stealth enemy in bush must be visible from outside');
+
+// (F) 木が破壊された場合、木を挟んだ奥の敵への視線が即座に通る
+const obstaclesWithBrokenTree = FIELD_OBSTACLES.map((o) =>
+  o.id === 'obs_player_upper_forest' ? { ...o, isDestroyed: true } : o
+);
+const losAfterTreeDestroyed = hasLineOfSight(20, 35, 45, 35, obstaclesWithBrokenTree);
+assert(losAfterTreeDestroyed === true, 'Destroyed tree must open line of sight to enemies behind it');
+
+// 13-4. 直進ユニットの最大視界到達点 (computeUnitMaxVisionReachX)
+// プレイヤーユニットが x=20, y=35 に配置された時、前方の木 (x=34, rx=8.5) の手前で視界がクリップされる
+const reachPlayerBeforeTree = computeUnitMaxVisionReachX(20, 35, 25, 'player', FIELD_OBSTACLES);
+assert(reachPlayerBeforeTree.isBlockedByObstacle === true, 'Player unit facing tree must have sight blocked');
+assert(
+  reachPlayerBeforeTree.effectiveRange < 25,
+  `Effective range must be truncated before tree (got ${reachPlayerBeforeTree.effectiveRange})`
+);
+assert(
+  reachPlayerBeforeTree.reachX < 34,
+  `Vision reachX must stop before tree center (got ${reachPlayerBeforeTree.reachX})`
+);
+
+// 下ルート (y=65, 岩) のユニットは視界が遮られず、フル射程25%が保たれる
+const reachPlayerFacingRock = computeUnitMaxVisionReachX(20, 65, 25, 'player', FIELD_OBSTACLES);
+assert(reachPlayerFacingRock.isBlockedByObstacle === false, 'Player unit facing rock must not have sight blocked');
+assert(reachPlayerFacingRock.effectiveRange === 25, 'Effective range through rock must remain 25%');
+
+console.log('  -> Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment: PASSED');
+
+console.log('[14/14] Testing Drifting Clouds, moving shadow corridor, and dynamic Fog of War concealment / proximity spotting...');
+
+// 1. 初期状態検証
+const cloudInit = createInitialCloudEventState();
+assert(cloudInit.phase === 'idle', 'Initial cloud phase must be idle');
+assert(cloudInit.phaseTimer === CLOUD_INITIAL_DELAY_SEC, 'Initial delay must match CLOUD_INITIAL_DELAY_SEC');
+assert(cloudInit.clouds.length === 0, 'No clouds during initial idle');
+
+// 2. 雲の影の当たり判定検証 (isUnitInCloudShadow)
+const sampleCloud = {
+  id: 'test_cloud_1',
+  x: 50,
+  y: 40,
+  radiusX: 20,
+  radiusY: 30,
+  speedX: 10,
+  speedY: 0,
+  scale: 1,
+  opacity: 0.85,
+  shadowOpacity: 0.4,
+};
+assert(isUnitInCloudShadow(50, 40, sampleCloud) === true, 'Center must be inside cloud shadow');
+assert(isUnitInCloudShadow(65, 40, sampleCloud) === true, 'X=65 (dx=15/20=0.75) must be inside shadow');
+assert(isUnitInCloudShadow(75, 40, sampleCloud) === false, 'X=75 (dx=25/20=1.25) must be outside shadow');
+assert(isUnitInCloudShadow(50, 65, sampleCloud) === true, 'Y=65 (dy=25/30=0.83) must be inside shadow');
+assert(isUnitInCloudShadow(50, 75, sampleCloud) === false, 'Y=75 (dy=35/30=1.16) must be outside shadow');
+
+// 3. 雲の生成 (generateClouds)
+const cloudsLtoR = generateClouds('left-to-right');
+assert(cloudsLtoR.length === 2, 'Should generate main and sub cloud');
+assert(cloudsLtoR[0].speedX > 0, 'Left-to-right cloud must have positive speedX');
+
+const cloudsRtoL = generateClouds('right-to-left');
+assert(cloudsRtoL.length === 2, 'Should generate main and sub cloud');
+assert(cloudsRtoL[0].speedX < 0, 'Right-to-left cloud must have negative speedX');
+
+// 4. アイドルから drifting への状態遷移 (updateCloudEvent)
+const idleStateExpiring = { ...cloudInit, phaseTimer: 0.05 };
+const resTrigger = updateCloudEvent(0.1, idleStateExpiring, []);
+assert(resTrigger.nextState.phase === 'drifting', 'Expired idle must transition to drifting');
+assert(resTrigger.nextState.clouds.length === 2, 'Drifting state must spawn clouds');
+
+// 5. 雲の影による動的死角（敵の隠蔽 & 味方の雲隠れ）
+const driftingState = {
+  ...cloudInit,
+  phase: 'drifting' as const,
+  phaseTimer: 10,
+  clouds: [sampleCloud],
+};
+
+const cpuEnemyInside: Unit = {
+  id: 'cpu_enemy_inside',
+  cardNo: 1,
+  name: '敵ゴブリン',
+  hp: 10,
+  maxHp: 10,
+  attack: 2,
+  range: 15,
+  attackCooldown: 0,
+  attackInterval: 1.0,
+  icon: '👹',
+  speed: 1.0,
+  owner: 'cpu',
+  x: 52,
+  y: 42,
+};
+
+const cpuEnemyFarOutside: Unit = {
+  id: 'cpu_enemy_outside',
+  cardNo: 1,
+  name: '敵外側',
+  hp: 10,
+  maxHp: 10,
+  attack: 2,
+  range: 15,
+  attackCooldown: 0,
+  attackInterval: 1.0,
+  icon: '👹',
+  speed: 1.0,
+  owner: 'cpu',
+  x: 85,
+  y: 80,
+};
+
+const playerAllyFar: Unit = {
+  id: 'player_ally_far',
+  cardNo: 0,
+  name: '味方ネコ',
+  hp: 10,
+  maxHp: 10,
+  attack: 1,
+  range: 15,
+  attackCooldown: 0,
+  attackInterval: 1.0,
+  icon: '🐱',
+  speed: 1.0,
+  owner: 'player',
+  x: 10,
+  y: 40,
+};
+
+const resConceal = updateCloudEvent(0.016, driftingState, [cpuEnemyInside, cpuEnemyFarOutside, playerAllyFar]);
+const enemyInsideUpdated = resConceal.updatedUnits.find((u) => u.id === 'cpu_enemy_inside')!;
+const enemyOutsideUpdated = resConceal.updatedUnits.find((u) => u.id === 'cpu_enemy_outside')!;
+
+assert(enemyInsideUpdated.isCloudConcealed === true, 'Enemy inside cloud shadow must be concealed');
+assert(enemyInsideUpdated.isCloudSpotted === false, 'Enemy inside cloud without close ally must NOT be spotted');
+assert(enemyOutsideUpdated.isCloudConcealed === false, 'Enemy outside cloud must NOT be concealed');
+
+// 6. 接近看破（Proximity Spotting）
+// 味方ユニットが敵ゴブリンの至近距離 (距離 <= 13%) に接近
+const playerAllyClose: Unit = {
+  ...playerAllyFar,
+  x: 56, // 敵(52, 42)との距離は 4%
+  y: 42,
+};
+
+const resSpot = updateCloudEvent(0.016, driftingState, [cpuEnemyInside, playerAllyClose]);
+const enemySpotted = resSpot.updatedUnits.find((u) => u.id === 'cpu_enemy_inside')!;
+const allyInCloud = resSpot.updatedUnits.find((u) => u.id === 'player_ally_far')!;
+
+assert(enemySpotted.isCloudConcealed === true, 'Enemy is still within cloud shadow');
+assert(enemySpotted.isCloudSpotted === true, 'Enemy must be spotted by close player unit');
+assert(allyInCloud.isCloudConcealed === true, 'Player unit in cloud must have cloud status');
+assert(allyInCloud.isCloudSpotted === true, 'Player unit is always spotted for player');
+
+// 7. 雲通過後の解除 (cooldown / idle)
+const cooldownState = {
+  ...cloudInit,
+  phase: 'cooldown' as const,
+  phaseTimer: 1.0,
+  clouds: [],
+};
+const resCooldown = updateCloudEvent(0.016, cooldownState, [enemyInsideUpdated]);
+const enemyAfterCloud = resCooldown.updatedUnits[0];
+assert(enemyAfterCloud.isCloudConcealed === false, 'Concealment must be removed after clouds pass');
+assert(enemyAfterCloud.isCloudSpotted === false, 'Spotted flag must be reset after clouds pass');
+
+console.log('  -> Drifting Clouds, moving shadow corridor, and dynamic Fog of War concealment / proximity spotting: PASSED');
+
+console.log('=== All 14 Test Suites PASSED Successfully! ===');
+
 
 
 

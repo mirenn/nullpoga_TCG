@@ -401,3 +401,179 @@ export function evaluateUnitStealthAndSpot(
     newlySpotted: false,
   };
 }
+
+/**
+ * 障害物がユニットの視界（Line of Sight）を遮るかどうか判定
+ * - 木/森（forest）: 茂みと樹冠により視界を完全に遮断する (true)
+ * - 岩（rock）/ 結晶（crystal）: 背が低い等の理由で視界・射線を通す (false)
+ * - 破壊済み（isDestroyed または HP<=0）: 切り株や瓦礫となるため視界を通す (false)
+ */
+export function isObstacleBlockingVision(obstacle: FieldObstacle): boolean {
+  if (!isObstacleActive(obstacle)) {
+    return false;
+  }
+  return obstacle.kind === 'forest';
+}
+
+/**
+ * 2点 (x1, y1) と (x2, y2) を結ぶ線分が、指定の障害物のフットプリント（楕円）と交差するか判定する
+ * @param marginScale 障害物の当たり判定スケール（デフォルト 0.95）
+ */
+export function doesSegmentIntersectObstacle(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  obstacle: FieldObstacle,
+  marginScale: number = 0.95
+): boolean {
+  const rx = obstacle.radiusX * marginScale;
+  const ry = obstacle.radiusY * marginScale;
+  if (rx <= 0 || ry <= 0) return false;
+
+  // 障害物の中心を原点とし、各軸を半径で正規化した座標系へ変換
+  const u1 = (x1 - obstacle.x) / rx;
+  const v1 = (y1 - obstacle.y) / ry;
+  const u2 = (x2 - obstacle.x) / rx;
+  const v2 = (y2 - obstacle.y) / ry;
+
+  const du = u2 - u1;
+  const dv = v2 - v1;
+  const segmentLenSq = du * du + dv * dv;
+
+  if (segmentLenSq === 0) {
+    // 始点と終点が同一
+    return u1 * u1 + v1 * v1 <= 1.0;
+  }
+
+  // 線分 P(t) = P1 + t * (P2 - P1) 上で原点 (0,0) に最も近い t を算出 (0 <= t <= 1)
+  const tClosest = -(u1 * du + v1 * dv) / segmentLenSq;
+  const t = Math.max(0, Math.min(1, tClosest));
+
+  const closestU = u1 + t * du;
+  const closestV = v1 + t * dv;
+
+  return closestU * closestU + closestV * closestV <= 1.0;
+}
+
+export interface TargetVisionInfo {
+  isStructure?: boolean;
+  isStealthCapable?: boolean;
+  isSpotted?: boolean;
+}
+
+/**
+ * 観測者 (x1, y1) からターゲット (x2, y2) への視線（Line of Sight）が通っているか判定する
+ * 【LoLライクな視界ルール】
+ * 1. 観測者自身が森（草むら）の中にいる場合、その森自身によって視界は遮られない。
+ * 2. ターゲットが未破壊の森の中にいる場合:
+ *    - 観測者も同じ森の中にいるなら見える。
+ *    - ターゲットが構造物（インヒビター等）、大型（非隠密）、または看破済み(isSpotted)なら外からでも見える。
+ *    - それ以外（未看破の小型隠密敵で観測者が森の外）なら森の中に潜んでいるため見えない。
+ * 3. 観測者からターゲットへの線分上に、観測者の外側にある未破壊の木/森（kind === 'forest'）が存在する場合:
+ *    - 木が視界を遮断するため、木の後ろにあるターゲットは見えない。
+ * 4. 岩（rock）や結晶（crystal）は視界を通すため遮断しない。
+ */
+export function hasLineOfSight(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  obstacles: FieldObstacle[] = FIELD_OBSTACLES,
+  targetInfo?: TargetVisionInfo
+): boolean {
+  for (const obs of obstacles) {
+    if (!isObstacleBlockingVision(obs)) {
+      continue;
+    }
+
+    const observerInside = isPointInObstacleFootprint(x1, y1, obs, 1.0);
+    const targetInside = isPointInObstacleFootprint(x2, y2, obs, 1.0);
+
+    // 2. ターゲットが森の中にいる場合の判定
+    if (targetInside) {
+      if (observerInside) {
+        // 同じ森の中にいれば互いに見える
+        continue;
+      }
+      // 観測者が外にいる場合:
+      // 大型（非隠密）、看破済み、または構造物でない限り見えない
+      const canBeSeenFromOutside =
+        targetInfo?.isStructure ||
+        targetInfo?.isSpotted ||
+        (targetInfo?.isStealthCapable === false);
+
+      if (!canBeSeenFromOutside) {
+        return false;
+      }
+      // ターゲット自身がこの森の中にいて外から視認可能な場合、
+      // この森自身がターゲットへの視線を遮ることはないため通過
+      continue;
+    }
+
+    // 3. 森が2点の間にある（視線を遮断する）場合の判定
+    // 観測者が森の外にいる場合のみ、その森が視線を遮断する
+    if (!observerInside) {
+      if (doesSegmentIntersectObstacle(x1, y1, x2, y2, obs, 0.95)) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * 前方直進ユニットの最大視界到達点 (reachX) を算出する
+ * ユニットの前方に未破壊の木/森がある場合、視界・探知は木の手前で遮断される
+ */
+export function computeUnitMaxVisionReachX(
+  x: number,
+  y: number,
+  range: number,
+  owner: Owner,
+  obstacles: FieldObstacle[] = FIELD_OBSTACLES,
+  engageHalfWidthY: number = 6.5
+): {
+  reachX: number;
+  effectiveRange: number;
+  isBlockedByObstacle: boolean;
+  blockerObstacle: FieldObstacle | null;
+} {
+  const isPlayer = owner === 'player';
+  let minFwdDist = range;
+  let blocker: FieldObstacle | null = null;
+
+  for (const obs of obstacles) {
+    if (!isObstacleBlockingVision(obs)) continue;
+
+    // ユニット自身がすでにその森の中にいる場合は遮られない
+    if (isPointInObstacleFootprint(x, y, obs, 1.0)) continue;
+
+    // Y軸が障害物と交差するか（交戦幅と障害物半径）
+    if (Math.abs(y - obs.y) <= obs.radiusY + engageHalfWidthY * 0.8) {
+      // 障害物の手前端X
+      const obsEdgeX = isPlayer
+        ? obs.x - obs.radiusX * 0.95
+        : obs.x + obs.radiusX * 0.95;
+      const fwdDist = isPlayer ? obsEdgeX - x : x - obsEdgeX;
+
+      // 前方にあり、射程内に障害物手前端があるか
+      if (fwdDist >= 0 && fwdDist < minFwdDist) {
+        minFwdDist = fwdDist;
+        blocker = obs;
+      }
+    }
+  }
+
+  const isBlocked = blocker !== null;
+  const effectiveRange = Math.max(0, minFwdDist);
+  const reachX = isPlayer ? x + effectiveRange : x - effectiveRange;
+
+  return {
+    reachX,
+    effectiveRange,
+    isBlockedByObstacle: isBlocked,
+    blockerObstacle: blocker,
+  };
+}
