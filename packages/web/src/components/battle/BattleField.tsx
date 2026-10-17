@@ -1294,7 +1294,7 @@ export function BattleField({
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
                   fontSize: '26px',
-                  filter: 'drop-shadow(0 0 10px #f97316)',
+                  textShadow: '0 0 10px #f97316',
                 }}
               >
                 ⚠️🔥
@@ -1401,7 +1401,7 @@ export function BattleField({
                       <div
                         style={{
                           fontSize: p.isOrigin ? '28px' : '22px',
-                          filter: 'drop-shadow(0 0 12px #f97316)',
+                          textShadow: '0 0 12px #f97316',
                           zIndex: 2,
                         }}
                       >
@@ -1426,7 +1426,7 @@ export function BattleField({
                   alignItems: 'center',
                 }}
               >
-                <div style={{ fontSize: '38px', filter: 'drop-shadow(0 0 20px #f97316)' }}>💥🔥</div>
+                <div style={{ fontSize: '38px', textShadow: '0 0 20px #f97316' }}>💥🔥</div>
                 <div
                   style={{
                     backgroundColor: 'rgba(185, 28, 28, 0.95)',

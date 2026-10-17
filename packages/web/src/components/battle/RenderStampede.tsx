@@ -206,7 +206,7 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
                   left: `${xPercent}%`,
                   transform: 'translate(-50%, -50%)',
                   fontSize: `${beast.size}px`,
-                  filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.8)) drop-shadow(0 0 16px #ea580c)',
+                  textShadow: '0 6px 12px rgba(0,0,0,0.8), 0 0 16px #ea580c',
                   zIndex: 35,
                   display: 'flex',
                   flexDirection: 'column',
@@ -223,8 +223,7 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
                     position: 'absolute',
                     top: '-10px',
                     fontSize: '16px',
-                    opacity: 0.8,
-                    filter: 'blur(1px)',
+                    opacity: 0.72,
                     transform: 'scaleY(-1)',
                   }}
                 >
@@ -245,7 +244,6 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
             background: 'rgba(34, 197, 94, 0.15)',
             borderLeft: '2px dashed #22c55e',
             borderRight: '2px dashed #22c55e',
-            transition: 'opacity 0.8s ease-out',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -270,10 +268,21 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
       )}
     </div>
   );
-}, (prev, next) =>
-  prev.stampede.phase === 'idle' &&
-  next.stampede.phase === 'idle' &&
-  prev.stampede.zoneXMin === next.stampede.zoneXMin &&
-  prev.stampede.zoneXMax === next.stampede.zoneXMax
-);
+}, (prev, next) => {
+  if (prev.stampede.phase !== next.stampede.phase) return false;
+  if (
+    prev.stampede.zoneXMin !== next.stampede.zoneXMin ||
+    prev.stampede.zoneXMax !== next.stampede.zoneXMax
+  ) {
+    return false;
+  }
+  if (next.stampede.phase === 'idle' || next.stampede.phase === 'cooldown') {
+    return true;
+  }
+  if (next.stampede.phase === 'warning') {
+    return prev.stampede.phaseTimer.toFixed(1) === next.stampede.phaseTimer.toFixed(1);
+  }
+  return prev.stampede.rushProgress === next.stampede.rushProgress;
+});
+
 

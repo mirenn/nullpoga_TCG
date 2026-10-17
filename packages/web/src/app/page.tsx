@@ -107,6 +107,10 @@ export default function RealtimeDemoPage() {
       return next;
     });
   }, []);
+
+  const handleOpenGuide = useCallback(() => {
+    setShowGuideModal(true);
+  }, []);
   
   // ドラッグ＆ドロップ用ステート (HTML5 D&D & タッチPointer共通)
   const battleFieldRef = useRef<HTMLDivElement>(null);
@@ -317,26 +321,29 @@ export default function RealtimeDemoPage() {
   }, [hand, checkCanPlayCard, playCardAt, playCardAtX, setSelectedCardIndex]);
 
   // ドラッグ開始 (HTML5 Drag & Drop)
-  const handleDragStart = (e: React.DragEvent, idx: number) => {
-    // タッチ操作中（touch / pen）に長押し等でブラウザのネイティブD&Dが発火した場合は抑止し、ポインター追従ドラッグを継続
-    if (pointerDragStateRef.current && pointerDragStateRef.current.pointerType !== 'mouse') {
-      e.preventDefault();
-      return;
-    }
-    const validation = checkCanPlayCard(idx);
-    if (!validation.canPlay || gameResult !== 'playing') {
-      e.preventDefault();
-      return;
-    }
-    // マウスでネイティブHTML5 D&Dが開始された場合は、直後に発火する pointercancel でドラッグ状態がリセットされないよう pointerDragStateRef を解除
-    pointerDragStateRef.current = null;
-    setTouchDragPos(null);
-    setExternalHoverPos(null);
-    e.dataTransfer.setData('text/plain', String(idx));
-    e.dataTransfer.effectAllowed = 'copyMove';
-    setDraggedCardIndex(idx);
-    setIsDragging(true);
-  };
+  const handleDragStart = useCallback(
+    (e: React.DragEvent, idx: number) => {
+      // タッチ操作中（touch / pen）に長押し等でブラウザのネイティブD&Dが発火した場合は抑止し、ポインター追従ドラッグを継続
+      if (pointerDragStateRef.current && pointerDragStateRef.current.pointerType !== 'mouse') {
+        e.preventDefault();
+        return;
+      }
+      const validation = checkCanPlayCard(idx);
+      if (!validation.canPlay || gameResult !== 'playing') {
+        e.preventDefault();
+        return;
+      }
+      // マウスでネイティブHTML5 D&Dが開始された場合は、直後に発火する pointercancel でドラッグ状態がリセットされないよう pointerDragStateRef を解除
+      pointerDragStateRef.current = null;
+      setTouchDragPos(null);
+      setExternalHoverPos(null);
+      e.dataTransfer.setData('text/plain', String(idx));
+      e.dataTransfer.effectAllowed = 'copyMove';
+      setDraggedCardIndex(idx);
+      setIsDragging(true);
+    },
+    [checkCanPlayCard, gameResult]
+  );
 
   // ドラッグ終了
   const handleDragEnd = useCallback(() => {
@@ -524,7 +531,7 @@ export default function RealtimeDemoPage() {
           {/* 1. CPU陣地ステータスバー & コントロール (モバイル時のみアリーナ上部に表示) */}
           <MobileCpuHeader
             cpuHp={cpuHp}
-            cpuMana={cpuMana}
+            cpuMana={Math.floor(cpuMana * 10) / 10}
             maxMana={maxMana}
             cpuManaRegenMultiplier={cpuManaRegenMultiplier}
             cpuHandCount={cpuHand.length}
@@ -534,7 +541,7 @@ export default function RealtimeDemoPage() {
             showUnitRange={showUnitRange}
             onToggleUnitRange={handleToggleUnitRange}
             onReset={handleReset}
-            onOpenGuide={() => setShowGuideModal(true)}
+            onOpenGuide={handleOpenGuide}
           />
 
           {/* 2. オープンフィールド戦場アリーナ (flex: 1 で全画面収容) */}
@@ -561,10 +568,10 @@ export default function RealtimeDemoPage() {
             isDragging={isDragging}
             dragOverLaneIndex={dragOverLaneIndex}
             spawnRippleLane={spawnRippleLane}
-            playerMana={playerMana}
+            playerMana={Math.floor(playerMana * 10) / 10}
             playerHp={playerHp}
             cpuHp={cpuHp}
-            cpuMana={cpuMana}
+            cpuMana={Math.floor(cpuMana * 10) / 10}
             showUnitRange={showUnitRange}
             checkCanPlayCard={checkCanPlayCard}
             playCardAt={playCardAt}
@@ -581,7 +588,7 @@ export default function RealtimeDemoPage() {
           {/* 3. 統合プレイヤー司令バー (自軍HP & マナゲージ) & 手札ドック */}
           <PlayerCommandBar
             playerHp={playerHp}
-            playerMana={playerMana}
+            playerMana={Math.floor(playerMana * 10) / 10}
             maxMana={maxMana}
             manaRegenMultiplier={playerManaRegenMultiplier}
             displayCombo={displayCombo}
@@ -606,7 +613,7 @@ export default function RealtimeDemoPage() {
         {showDesktopSidePanel && (
           <DesktopSidePanel
             cpuHp={cpuHp}
-            cpuMana={cpuMana}
+            cpuMana={Math.floor(cpuMana * 10) / 10}
             maxMana={maxMana}
             cpuManaRegenMultiplier={cpuManaRegenMultiplier}
             cpuHand={cpuHand}

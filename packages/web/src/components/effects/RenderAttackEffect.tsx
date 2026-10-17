@@ -6,7 +6,7 @@ import { LightningImpactSvg } from './LightningImpactSvg';
 const FIRE_PILLAR_SPACING_X = 5;
 const FIRE_PILLAR_STAGGER_MS = 70;
 
-export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
+export const RenderAttackEffect = React.memo(function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
   // 飛行時間（プロジェクタイルの場合はその時間、即時攻撃なら0ms）
   const flightTime = effect.flightDuration ?? (effect.effectType === 'lightning' ? 280 : 0);
 
@@ -79,7 +79,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
               }}
             >
               <div className="fireball-glow">
-                <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 10px #f97316)' }}>
+                <span style={{ fontSize: '26px', display: 'block', textShadow: '0 0 10px #f97316' }}>
                   🔥
                 </span>
               </div>
@@ -103,7 +103,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             }}
           >
             <div className="lightning-glow">
-              <span style={{ fontSize: '22px', display: 'block', filter: 'drop-shadow(0 0 10px #38bdf8)' }}>
+              <span style={{ fontSize: '22px', display: 'block', textShadow: '0 0 10px #38bdf8' }}>
                 ⚡
               </span>
             </div>
@@ -175,7 +175,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '32px', display: 'block', filter: 'drop-shadow(0 0 10px #f59e0b)' }}>
+          <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 10px #f59e0b' }}>
             🐾⚡
           </span>
         </div>
@@ -193,7 +193,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '28px', display: 'block', filter: 'drop-shadow(0 0 8px #facc15)' }}>
+          <span style={{ fontSize: '28px', display: 'block', textShadow: '0 0 8px #facc15' }}>
             ✨🦷
           </span>
         </div>
@@ -211,7 +211,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '30px', display: 'block', filter: 'drop-shadow(0 0 10px #ea580c)' }}>
+          <span style={{ fontSize: '30px', display: 'block', textShadow: '0 0 10px #ea580c' }}>
             💥🐕
           </span>
         </div>
@@ -229,7 +229,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '34px', display: 'block', filter: 'drop-shadow(0 0 14px #ea580c)' }}>
+          <span style={{ fontSize: '34px', display: 'block', textShadow: '0 0 14px #ea580c' }}>
             💥🐗
           </span>
         </div>
@@ -247,7 +247,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '32px', display: 'block', filter: 'drop-shadow(0 0 14px #00f0ff)' }}>
+          <span style={{ fontSize: '32px', display: 'block', textShadow: '0 0 14px #00f0ff' }}>
             ⚡🗡️
           </span>
         </div>
@@ -265,7 +265,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
             zIndex: 36,
           }}
         >
-          <span style={{ fontSize: '30px', display: 'block', filter: 'drop-shadow(0 0 12px #dc2626)' }}>
+          <span style={{ fontSize: '30px', display: 'block', textShadow: '0 0 12px #dc2626' }}>
             🩸🦇
           </span>
         </div>
@@ -290,7 +290,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
                 '--arrow-angle': `${angleDeg}deg`,
               } as React.CSSProperties}
             >
-              <svg width="26" height="10" viewBox="0 0 26 10" fill="none" style={{ filter: 'drop-shadow(0 0 4px #eab308)' }}>
+              <svg width="26" height="10" viewBox="0 0 26 10" fill="none">
                 <line x1="2" y1="5" x2="20" y2="5" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" />
                 <polygon points="19,1 25,5 19,9" fill="#f8fafc" />
                 <line x1="2" y1="2" x2="6" y2="5" stroke="#22c55e" strokeWidth="2" strokeLinecap="round" />
@@ -305,7 +305,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
                 '--impact-delay': `${arrowFlight}ms`,
               } as React.CSSProperties}
             >
-              <span style={{ fontSize: '24px', display: 'block', filter: 'drop-shadow(0 0 10px #eab308)' }}>
+              <span style={{ fontSize: '24px', display: 'block', textShadow: '0 0 10px #eab308' }}>
                 💥
               </span>
             </div>
@@ -328,7 +328,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
                 '--flight-duration': `${shurikenFlight}ms`,
               } as React.CSSProperties}
             >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" style={{ filter: 'drop-shadow(0 0 6px #00f0ff)' }}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
                 {/* 4枚刃の鋭利な手裏剣 */}
                 <path
                   d="M12 2 L14.5 9.5 L22 12 L14.5 14.5 L12 22 L9.5 14.5 L2 12 L9.5 9.5 Z"
@@ -352,7 +352,7 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
                 '--impact-delay': `${shurikenFlight}ms`,
               } as React.CSSProperties}
             >
-              <span style={{ fontSize: '26px', display: 'block', filter: 'drop-shadow(0 0 12px #00f0ff)' }}>
+              <span style={{ fontSize: '26px', display: 'block', textShadow: '0 0 12px #00f0ff' }}>
                 ⚡🗡️
               </span>
             </div>
@@ -408,4 +408,5 @@ export function RenderAttackEffect({ effect }: { effect: AttackEffect }) {
       </div>
     </>
   );
-}
+});
+

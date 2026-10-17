@@ -972,50 +972,15 @@
 }
 
 /* ─── iPad / タッチ端末 (WebKit) 向けGPU・CPU発熱対策 ───
-   WebKitでは <svg> 内部の子要素 (<g>, <path>) に対する transform-box: fill-box 付きの
-   無限アニメーションはGPUレイヤー合成が効かず、毎秒60〜120回ベクターパス全体の再計算・
-   CPU再ラスタライズを引き起こす（実測で40個以上のSVGアニメが同時稼働し34〜44fpsへ低下）。
-   タッチ端末では細かい手足・尻尾・触手の常時個別スイングを停止し、全体の歩行バウンスと
-   チャージ・攻撃アニメーションのみに絞ることでSVG再ラスタライズ負荷を80%以上削減する。 */
+   WebKitでは <svg> 内部の子要素 (<g>, <path>, <circle> 等) に対するCSSアニメーションが
+   1つでも動いていると、SVG全体のベクターキャッシュが毎フレーム破棄され、Retina解像度での
+   CPUベクター再ラスタライズが毎秒60回発生する（実測で svgElementAnimations: 10 でも 38.7fps へ低下）。
+   タッチ端末では <svg> 内部要素のアニメーションを停止してSVGを静的GPUテクスチャとしてキャッシュさせ、
+   外側のHTMLコンテナ (.unit-icon 等) のGPUコンポジット変形のみで滑らかに動かす。 */
 @media (pointer: coarse) {
-  .cat-walk-front-l,
-  .cat-walk-front-r,
-  .cat-walk-back-l,
-  .cat-walk-back-r,
-  .cat-idle-tail,
-  .jelly-swim-tentacle,
-  .jelly-swim-bell,
-  .boar-walk-leg-f-l,
-  .boar-walk-leg-f-r,
-  .boar-walk-leg-b-l,
-  .boar-walk-leg-b-r,
-  .mouse-walk-legs,
-  .mouse-walk-tail,
-  .mouse-idle-tail,
-  .shiba-walk-leg-f-l,
-  .shiba-walk-leg-f-r,
-  .shiba-walk-leg-b-l,
-  .shiba-walk-leg-b-r,
-  .shiba-walk-tail,
-  .shiba-idle-tail,
-  .turtle-walk-leg-l,
-  .turtle-walk-leg-r,
-  .turtle-walk-head,
-  .dragon-walk-leg-l,
-  .dragon-walk-leg-r,
-  .dragon-idle-wing-l,
-  .dragon-idle-wing-r,
-  .dragon-walk-wing-l,
-  .dragon-walk-wing-r,
-  .bat-idle-wing-l,
-  .bat-idle-wing-r,
-  .bat-walk-wing-l,
-  .bat-walk-wing-r,
-  .assassin-walk-leg-l,
-  .assassin-walk-leg-r,
-  .assassin-walk-scarf,
-  .assassin-idle-scarf {
+  svg * {
     animation: none !important;
   }
 }
+
 

@@ -35,19 +35,26 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
       >
         <style>{`
           @keyframes cloud-float-bob {
-            0% { transform: translate(-50%, -50%) translateY(0px) scale(1); }
-            50% { transform: translate(-50%, -50%) translateY(-6px) scale(1.02); }
-            100% { transform: translate(-50%, -50%) translateY(0px) scale(1); }
+            0% { transform: translate(-50%, -50%) translateY(0px); }
+            50% { transform: translate(-50%, -50%) translateY(-5px); }
+            100% { transform: translate(-50%, -50%) translateY(0px); }
           }
           @keyframes cloud-shadow-pulse {
-            0% { opacity: 0.85; }
-            50% { opacity: 1; }
-            100% { opacity: 0.85; }
+            0% { opacity: 0.88; }
+            50% { opacity: 0.96; }
+            100% { opacity: 0.88; }
           }
           @keyframes wind-whisper-drift {
             0% { opacity: 0; transform: translateX(-10px); }
             50% { opacity: 0.6; }
             100% { opacity: 0; transform: translateX(20px); }
+          }
+          @media (pointer: coarse) {
+            .cloud-shadow-item,
+            .cloud-sky-item,
+            .cloud-wind-item {
+              animation: none !important;
+            }
           }
         `}</style>
 
@@ -68,9 +75,10 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
           {clouds.map((cloud) => (
             <div
               key={`shadow_${cloud.id}`}
+              className="cloud-shadow-item"
               style={{
                 position: 'absolute',
-                left: `${cloud.x}%`,
+                left: `${cloud.x.toFixed(1)}%`,
                 top: `${cloud.y}%`,
                 width: `${cloud.radiusX * 2.35}%`,
                 height: `${cloud.radiusY * 2.25}%`,
@@ -104,9 +112,10 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
             return (
               <div
                 key={`sky_${cloud.id}`}
+                className="cloud-sky-item"
                 style={{
                   position: 'absolute',
-                  left: `${cloud.x}%`,
+                  left: `${cloud.x.toFixed(1)}%`,
                   top: `${cloud.y - 4}%`, // 地面の影よりも少し上空にオフセット
                   width: `${cloud.radiusX * 2.4}%`,
                   height: `${cloud.radiusY * 2.2}%`,
@@ -163,6 +172,7 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
 
                 {/* 雲の周囲を舞う風の気流エフェクト */}
                 <div
+                  className="cloud-wind-item"
                   style={{
                     position: 'absolute',
                     top: '20%',
@@ -181,8 +191,16 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
       </div>
     );
   },
-  (prev, next) =>
-    prev.cloudEvent.phase !== 'drifting' &&
-    next.cloudEvent.phase !== 'drifting'
+  (prev, next) => {
+    if (prev.cloudEvent.phase !== 'drifting' && next.cloudEvent.phase !== 'drifting') {
+      return true;
+    }
+    if (prev.cloudEvent.phase !== next.cloudEvent.phase) return false;
+    if (prev.cloudEvent.clouds.length !== next.cloudEvent.clouds.length) return false;
+    return prev.cloudEvent.clouds.every(
+      (c, i) => c.x.toFixed(1) === next.cloudEvent.clouds[i]?.x.toFixed(1)
+    );
+  }
 );
+
 

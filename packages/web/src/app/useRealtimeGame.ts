@@ -125,9 +125,9 @@ export function useRealtimeGame() {
 
   const checkCanPlayCard = useCallback(
     (cardIndex: number, spawnX?: number, spawnY?: number) => {
-      return validateCanPlayCard(state, cardIndex, spawnX, spawnY, Date.now());
+      return validateCanPlayCard(engine.state, cardIndex, spawnX, spawnY, Date.now());
     },
-    [state]
+    [engine]
   );
 
   const playCardAt = useCallback(
