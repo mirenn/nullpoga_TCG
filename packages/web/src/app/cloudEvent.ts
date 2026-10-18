@@ -30,51 +30,57 @@ export const CLOUD_INTERVAL_SEC = 25.0; // 雲イベント間のアイドル待�
 export const CLOUD_DRIFT_DURATION_SEC = 45.0; // 雲がフィールドをゆっくり横切る時間（穏やかな流雲ペース）
 export const CLOUD_COOLDOWN_DURATION_SEC = 2.0; // 通過後のクールダウン
 
+/** 雲の幾何サイズ定数 (ユニット2〜3体がすっぽり収まるミニマルサイズ) */
+export const CLOUD_MAIN_RADIUS_X = 2.8; // 直径約5.6% (横幅約50〜60px: ユニット2体分の幅)
+export const CLOUD_MAIN_RADIUS_Y = 3.6; // 直径約7.2% (縦幅約35〜40px: 1レーン内にすっぽり収まる)
+export const CLOUD_SUB_RADIUS_X = 1.8;  // 直径約3.6% (ユニット1体分の小粒なちぎれ雲)
+export const CLOUD_SUB_RADIUS_Y = 2.4;  // 直径約4.8%
+
 /** 接近看破（SPOT）の有効距離 (フィールド座標 %) */
-export const CLOUD_SPOT_PROXIMITY_DISTANCE = 7.0;
+export const CLOUD_SPOT_PROXIMITY_DISTANCE = 5.0;
 
 /** 雲のプリセット生成 */
 export function generateClouds(direction: 'left-to-right' | 'right-to-left' = 'left-to-right'): CloudEntity[] {
   const isLtoR = direction === 'left-to-right';
-  const startX1 = isLtoR ? -10 : 110;
-  const targetX1 = isLtoR ? 110 : -10;
+  const startX1 = isLtoR ? -8 : 108;
+  const targetX1 = isLtoR ? 108 : -8;
   const speedX1 = (targetX1 - startX1) / CLOUD_DRIFT_DURATION_SEC;
 
   // 出現Y座標: 上段寄り〜下段寄りのレーン帯 (28%〜62%) をゆったり通過
   const baseY = 28 + Math.random() * 34;
 
-  // メイン雲: 茂み（radiusX: 3.8, radiusY: 5.5）と同等のコンパクトな「動く茂み」サイズ (直径: 横約7.2%, 縦約9.2%)
+  // メイン雲: ユニット2〜3体がすっぽり入る程度のコンパクトな「動く茂み」サイズ (直径: 横約5.6%, 縦約7.2%)
   const mainCloud: CloudEntity = {
     id: `cloud_main_${Date.now()}`,
     x: startX1,
     y: baseY,
-    radiusX: 3.6, // 横幅の半径 (%) -> 直径約7.2% (茂みと同等のスマートサイズ)
-    radiusY: 4.6, // 縦幅の半径 (%) -> 直径約9.2% (1レーンに心地よく収まる)
+    radiusX: CLOUD_MAIN_RADIUS_X,
+    radiusY: CLOUD_MAIN_RADIUS_Y,
     speedX: speedX1,
-    speedY: (Math.random() * 0.16 - 0.08),
+    speedY: (Math.random() * 0.12 - 0.06),
     scale: 1.0,
-    opacity: 0.65, // ユニット戦闘を邪魔しない軽やかな透明度
-    shadowOpacity: 0.18, // ほんのり地面に落ちるソフトな影
+    opacity: 0.62, // 盤面のユニット戦闘がよく見える軽やかな透明度
+    shadowOpacity: 0.16, // 地面にうっすら落ちるソフトな影
   };
 
-  // サブの雲: メイン雲に寄り添う小さなちぎれ雲 (直径: 横約4.8%, 縦約6.0%)
-  const subOffsetX = isLtoR ? -6 : 6;
-  const subTargetX = isLtoR ? targetX1 + subOffsetX : targetX1 + subOffsetX;
+  // サブの雲: メイン雲の斜め後ろに寄り添う小さなちぎれ雲 (直径: 横約3.6%, 縦約4.8%)
+  const subOffsetX = isLtoR ? -4.5 : 4.5;
+  const subTargetX = targetX1 + subOffsetX;
   const subStartX = startX1 + subOffsetX;
   const speedX2 = (subTargetX - subStartX) / CLOUD_DRIFT_DURATION_SEC;
-  const subOffsetY = Math.random() * 6 - 3;
+  const subOffsetY = Math.random() * 4 - 2;
 
   const subCloud: CloudEntity = {
     id: `cloud_sub_${Date.now()}`,
     x: subStartX,
     y: Math.max(16, Math.min(84, baseY + subOffsetY)),
-    radiusX: 2.4, // 横幅の半径 (%)
-    radiusY: 3.0, // 縦幅の半径 (%)
+    radiusX: CLOUD_SUB_RADIUS_X,
+    radiusY: CLOUD_SUB_RADIUS_Y,
     speedX: speedX2,
-    speedY: (Math.random() * 0.16 - 0.08),
+    speedY: (Math.random() * 0.12 - 0.06),
     scale: 0.85,
-    opacity: 0.55,
-    shadowOpacity: 0.12,
+    opacity: 0.45,
+    shadowOpacity: 0.10,
   };
 
   return [mainCloud, subCloud];
@@ -138,12 +144,30 @@ export function updateCloudEvent(
       clouds = generateClouds(direction);
     }
   } else if (phase === 'drifting') {
-    // 雲を風に乗せて移動させる
-    clouds = clouds.map((c) => ({
-      ...c,
-      x: c.x + c.speedX * dt,
-      y: c.y + c.speedY * dt,
-    }));
+    // 雲を風に乗せて移動させる（※古い巨大な雲インスタンスがメモリ上に残っていた場合は即座に最新コンパクト値へ縮小補正）
+    clouds = clouds.map((c, i) => {
+      const isMain = i === 0;
+      const targetRx = isMain ? CLOUD_MAIN_RADIUS_X : CLOUD_SUB_RADIUS_X;
+      const targetRy = isMain ? CLOUD_MAIN_RADIUS_Y : CLOUD_SUB_RADIUS_Y;
+      const targetScale = isMain ? 1.0 : 0.85;
+      const targetOpacity = isMain ? 0.62 : 0.45;
+      const targetShadowOpacity = isMain ? 0.16 : 0.10;
+
+      // ゲーム内生成の雲 (cloud_main / cloud_sub) で古い巨大パラメータを持つ場合は補正
+      const isAutoSpawnedCloud = c.id.startsWith('cloud_main_') || c.id.startsWith('cloud_sub_');
+      const needsClamp = isAutoSpawnedCloud && (c.radiusX > targetRx + 0.1 || c.radiusY > targetRy + 0.1);
+
+      return {
+        ...c,
+        x: c.x + c.speedX * dt,
+        y: c.y + c.speedY * dt,
+        radiusX: needsClamp ? targetRx : c.radiusX,
+        radiusY: needsClamp ? targetRy : c.radiusY,
+        scale: needsClamp ? targetScale : c.scale,
+        opacity: needsClamp ? targetOpacity : c.opacity,
+        shadowOpacity: needsClamp ? targetShadowOpacity : c.shadowOpacity,
+      };
+    });
 
     if (phaseTimer <= 0) {
       // 横断完了 -> クールダウンへ

@@ -196,14 +196,20 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
     );
   },
   (prev, next) => {
-    if (prev.cloudEvent.phase !== 'drifting' && next.cloudEvent.phase !== 'drifting') {
-      return true;
-    }
     if (prev.cloudEvent.phase !== next.cloudEvent.phase) return false;
     if (prev.cloudEvent.clouds.length !== next.cloudEvent.clouds.length) return false;
-    return prev.cloudEvent.clouds.every(
-      (c, i) => c.x.toFixed(1) === next.cloudEvent.clouds[i]?.x.toFixed(1)
-    );
+    if (prev.cloudEvent.phase !== 'drifting') return true;
+    return prev.cloudEvent.clouds.every((c, i) => {
+      const nc = next.cloudEvent.clouds[i];
+      if (!nc) return false;
+      return (
+        c.x.toFixed(1) === nc.x.toFixed(1) &&
+        c.radiusX === nc.radiusX &&
+        c.radiusY === nc.radiusY &&
+        c.scale === nc.scale &&
+        c.opacity === nc.opacity
+      );
+    });
   }
 );
 
