@@ -348,24 +348,56 @@ export class RealtimeGameEngine {
     return true;
   }
 
-  /** ユニットのクリックによる待機／再前進トグル（プレイヤーユニットのみ） */
+  /** ユニットのクリックによる 前進／待機／索敵 状態の切り替え（プレイヤーユニットのみ） */
   public toggleUnitHold(unitId: string, now: number = Date.now()): void {
     this.state.units = this.state.units.map((u) => {
       if (u.id === unitId && u.owner === 'player') {
-        const willHold = !u.isHolding;
-        if (!willHold && u.hasAmbushCharge) {
+        // 1. 待ち伏せチャージ完了済みの場合は即座に奇襲ダッシュで前進再開
+        if (u.isHolding && u.hasAmbushCharge) {
           return {
             ...u,
             isHolding: false,
+            isScouting: false,
             hasAmbushCharge: false,
             holdDuration: 0,
+            scoutProgress: undefined,
+            scoutTargetUnitId: undefined,
             ambushDashUntil: now + HOLD_AMBUSH_DASH_DURATION_SEC * 1000,
           };
         }
+
+        // 2. 索敵中 -> 通常前進へ
+        if (u.isScouting) {
+          return {
+            ...u,
+            isHolding: false,
+            isScouting: false,
+            scoutProgress: undefined,
+            scoutTargetUnitId: undefined,
+            holdDuration: 0,
+          };
+        }
+
+        // 3. 待機中 -> 索敵モードへ
+        if (u.isHolding) {
+          return {
+            ...u,
+            isHolding: true,
+            isScouting: true,
+            scoutProgress: 0,
+            scoutTargetUnitId: undefined,
+            holdDuration: 0,
+          };
+        }
+
+        // 4. 通常前進中 -> 待機モードへ
         return {
           ...u,
-          isHolding: willHold,
-          holdDuration: willHold ? 0 : u.holdDuration,
+          isHolding: true,
+          isScouting: false,
+          scoutProgress: undefined,
+          scoutTargetUnitId: undefined,
+          holdDuration: 0,
         };
       }
       return u;

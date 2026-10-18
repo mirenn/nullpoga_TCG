@@ -163,7 +163,8 @@ export const RenderUnit = React.memo(function RenderUnit({
   isConcealed?: boolean;
   onToggleHold?: (unitId: string) => void;
 }) {
-  const isHolding = Boolean(unit.isHolding) && unit.owner === 'player';
+  const isScouting = Boolean(unit.isScouting) && unit.owner === 'player';
+  const isHolding = Boolean(unit.isHolding) && unit.owner === 'player' && !isScouting;
   const canToggleHold = Boolean(onToggleHold) && unit.owner === 'player';
   const isPlayer = unit.owner === 'player';
   const isStunned = Boolean(unit.isStunned);
@@ -450,6 +451,7 @@ export const RenderUnit = React.memo(function RenderUnit({
       <div
         className={attackClass}
         data-holding={isHolding ? 'true' : 'false'}
+        data-scouting={isScouting ? 'true' : 'false'}
         onClick={
           canToggleHold
             ? (e) => {
@@ -462,8 +464,12 @@ export const RenderUnit = React.memo(function RenderUnit({
           ...styles.unitBody,
           pointerEvents: canToggleHold ? 'auto' : undefined,
           cursor: canToggleHold ? 'pointer' : undefined,
-          outline: isHolding ? '2px dashed #f59e0b' : undefined,
-          outlineOffset: isHolding ? '2px' : undefined,
+          outline: isScouting
+            ? '2px dashed #06b6d4'
+            : isHolding
+            ? '2px dashed #f59e0b'
+            : undefined,
+          outlineOffset: isScouting || isHolding ? '2px' : undefined,
           border: unit.isSpotted ? '1.5px solid #facc15' : 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
           transform: isPlayer ? 'none' : 'scaleX(-1)',
@@ -512,6 +518,29 @@ export const RenderUnit = React.memo(function RenderUnit({
         )}
 
         {/* 状態異常・バフ表示 */}
+        {isScouting && (
+          <div
+            style={{
+              position: 'absolute',
+              top: '-18px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: '9px',
+              fontWeight: 'bold',
+              color: '#cffafe',
+              backgroundColor: '#0e7490',
+              border: '1px solid #22d3ee',
+              boxShadow: '0 0 10px #06b6d4',
+              padding: '1px 5px',
+              borderRadius: '999px',
+              whiteSpace: 'nowrap',
+              pointerEvents: 'none',
+              zIndex: 35,
+            }}
+          >
+            👁 索敵中 ({Math.round(Math.min(1.0, unit.scoutProgress || 0) * 100)}%)
+          </div>
+        )}
         {isHolding && (
           <div
             style={{

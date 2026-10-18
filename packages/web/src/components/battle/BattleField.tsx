@@ -931,7 +931,8 @@ export function BattleField({
         );
         const effectiveVisionRange = visionReach.effectiveRange;
 
-        const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit
+        const isScouting = Boolean(unit.isScouting);
+        const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit && !isScouting
           ? computeUnitRangeZone(unit.x, unit.y, effectiveVisionRange, unit.owner)
           : null;
         const hitZone =
@@ -958,8 +959,74 @@ export function BattleField({
           ? 'rgba(56, 189, 248, 0.45)'
           : 'rgba(244, 63, 94, 0.45)';
 
+        const scoutProgress = Math.min(1, Math.max(0, unit.scoutProgress || 0));
+
         return (
           <React.Fragment key={unit.id}>
+            {/* 索敵モード（前方160度スキャンビーム＆扇形レーダー） */}
+            {!isUnitConcealed && isScouting && (() => {
+              const radStart = (-80 * Math.PI) / 180;
+              const radEnd = (80 * Math.PI) / 180;
+              const radNow = ((-80 + scoutProgress * 160) * Math.PI) / 180;
+
+              const sxStart = unit.x + effectiveVisionRange * Math.cos(radStart);
+              const syStart = unit.y + effectiveVisionRange * Math.sin(radStart);
+              const sxEnd = unit.x + effectiveVisionRange * Math.cos(radEnd);
+              const syEnd = unit.y + effectiveVisionRange * Math.sin(radEnd);
+              const sxNow = unit.x + effectiveVisionRange * Math.cos(radNow);
+              const syNow = unit.y + effectiveVisionRange * Math.sin(radNow);
+
+              return (
+                <svg
+                  data-scout-radar-id={unit.id}
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 8,
+                  }}
+                >
+                  {/* 160度全域の薄い探知可能エリア外枠 */}
+                  <path
+                    d={`M ${unit.x} ${unit.y} L ${sxStart} ${syStart} A ${effectiveVisionRange} ${effectiveVisionRange} 0 0 1 ${sxEnd} ${syEnd} Z`}
+                    fill="rgba(6, 182, 212, 0.06)"
+                    stroke="rgba(6, 182, 212, 0.35)"
+                    strokeWidth="0.25"
+                    strokeDasharray="0.8 0.8"
+                  />
+                  {/* スキャン済みの扇形 */}
+                  {scoutProgress > 0.01 && (
+                    <path
+                      d={`M ${unit.x} ${unit.y} L ${sxStart} ${syStart} A ${effectiveVisionRange} ${effectiveVisionRange} 0 0 1 ${sxNow} ${syNow} Z`}
+                      fill="rgba(6, 182, 212, 0.18)"
+                      stroke="none"
+                    />
+                  )}
+                  {/* 現在のスキャンビームライン */}
+                  <line
+                    x1={unit.x}
+                    y1={unit.y}
+                    x2={sxNow}
+                    y2={syNow}
+                    stroke="#00f0ff"
+                    strokeWidth="0.4"
+                  />
+                  {/* ビーム先端の輝点 */}
+                  <circle
+                    cx={sxNow}
+                    cy={syNow}
+                    r="0.6"
+                    fill="#38bdf8"
+                  />
+                </svg>
+              );
+            })()}
+
             {/* 円形全方位探知ユニット（忍者など）の射程サークル */}
             {showUnitRange && !isUnitConcealed && isCircularUnit && (
               <div

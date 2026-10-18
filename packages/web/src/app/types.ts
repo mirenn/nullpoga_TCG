@@ -74,6 +74,9 @@ export interface Unit {
   holdDuration?: number; // 待機（ホールド）継続秒数
   hasAmbushCharge?: boolean; // 2秒以上待機でチャージ完了（次の攻撃力+2＆解除後1.5秒ダッシュ）
   ambushDashUntil?: number; // チャージ解除後の奇襲ダッシュ終了タイムスタンプ (ms)
+  isScouting?: boolean; // 索敵モード中（その場で立ち止まり、前方160度をスキャン）
+  scoutProgress?: number; // 索敵スキャンの進行度 (0.0 〜 1.0)
+  scoutTargetUnitId?: string; // 索敵で発見して追跡中の敵ユニットID
   isSprinting?: boolean; // 前方敵不在で疾走中（3倍速）
   killCount?: number; // 敵ユニット撃破数（吸血コウモリ等）
   lastKillTime?: number; // 撃破・ステータス向上エフェクト描画用

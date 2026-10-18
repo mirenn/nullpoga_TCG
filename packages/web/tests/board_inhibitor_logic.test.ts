@@ -1287,4 +1287,118 @@ assert(spellEngine.state.units[0].attackCooldown === 0, 'Attack cooldown reset t
 assert(spellEngine.state.spellEffects.some((e) => e.type === 'haste'), 'haste landing effect spawned');
 
 console.log('  -> Spell Chant & Impact Timing Delays (Meteor, Fire, Heal, Haste): PASSED');
-console.log('=== All 16 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// Suite 17: 索敵モード (160度時計回りスイープ、待機自動復帰、斜め追跡移動)
+// ==========================================
+console.log('[17/17] Testing Unit Scout Mode (160-deg sweep, auto-hold on sweep end, diagonal pursuit)...');
+const scoutEngine = new RealtimeGameEngine();
+scoutEngine.state.playerMana = 10;
+const scoutStartTime = 2_000_000;
+
+// 1. トグル状態遷移テスト: 通常前進 -> 待機 -> 索敵 -> 通常前進
+const scoutTestUnit: Unit = {
+  id: 'test_scout_unit',
+  cardNo: 1,
+  name: 'ネズミ',
+  icon: '🐭',
+  hp: 10,
+  maxHp: 10,
+  attack: 2,
+  range: 30,
+  attackCooldown: 0,
+  attackInterval: 1.0,
+  speed: 10,
+  owner: 'player',
+  x: 20,
+  y: 50,
+};
+scoutEngine.state.units = [scoutTestUnit];
+
+// 1回目クリック: 待機
+scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime);
+assert(scoutEngine.state.units[0].isHolding === true && !scoutEngine.state.units[0].isScouting, '1st click: enters holding mode');
+
+// 2回目クリック: 索敵
+scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 100);
+assert(scoutEngine.state.units[0].isHolding === true && scoutEngine.state.units[0].isScouting === true, '2nd click: enters scouting mode');
+assert(scoutEngine.state.units[0].scoutProgress === 0, 'scoutProgress starts at 0');
+
+// 3回目クリック: 通常前進に復帰
+scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 200);
+assert(!scoutEngine.state.units[0].isHolding && !scoutEngine.state.units[0].isScouting, '3rd click: resumes advance');
+
+// 2. 敵不在時の160度掃引完了 -> 待機状態への自動復帰テスト (選択肢2の仕様検証)
+scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 300); // 待機
+scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 400); // 索敵
+assert(scoutEngine.state.units[0].isScouting === true, 'Unit enters scouting mode');
+
+// 1.6秒以上 tick を進める (敵不在)
+let simScoutNow = scoutStartTime + 500;
+for (let i = 0; i < 20; i++) {
+  simScoutNow += 100;
+  scoutEngine.tick(0.1, simScoutNow);
+}
+const finishedScoutUnit = scoutEngine.state.units.find((u) => u.id === 'test_scout_unit')!;
+assert(finishedScoutUnit.isScouting === false, 'Scouting finishes after full 160 deg sweep');
+assert(finishedScoutUnit.isHolding === true, 'Unit automatically returns to holding state when sweep finishes with no enemies found');
+
+// 3. 索敵中の敵探知 & 斜め追跡移動テスト
+// ユニットの位置: (20, 50)。敵の位置: (35, 62) -> 前方右下(斜め位置)、距離約19%でrange=30%内、角度約38度で160度扇形内
+const scoutEnemyUnit: Unit = {
+  id: 'test_scout_enemy',
+  cardNo: 1,
+  name: '敵ネズミ',
+  icon: '🐭',
+  hp: 10,
+  maxHp: 10,
+  attack: 1,
+  range: 10,
+  attackCooldown: 1.0,
+  attackInterval: 1.0,
+  speed: 0,
+  owner: 'cpu',
+  x: 35,
+  y: 62,
+};
+const scoutHunterUnit: Unit = {
+  ...scoutTestUnit,
+  x: 20,
+  y: 50,
+  isHolding: true,
+  isScouting: true,
+  scoutProgress: 0,
+};
+scoutEngine.state.cpuMana = 0;
+scoutEngine.state.units = [scoutHunterUnit, scoutEnemyUnit];
+
+// tick を進めてスキャン角が敵の方向(約38度)に達するまで進行
+// 角度: -80 + progress * 160 = 38 -> progress ≈ 0.737 -> 約1.18秒
+let enemyDetected = false;
+for (let i = 0; i < 20; i++) {
+  simScoutNow += 100;
+  scoutEngine.tick(0.1, simScoutNow);
+  const u = scoutEngine.state.units.find((unit) => unit.id === 'test_scout_unit')!;
+  if (u.scoutTargetUnitId === 'test_scout_enemy') {
+    enemyDetected = true;
+    break;
+  }
+}
+assert(enemyDetected, 'Enemy is spotted during 160-deg sweep when beam aligns with enemy position');
+
+// 探知後は斜め前進（Xが増加し、Yが敵の62に向かって増加する）
+const uBefore = scoutEngine.state.units.find((u) => u.id === 'test_scout_unit')!;
+const initialY = uBefore.y;
+const initialX = uBefore.x;
+
+// 5tick前進
+for (let i = 0; i < 5; i++) {
+  simScoutNow += 100;
+  scoutEngine.tick(0.1, simScoutNow);
+}
+const uAfter = scoutEngine.state.units.find((u) => u.id === 'test_scout_unit')!;
+assert(uAfter.x > initialX, 'Unit advances on X axis towards target');
+assert(uAfter.y > initialY, `Unit moves diagonally on Y axis towards target Y (${initialY} -> ${uAfter.y})`);
+
+console.log('  -> Unit Scout Mode (160-deg sweep, auto-hold on sweep end, diagonal pursuit): PASSED');
+console.log('=== All 17 Test Suites PASSED Successfully! ===');

@@ -40,6 +40,12 @@ import {
   HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
   shouldCpuUnitHoldForStampede,
 } from '../stampede';
+
+export const SCOUT_SWEEP_DURATION_SEC = 1.6; // 160度スキャンの所要時間（秒）
+export const SCOUT_TOTAL_ANGLE_DEG = 160; // 索敵の総角度（度）
+export const SCOUT_START_ANGLE_DEG = -80; // 開始角度（度、正面0度から上へ80度）
+export const SCOUT_BEAM_TOLERANCE_DEG = 25; // ビームの探知判定角度幅（度）
+
 import {
   ActiveFireSpell,
   AREA_SPLASH_DAMAGE_RATIO,
@@ -456,6 +462,8 @@ export function updateUnitsMovementAndAttacks(params: {
         isCharging: false,
         chargeStartTime: undefined,
         isStunned: true,
+        isScouting: false,
+        scoutProgress: undefined,
         isJumping: false,
         jumpProgress: 0,
         isSliding: false,
@@ -512,7 +520,10 @@ export function updateUnitsMovementAndAttacks(params: {
       });
     } else {
       const enemiesInRange = unitsAfterHits.filter(
-        (u) => isWithinEngageY(u.y, unit.y) && u.owner !== unit.owner && u.hp > 0
+        (u) =>
+          (isWithinEngageY(u.y, unit.y) || u.id === unit.scoutTargetUnitId) &&
+          u.owner !== unit.owner &&
+          u.hp > 0
       );
       const enemyInhibitorsInPath = inhibitors.filter(
         (i) => i.owner !== unit.owner && inhibitorEngageableY(i, unit.y) && i.hp > 0
@@ -537,7 +548,12 @@ export function updateUnitsMovementAndAttacks(params: {
         })),
       ];
       targetCandidates.forEach((enemy) => {
-        const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
+        const isScoutTarget = unit.scoutTargetUnitId === enemy.id;
+        const dist = isScoutTarget
+          ? Math.hypot(enemy.x - unit.x, enemy.y - unit.y)
+          : unit.owner === 'player'
+          ? enemy.x - unit.x
+          : unit.x - enemy.x;
         if (dist >= -2 && dist < minDistance) {
           const sightClear = hasLineOfSight(
             unit.x,
@@ -731,7 +747,12 @@ export function updateUnitsMovementAndAttacks(params: {
       const canMoveDuringCharge = Boolean(unit.canMoveWhileCharging && isCharging);
       const canMoveWhileAttacking =
         (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 5.0) ||
-        canMoveDuringCharge;
+        canMoveDuringCharge ||
+        Boolean(
+          unit.scoutTargetUnitId &&
+            targetEnemy &&
+            !isWithinEngageY((targetEnemy as CombatTarget).y, unit.y)
+        );
 
       if (!canMoveWhileAttacking) {
         return {
@@ -740,6 +761,10 @@ export function updateUnitsMovementAndAttacks(params: {
           lastAttackEffectTime: lastAttack,
           isCharging,
           chargeStartTime,
+          isHolding: Boolean(unit.isHolding),
+          isScouting: unit.isScouting,
+          scoutProgress: unit.scoutProgress,
+          scoutTargetUnitId: unit.scoutTargetUnitId,
           isJumping: false,
           jumpProgress: 0,
           isSliding: false,
@@ -887,11 +912,70 @@ export function updateUnitsMovementAndAttacks(params: {
         (unit.owner === 'player' ? u.x > unit.x - 2 : u.x < unit.x + 2)
     );
     const isCpuHolding = shouldCpuUnitHoldForStampede(unit, stampede);
-    const isHolding = (unit.owner === 'player' && Boolean(unit.isHolding)) || isCpuHolding;
+    let isScouting = Boolean(unit.isScouting);
+    let scoutProgress = unit.scoutProgress;
+    let scoutTargetUnitId = unit.scoutTargetUnitId;
+
+    if (isScouting) {
+      const nextProgress = (scoutProgress ?? 0) + dt / SCOUT_SWEEP_DURATION_SEC;
+      scoutProgress = nextProgress;
+
+      // 現在のスキャン角度 (度数法): プレイヤー正面=0度, 上=-80度, 下=+80度
+      const currentAngleDeg = SCOUT_START_ANGLE_DEG + nextProgress * SCOUT_TOTAL_ANGLE_DEG;
+
+      // 扇形スキャンビーム内の敵探索
+      const detectedEnemy = unitsAfterHits.find((e) => {
+        if (e.owner === unit.owner || e.hp <= 0) return false;
+        // プレイヤー基準: 前方(dx > -1)
+        const dx = unit.owner === 'player' ? e.x - unit.x : unit.x - e.x;
+        const dy = e.y - unit.y;
+        if (dx < -1) return false;
+        const dist = Math.hypot(dx, dy);
+        if (dist > unit.range) return false;
+
+        const enemyAngleDeg = (Math.atan2(dy, dx) * 180) / Math.PI;
+        const angleDiff = Math.abs(enemyAngleDeg - currentAngleDeg);
+        if (angleDiff > SCOUT_BEAM_TOLERANCE_DEG) return false;
+
+        return hasLineOfSight(
+          unit.x,
+          unit.y,
+          e.x,
+          e.y,
+          obstacles,
+          {
+            isStructure: false,
+            isStealthCapable: isStealthCapableCard(e.cardNo),
+            isSpotted: e.isSpotted,
+            isCloudSpotted: e.isCloudSpotted,
+          },
+          clouds
+        );
+      });
+
+      if (detectedEnemy) {
+        // 敵を探知！索敵終了 -> その敵へ向かって前進開始
+        isScouting = false;
+        scoutProgress = undefined;
+        scoutTargetUnitId = detectedEnemy.id;
+      } else if (nextProgress >= 1.0) {
+        // スキャン完了 (160度掃引して敵未発見) -> 待機状態に戻る
+        isScouting = false;
+        scoutProgress = undefined;
+      }
+    }
+
+    const isHolding =
+      (unit.owner === 'player' && (Boolean(unit.isHolding) || isScouting)) && !scoutTargetUnitId
+        ? true
+        : (unit.owner === 'player' && Boolean(unit.isHolding) && !scoutTargetUnitId) || isCpuHolding;
 
     let holdDuration = unit.holdDuration || 0;
     let hasAmbushCharge = Boolean(unit.hasAmbushCharge);
-    if (isHolding) {
+    if (isScouting) {
+      holdDuration = 0;
+      hasAmbushCharge = false;
+    } else if (isHolding) {
       holdDuration += dt;
       if (holdDuration >= HOLD_AMBUSH_CHARGE_TIME_SEC) {
         hasAmbushCharge = true;
@@ -918,6 +1002,28 @@ export function updateUnitsMovementAndAttacks(params: {
     let isSliding = false;
     let isAttackingObstacle = false;
     let maxXMove = x;
+
+    const scoutTarget = scoutTargetUnitId
+      ? unitsAfterHits.find((u) => u.id === scoutTargetUnitId && u.hp > 0)
+      : null;
+
+    let scoutTargetDx = 0;
+    let scoutTargetDy = 0;
+    let scoutTargetDist = 0;
+    if (scoutTarget) {
+      scoutTargetDx = scoutTarget.x - x;
+      scoutTargetDy = scoutTarget.y - y;
+      scoutTargetDist = Math.hypot(scoutTargetDx, scoutTargetDy);
+      const inLaneReach = isWithinEngageY(scoutTarget.y, y);
+      const isCloseEnough =
+        scoutTargetDist < 2.5 || (inLaneReach && Math.abs(scoutTargetDx) <= unit.range);
+      if (isCloseEnough) {
+        scoutTargetUnitId = undefined;
+      }
+    } else if (scoutTargetUnitId) {
+      // ターゲット敵が死亡・消失
+      scoutTargetUnitId = undefined;
+    }
 
     if (!isHolding) {
       let allyToOvertake: Unit | null = null;
@@ -957,7 +1063,18 @@ export function updateUnitsMovementAndAttacks(params: {
         }
       }
 
-      maxXMove = unit.owner === 'player' ? x + moveDelta : x - moveDelta;
+      if (scoutTarget && scoutTargetUnitId && scoutTargetDist > 0) {
+        const dirX = scoutTargetDx / scoutTargetDist;
+        const dirY = scoutTargetDy / scoutTargetDist;
+        const step = currentSpeed * MOVE_SPEED_SCALE * dt;
+        const forwardBias =
+          unit.owner === 'player' ? Math.max(0.15, dirX) : Math.min(-0.15, dirX);
+        maxXMove = x + forwardBias * step;
+        y = Math.max(8, Math.min(92, y + dirY * step));
+        moveDelta = Math.hypot(forwardBias * step, dirY * step);
+      } else {
+        maxXMove = unit.owner === 'player' ? x + moveDelta : x - moveDelta;
+      }
 
       if (blockingObstacle) {
         const enemyWall =
@@ -1215,6 +1332,9 @@ export function updateUnitsMovementAndAttacks(params: {
       holdDuration,
       hasAmbushCharge,
       ambushDashUntil: unit.ambushDashUntil,
+      isScouting,
+      scoutProgress,
+      scoutTargetUnitId,
       isSprinting,
       isJumping,
       jumpProgress,
