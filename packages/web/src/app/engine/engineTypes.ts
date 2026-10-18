@@ -105,6 +105,7 @@ export interface CombatTarget {
   lane?: number;
   cardNo?: number;
   isSpotted?: boolean;
+  isCloudSpotted?: boolean;
 }
 
 /** 出撃履歴（カウンターデプロイ判定用） */

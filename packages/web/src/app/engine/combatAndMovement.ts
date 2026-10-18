@@ -1,6 +1,7 @@
 import {
   AttackEffect,
   AttackEffectType,
+  CloudEntity,
   Inhibitor,
   Owner,
   SpellEffect,
@@ -407,6 +408,7 @@ export function updateUnitsMovementAndAttacks(params: {
   inhibitors: Inhibitor[];
   obstacles: FieldObstacle[];
   stampede: StampedeState;
+  clouds?: CloudEntity[];
   dt: number;
   now: number;
 }): {
@@ -418,7 +420,7 @@ export function updateUnitsMovementAndAttacks(params: {
   cpuDamageToPlayer: number;
   obstacleMutated: boolean;
 } {
-  const { unitsAfterSpot, unitsAfterHits, inhibitors, obstacles, stampede, dt, now } = params;
+  const { unitsAfterSpot, unitsAfterHits, inhibitors, obstacles, stampede, clouds, dt, now } = params;
   const newAttackEffects: AttackEffect[] = [];
   const newPendingHits: PendingLightningHit[] = [];
   const attackTargets = new Map<string, CombatTarget>();
@@ -480,18 +482,28 @@ export function updateUnitsMovementAndAttacks(params: {
           isStructure: false,
           cardNo: e.cardNo,
           isSpotted: e.isSpotted,
+          isCloudSpotted: e.isCloudSpotted,
         })),
         ...allInhibitors.map((i) => ({ id: i.id, x: i.x, y: i.y, lane: i.y, isStructure: true })),
       ];
       targetCandidates.forEach((enemy) => {
         const dist = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
         if (dist <= unit.range && dist < minDistance) {
-          const sightClear = hasLineOfSight(unit.x, unit.y, enemy.x, enemy.y, obstacles, {
-            isStructure: enemy.isStructure,
-            isStealthCapable:
-              enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
-            isSpotted: enemy.isSpotted,
-          });
+          const sightClear = hasLineOfSight(
+            unit.x,
+            unit.y,
+            enemy.x,
+            enemy.y,
+            obstacles,
+            {
+              isStructure: enemy.isStructure,
+              isStealthCapable:
+                enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
+              isSpotted: enemy.isSpotted,
+              isCloudSpotted: enemy.isCloudSpotted,
+            },
+            clouds
+          );
           if (sightClear) {
             minDistance = dist;
             targetEnemy = enemy;
@@ -514,6 +526,7 @@ export function updateUnitsMovementAndAttacks(params: {
           isStructure: false,
           cardNo: e.cardNo,
           isSpotted: e.isSpotted,
+          isCloudSpotted: e.isCloudSpotted,
         })),
         ...enemyInhibitorsInPath.map((i) => ({
           id: i.id,
@@ -526,12 +539,21 @@ export function updateUnitsMovementAndAttacks(params: {
       targetCandidates.forEach((enemy) => {
         const dist = unit.owner === 'player' ? enemy.x - unit.x : unit.x - enemy.x;
         if (dist >= -2 && dist < minDistance) {
-          const sightClear = hasLineOfSight(unit.x, unit.y, enemy.x, enemy.y, obstacles, {
-            isStructure: enemy.isStructure,
-            isStealthCapable:
-              enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
-            isSpotted: enemy.isSpotted,
-          });
+          const sightClear = hasLineOfSight(
+            unit.x,
+            unit.y,
+            enemy.x,
+            enemy.y,
+            obstacles,
+            {
+              isStructure: enemy.isStructure,
+              isStealthCapable:
+                enemy.cardNo !== undefined ? isStealthCapableCard(enemy.cardNo) : false,
+              isSpotted: enemy.isSpotted,
+              isCloudSpotted: enemy.isCloudSpotted,
+            },
+            clouds
+          );
           if (sightClear) {
             minDistance = Math.max(0, dist);
             targetEnemy = enemy;

@@ -548,6 +548,7 @@ export class RealtimeGameEngine {
       inhibitors: this.state.inhibitors,
       obstacles: this.state.obstacles,
       stampede: this.state.stampede,
+      clouds: this.state.cloudEvent.phase === 'drifting' ? this.state.cloudEvent.clouds : undefined,
       dt,
       now,
     });

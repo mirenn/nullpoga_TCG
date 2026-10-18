@@ -1,4 +1,5 @@
-import type { Owner, Unit } from './types';
+import type { Owner, Unit, CloudEntity } from './types';
+import { isUnitInCloudShadow } from './cloudEvent';
 
 /**
  * 3D箱庭フィールドの立体遮蔽物（森の樹冠・巨岩アーチ・結晶群）＆
@@ -435,26 +436,25 @@ export function isObstacleBlockingVision(obstacle: FieldObstacle): boolean {
 }
 
 /**
- * 2点 (x1, y1) と (x2, y2) を結ぶ線分が、指定の障害物のフットプリント（楕円）と交差するか判定する
- * @param marginScale 障害物の当たり判定スケール（デフォルト 0.95）
+ * 2点 (x1, y1) と (x2, y2) を結ぶ線分が、楕円領域 (cx, cy, rx, ry) と交差するか判定する汎用幾何関数
  */
-export function doesSegmentIntersectObstacle(
+export function doesSegmentIntersectEllipse(
   x1: number,
   y1: number,
   x2: number,
   y2: number,
-  obstacle: FieldObstacle,
-  marginScale: number = 0.95
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number
 ): boolean {
-  const rx = obstacle.radiusX * marginScale;
-  const ry = obstacle.radiusY * marginScale;
   if (rx <= 0 || ry <= 0) return false;
 
-  // 障害物の中心を原点とし、各軸を半径で正規化した座標系へ変換
-  const u1 = (x1 - obstacle.x) / rx;
-  const v1 = (y1 - obstacle.y) / ry;
-  const u2 = (x2 - obstacle.x) / rx;
-  const v2 = (y2 - obstacle.y) / ry;
+  // 楕円の中心を原点とし、各軸を半径で正規化した座標系へ変換
+  const u1 = (x1 - cx) / rx;
+  const v1 = (y1 - cy) / ry;
+  const u2 = (x2 - cx) / rx;
+  const v2 = (y2 - cy) / ry;
 
   const du = u2 - u1;
   const dv = v2 - v1;
@@ -475,22 +475,47 @@ export function doesSegmentIntersectObstacle(
   return closestU * closestU + closestV * closestV <= 1.0;
 }
 
+/**
+ * 2点 (x1, y1) と (x2, y2) を結ぶ線分が、指定の障害物のフットプリント（楕円）と交差するか判定する
+ * @param marginScale 障害物の当たり判定スケール（デフォルト 0.95）
+ */
+export function doesSegmentIntersectObstacle(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  obstacle: FieldObstacle,
+  marginScale: number = 0.95
+): boolean {
+  return doesSegmentIntersectEllipse(
+    x1,
+    y1,
+    x2,
+    y2,
+    obstacle.x,
+    obstacle.y,
+    obstacle.radiusX * marginScale,
+    obstacle.radiusY * marginScale
+  );
+}
+
 export interface TargetVisionInfo {
   isStructure?: boolean;
   isStealthCapable?: boolean;
   isSpotted?: boolean;
+  isCloudSpotted?: boolean;
 }
 
 /**
  * 観測者 (x1, y1) からターゲット (x2, y2) への視線（Line of Sight）が通っているか判定する
- * 【LoLライクな視界ルール】
- * 1. 観測者自身が森（草むら）の中にいる場合、その森自身によって視界は遮られない。
- * 2. ターゲットが未破壊の森の中にいる場合:
- *    - 観測者も同じ森の中にいるなら見える。
- *    - ターゲットが構造物（インヒビター等）、大型（非隠密）、または看破済み(isSpotted)なら外からでも見える。
- *    - それ以外（未看破の小型隠密敵で観測者が森の外）なら森の中に潜んでいるため見えない。
- * 3. 観測者からターゲットへの線分上に、観測者の外側にある未破壊の木/森（kind === 'forest'）が存在する場合:
- *    - 木が視界を遮断するため、木の後ろにあるターゲットは見えない。
+ * 【LoLライクな視界ルール（茂み & 流雲）】
+ * 1. 観測者自身が茂み・雲の中にいる場合、その茂み・雲自身によって視界は遮られない。
+ * 2. ターゲットが茂み・雲の中にいる場合:
+ *    - 観測者も同じ茂み・雲の中にいるなら見える（お互い攻撃しあえる）。
+ *    - ターゲットが構造物（インヒビター等）、大型（非隠密）、または看破済み(isSpotted / isCloudSpotted)なら外からでも見える。
+ *    - それ以外（未看破の敵で観測者が外）なら死角に潜んでいるため見えない（遠距離攻撃ユニットの探知に引っかからない）。
+ * 3. 観測者からターゲットへの線分上に、観測者の外側にある茂みや雲が存在する場合:
+ *    - 視界・射線を遮断するため、その後ろにあるターゲットは見えない。
  * 4. 岩（rock）や結晶（crystal）は視界を通すため遮断しない。
  */
 export function hasLineOfSight(
@@ -499,8 +524,10 @@ export function hasLineOfSight(
   x2: number,
   y2: number,
   obstacles: FieldObstacle[] = FIELD_OBSTACLES,
-  targetInfo?: TargetVisionInfo
+  targetInfo?: TargetVisionInfo,
+  clouds?: CloudEntity[]
 ): boolean {
+  // 1. 固定障害物（茂み・森）によるLoLライクな視界判定
   for (const obs of obstacles) {
     if (!isObstacleBlockingVision(obs)) {
       continue;
@@ -509,10 +536,10 @@ export function hasLineOfSight(
     const observerInside = isPointInObstacleFootprint(x1, y1, obs, 1.0);
     const targetInside = isPointInObstacleFootprint(x2, y2, obs, 1.0);
 
-    // 2. ターゲットが森の中にいる場合の判定
+    // ターゲットが茂みの中にいる場合の判定
     if (targetInside) {
       if (observerInside) {
-        // 同じ森の中にいれば互いに見える
+        // 同じ茂みの中にいれば互いに見える
         continue;
       }
       // 観測者が外にいる場合:
@@ -525,16 +552,65 @@ export function hasLineOfSight(
       if (!canBeSeenFromOutside) {
         return false;
       }
-      // ターゲット自身がこの森の中にいて外から視認可能な場合、
-      // この森自身がターゲットへの視線を遮ることはないため通過
+      // ターゲット自身がこの茂みの中にいて外から視認可能な場合、
+      // この茂み自身がターゲットへの視線を遮ることはないため通過
       continue;
     }
 
-    // 3. 森が2点の間にある（視線を遮断する）場合の判定
-    // 観測者が森の外にいる場合のみ、その森が視線を遮断する
+    // 茂みが2点の間にある（視線を遮断する）場合の判定
+    // 観測者が茂みの外にいる場合のみ、その茂みが視線を遮断する
     if (!observerInside) {
       if (doesSegmentIntersectObstacle(x1, y1, x2, y2, obs, 0.95)) {
         return false;
+      }
+    }
+  }
+
+  // 2. 流雲（Drifting Clouds）による動的死角判定（LoLの動く茂み仕様）
+  if (clouds && clouds.length > 0) {
+    for (const cloud of clouds) {
+      if (cloud.radiusX <= 0 || cloud.radiusY <= 0) continue;
+
+      const observerInside = isUnitInCloudShadow(x1, y1, cloud);
+      const targetInside = isUnitInCloudShadow(x2, y2, cloud);
+
+      // (A) ターゲットが雲の影（死角）の中にいる場合
+      if (targetInside) {
+        if (observerInside) {
+          // 二人とも同じ雲の中にいるなら通常通り視認・攻撃可能
+          continue;
+        }
+        // 観測者が雲の外にいる場合:
+        // 構造物（インヒビター等）、または接近看破（isCloudSpotted || isSpotted）でない限り、
+        // 敵の遠距離攻撃ユニットの探知に引っかからない！
+        const canBeSeenFromOutside =
+          targetInfo?.isStructure ||
+          targetInfo?.isCloudSpotted ||
+          targetInfo?.isSpotted;
+
+        if (!canBeSeenFromOutside) {
+          return false;
+        }
+        continue;
+      }
+
+      // (B) 雲が観測者とターゲットの間を横切っている（射線を遮断する）場合
+      // 観測者が雲の外にいる場合のみ、雲が視線を遮断する
+      if (!observerInside) {
+        if (
+          doesSegmentIntersectEllipse(
+            x1,
+            y1,
+            x2,
+            y2,
+            cloud.x,
+            cloud.y,
+            cloud.radiusX * 0.95,
+            cloud.radiusY * 0.95
+          )
+        ) {
+          return false;
+        }
       }
     }
   }
@@ -544,7 +620,7 @@ export function hasLineOfSight(
 
 /**
  * 前方直進ユニットの最大視界到達点 (reachX) を算出する
- * ユニットの前方に未破壊の木/森がある場合、視界・探知は木の手前で遮断される
+ * ユニットの前方に未破壊の茂みや雲がある場合、視界・探知は手前で遮断される
  */
 export function computeUnitMaxVisionReachX(
   x: number,
@@ -552,7 +628,8 @@ export function computeUnitMaxVisionReachX(
   range: number,
   owner: Owner,
   obstacles: FieldObstacle[] = FIELD_OBSTACLES,
-  engageHalfWidthY: number = 6.5
+  engageHalfWidthY: number = 6.5,
+  clouds?: CloudEntity[]
 ): {
   reachX: number;
   effectiveRange: number;
@@ -585,7 +662,27 @@ export function computeUnitMaxVisionReachX(
     }
   }
 
-  const isBlocked = blocker !== null;
+  // 雲による前方視界遮断
+  if (clouds && clouds.length > 0) {
+    for (const cloud of clouds) {
+      if (cloud.radiusX <= 0 || cloud.radiusY <= 0) continue;
+      // ユニット自身がすでに雲の中にいる場合は遮られない
+      if (isUnitInCloudShadow(x, y, cloud)) continue;
+
+      if (Math.abs(y - cloud.y) <= cloud.radiusY + engageHalfWidthY * 0.8) {
+        const cloudEdgeX = isPlayer
+          ? cloud.x - cloud.radiusX * 0.95
+          : cloud.x + cloud.radiusX * 0.95;
+        const fwdDist = isPlayer ? cloudEdgeX - x : x - cloudEdgeX;
+
+        if (fwdDist >= 0 && fwdDist < minFwdDist) {
+          minFwdDist = fwdDist;
+        }
+      }
+    }
+  }
+
+  const isBlocked = blocker !== null || minFwdDist < range;
   const effectiveRange = Math.max(0, minFwdDist);
   const reachX = isPlayer ? x + effectiveRange : x - effectiveRange;
 

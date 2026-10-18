@@ -892,8 +892,16 @@ export function BattleField({
         const isShieldUnit = unit.attack === 0;
         const isCircularUnit = Boolean(unit.isCircularRange || unit.cardNo === 8);
 
-        // 前方に未破壊の木/森（forest）がある場合、視界・探知は木の手前で遮断される
-        const visionReach = computeUnitMaxVisionReachX(unit.x, unit.y, unit.range, unit.owner, obstacles);
+        // 前方に未破壊の茂みや雲（drifting clouds）がある場合、視界・探知は手前で遮断される
+        const visionReach = computeUnitMaxVisionReachX(
+          unit.x,
+          unit.y,
+          unit.range,
+          unit.owner,
+          obstacles,
+          6.5,
+          cloudEvent?.phase === 'drifting' ? cloudEvent.clouds : undefined
+        );
         const effectiveVisionRange = visionReach.effectiveRange;
 
         const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit
@@ -2084,7 +2092,9 @@ export function BattleField({
               currentTargetY,
               previewRange,
               'player',
-              obstacles
+              obstacles,
+              6.5,
+              cloudEvent?.phase === 'drifting' ? cloudEvent.clouds : undefined
             );
             const effectivePreviewRange = previewVisionReach.effectiveRange;
             const previewZone = computeUnitRangeZone(currentTargetX, currentTargetY, effectivePreviewRange, 'player');

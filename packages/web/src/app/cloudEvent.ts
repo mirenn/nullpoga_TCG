@@ -179,29 +179,19 @@ export function updateCloudEvent(
       return { ...u, isCloudConcealed: false, isCloudSpotted: false };
     }
 
-    // 雲の影の中にいる場合
-    if (u.owner === 'player') {
-      // プレイヤーユニットは味方からは常に見えるが、雲隠れステータスを付与
-      return {
-        ...u,
-        isCloudConcealed: true,
-        isCloudSpotted: true,
-      };
-    } else {
-      // CPUユニット: 味方プレイヤーユニットが近くにいるか判定
-      const hasClosePlayerUnit = playerUnits.some((pu) => {
-        const dx = pu.x - u.x;
-        const dy = pu.y - u.y;
-        return Math.hypot(dx, dy) <= CLOUD_SPOT_PROXIMITY_DISTANCE;
-      });
+    // 雲の影の中にいる場合: 対向陣営のユニットが接近しているか（接近看破 / SPOT）を対称に判定
+    const enemyUnits = u.owner === 'player' ? cpuUnits : playerUnits;
+    const isCloseToEnemy = enemyUnits.some((eu) => {
+      const dx = eu.x - u.x;
+      const dy = eu.y - u.y;
+      return Math.hypot(dx, dy) <= CLOUD_SPOT_PROXIMITY_DISTANCE;
+    });
 
-      const isSpotted = hasClosePlayerUnit;
-      return {
-        ...u,
-        isCloudConcealed: true,
-        isCloudSpotted: isSpotted,
-      };
-    }
+    return {
+      ...u,
+      isCloudConcealed: true,
+      isCloudSpotted: isCloseToEnemy,
+    };
   });
 
   return {

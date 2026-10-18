@@ -1038,6 +1038,39 @@ const enemyAfterCloud = resCooldown.updatedUnits[0];
 assert(enemyAfterCloud.isCloudConcealed === false, 'Concealment must be removed after clouds pass');
 assert(enemyAfterCloud.isCloudSpotted === false, 'Spotted flag must be reset after clouds pass');
 
+// 8. 雲のLoL茂み仕様（LoL-style moving bush）の視線・攻撃探知検証 (hasLineOfSight)
+// 8-1. 雲の外の遠距離ユニットから雲の中に隠れている敵への視線は遮断される (探知不可)
+const losFromOutsideToCloudEnemy = hasLineOfSight(
+  20, 40, 52, 42, [],
+  { isStructure: false, isCloudSpotted: false },
+  [sampleCloud]
+);
+assert(losFromOutsideToCloudEnemy === false, 'Enemy inside cloud must NOT be targetable from outside cloud');
+
+// 8-2. 二人とも同じ雲の中にいるならお互いに攻撃しあえる (視線が通る)
+const losInsideSameCloud = hasLineOfSight(
+  56, 42, 52, 42, [],
+  { isStructure: false, isCloudSpotted: false },
+  [sampleCloud]
+);
+assert(losInsideSameCloud === true, 'Units inside the same cloud must be able to target and attack each other');
+
+// 8-3. 雲の中の敵でも接近看破 (isCloudSpotted: true) されていれば外の遠距離ユニットからも攻撃可能
+const losToSpottedCloudEnemy = hasLineOfSight(
+  20, 40, 52, 42, [],
+  { isStructure: false, isCloudSpotted: true },
+  [sampleCloud]
+);
+assert(losToSpottedCloudEnemy === true, 'Proximity-spotted enemy inside cloud must be targetable from outside');
+
+// 8-4. 雲が2点の射線上に挟まっている場合、向こう側の敵への遠距離攻撃は遮断される
+const losAcrossDriftingCloud = hasLineOfSight(
+  20, 40, 80, 40, [],
+  { isStructure: false },
+  [sampleCloud]
+);
+assert(losAcrossDriftingCloud === false, 'Drifting cloud between observer and target must block line of sight');
+
 console.log('  -> Drifting Clouds, moving shadow corridor, and dynamic Fog of War concealment / proximity spotting: PASSED');
 
 // =========================================================================
