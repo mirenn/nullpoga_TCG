@@ -64,7 +64,7 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
         `}</style>
 
         {/* ========================================================
-            1. 地面レイヤー: 雲の落とす巨大なダークシャドウ（死角エリア）
+            1. 地面レイヤー: 雲の落とすソフトな影（動的死角エリア）
             zIndex: 14 (背景タイルの上、ユニットの足元)
             ※ iPad Safari等でのGPU発熱原因となる大面積 filter: blur() を廃止し、
                多段 radial-gradient のみで滑らかなソフトシャドウを表現
@@ -85,23 +85,23 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                 position: 'absolute',
                 left: `${cloud.x.toFixed(1)}%`,
                 top: `${cloud.y}%`,
-                width: `${cloud.radiusX * 2.35}%`,
-                height: `${cloud.radiusY * 2.25}%`,
+                width: `${cloud.radiusX * 2.1}%`,
+                height: `${cloud.radiusY * 2.1}%`,
                 transform: 'translate(-50%, -50%)',
                 borderRadius: '50%',
                 background: `radial-gradient(ellipse at center,
-                  rgba(15, 23, 42, ${cloud.shadowOpacity * 1.25}) 0%,
-                  rgba(30, 41, 59, ${cloud.shadowOpacity * 0.9}) 38%,
-                  rgba(51, 65, 85, ${cloud.shadowOpacity * 0.4}) 68%,
+                  rgba(15, 23, 42, ${cloud.shadowOpacity * 1.1}) 0%,
+                  rgba(30, 41, 59, ${cloud.shadowOpacity * 0.8}) 40%,
+                  rgba(51, 65, 85, ${cloud.shadowOpacity * 0.35}) 70%,
                   rgba(51, 65, 85, 0) 100%)`,
-                animation: 'cloud-shadow-pulse 4s ease-in-out infinite',
+                animation: 'cloud-shadow-pulse 5s ease-in-out infinite',
               }}
             />
           ))}
         </div>
 
         {/* ========================================================
-            2. 上空レイヤー: ふわふわ漂うリアルな雲塊本体
+            2. 上空レイヤー: ふわふわ漂う自然な雲塊本体
             zIndex: 42 (ユニット・弾丸の上空をゆったり覆う)
         ======================================================== */}
         <div
@@ -121,11 +121,11 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                 style={{
                   position: 'absolute',
                   left: `${cloud.x.toFixed(1)}%`,
-                  top: `${cloud.y - 4}%`, // 地面の影よりも少し上空にオフセット
-                  width: `${cloud.radiusX * 2.4}%`,
-                  height: `${cloud.radiusY * 2.2}%`,
+                  top: `${cloud.y - 3}%`, // 地面の影よりも少し上空にオフセット
+                  width: `${cloud.radiusX * 2.15}%`,
+                  height: `${cloud.radiusY * 2.1}%`,
                   transform: 'translate(-50%, -50%)',
-                  animation: `cloud-float-bob ${isMain ? '6s' : '5s'} ease-in-out infinite`,
+                  animation: `cloud-float-bob ${isMain ? '7s' : '6s'} ease-in-out infinite`,
                   opacity: cloud.opacity,
                 }}
               >

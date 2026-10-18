@@ -25,9 +25,9 @@ import type { CloudEventState, CloudEventPhase, CloudEntity, Unit } from './type
  */
 
 /** 各フェーズの時間設定 (秒) */
-export const CLOUD_INITIAL_DELAY_SEC = 8.0; // ゲーム開始後、初回雲イベントまでの秒数
-export const CLOUD_INTERVAL_SEC = 22.0; // 雲イベント間のアイドル待機時間
-export const CLOUD_DRIFT_DURATION_SEC = 14.0; // 雲がフィールドを横切る時間
+export const CLOUD_INITIAL_DELAY_SEC = 10.0; // ゲーム開始後、初回雲イベントまでの秒数
+export const CLOUD_INTERVAL_SEC = 25.0; // 雲イベント間のアイドル待機時間
+export const CLOUD_DRIFT_DURATION_SEC = 42.0; // 雲がフィールドをゆっくり横切る時間（旧14.0秒から穏やかなペースへ調整）
 export const CLOUD_COOLDOWN_DURATION_SEC = 2.0; // 通過後のクールダウン
 
 /** 接近看破（SPOT）の有効距離 (フィールド座標 %) */
@@ -36,40 +36,44 @@ export const CLOUD_SPOT_PROXIMITY_DISTANCE = 13.0;
 /** 雲のプリセット生成 */
 export function generateClouds(direction: 'left-to-right' | 'right-to-left' = 'left-to-right'): CloudEntity[] {
   const isLtoR = direction === 'left-to-right';
-  const startX1 = isLtoR ? -28 : 128;
-  const targetX1 = isLtoR ? 128 : -28;
+  const startX1 = isLtoR ? -18 : 118;
+  const targetX1 = isLtoR ? 118 : -18;
   const speedX1 = (targetX1 - startX1) / CLOUD_DRIFT_DURATION_SEC;
 
-  // メインの大きな雲
+  // 出現Y座標: 上段寄り(34%)〜下段寄り(58%)の特定レーン帯を通過
+  const baseY = 34 + Math.random() * 24;
+
+  // メイン雲（旧radiusX:22, radiusY:38からコンパクトに調整し、画面全体を覆い尽くさず1〜2レーンを程よくカバー）
   const mainCloud: CloudEntity = {
     id: `cloud_main_${Date.now()}`,
     x: startX1,
-    y: 42 + (Math.random() * 16 - 8), // 中央付近 (34% 〜 50%)
-    radiusX: 22, // 横幅の半径 (%)
-    radiusY: 38, // 縦幅の半径 (%) -> フィールドの大部分をカバー
+    y: baseY,
+    radiusX: 11, // 横幅の半径 (%) -> 直径約22% (旧22から縮小)
+    radiusY: 14, // 縦幅の半径 (%) -> 直径約28% (旧38から大幅縮小)
     speedX: speedX1,
-    speedY: (Math.random() * 0.8 - 0.4), // ほんの少し上下に揺れる
+    speedY: (Math.random() * 0.4 - 0.2), // ごくわずかに上下に揺れる
     scale: 1.0,
-    opacity: 0.88,
-    shadowOpacity: 0.42,
+    opacity: 0.78, // 盤面視認性を高めるため微調整 (旧0.88)
+    shadowOpacity: 0.28, // 地面の影をソフトに調整 (旧0.42)
   };
 
-  // サブの雲（メイン雲に少し遅れて追従し、重なり合う）
-  const subStartX = isLtoR ? startX1 - 18 : startX1 + 18;
-  const subTargetX = isLtoR ? targetX1 + 18 : targetX1 - 18;
+  // サブの雲（メイン雲に寄り添い、適度な間隔で並走する小ぶりの雲塊）
+  const subStartX = isLtoR ? startX1 - 12 : startX1 + 12;
+  const subTargetX = isLtoR ? targetX1 - 12 : targetX1 + 12;
   const speedX2 = (subTargetX - subStartX) / CLOUD_DRIFT_DURATION_SEC;
+  const subOffsetY = Math.random() * 12 - 6;
 
   const subCloud: CloudEntity = {
     id: `cloud_sub_${Date.now()}`,
     x: subStartX,
-    y: 58 + (Math.random() * 14 - 7),
-    radiusX: 18,
-    radiusY: 30,
+    y: Math.max(18, Math.min(82, baseY + subOffsetY)),
+    radiusX: 8.5, // 旧18から縮小
+    radiusY: 11, // 旧30から縮小
     speedX: speedX2,
-    speedY: (Math.random() * 0.8 - 0.4),
+    speedY: (Math.random() * 0.4 - 0.2),
     scale: 0.88,
-    opacity: 0.82,
-    shadowOpacity: 0.35,
+    opacity: 0.72,
+    shadowOpacity: 0.22,
   };
 
   return [mainCloud, subCloud];
