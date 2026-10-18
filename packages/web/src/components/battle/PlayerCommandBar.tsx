@@ -89,25 +89,6 @@ export const PlayerCommandBar = React.memo(function PlayerCommandBar({
                           ⚡+{boostPercent}%
                         </span>
                       )}
-                      {/* コンボ表示 */}
-                      <div
-                        style={{
-                          marginLeft: '12px',
-                          color: '#f97316',
-                          fontWeight: 'bold',
-                          fontSize: '12px',
-                          textShadow: '0 0 8px #ea580c, 0 0 16px #f97316',
-                          opacity: displayCombo.visible ? 1 : 0,
-                          transform: displayCombo.visible ? 'scale(1)' : 'scale(0.8)',
-                          transition: 'all 0.2s ease-out',
-                          pointerEvents: 'none',
-                          display: 'flex',
-                          alignItems: 'center',
-                        }}
-                      >
-                        {displayCombo.count >= 3 ? '🔥🔥 ' : '🔥 '}
-                        {displayCombo.count} COMBO!
-                      </div>
                     </div>
                     <div style={styles.manaBarBg}>
                       <div
@@ -123,6 +104,29 @@ export const PlayerCommandBar = React.memo(function PlayerCommandBar({
                       </div>
                     </div>
                   </div>
+
+                  {/* コンボ表示 */}
+                  {displayCombo.count > 0 && (
+                    <div
+                      style={{
+                        marginLeft: '4px',
+                        color: '#f97316',
+                        fontWeight: 'bold',
+                        fontSize: '12px',
+                        textShadow: '0 0 8px #ea580c, 0 0 16px #f97316',
+                        opacity: displayCombo.visible ? 1 : 0,
+                        transform: displayCombo.visible ? 'scale(1)' : 'scale(0.8)',
+                        transition: 'all 0.2s ease-out',
+                        pointerEvents: 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {displayCombo.count >= 3 ? '🔥🔥 ' : '🔥 '}
+                      {displayCombo.count} COMBO!
+                    </div>
+                  )}
                 </div>
       
                 {/* 4. 手札カードリスト & NEXTドック */}
