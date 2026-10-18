@@ -25,3 +25,9 @@ To maintain high development velocity while preventing merge conflicts and race 
 ### 4. Git Operations & Verification
 - Always run `npm run typecheck` and `npm test` to verify changes before committing.
 - Commit messages must clearly articulate the **intent and background** behind the changes.
+
+## 5. Coding Principles (Ponytail Mode)
+- This project adopts **Ponytail** principles for lean, robust, and minimal code changes (see [AGENTS.md](file:///c:/Users/ngihy/Documents/nagai/nullpoga_TCG/AGENTS.md) and [.agents/rules/ponytail.md](file:///c:/Users/ngihy/Documents/nagai/nullpoga_TCG/.agents/rules/ponytail.md)).
+- Prioritize existing helpers, stdlib, and installed packages over new abstractions or unnecessary dependencies.
+- Never write unrequested features, options, or boilerplate. Keep diffs minimal and focused.
+- Ensure risky logic has tests, and end responses with 1-2 lines detailing what was skipped and any residual risk.
