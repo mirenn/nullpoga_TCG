@@ -134,7 +134,6 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                   viewBox="0 0 300 180"
                   width="100%"
                   height="100%"
-                  style={{ overflow: 'visible' }}
                 >
                   <defs>
                     {/* 雲の立体感を出すグラデーション */}
@@ -181,9 +180,9 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                   style={{
                     position: 'absolute',
                     top: '20%',
-                    right: '-10%',
-                    fontSize: '14px',
-                    color: 'rgba(255,255,255,0.7)',
+                    right: '-6%',
+                    fontSize: '10px',
+                    color: 'rgba(255,255,255,0.6)',
                     animation: 'wind-whisper-drift 2.5s ease-in-out infinite',
                   }}
                 >

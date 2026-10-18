@@ -31,50 +31,50 @@ export const CLOUD_DRIFT_DURATION_SEC = 45.0; // 雲がフィールドをゆっ�
 export const CLOUD_COOLDOWN_DURATION_SEC = 2.0; // 通過後のクールダウン
 
 /** 接近看破（SPOT）の有効距離 (フィールド座標 %) */
-export const CLOUD_SPOT_PROXIMITY_DISTANCE = 11.0;
+export const CLOUD_SPOT_PROXIMITY_DISTANCE = 7.0;
 
 /** 雲のプリセット生成 */
 export function generateClouds(direction: 'left-to-right' | 'right-to-left' = 'left-to-right'): CloudEntity[] {
   const isLtoR = direction === 'left-to-right';
-  const startX1 = isLtoR ? -14 : 114;
-  const targetX1 = isLtoR ? 114 : -14;
+  const startX1 = isLtoR ? -10 : 110;
+  const targetX1 = isLtoR ? 110 : -10;
   const speedX1 = (targetX1 - startX1) / CLOUD_DRIFT_DURATION_SEC;
 
   // 出現Y座標: 上段寄り〜下段寄りのレーン帯 (28%〜62%) をゆったり通過
   const baseY = 28 + Math.random() * 34;
 
-  // メイン雲: 盤面を邪魔しないコンパクトなふんわり雲 (直径: 横約13%, 縦約16%)
+  // メイン雲: 茂み（radiusX: 3.8, radiusY: 5.5）と同等のコンパクトな「動く茂み」サイズ (直径: 横約7.2%, 縦約9.2%)
   const mainCloud: CloudEntity = {
     id: `cloud_main_${Date.now()}`,
     x: startX1,
     y: baseY,
-    radiusX: 6.5, // 横幅の半径 (%) -> 直径約13% (旧11からさらにコンパクト化)
-    radiusY: 8.0, // 縦幅の半径 (%) -> 直径約16% (旧14からさらにコンパクト化)
+    radiusX: 3.6, // 横幅の半径 (%) -> 直径約7.2% (茂みと同等のスマートサイズ)
+    radiusY: 4.6, // 縦幅の半径 (%) -> 直径約9.2% (1レーンに心地よく収まる)
     speedX: speedX1,
-    speedY: (Math.random() * 0.2 - 0.1),
+    speedY: (Math.random() * 0.16 - 0.08),
     scale: 1.0,
-    opacity: 0.72, // 盤面のユニット戦闘がよく見える軽やかな透明度
-    shadowOpacity: 0.22, // ほんのり影が落ちる自然な濃さ
+    opacity: 0.65, // ユニット戦闘を邪魔しない軽やかな透明度
+    shadowOpacity: 0.18, // ほんのり地面に落ちるソフトな影
   };
 
-  // サブの雲: メイン雲に寄り添う小さなちぎれ雲塊 (直径: 横約9.5%, 縦約12%)
-  const subOffsetX = isLtoR ? -9 : 9;
+  // サブの雲: メイン雲に寄り添う小さなちぎれ雲 (直径: 横約4.8%, 縦約6.0%)
+  const subOffsetX = isLtoR ? -6 : 6;
   const subTargetX = isLtoR ? targetX1 + subOffsetX : targetX1 + subOffsetX;
   const subStartX = startX1 + subOffsetX;
   const speedX2 = (subTargetX - subStartX) / CLOUD_DRIFT_DURATION_SEC;
-  const subOffsetY = Math.random() * 10 - 5;
+  const subOffsetY = Math.random() * 6 - 3;
 
   const subCloud: CloudEntity = {
     id: `cloud_sub_${Date.now()}`,
     x: subStartX,
     y: Math.max(16, Math.min(84, baseY + subOffsetY)),
-    radiusX: 4.8, // 横幅の半径 (%)
-    radiusY: 6.0, // 縦幅の半径 (%)
+    radiusX: 2.4, // 横幅の半径 (%)
+    radiusY: 3.0, // 縦幅の半径 (%)
     speedX: speedX2,
-    speedY: (Math.random() * 0.2 - 0.1),
-    scale: 0.88,
-    opacity: 0.65,
-    shadowOpacity: 0.16,
+    speedY: (Math.random() * 0.16 - 0.08),
+    scale: 0.85,
+    opacity: 0.55,
+    shadowOpacity: 0.12,
   };
 
   return [mainCloud, subCloud];
