@@ -2017,7 +2017,7 @@ export function BattleField({
                 : activeCard.type === 'SPELL'
                 ? '✨ ドロップ発動'
                 : targetAmbushObstacle
-                ? `🌲 奇襲ドロップ出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
+                ? `🌿 奇襲ドロップ出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
                 : `🎯 ドロップ出撃 [${depthRole.label}]`
               : activeCard.id === 'fire_spell'
               ? '🔥 クリックで縦一列業火！'
@@ -2026,7 +2026,7 @@ export function BattleField({
               : activeCard.type === 'SPELL'
               ? '✨ クリック発動'
               : targetAmbushObstacle
-              ? `🌲 奇襲クリック出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
+              ? `🌿 奇襲クリック出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
               : `🎯 クリック出撃 [${depthRole.label}]`}
           </div>
         </>

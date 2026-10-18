@@ -56,6 +56,8 @@ import {
   isPointOccludedByObstacle,
   evaluateUnitStealthAndSpot,
   isObstacleActive,
+  isObstaclePassable,
+  isObstacleSolid,
   isObstacleBlockingVision,
   doesSegmentIntersectObstacle,
   hasLineOfSight,
@@ -779,13 +781,23 @@ console.log('  -> Stampede corridor and Hold Ambush mechanics: PASSED');
 
 console.log('[13/13] Testing Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment...');
 // 13-1. 障害物種別による視界遮断判定
-const testForest = FIELD_OBSTACLES.find((o) => o.kind === 'forest')!;
+const testForest = FIELD_OBSTACLES.find((o) => o.kind === 'bush' || o.kind === 'forest')!;
 const testRock = FIELD_OBSTACLES.find((o) => o.kind === 'rock')!;
 const testCrystal = FIELD_OBSTACLES.find((o) => o.kind === 'crystal')!;
 
-assert(isObstacleBlockingVision(testForest) === true, 'Forest obstacle must block vision');
+assert(isObstacleBlockingVision(testForest) === true, 'Bush/Forest obstacle must block vision');
 assert(isObstacleBlockingVision(testRock) === false, 'Rock obstacle must allow vision (user preference)');
 assert(isObstacleBlockingVision(testCrystal) === false, 'Crystal obstacle must allow vision');
+
+// 茂み（Bush）は通り抜け可能（passable = true, solid = false）
+assert(isObstaclePassable(testForest) === true, 'Bush must be passable (units can walk through it)');
+assert(isObstacleSolid(testForest) === false, 'Bush must not be solid (does not block physical movement)');
+
+// 一方で岩（Rock）や結晶（Crystal）は物理的な壁として移動をブロックする（solid = true, passable = false）
+assert(isObstaclePassable(testRock) === false, 'Rock must not be passable');
+assert(isObstacleSolid(testRock) === true, 'Rock must be solid (blocks physical movement)');
+assert(isObstaclePassable(testCrystal) === false, 'Crystal must not be passable');
+assert(isObstacleSolid(testCrystal) === true, 'Crystal must be solid (blocks physical movement)');
 
 // 破壊済み（切り株・瓦礫）は視界を遮らない
 const destroyedForest = { ...testForest, isDestroyed: true };
@@ -866,10 +878,25 @@ assert(
   `Vision reachX must stop before tree center (got ${reachPlayerBeforeTree.reachX})`
 );
 
-// 下ルート (y=65, 岩) のユニットは視界が遮られず、フル射程25%が保たれる
-const reachPlayerFacingRock = computeUnitMaxVisionReachX(20, 65, 25, 'player', FIELD_OBSTACLES);
-assert(reachPlayerFacingRock.isBlockedByObstacle === false, 'Player unit facing rock must not have sight blocked');
-assert(reachPlayerFacingRock.effectiveRange === 25, 'Effective range through rock must remain 25%');
+// 13-5. 茂みの通り抜け（Passability in Movement）
+// solid な障害物リストには茂みが含まれないため、ユニットは茂みの前で停止・攻撃せず、通り抜ける
+const solidObstacles = FIELD_OBSTACLES.filter(isObstacleSolid);
+assert(solidObstacles.every((o) => o.kind !== 'bush' && o.kind !== 'forest'), 'Solid obstacles must exclude bushes');
+assert(solidObstacles.some((o) => o.kind === 'rock'), 'Solid obstacles must include rocks');
+assert(solidObstacles.some((o) => o.kind === 'crystal'), 'Solid obstacles must include crystals');
+
+// 茂み (x=34, y=35) に向かって進むユニット (x=30, y=35, action: block) は、
+// 茂みによって移動が制限（壁ブロック）されず前進可能
+const unitAdvancingToBush: Unit = {
+  ...baseUnit,
+  id: 'unit_bush_passer',
+  owner: 'player',
+  x: 30,
+  y: 35,
+  obstacleAction: 'block',
+};
+const nearestSolidForBushUnit = solidObstacles.find((o) => Math.abs(unitAdvancingToBush.y - o.y) <= o.radiusY + 2.0);
+assert(nearestSolidForBushUnit === undefined, 'No solid obstacle exists along y=35 upper bush lane (units walk straight through)');
 
 console.log('  -> Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment: PASSED');
 

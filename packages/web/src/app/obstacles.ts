@@ -17,7 +17,7 @@ import type { Owner, Unit } from './types';
  *    「🌲 奇襲出撃（アンブッシュ）」ボーナスとして攻撃力+1が付与される！
  */
 
-export type ObstacleKind = 'forest' | 'rock' | 'crystal';
+export type ObstacleKind = 'bush' | 'forest' | 'rock' | 'crystal';
 
 export interface FieldObstacle {
   id: string;
@@ -86,11 +86,11 @@ export const AMBUSH_DEPLOY_ATK_BONUS = 1;
  * 奇襲ルートとカメラ覗き込みの駆け引きを生み出す。
  */
 export const FIELD_OBSTACLES: FieldObstacle[] = [
-  // 自陣側（プレイヤーが奇襲出撃バフを得られる遮蔽物）
+  // 自陣側（プレイヤーが奇襲出撃バフを得られる遮蔽物: 茂み）
   {
     id: 'obs_player_upper_forest',
-    name: '翠緑の隠れ森',
-    kind: 'forest',
+    name: '翠緑の茂み',
+    kind: 'bush',
     side: 'player',
     x: 34,
     y: 35,
@@ -115,11 +115,11 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     maxHp: 80,
     isDestroyed: false,
   },
-  // 中央交戦エリア（中立の立体遮蔽物）
+  // 中央交戦エリア（中立の立体遮蔽物: 茂み）
   {
     id: 'obs_mid_upper_forest',
-    name: '迷いの大樹冠',
-    kind: 'forest',
+    name: '迷いの茂み',
+    kind: 'bush',
     side: 'neutral',
     x: 56,
     y: 35,
@@ -147,8 +147,8 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
   // 敵陣奥（CPUの出撃予兆や忍びアサシンの出撃を隠す死角遮蔽物: x=88, radiusX=9.5 -> x=78.5〜97.5%をカバー）
   {
     id: 'obs_cpu_upper_forest',
-    name: '霧隠れの古木林',
-    kind: 'forest',
+    name: '霧隠れの茂み',
+    kind: 'bush',
     side: 'cpu',
     x: 88,
     y: 35,
@@ -403,16 +403,35 @@ export function evaluateUnitStealthAndSpot(
 }
 
 /**
+ * 障害物がユニットの通行（通り抜け）を許可するかどうか判定
+ * - 茂み（bush/forest）: LoLの茂みと同様、視界は遮るがユニットは自由に通り抜け可能 (true)
+ * - 岩（rock）/ 結晶（crystal）: 物理的な壁として移動をブロックする (false)
+ */
+export function isObstaclePassable(obstacle: FieldObstacle): boolean {
+  return obstacle.kind === 'bush' || obstacle.kind === 'forest';
+}
+
+/**
+ * 障害物がユニットの移動を物理的に妨げる壁（衝突停止・攻撃破壊対象）かどうか判定
+ */
+export function isObstacleSolid(obstacle: FieldObstacle): boolean {
+  if (!isObstacleActive(obstacle)) {
+    return false;
+  }
+  return !isObstaclePassable(obstacle);
+}
+
+/**
  * 障害物がユニットの視界（Line of Sight）を遮るかどうか判定
- * - 木/森（forest）: 茂みと樹冠により視界を完全に遮断する (true)
+ * - 茂み（bush/forest）: LoLの茂みと同様、茂みにより視界を遮断する (true)
  * - 岩（rock）/ 結晶（crystal）: 背が低い等の理由で視界・射線を通す (false)
- * - 破壊済み（isDestroyed または HP<=0）: 切り株や瓦礫となるため視界を通す (false)
+ * - 破壊済み（isDestroyed または HP<=0）: 視界を通す (false)
  */
 export function isObstacleBlockingVision(obstacle: FieldObstacle): boolean {
   if (!isObstacleActive(obstacle)) {
     return false;
   }
-  return obstacle.kind === 'forest';
+  return obstacle.kind === 'bush' || obstacle.kind === 'forest';
 }
 
 /**

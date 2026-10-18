@@ -313,22 +313,18 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
   isHighlightedForAmbush = false,
   is3DMode = true,
 }: RenderObstacleGroundProps) {
-  const isForest = obstacle.kind === 'forest';
+  const isBush = obstacle.kind === 'bush' || obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
   const isDestroyed = Boolean(obstacle.isDestroyed);
 
   // 地面のベースブロック＆破壊時の切り株・瓦礫ボクセル定義
   const groundBlocks: VoxelBoxDef[] = isDestroyed
-    ? isForest
+    ? isBush
       ? [
-          // 折れた大木のボクセル切り株 (年輪が見える上面)
-          { ox: 0, oy: 0, oz: 0, w: 18, d: 18, h: 12, mat: 'stumpTop' },
-          // 左の小さな切り株
-          { ox: -26, oy: 6, oz: 0, w: 12, d: 12, h: 8, mat: 'stumpTop' },
-          // 飛び散った木片・葉のミニキューブ
-          { ox: 22, oy: 10, oz: 0, w: 9, d: 9, h: 6, mat: 'trunk' },
-          { ox: -14, oy: 16, oz: 0, w: 10, d: 10, h: 6, mat: 'leafDark' },
-          { ox: 16, oy: -12, oz: 0, w: 10, d: 10, h: 5, mat: 'leaf' },
+          // 踏み荒らされた草むら・飛び散った葉片
+          { ox: 0, oy: 0, oz: 0, w: 18, d: 14, h: 4, mat: 'leafDark' },
+          { ox: -20, oy: 6, oz: 0, w: 14, d: 12, h: 3, mat: 'bush' },
+          { ox: 18, oy: 8, oz: 0, w: 12, d: 12, h: 3, mat: 'moss' },
         ]
       : [
           // 粉砕された岩・結晶の瓦礫ボクセルキューブ
@@ -337,15 +333,13 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
           { ox: 24, oy: -4, oz: 0, w: 12, d: 12, h: 7, mat: 'stoneDark' },
           { ox: -6, oy: -10, oz: 0, w: 12, d: 10, h: 6, mat: isRock ? 'stone' : 'crystal' },
         ]
-    : isForest
+    : isBush
     ? [
-        // 地面から垂直に立ち上がる大木の幹（下部〜中間）
-        { ox: 0, oy: -2, oz: 0, w: 16, d: 16, h: 30, mat: 'trunk' },
-        // 張り出した根っこブロック
-        { ox: -11, oy: 2, oz: 0, w: 8, d: 10, h: 8, mat: 'trunk' },
-        { ox: 11, oy: 2, oz: 0, w: 8, d: 10, h: 7, mat: 'trunk' },
-        // 左の副木の幹
-        { ox: -28, oy: 6, oz: 0, w: 10, d: 10, h: 20, mat: 'trunk' },
+        // 地面に広がる青々とした茂み・低木の下草ボクセル（ユニットが通り抜けられる背の低い茂みのベース）
+        { ox: 0, oy: 0, oz: 0, w: 38, d: 28, h: 6, mat: 'leafDark' },
+        { ox: -18, oy: 4, oz: 0, w: 24, d: 20, h: 8, mat: 'bush' },
+        { ox: 18, oy: -2, oz: 0, w: 26, d: 22, h: 7, mat: 'bush' },
+        { ox: -2, oy: 10, oz: 0, w: 20, d: 16, h: 9, mat: 'leaf' },
       ]
     : [
         // 岩・結晶の地面基礎ブロック
@@ -426,7 +420,7 @@ export const RenderObstacleGround = React.memo(function RenderObstacleGround({
             boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
           }}
         >
-          🌲 奇襲出撃 (+1⚔️)
+          🌿 奇襲出撃 (+1⚔️)
         </div>
       )}
     </div>
@@ -444,7 +438,7 @@ interface RenderObstacleCanopyProps {
 
 /**
  * マインクラフト風の3Dボクセル（低ポリブロック）として地面から垂直に生える
- * 「大木（Tree）」「茂み（Bush）」「巨岩（Rock）」「結晶岩（Crystal）」オブジェクト
+ * 「茂み（Bush）」「巨岩（Rock）」「結晶岩（Crystal）」オブジェクト
  */
 export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
   obstacle,
@@ -457,7 +451,7 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
     return null;
   }
 
-  const isForest = obstacle.kind === 'forest';
+  const isBush = obstacle.kind === 'bush' || obstacle.kind === 'forest';
   const isRock = obstacle.kind === 'rock';
   const is3DMode = camera.is3DMode;
 
@@ -467,7 +461,8 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
 
   const maxHp = obstacle.maxHp ?? 80;
   const currentHp = obstacle.hp ?? maxHp;
-  const isDamaged = currentHp < maxHp;
+  // 茂みは通り抜け可能で攻撃対象ではないためHPバーは非表示
+  const isDamaged = !obstacle.isDestroyed && currentHp < maxHp && !isBush;
   const hpRatio = Math.max(0, Math.min(1, currentHp / maxHp));
   const isRecentlyHit = Boolean(
     obstacle.lastHitTime && Date.now() - obstacle.lastHitTime < 260
@@ -483,23 +478,25 @@ export const RenderObstacleCanopy = React.memo(function RenderObstacleCanopy({
     : undefined;
 
   // 種別ごとの3Dボクセルブロック構成（地面 z=0 から上空 z=66px まで積み上がる）
-  const voxelBlocks: VoxelBoxDef[] = isForest
+  const voxelBlocks: VoxelBoxDef[] = isBush
     ? [
-        // 1. 中央の大木（Minecraft オークの木スタイル：幹の上に2段の葉ブロック層）
-        { ox: 0, oy: -2, oz: 24, w: 50, d: 38, h: 18, mat: 'leaf' },
-        { ox: 0, oy: -2, oz: 42, w: 34, d: 26, h: 14, mat: 'leaf' },
-        { ox: 0, oy: -2, oz: 56, w: 18, d: 16, h: 9, mat: 'bush' },
+        // 茂み（Bush / Tall Grass）のふさふさしたボクセルクラスタ群
+        // 1. 中央のメイン茂みブロック（背の高い草むら）
+        { ox: 0, oy: -2, oz: 6, w: 46, d: 36, h: 20, mat: 'bush' },
+        { ox: 0, oy: -2, oz: 24, w: 36, d: 28, h: 14, mat: 'leaf' },
+        { ox: 2, oy: -2, oz: 36, w: 22, d: 18, h: 8, mat: 'bush' },
 
-        // 2. 左側の副木＆こんもりした茂み（Bush）ブロック（地面から直接生える）
-        { ox: -30, oy: 6, oz: 16, w: 28, d: 24, h: 16, mat: 'leafDark' },
-        { ox: -30, oy: 6, oz: 32, w: 18, d: 16, h: 10, mat: 'leaf' },
-        // 地面から生える茂み（ブッシュ）
-        { ox: -38, oy: 14, oz: 0, w: 22, d: 18, h: 14, mat: 'bush' },
+        // 2. 左側の茂み広がり
+        { ox: -28, oy: 6, oz: 4, w: 28, d: 24, h: 18, mat: 'leafDark' },
+        { ox: -26, oy: 6, oz: 20, w: 20, d: 18, h: 12, mat: 'bush' },
 
-        // 3. 右側の地面から生える大きな茂み（ブッシュ・草むら）ブロック群
-        { ox: 30, oy: 8, oz: 0, w: 28, d: 22, h: 16, mat: 'bush' },
-        { ox: 30, oy: 8, oz: 16, w: 18, d: 14, h: 10, mat: 'leaf' },
-        { ox: 14, oy: 14, oz: 0, w: 20, d: 16, h: 12, mat: 'leafDark' },
+        // 3. 右側の茂み広がり
+        { ox: 26, oy: 6, oz: 4, w: 30, d: 24, h: 18, mat: 'bush' },
+        { ox: 24, oy: 6, oz: 20, w: 22, d: 16, h: 12, mat: 'leaf' },
+
+        // 4. 手前と奥のアクセント低木
+        { ox: -8, oy: 16, oz: 2, w: 24, d: 16, h: 14, mat: 'bush' },
+        { ox: 10, oy: -14, oz: 4, w: 22, d: 16, h: 14, mat: 'leafDark' },
       ]
     : isRock
     ? [

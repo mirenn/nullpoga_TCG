@@ -28,6 +28,7 @@ import {
   FieldObstacle,
   hasLineOfSight,
   isObstacleActive,
+  isObstacleSolid,
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
@@ -871,11 +872,13 @@ export function updateUnitsMovementAndAttacks(params: {
           unit.owner === 'player' ? Math.min(maxXMove, allyWall) : Math.max(maxXMove, allyWall);
       }
 
-      const activeObstacles = obstacles.filter(isObstacleActive);
+      // 物理的な壁として移動をブロックする障害物（岩・結晶など）のみ衝突判定
+      // ※ 茂み（bush）は視界を遮るが自由に通り抜け可能（LoL仕様）
+      const solidObstacles = obstacles.filter(isObstacleSolid);
       let nearestObs: FieldObstacle | null = null;
       let minObsFwdDist = 999;
 
-      for (const obs of activeObstacles) {
+      for (const obs of solidObstacles) {
         if (Math.abs(y - obs.y) <= obs.radiusY + 2.0) {
           const fwdDist = unit.owner === 'player' ? obs.x - unit.x : unit.x - obs.x;
           const extraReach =
