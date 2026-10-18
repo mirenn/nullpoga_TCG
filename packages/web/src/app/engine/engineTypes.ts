@@ -23,10 +23,14 @@ export const LIGHTNING_FLIGHT_MIN_MS = 220;
 export const LIGHTNING_FLIGHT_MAX_MS = 380;
 export const LIGHTNING_MAX_RANGE = 28; // クラゲの射程（%）
 
-/** 隕石アニメーション(1s)の着弾タイミング(80%)。ダメージ判定はこの時点で行う */
-export const METEOR_IMPACT_DELAY_MS = 800;
-/** 烈火の呪文の詠唱予兆（警告の縦帯）を見せてから延焼を開始するまでの時間 */
-export const FIRE_SPELL_CAST_DELAY_MS = 900;
+/** 隕石アニメーション(2s)の着弾タイミング(80% = 1.6秒)。ダメージ判定はこの時点で行う */
+export const METEOR_IMPACT_DELAY_MS = 1600;
+/** 烈火の呪文の詠唱予兆（警告の縦帯・地熱チャージ）を見せてから延焼を開始するまでの時間 (旧900ms -> 1600ms) */
+export const FIRE_SPELL_CAST_DELAY_MS = 1600;
+/** 癒やしの雨の詠唱開始（慈愛の魔方陣・雨雲発生）から回復雨着弾までの時間 (旧0ms即時 -> 1400ms) */
+export const HEAL_SPELL_CAST_DELAY_MS = 1400;
+/** 疾風の号令の詠唱開始（旋風集約）から号令着弾（AA即時リセット）までの時間 (旧0ms即時 -> 1100ms) */
+export const HASTE_SPELL_CAST_DELAY_MS = 1100;
 
 /** 着弾待ちの雷撃ヒット予約 */
 export interface PendingLightningHit {
@@ -57,6 +61,27 @@ export interface PendingFireSpellCast {
   y: number;
   targetOwner: Owner;
   igniteTime: number;
+}
+
+/** 詠唱待ちの癒やしの雨予約 (setTimeoutに頼らずゲームループ内で決定論的に解決) */
+export interface PendingHealSpellCast {
+  id: string;
+  warningId: string;
+  x: number;
+  y: number;
+  targetOwner: Owner;
+  healAmount: number;
+  applyTime: number;
+}
+
+/** 詠唱待ちの疾風の号令予約 (setTimeoutに頼らずゲームループ内で決定論的に解決) */
+export interface PendingHasteSpellCast {
+  id: string;
+  warningId: string;
+  x: number;
+  y: number;
+  targetOwner: Owner;
+  applyTime: number;
 }
 
 /** 烈火の呪文: 上下へ伝播中の延焼状態 */
@@ -122,6 +147,8 @@ export interface RealtimeGameState {
   pendingMeteorHits: PendingMeteorHit[];
   pendingFireSpellCasts: PendingFireSpellCast[];
   activeFireSpells: ActiveFireSpell[];
+  pendingHealSpellCasts: PendingHealSpellCast[];
+  pendingHasteSpellCasts: PendingHasteSpellCast[];
   gameResult: 'playing' | 'win' | 'lose';
   playerCombo: ComboState;
   cpuCombo: ComboState;

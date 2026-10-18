@@ -15,6 +15,7 @@ import {
   isWithinEngageY,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
+  SPELL_RADIUS,
 } from '../board';
 import {
   inhibitorBlocksY,
@@ -46,6 +47,8 @@ import {
   LIGHTNING_FLIGHT_MIN_MS,
   LIGHTNING_MAX_RANGE,
   PendingFireSpellCast,
+  PendingHasteSpellCast,
+  PendingHealSpellCast,
   PendingLightningHit,
   PendingMeteorHit,
 } from './engineTypes';
@@ -79,13 +82,15 @@ export function isAllyUnitStopped(
 }
 
 /**
- * 着弾待ちの隕石＆詠唱待ちの烈火の呪文を解決する
+ * 着弾待ちの隕石・烈火の呪文・癒やしの雨・疾風の号令を解決する
  */
 export function resolveDelayedSpellQueue(params: {
   units: Unit[];
   pendingMeteorHits: PendingMeteorHit[];
   pendingFireSpellCasts: PendingFireSpellCast[];
   activeFireSpells: ActiveFireSpell[];
+  pendingHealSpellCasts?: PendingHealSpellCast[];
+  pendingHasteSpellCasts?: PendingHasteSpellCast[];
   spellEffects: SpellEffect[];
   now: number;
 }): {
@@ -93,6 +98,8 @@ export function resolveDelayedSpellQueue(params: {
   pendingMeteorHits: PendingMeteorHit[];
   pendingFireSpellCasts: PendingFireSpellCast[];
   activeFireSpells: ActiveFireSpell[];
+  pendingHealSpellCasts: PendingHealSpellCast[];
+  pendingHasteSpellCasts: PendingHasteSpellCast[];
   spellEffects: SpellEffect[];
 } {
   const { now } = params;
@@ -167,11 +174,89 @@ export function resolveDelayedSpellQueue(params: {
     ];
   }
 
+  // 癒やしの雨の解決（詠唱完了 -> 範囲内の味方HP回復）
+  const stillHealCasts: PendingHealSpellCast[] = [];
+  const appliedHealCasts: PendingHealSpellCast[] = [];
+  for (const hc of params.pendingHealSpellCasts ?? []) {
+    if (now >= hc.applyTime) {
+      appliedHealCasts.push(hc);
+    } else {
+      stillHealCasts.push(hc);
+    }
+  }
+
+  if (appliedHealCasts.length > 0) {
+    const removedWarningIds = new Set(appliedHealCasts.map((hc) => hc.warningId));
+    const newHealEffects: SpellEffect[] = [];
+
+    for (const hc of appliedHealCasts) {
+      newHealEffects.push({
+        id: hc.id,
+        x: hc.x,
+        y: hc.y,
+        type: 'heal',
+        createdAt: now,
+      });
+
+      units = units.map((u) => {
+        if (u.owner === hc.targetOwner && Math.hypot(u.x - hc.x, u.y - hc.y) <= SPELL_RADIUS) {
+          return { ...u, hp: Math.min(u.hp + hc.healAmount, u.maxHp) };
+        }
+        return u;
+      });
+    }
+
+    spellEffects = [
+      ...spellEffects.filter((e) => !removedWarningIds.has(e.id)),
+      ...newHealEffects,
+    ];
+  }
+
+  // 疾風の号令の解決（詠唱完了 -> 範囲内の味方攻撃クールダウン即時リセット）
+  const stillHasteCasts: PendingHasteSpellCast[] = [];
+  const appliedHasteCasts: PendingHasteSpellCast[] = [];
+  for (const hc of params.pendingHasteSpellCasts ?? []) {
+    if (now >= hc.applyTime) {
+      appliedHasteCasts.push(hc);
+    } else {
+      stillHasteCasts.push(hc);
+    }
+  }
+
+  if (appliedHasteCasts.length > 0) {
+    const removedWarningIds = new Set(appliedHasteCasts.map((hc) => hc.warningId));
+    const newHasteEffects: SpellEffect[] = [];
+
+    for (const hc of appliedHasteCasts) {
+      newHasteEffects.push({
+        id: hc.id,
+        x: hc.x,
+        y: hc.y,
+        type: 'haste',
+        createdAt: now,
+      });
+
+      units = units.map((u) => {
+        if (u.owner === hc.targetOwner && Math.hypot(u.x - hc.x, u.y - hc.y) <= SPELL_RADIUS) {
+          return { ...u, attackCooldown: 0 };
+        }
+        return u;
+      });
+    }
+
+    spellEffects = [
+      ...spellEffects.filter((e) => !removedWarningIds.has(e.id)),
+      ...newHasteEffects,
+    ];
+  }
+
   return {
     units,
     pendingMeteorHits: stillMeteorHits,
     pendingFireSpellCasts: stillFireCasts,
     activeFireSpells,
+    pendingHealSpellCasts: stillHealCasts,
+    pendingHasteSpellCasts: stillHasteCasts,
     spellEffects,
   };
 }

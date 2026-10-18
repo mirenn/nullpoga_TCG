@@ -1091,4 +1091,135 @@ engine.reset(false);
 assert(engine.state.units.length === 0 && engine.state.playerHp === 20, 'Engine reset restores initial state');
 
 console.log('  -> Pure TypeScript RealtimeGameEngine headless simulation: PASSED');
-console.log('=== All 15 Test Suites PASSED Successfully! ===');
+
+// =========================================================================
+// 16. Spell Chant & Impact Timing Delays (Meteor, Fire, Heal, Haste)
+// =========================================================================
+console.log('[16/16] Testing Spell Chant & Impact Timing Delays (Meteor, Fire, Heal, Haste)...');
+import {
+  METEOR_IMPACT_DELAY_MS,
+  FIRE_SPELL_CAST_DELAY_MS,
+  HEAL_SPELL_CAST_DELAY_MS,
+  HASTE_SPELL_CAST_DELAY_MS,
+} from '../src/app/engine/engineTypes';
+
+// 1. 各スペルの詠唱・着弾遅延定数の検証
+assert(METEOR_IMPACT_DELAY_MS === 1600, 'Meteor impact delay must be 1600ms');
+assert(FIRE_SPELL_CAST_DELAY_MS === 1600, 'Fire spell cast warning delay must be 1600ms');
+assert(HEAL_SPELL_CAST_DELAY_MS === 1400, 'Heal spell cast warning delay must be 1400ms');
+assert(HASTE_SPELL_CAST_DELAY_MS === 1100, 'Haste spell cast warning delay must be 1100ms');
+
+// 2. 隕石落下の遅延着弾シミュレーション検証
+const spellEngine = new RealtimeGameEngine(false);
+spellEngine.state.playerMana = 10;
+const spellNow = 2_000_000;
+// 敵ユニットを設置 (x=50, y=50, hp=5)
+const enemyUnit: Unit = {
+  id: 'test_enemy_meteor',
+  cardNo: 3,
+  name: '敵ネコ',
+  icon: '🐱',
+  hp: 5,
+  maxHp: 5,
+  attack: 1,
+  range: 8,
+  attackCooldown: 0,
+  attackInterval: 2.0,
+  speed: 1.0,
+  owner: 'cpu',
+  x: 50,
+  y: 50,
+};
+spellEngine.state.units = [enemyUnit];
+
+// 手札にメテオカードを直接セット
+const meteorCard = CARD_POOL.find((c) => c.id === 'meteor')!;
+spellEngine.state.deckState.hand[0] = meteorCard;
+
+// メテオを (50, 50) にプレイ
+spellEngine.playCardAt(50, 50, 0, spellNow);
+assert(spellEngine.state.pendingMeteorHits.length === 1, '1 pending meteor hit queued');
+assert(spellEngine.state.spellEffects.some((e) => e.type === 'meteor'), 'Meteor effect spawned');
+
+// 800ms経過 (旧仕様なら着弾していたタイミング): 新仕様(1600ms)ではまだ着弾せず無傷であること
+spellEngine.tick(0.8, spellNow + 800);
+const enemyAfter800 = spellEngine.state.units.find((u) => u.id === 'test_enemy_meteor');
+assert(enemyAfter800 !== undefined && enemyAfter800.hp === 5, 'Enemy must not take damage at 800ms (still chanting)');
+
+// 1600ms経過 (新仕様の着弾タイミング): 3ダメージ着弾してHPが2になること
+spellEngine.tick(0.8, spellNow + 1600);
+const enemyAfter1600 = spellEngine.state.units.find((u) => u.id === 'test_enemy_meteor');
+assert(enemyAfter1600 !== undefined && enemyAfter1600.hp === 2, 'Enemy takes 3 damage at 1600ms impact');
+
+// 3. 癒やしの雨の詠唱〜着弾シミュレーション検証
+const woundedAlly: Unit = {
+  id: 'test_wounded_ally',
+  cardNo: 3,
+  name: '負傷味方ネコ',
+  icon: '🐱',
+  hp: 1,
+  maxHp: 6,
+  attack: 1,
+  range: 8,
+  attackCooldown: 0,
+  attackInterval: 2.0,
+  speed: 1.0,
+  owner: 'player',
+  x: 50,
+  y: 50,
+};
+spellEngine.state.units = [woundedAlly];
+const healCard = CARD_POOL.find((c) => c.id === 'heal_spell')!;
+spellEngine.state.deckState.hand[0] = healCard;
+
+const healCastTime = spellNow + 5000;
+spellEngine.playCardAt(50, 50, 0, healCastTime);
+assert(spellEngine.state.pendingHealSpellCasts.length === 1, '1 pending heal spell cast queued');
+assert(spellEngine.state.spellEffects.some((e) => e.type === 'heal_warning'), 'heal_warning effect spawned');
+
+// 700ms経過: まだ回復しない
+spellEngine.tick(0.7, healCastTime + 700);
+assert(spellEngine.state.units[0].hp === 1, 'Ally HP must remain 1 at 700ms (chanting heal)');
+
+// 1400ms経過: 回復雨が着弾しHP+3 (1 -> 4) になり、heal_warningが消えてhealエフェクトになる
+spellEngine.tick(0.7, healCastTime + 1400);
+assert(spellEngine.state.units[0].hp === 4, 'Ally HP recovered by +3 at 1400ms');
+assert(spellEngine.state.spellEffects.some((e) => e.type === 'heal'), 'heal landing effect spawned');
+
+// 4. 疾風の号令の詠唱〜発動シミュレーション検証
+const attackingAlly: Unit = {
+  id: 'test_attacking_ally',
+  cardNo: 3,
+  name: '攻撃中味方ネコ',
+  icon: '🐱',
+  hp: 5,
+  maxHp: 5,
+  attack: 1,
+  range: 8,
+  attackCooldown: 1.5,
+  attackInterval: 2.0,
+  speed: 1.0,
+  owner: 'player',
+  x: 50,
+  y: 50,
+};
+spellEngine.state.units = [attackingAlly];
+const hasteCard = CARD_POOL.find((c) => c.id === 'haste_spell')!;
+spellEngine.state.deckState.hand[0] = hasteCard;
+
+const hasteCastTime = spellNow + 10000;
+spellEngine.playCardAt(50, 50, 0, hasteCastTime);
+assert(spellEngine.state.pendingHasteSpellCasts.length === 1, '1 pending haste spell cast queued');
+assert(spellEngine.state.spellEffects.some((e) => e.type === 'haste_warning'), 'haste_warning effect spawned');
+
+// 600ms経過: まだリセットされない
+spellEngine.tick(0.6, hasteCastTime + 600);
+assert(spellEngine.state.units[0].attackCooldown > 0, 'Attack cooldown must not reset at 600ms (chanting haste)');
+
+// 1100ms経過: 疾風の号令が発動し、attackCooldownが0にリセットされる
+spellEngine.tick(0.5, hasteCastTime + 1100);
+assert(spellEngine.state.units[0].attackCooldown === 0, 'Attack cooldown reset to 0 at 1100ms');
+assert(spellEngine.state.spellEffects.some((e) => e.type === 'haste'), 'haste landing effect spawned');
+
+console.log('  -> Spell Chant & Impact Timing Delays (Meteor, Fire, Heal, Haste): PASSED');
+console.log('=== All 16 Test Suites PASSED Successfully! ===');

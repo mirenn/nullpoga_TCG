@@ -1227,12 +1227,34 @@ export function BattleField({
                 style={{
                   position: 'absolute',
                   inset: 0,
-                  backgroundColor: 'rgba(239, 68, 68, 0.3)',
-                  border: '2px solid rgba(239, 68, 68, 0.8)',
+                  backgroundColor: 'rgba(239, 68, 68, 0.25)',
+                  border: '2px dashed rgba(239, 68, 68, 0.9)',
                   borderRadius: '50%',
-                  animation: 'meteor-indicator-anim 1s ease-out forwards',
+                  boxShadow: '0 0 20px rgba(239, 68, 68, 0.5), inset 0 0 15px rgba(239, 68, 68, 0.3)',
+                  animation: 'meteor-indicator-anim 2s ease-out forwards',
                 }}
               />
+              {/* 詠唱・着弾予告バッジ */}
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '12%',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  backgroundColor: 'rgba(220, 38, 38, 0.95)',
+                  color: '#fff',
+                  padding: '2px 8px',
+                  borderRadius: '10px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  boxShadow: '0 0 10px #ef4444',
+                  whiteSpace: 'nowrap',
+                  animation: 'meteor-cast-label-anim 2s ease-out forwards',
+                  zIndex: 33,
+                }}
+              >
+                ⚠️ 隕石詠唱中 (1.6秒)
+              </div>
               {/* 降ってくる隕石 */}
               <div
                 style={{
@@ -1240,8 +1262,8 @@ export function BattleField({
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  fontSize: '34px',
-                  animation: 'meteor-falling-anim 1s ease-in forwards',
+                  fontSize: '36px',
+                  animation: 'meteor-falling-anim 2s ease-in forwards',
                   zIndex: 31,
                 }}
               >
@@ -1254,8 +1276,8 @@ export function BattleField({
                   top: '50%',
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  fontSize: '42px',
-                  animation: 'meteor-explosion-anim 1s ease-out forwards',
+                  fontSize: '44px',
+                  animation: 'meteor-explosion-anim 2s ease-out forwards',
                   zIndex: 32,
                 }}
               >
@@ -1265,7 +1287,7 @@ export function BattleField({
           );
         }
 
-        // 烈火の呪文の詠唱予兆: 実際の延焼が始まる前に、着火地点と対象の縦帯を点滅表示
+        // 烈火の呪文の詠唱予兆: 実際の延焼が始まる前に、着火地点と対象の縦帯を点滅表示 (1.6秒)
         if (spell.type === 'burn_warning') {
           const originY = spell.originY ?? spell.y ?? 50;
           return (
@@ -1294,11 +1316,151 @@ export function BattleField({
                   top: `${originY}%`,
                   left: '50%',
                   transform: 'translate(-50%, -50%)',
-                  fontSize: '26px',
-                  textShadow: '0 0 10px #f97316',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                 }}
               >
-                ⚠️🔥
+                <div style={{ fontSize: '28px', textShadow: '0 0 12px #f97316' }}>⚠️🔥</div>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(185, 28, 28, 0.95)',
+                    color: '#fff',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    letterSpacing: '0.5px',
+                    border: '1px solid #fca5a5',
+                    boxShadow: '0 0 12px #ef4444',
+                    whiteSpace: 'nowrap',
+                    marginTop: '2px',
+                  }}
+                >
+                  🔥 業火詠唱中 (1.6秒)
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // 癒やしの雨の詠唱予兆 (1.4秒)
+        if (spell.type === 'heal_warning') {
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: `${spell.y}%`,
+                left: `${spell.x}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                pointerEvents: 'none',
+                zIndex: 30,
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                  border: '2px dashed rgba(16, 185, 129, 0.9)',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 20px rgba(16, 185, 129, 0.5), inset 0 0 15px rgba(16, 185, 129, 0.3)',
+                  animation: 'heal-warning-indicator-anim 1.4s ease-out forwards',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  animation: 'heal-warning-center-anim 1.4s ease-out forwards',
+                }}
+              >
+                <div style={{ fontSize: '32px', textShadow: '0 0 12px #10b981' }}>🌧️✨</div>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(5, 150, 105, 0.95)',
+                    color: '#fff',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    border: '1px solid #6ee7b7',
+                    boxShadow: '0 0 12px #10b981',
+                    whiteSpace: 'nowrap',
+                    marginTop: '2px',
+                  }}
+                >
+                  🌧️ 癒やし詠唱中 (1.4秒)
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        // 疾風の号令の詠唱予兆 (1.1秒)
+        if (spell.type === 'haste_warning') {
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: `${spell.y}%`,
+                left: `${spell.x}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                pointerEvents: 'none',
+                zIndex: 30,
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  backgroundColor: 'rgba(6, 182, 212, 0.2)',
+                  border: '2px dashed rgba(6, 182, 212, 0.9)',
+                  borderRadius: '50%',
+                  boxShadow: '0 0 20px rgba(6, 182, 212, 0.5), inset 0 0 15px rgba(6, 182, 212, 0.3)',
+                  animation: 'haste-warning-indicator-anim 1.1s ease-out forwards',
+                }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  animation: 'haste-warning-center-anim 1.1s ease-out forwards',
+                }}
+              >
+                <div style={{ fontSize: '32px', textShadow: '0 0 12px #06b6d4' }}>💨🌀</div>
+                <div
+                  style={{
+                    backgroundColor: 'rgba(8, 145, 178, 0.95)',
+                    color: '#fff',
+                    padding: '2px 8px',
+                    borderRadius: '6px',
+                    fontWeight: 'bold',
+                    fontSize: '11px',
+                    border: '1px solid #67e8f9',
+                    boxShadow: '0 0 12px #06b6d4',
+                    whiteSpace: 'nowrap',
+                    marginTop: '2px',
+                  }}
+                >
+                  💨 号令詠唱中 (1.1秒)
+                </div>
               </div>
             </div>
           );
@@ -1450,30 +1612,99 @@ export function BattleField({
           );
         }
 
-        return (
-          <div
-            key={spell.id}
-            style={{
-              ...styles.spellBlast,
-              left: `${spell.x}%`,
-              top: `${spell.y}%`,
-              transform: 'translate(-50%, -50%)',
-              ...(spell.type === 'haste' ? styles.spellHaste : {}),
-              ...(spell.type === 'heal' ? styles.spellHeal : {}),
-              animation: spell.type === 'haste'
-                ? 'haste-spell-anim 0.6s ease-out forwards'
-                : spell.type === 'heal'
-                ? 'heal-spell-anim 1s ease-out forwards'
-                : undefined,
-              pointerEvents: 'none',
-              zIndex: 35,
-            }}
-          >
-            {spell.type === 'haste'
-              ? '💨 疾風!!'
-              : '🌧️ 癒やし!!'}
-          </div>
-        );
+        if (spell.type === 'haste') {
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: `${spell.y}%`,
+                left: `${spell.x}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                pointerEvents: 'none',
+                zIndex: 36,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  border: '3px solid #22d3ee',
+                  boxShadow: '0 0 25px #06b6d4',
+                  animation: 'haste-blast-ring-anim 0.8s ease-out forwards',
+                }}
+              />
+              <div
+                style={{
+                  ...styles.spellBlast,
+                  ...styles.spellHaste,
+                  position: 'relative',
+                  left: undefined,
+                  top: undefined,
+                  transform: undefined,
+                  animation: 'haste-spell-anim 1.0s ease-out forwards',
+                }}
+              >
+                💨 疾風の号令!! ⚡AA即時リセット
+              </div>
+            </div>
+          );
+        }
+
+        if (spell.type === 'heal') {
+          return (
+            <div
+              key={spell.id}
+              style={{
+                position: 'absolute',
+                top: `${spell.y}%`,
+                left: `${spell.x}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                pointerEvents: 'none',
+                zIndex: 36,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  borderRadius: '50%',
+                  border: '3px solid #34d399',
+                  boxShadow: '0 0 25px #10b981',
+                  animation: 'heal-blast-ring-anim 1.0s ease-out forwards',
+                }}
+              />
+              <div
+                style={{
+                  ...styles.spellBlast,
+                  ...styles.spellHeal,
+                  position: 'relative',
+                  left: undefined,
+                  top: undefined,
+                  transform: undefined,
+                  animation: 'heal-spell-anim 1.2s ease-out forwards',
+                }}
+              >
+                🌧️ 癒やしの雨着弾!! ✨HP+3
+              </div>
+            </div>
+          );
+        }
+
+        return null;
       })}
 
       {/* 6. 攻撃エフェクト（弾道・斬撃・着弾・ダメージポップアップ） */}
@@ -1752,6 +1983,46 @@ export function BattleField({
             />
           )}
 
+          {/* 癒やしの雨: 範囲円プレビュー */}
+          {activeCard.id === 'heal_spell' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: `${currentTargetY}%`,
+                left: `${currentTargetX}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                borderRadius: '50%',
+                border: '2px dashed #10b981',
+                backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                boxShadow: '0 0 16px rgba(16, 185, 129, 0.4)',
+                pointerEvents: 'none',
+                zIndex: 19,
+              }}
+            />
+          )}
+
+          {/* 疾風の号令: 範囲円プレビュー */}
+          {activeCard.id === 'haste_spell' && (
+            <div
+              style={{
+                position: 'absolute',
+                top: `${currentTargetY}%`,
+                left: `${currentTargetX}%`,
+                transform: 'translate(-50%, -50%)',
+                width: `${SPELL_RADIUS * 2}%`,
+                height: `${SPELL_RADIUS * 2}%`,
+                borderRadius: '50%',
+                border: '2px dashed #06b6d4',
+                backgroundColor: 'rgba(6, 182, 212, 0.15)',
+                boxShadow: '0 0 16px rgba(6, 182, 212, 0.4)',
+                pointerEvents: 'none',
+                zIndex: 19,
+              }}
+            />
+          )}
+
           {/* モンスター出撃プレビュー時の射程範囲表示 (showUnitRange有効時) */}
           {showUnitRange && activeCard.type === 'MONSTER' && (() => {
             const previewRange = activeCard.range ?? 8;
@@ -2011,18 +2282,26 @@ export function BattleField({
               ? `🚫 ${validation.reason}`
               : isDragging
               ? activeCard.id === 'fire_spell'
-                ? '🔥 ドロップで縦一列業火！'
+                ? '🔥 ドロップで縦一列業火！ (詠唱1.6秒)'
                 : activeCard.id === 'meteor'
-                ? '☄️ ドロップで範囲隕石！'
+                ? '☄️ ドロップで範囲隕石！ (詠唱1.6秒)'
+                : activeCard.id === 'heal_spell'
+                ? '🌧️ ドロップで範囲回復！ (詠唱1.4秒)'
+                : activeCard.id === 'haste_spell'
+                ? '💨 ドロップでAAリセット号令！ (詠唱1.1秒)'
                 : activeCard.type === 'SPELL'
                 ? '✨ ドロップ発動'
                 : targetAmbushObstacle
                 ? `🌿 奇襲ドロップ出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
                 : `🎯 ドロップ出撃 [${depthRole.label}]`
               : activeCard.id === 'fire_spell'
-              ? '🔥 クリックで縦一列業火！'
+              ? '🔥 クリックで縦一列業火！ (詠唱1.6秒)'
               : activeCard.id === 'meteor'
-              ? '☄️ クリックで範囲隕石！'
+              ? '☄️ クリックで範囲隕石！ (詠唱1.6秒)'
+              : activeCard.id === 'heal_spell'
+              ? '🌧️ クリックで範囲回復！ (詠唱1.4秒)'
+              : activeCard.id === 'haste_spell'
+              ? '💨 クリックでAAリセット号令！ (詠唱1.1秒)'
               : activeCard.type === 'SPELL'
               ? '✨ クリック発動'
               : targetAmbushObstacle

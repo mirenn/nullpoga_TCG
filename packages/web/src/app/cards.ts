@@ -168,7 +168,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '疾風の号令',
     type: 'SPELL',
     manaCost: 1,
-    effectDesc: '指定レーンの味方の攻撃クールダウンをリセットし、即座に攻撃させる（AAキャンセル）。',
+    effectDesc: '指定地点周辺の味方の攻撃クールダウンをリセットし、即座に攻撃させる（詠唱1.1秒後に号令発動）。',
     icon: '💨',
   },
   {
@@ -177,7 +177,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '癒やしの雨',
     type: 'SPELL',
     manaCost: 3,
-    effectDesc: '指定したレーンの味方ユニットすべてのHPを3回復する。',
+    effectDesc: '指定地点周辺の味方ユニットすべてのHPを3回復する（詠唱1.4秒後に回復雨が着弾）。',
     icon: '🌧️',
   },
   {
@@ -186,7 +186,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '隕石落下',
     type: 'SPELL',
     manaCost: 3,
-    effectDesc: '指定したレーンの中央付近に隕石を落とし、範囲内の敵に3ダメージ。',
+    effectDesc: '指定地点へ巨大な隕石を落とし、範囲内の敵に3ダメージ（詠唱1.6秒後に着弾大爆発）。',
     icon: '☄️',
   },
   {
@@ -195,7 +195,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '烈火の呪文',
     type: 'SPELL',
     manaCost: 4,
-    effectDesc: '指定位置を中心に縦一列（上下全レーン）へ業火が広がり、到達した敵に3ダメージ。',
+    effectDesc: '指定位置を中心に縦一列（上下全レーン）へ業火が広がり、到達した敵に3ダメージ（詠唱1.6秒後に着火）。',
     icon: '🔥',
   },
 ];

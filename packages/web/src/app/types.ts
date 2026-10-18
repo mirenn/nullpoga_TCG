@@ -113,7 +113,7 @@ export interface SpellEffect {
   id: string;
   x: number;
   y: number;
-  type: 'meteor' | 'burn' | 'burn_warning' | 'haste' | 'heal';
+  type: 'meteor' | 'burn' | 'burn_warning' | 'haste' | 'haste_warning' | 'heal' | 'heal_warning';
   createdAt: number;
   originY?: number; // 烈火の呪文などの延焼起点Y座標
   lane?: number;

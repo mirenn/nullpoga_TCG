@@ -199,11 +199,12 @@ export function computeCpuAction(
             (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && u.hp < u.maxHp
           );
           if (wounded.length > 0) {
+            const avgX = wounded.reduce((acc, cur) => acc + cur.x, 0) / wounded.length;
             options.push({
               handIndex: idx,
               card,
               targetY: y,
-              targetX: 70,
+              targetX: Math.max(15, Math.min(85, Math.round(avgX))),
               targetLane: y,
               score: 8 + wounded.length * 6 + Math.random() * 2,
             });
@@ -215,11 +216,12 @@ export function computeCpuAction(
             (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && playerUnits.some((p) => isWithinEngageY(p.y, u.y))
           );
           if (battlingAllies.length > 0) {
+            const avgX = battlingAllies.reduce((acc, cur) => acc + cur.x, 0) / battlingAllies.length;
             options.push({
               handIndex: idx,
               card,
               targetY: y,
-              targetX: 70,
+              targetX: Math.max(15, Math.min(85, Math.round(avgX))),
               targetLane: y,
               score: 7 + battlingAllies.length * 4 + Math.random() * 3,
             });

@@ -34,6 +34,8 @@ import {
 } from '../cloudEvent';
 import {
   FIRE_SPELL_CAST_DELAY_MS,
+  HASTE_SPELL_CAST_DELAY_MS,
+  HEAL_SPELL_CAST_DELAY_MS,
   INITIAL_LIFE,
   INITIAL_MANA,
   MAX_MANA,
@@ -87,6 +89,8 @@ export function createInitialRealtimeGameState(randomize: boolean = false): Real
     pendingMeteorHits: [],
     pendingFireSpellCasts: [],
     activeFireSpells: [],
+    pendingHealSpellCasts: [],
+    pendingHasteSpellCasts: [],
     gameResult: 'playing',
     playerCombo: { count: 0, lastTime: 0 },
     cpuCombo: { count: 0, lastTime: 0 },
@@ -235,6 +239,49 @@ export class RealtimeGameEngine {
     ];
   }
 
+  /** 癒やしの雨の詠唱予約（プレイヤー・CPU共通） */
+  private enqueueHealSpell(x: number, y: number, targetOwner: Owner, now: number): void {
+    const warningId = `heal_warning_${targetOwner}_${now}_${Math.random().toString(36).slice(2, 6)}`;
+    const effectId = `heal_${targetOwner}_${now}_${Math.random().toString(36).slice(2, 6)}`;
+    this.state.spellEffects = [
+      ...this.state.spellEffects,
+      { id: warningId, x, y, type: 'heal_warning', createdAt: now },
+    ];
+    this.state.pendingHealSpellCasts = [
+      ...this.state.pendingHealSpellCasts,
+      {
+        id: effectId,
+        warningId,
+        x,
+        y,
+        targetOwner,
+        healAmount: 3,
+        applyTime: now + HEAL_SPELL_CAST_DELAY_MS,
+      },
+    ];
+  }
+
+  /** 疾風の号令の詠唱予約（プレイヤー・CPU共通） */
+  private enqueueHasteSpell(x: number, y: number, targetOwner: Owner, now: number): void {
+    const warningId = `haste_warning_${targetOwner}_${now}_${Math.random().toString(36).slice(2, 6)}`;
+    const effectId = `haste_${targetOwner}_${now}_${Math.random().toString(36).slice(2, 6)}`;
+    this.state.spellEffects = [
+      ...this.state.spellEffects,
+      { id: warningId, x, y, type: 'haste_warning', createdAt: now },
+    ];
+    this.state.pendingHasteSpellCasts = [
+      ...this.state.pendingHasteSpellCasts,
+      {
+        id: effectId,
+        warningId,
+        x,
+        y,
+        targetOwner,
+        applyTime: now + HASTE_SPELL_CAST_DELAY_MS,
+      },
+    ];
+  }
+
   /** プレイヤーが指定座標 (rawX, rawY) にカードをプレイする */
   public playCardAt(
     rawX: number,
@@ -288,25 +335,9 @@ export class RealtimeGameEngine {
       } else if (card.id === 'fire_spell') {
         this.enqueueFireSpell(spawnX, spawnY, 'cpu', now);
       } else if (card.id === 'haste_spell') {
-        this.state.spellEffects = [
-          ...this.state.spellEffects,
-          { id: `haste_${now}`, x: spawnX, y: spawnY, type: 'haste', createdAt: now },
-        ];
-        this.state.units = this.state.units.map((u) =>
-          u.owner === 'player' && Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS
-            ? { ...u, attackCooldown: 0 }
-            : u
-        );
+        this.enqueueHasteSpell(spawnX, spawnY, 'player', now);
       } else if (card.id === 'heal_spell') {
-        this.state.spellEffects = [
-          ...this.state.spellEffects,
-          { id: `heal_${now}`, x: spawnX, y: spawnY, type: 'heal', createdAt: now },
-        ];
-        this.state.units = this.state.units.map((u) =>
-          u.owner === 'player' && Math.hypot(u.x - spawnX, u.y - spawnY) <= SPELL_RADIUS
-            ? { ...u, hp: Math.min(u.hp + 3, u.maxHp) }
-            : u
-        );
+        this.enqueueHealSpell(spawnX, spawnY, 'player', now);
       }
     }
 
@@ -391,25 +422,9 @@ export class RealtimeGameEngine {
       } else if (chosen.card.id === 'fire_spell') {
         this.enqueueFireSpell(spellX, spellY, 'player', now);
       } else if (chosen.card.id === 'haste_spell') {
-        this.state.spellEffects = [
-          ...this.state.spellEffects,
-          { id: `cpu_haste_${now}`, x: spellX, y: spellY, type: 'haste', createdAt: now },
-        ];
-        this.state.units = this.state.units.map((u) =>
-          u.owner === 'cpu' && Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS
-            ? { ...u, attackCooldown: 0 }
-            : u
-        );
+        this.enqueueHasteSpell(spellX, spellY, 'cpu', now);
       } else if (chosen.card.id === 'heal_spell') {
-        this.state.spellEffects = [
-          ...this.state.spellEffects,
-          { id: `cpu_heal_${now}`, x: spellX, y: spellY, type: 'heal', createdAt: now },
-        ];
-        this.state.units = this.state.units.map((u) =>
-          u.owner === 'cpu' && Math.hypot(u.x - spellX, u.y - spellY) <= SPELL_RADIUS
-            ? { ...u, hp: Math.min(u.hp + 3, u.maxHp) }
-            : u
-        );
+        this.enqueueHealSpell(spellX, spellY, 'cpu', now);
       }
     }
   }
@@ -435,12 +450,14 @@ export class RealtimeGameEngine {
     // 2. CPU AI実行
     this.stepCpuAi(dt, now);
 
-    // 3. 着弾待ちの隕石＆詠唱待ちの烈火の呪文の解決
+    // 3. 着弾待ちの隕石・詠唱待ちの烈火・回復・号令の解決
     const delayedSpellRes = resolveDelayedSpellQueue({
       units: this.state.units,
       pendingMeteorHits: this.state.pendingMeteorHits,
       pendingFireSpellCasts: this.state.pendingFireSpellCasts,
       activeFireSpells: this.state.activeFireSpells,
+      pendingHealSpellCasts: this.state.pendingHealSpellCasts,
+      pendingHasteSpellCasts: this.state.pendingHasteSpellCasts,
       spellEffects: this.state.spellEffects,
       now,
     });
@@ -448,6 +465,8 @@ export class RealtimeGameEngine {
     this.state.pendingMeteorHits = delayedSpellRes.pendingMeteorHits;
     this.state.pendingFireSpellCasts = delayedSpellRes.pendingFireSpellCasts;
     this.state.activeFireSpells = delayedSpellRes.activeFireSpells;
+    this.state.pendingHealSpellCasts = delayedSpellRes.pendingHealSpellCasts;
+    this.state.pendingHasteSpellCasts = delayedSpellRes.pendingHasteSpellCasts;
     this.state.spellEffects = delayedSpellRes.spellEffects;
 
     // 4. CPU召喚予兆の解決（詠唱時間0.65秒経過したモンスターをスポーン）
@@ -638,13 +657,17 @@ export class RealtimeGameEngine {
     ];
 
     this.state.spellEffects = this.state.spellEffects.filter(
-      (e: SpellEffect) =>
-        now - e.createdAt <
-        (e.type === 'burn'
-          ? 2000
-          : e.type === 'burn_warning'
-            ? FIRE_SPELL_CAST_DELAY_MS + 300
-            : 1200)
+      (e: SpellEffect) => {
+        const age = now - e.createdAt;
+        if (e.type === 'meteor') return age < 2400; // 2.0sアニメーション + 400ms余韻
+        if (e.type === 'burn') return age < 2200;
+        if (e.type === 'burn_warning') return age < FIRE_SPELL_CAST_DELAY_MS + 300;
+        if (e.type === 'heal_warning') return age < HEAL_SPELL_CAST_DELAY_MS + 300;
+        if (e.type === 'haste_warning') return age < HASTE_SPELL_CAST_DELAY_MS + 300;
+        if (e.type === 'heal') return age < 1600;
+        if (e.type === 'haste') return age < 1400;
+        return age < 1200;
+      }
     );
 
     this.notify();
