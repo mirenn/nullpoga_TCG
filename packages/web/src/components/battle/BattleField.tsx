@@ -6,6 +6,7 @@ import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
 import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
 import { RenderStampede } from './RenderStampede';
+import { StampedeDragonTimer } from './StampedeDragonTimer';
 import { RenderClouds } from './RenderClouds';
 import {
   clampSpawnX,
@@ -622,6 +623,32 @@ export function BattleField({
           </span>
         )}
       </div>
+
+      {/* 巨獣スタンピード・ドラゴンタイマーHUD (LoLスタイル常時オブジェクトタイマー) */}
+      {stampede && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: '38px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 60,
+          }}
+        >
+          <StampedeDragonTimer
+            stampede={stampede}
+            onFocusStampedeZone={() =>
+              updateCamera((prev) => ({
+                ...prev,
+                panX: 0,
+                panY: 0,
+              }))
+            }
+          />
+        </div>
+      )}
 
       {/* 3D箱庭ボード本体（perspective内で平行移動・ズーム・チルトが適用される盤面） */}
       <div

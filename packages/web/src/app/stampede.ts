@@ -30,9 +30,10 @@ export const STAMPEDE_ZONE_X_MAX = 55;
 export const STAMPEDE_ZONE_CENTER_X = 50;
 
 /** 各フェーズの時間設定 (秒) */
-export const STAMPEDE_INITIAL_DELAY_SEC = 14; // ゲーム開始から初回警報までの秒数
-export const STAMPEDE_INTERVAL_SEC = 24; // 通常アイドル時間
-export const STAMPEDE_WARNING_DURATION_SEC = 3.2; // 警告フェーズ（タップして止まるための猶予時間）
+export const STAMPEDE_INITIAL_DELAY_SEC = 14; // ゲーム開始から初回警報までの秒数 (初回突進は 14 + 3.5 = 17.5秒)
+export const STAMPEDE_INTERVAL_SEC = 24; // 通常アイドル時間 (突進間隔は 24 + 3.5 = 27.5秒)
+export const STAMPEDE_APPROACHING_SEC = 6.0; // 地鳴り予兆フェーズ（突進前6秒 / 警報の約2.5秒前から予兆開始）
+export const STAMPEDE_WARNING_DURATION_SEC = 3.5; // 警告フェーズ（タップして止まるための猶予時間: 3.5秒）
 export const STAMPEDE_RUSH_DURATION_SEC = 2.0; // 巨獣群の突進通過時間
 export const STAMPEDE_COOLDOWN_DURATION_SEC = 1.0; // 通過後の余韻・解除タイミング
 
@@ -84,17 +85,23 @@ export function generateStampedeBeasts(): StampedeBeast[] {
 
 /** スタンピード状態の初期値を生成 */
 export function createInitialStampedeState(): StampedeState {
+  const nextIn = STAMPEDE_INITIAL_DELAY_SEC + STAMPEDE_WARNING_DURATION_SEC;
   return {
     phase: 'idle',
     phaseTimer: STAMPEDE_INITIAL_DELAY_SEC,
     phaseDuration: STAMPEDE_INITIAL_DELAY_SEC,
-    nextStampedeIn: STAMPEDE_INITIAL_DELAY_SEC,
+    nextStampedeIn: nextIn,
     zoneXMin: STAMPEDE_ZONE_X_MIN,
     zoneXMax: STAMPEDE_ZONE_X_MAX,
     rushProgress: 0,
     beasts: generateStampedeBeasts(),
     hitUnitIds: {},
   };
+}
+
+/** 地鳴り（接近中・予兆）状態かどうか判定（突進まで STAMPEDE_APPROACHING_SEC 秒以下、かつまだ warning に入っていない idle 時） */
+export function isStampedeApproaching(state: StampedeState): boolean {
+  return state.phase === 'idle' && state.nextStampedeIn <= STAMPEDE_APPROACHING_SEC;
 }
 
 /** ユニットがスタンピードの危険回廊内に入っているか判定 */
@@ -221,14 +228,17 @@ export function updateStampede(
     }
   }
 
-  // UI用の次回突進までの残り秒数計算
+  // UI用の次回突進（rush激突）までの残り秒数計算 (LoLドラゴンタイマー方式)
   let nextStampedeIn = 0;
   if (phase === 'idle') {
-    nextStampedeIn = phaseTimer;
+    nextStampedeIn = phaseTimer + STAMPEDE_WARNING_DURATION_SEC;
   } else if (phase === 'warning') {
+    nextStampedeIn = phaseTimer;
+  } else if (phase === 'rush') {
     nextStampedeIn = 0;
   } else {
-    nextStampedeIn = phaseTimer + STAMPEDE_INTERVAL_SEC;
+    // cooldown
+    nextStampedeIn = phaseTimer + STAMPEDE_INTERVAL_SEC + STAMPEDE_WARNING_DURATION_SEC;
   }
 
   return {

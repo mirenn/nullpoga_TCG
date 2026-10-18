@@ -67,6 +67,8 @@ import {
   STAMPEDE_ZONE_X_MIN,
   STAMPEDE_ZONE_X_MAX,
   STAMPEDE_CRUSH_DAMAGE,
+  STAMPEDE_APPROACHING_SEC,
+  STAMPEDE_WARNING_DURATION_SEC,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
@@ -75,6 +77,7 @@ import {
   isPlayerUnitSafeBeforeZone,
   isCpuUnitSafeBeforeZone,
   shouldCpuUnitHoldForStampede,
+  isStampedeApproaching,
   updateStampede,
 } from '../src/app/stampede';
 import {
@@ -777,7 +780,36 @@ const baseAttack = 2;
 const ambushAttack = baseAttack + HOLD_AMBUSH_ATTACK_BONUS;
 assert(ambushAttack === 4, `Ambush attack must add +2 (got ${ambushAttack})`);
 
-console.log('  -> Stampede corridor and Hold Ambush mechanics: PASSED');
+// 12-6. LoL風ドラゴンタイマー＆地鳴り予兆（Approaching Rumble）カウントダウン
+assert(stampedeInitial.nextStampedeIn === 14 + STAMPEDE_WARNING_DURATION_SEC, 'Initial countdown must sum idle delay and warning duration');
+assert(isStampedeApproaching(stampedeInitial) === false, 'Initial state (>6s) must not be approaching');
+
+const approachingState = {
+  ...stampedeInitial,
+  phase: 'idle' as const,
+  phaseTimer: 2.0,
+  nextStampedeIn: 5.5, // 5.5s <= STAMPEDE_APPROACHING_SEC (6.0s)
+};
+assert(isStampedeApproaching(approachingState) === true, 'Idle state with <=6s remaining must trigger Approaching Rumble');
+
+const warningTimerState = {
+  ...stampedeInitial,
+  phase: 'warning' as const,
+  phaseTimer: 3.5,
+  nextStampedeIn: 3.5,
+};
+assert(isStampedeApproaching(warningTimerState) === false, 'Warning state is active alert, not approaching rumble');
+
+// updateStampede によるカウントダウン進行テスト
+const dtStep = 1.0;
+const stepRes = updateStampede(dtStep, stampedeInitial, []);
+assert(stepRes.nextState.phase === 'idle', 'Phase should remain idle after 1s');
+assert(
+  Math.abs(stepRes.nextState.nextStampedeIn - (stampedeInitial.nextStampedeIn - 1.0)) < 0.001,
+  'nextStampedeIn must decrement accurately with dt'
+);
+
+console.log('  -> Stampede corridor, Dragon Timer & Hold Ambush mechanics: PASSED');
 
 console.log('[13/13] Testing Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment...');
 // 13-1. 障害物種別による視界遮断判定

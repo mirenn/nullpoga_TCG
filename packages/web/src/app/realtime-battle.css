@@ -1025,6 +1025,37 @@
           100% { transform: scale(1.0); opacity: 1; }
         }
 
+        /* 巨獣スタンピード: 地鳴り接近時の微震動 (Rumble Tremor) */
+        @keyframes stampede-rumble-shake {
+          0% { transform: translate(0, 0); }
+          20% { transform: translate(-1.5px, 0.5px); }
+          40% { transform: translate(1.5px, -0.5px); }
+          60% { transform: translate(-1px, -0.5px); }
+          80% { transform: translate(1px, 0.5px); }
+          100% { transform: translate(0, 0); }
+        }
+
+        /* 巨獣スタンピード: ドラゴンタイマー接近時の警告パルス */
+        @keyframes stampede-timer-pulse {
+          0% { transform: scale(1.0); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+          50% { transform: scale(1.04); box-shadow: 0 0 16px rgba(245, 158, 11, 0.85); }
+          100% { transform: scale(1.0); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); }
+        }
+
+        /* 巨獣スタンピード: ドラゴンタイマー警報時の激しい点滅 */
+        @keyframes stampede-timer-alert {
+          0% { transform: scale(1.0); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+          50% { transform: scale(1.07); box-shadow: 0 0 24px rgba(239, 68, 68, 1.0); }
+          100% { transform: scale(1.0); box-shadow: 0 0 10px rgba(239, 68, 68, 0.6); }
+        }
+
+        /* 巨獣スタンピード: 砂煙の立ち上り */
+        @keyframes stampede-dust-rise {
+          0% { transform: translateY(6px) scale(0.7); opacity: 0; }
+          40% { opacity: 0.8; }
+          100% { transform: translateY(-16px) scale(1.3); opacity: 0; }
+        }
+
         /* 立ち止まりインセンティブ: 待ち伏せ集中完了オーラ（金色のオーラと構え） */
         @keyframes unit-ambush-charge-pulse {
           0% {

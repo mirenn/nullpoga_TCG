@@ -1,17 +1,19 @@
 import React from 'react';
 import type { StampedeState } from '../../app/types';
+import { isStampedeApproaching } from '../../app/stampede';
 
 interface RenderStampedeProps {
   stampede: StampedeState;
 }
 
 export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function RenderStampede({ stampede }) {
-  const { phase, phaseTimer, phaseDuration, zoneXMin, zoneXMax, rushProgress, beasts } = stampede;
+  const { phase, phaseTimer, phaseDuration, zoneXMin, zoneXMax, rushProgress, beasts, nextStampedeIn } = stampede;
   const widthPercent = zoneXMax - zoneXMin;
 
   const isWarning = phase === 'warning';
   const isRush = phase === 'rush';
   const isCooldown = phase === 'cooldown';
+  const isApproaching = isStampedeApproaching(stampede);
 
   return (
     <div
@@ -22,21 +24,89 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
         left: `${zoneXMin}%`,
         width: `${widthPercent}%`,
         pointerEvents: 'none',
-        zIndex: isRush ? 35 : 15,
+        zIndex: isRush ? 35 : isWarning ? 25 : isApproaching ? 20 : 15,
+        animation: isApproaching ? 'stampede-rumble-shake 0.15s infinite' : undefined,
       }}
     >
-      {/* 1. 通常時のうっすらとした獣道（スタンピード回廊の痕跡） */}
+      {/* 1. 通常時・地鳴り接近時の獣道（スタンピード回廊の痕跡 & 事前カウントダウン） */}
       {phase === 'idle' && (
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background:
-              'linear-gradient(90deg, transparent 0%, rgba(180, 83, 9, 0.05) 20%, rgba(180, 83, 9, 0.08) 50%, rgba(180, 83, 9, 0.05) 80%, transparent 100%)',
-            borderLeft: '1px dashed rgba(217, 119, 6, 0.25)',
-            borderRight: '1px dashed rgba(217, 119, 6, 0.25)',
+            background: isApproaching
+              ? 'linear-gradient(90deg, transparent 0%, rgba(245, 158, 11, 0.12) 20%, rgba(217, 119, 6, 0.22) 50%, rgba(245, 158, 11, 0.12) 80%, transparent 100%)'
+              : 'linear-gradient(90deg, transparent 0%, rgba(180, 83, 9, 0.05) 20%, rgba(180, 83, 9, 0.08) 50%, rgba(180, 83, 9, 0.05) 80%, transparent 100%)',
+            borderLeft: isApproaching ? '1.5px dashed rgba(245, 158, 11, 0.65)' : '1px dashed rgba(217, 119, 6, 0.25)',
+            borderRight: isApproaching ? '1.5px dashed rgba(245, 158, 11, 0.65)' : '1px dashed rgba(217, 119, 6, 0.25)',
+            transition: 'background 0.5s ease, border-color 0.5s ease',
           }}
         >
+          {/* 上端の事前タイマー標識（回廊の目印） */}
+          <div
+            style={{
+              position: 'absolute',
+              top: '8px',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              display: 'flex',
+              gap: '4px',
+              alignItems: 'center',
+              backgroundColor: isApproaching ? 'rgba(120, 53, 15, 0.88)' : 'rgba(15, 23, 42, 0.72)',
+              border: isApproaching ? '1px solid #f59e0b' : '1px solid rgba(217, 119, 6, 0.4)',
+              borderRadius: '999px',
+              padding: '2px 8px',
+              fontSize: '10px',
+              fontWeight: 'bold',
+              color: isApproaching ? '#fef3c7' : '#fed7aa',
+              boxShadow: isApproaching ? '0 0 12px rgba(245, 158, 11, 0.6)' : 'none',
+              whiteSpace: 'nowrap',
+              animation: isApproaching ? 'stampede-timer-pulse 0.8s infinite alternate' : undefined,
+            }}
+          >
+            <span>{isApproaching ? '⚠️' : '🐾'}</span>
+            <span>{isApproaching ? `地鳴り接近 ${nextStampedeIn.toFixed(1)}s` : `巨獣道 (${Math.ceil(nextStampedeIn)}s)`}</span>
+          </div>
+
+          {/* 地鳴り接近時の立ち上る砂煙エフェクト */}
+          {isApproaching && (
+            <>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '25%',
+                  left: '30%',
+                  fontSize: '18px',
+                  animation: 'stampede-dust-rise 1.2s infinite ease-out',
+                }}
+              >
+                💨
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '55%',
+                  left: '65%',
+                  fontSize: '22px',
+                  animation: 'stampede-dust-rise 1.0s infinite ease-out 0.4s',
+                }}
+              >
+                💨
+              </div>
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '75%',
+                  left: '35%',
+                  fontSize: '16px',
+                  animation: 'stampede-dust-rise 1.4s infinite ease-out 0.2s',
+                }}
+              >
+                💨
+              </div>
+            </>
+          )}
+
           {/* 足跡の痕跡アイコン */}
           <div
             style={{
@@ -44,18 +114,58 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
               top: '50%',
               left: '50%',
               transform: 'translate(-50%, -50%)',
-              opacity: 0.18,
+              opacity: isApproaching ? 0.45 : 0.18,
               fontSize: '24px',
               display: 'flex',
               flexDirection: 'column',
               gap: '40px',
               alignItems: 'center',
+              filter: isApproaching ? 'drop-shadow(0 0 6px #f59e0b)' : undefined,
+              transition: 'opacity 0.4s ease',
             }}
           >
             <span>🐾</span>
             <span>🐾</span>
             <span>🐾</span>
           </div>
+
+          {/* 地鳴り接近時（残り6秒以下）の中央事前警告 */}
+          {isApproaching && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                backgroundColor: 'rgba(20, 10, 5, 0.88)',
+                border: '1.5px solid #f59e0b',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                boxShadow: '0 0 18px rgba(245, 158, 11, 0.7)',
+                minWidth: '130px',
+              }}
+            >
+              <div style={{ fontSize: '10.5px', fontWeight: 'bold', color: '#fde68a' }}>
+                ⚠️ 遠くで激しい地鳴り...
+              </div>
+              <div
+                style={{
+                  fontSize: '18px',
+                  fontWeight: '900',
+                  color: '#fffbeb',
+                  fontFamily: 'monospace',
+                  margin: '2px 0',
+                  textShadow: '0 0 8px #d97706',
+                }}
+              >
+                {nextStampedeIn.toFixed(1)}s
+              </div>
+              <div style={{ fontSize: '9px', color: '#fed7aa' }}>
+                まもなく回廊警報発令
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -276,8 +386,17 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(function
   ) {
     return false;
   }
-  if (next.stampede.phase === 'idle' || next.stampede.phase === 'cooldown') {
+  if (next.stampede.phase === 'cooldown') {
     return true;
+  }
+  if (next.stampede.phase === 'idle') {
+    const isApproaching = isStampedeApproaching(next.stampede);
+    const wasApproaching = isStampedeApproaching(prev.stampede);
+    if (isApproaching !== wasApproaching) return false;
+    if (isApproaching) {
+      return prev.stampede.nextStampedeIn.toFixed(1) === next.stampede.nextStampedeIn.toFixed(1);
+    }
+    return Math.ceil(prev.stampede.nextStampedeIn) === Math.ceil(next.stampede.nextStampedeIn);
   }
   if (next.stampede.phase === 'warning') {
     return prev.stampede.phaseTimer.toFixed(1) === next.stampede.phaseTimer.toFixed(1);
