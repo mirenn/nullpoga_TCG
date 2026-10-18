@@ -34,7 +34,7 @@ export const STAMPEDE_INITIAL_DELAY_SEC = 14; // ゲーム開始から初回警�
 export const STAMPEDE_INTERVAL_SEC = 24; // 通常アイドル時間 (突進間隔は 24 + 3.5 = 27.5秒)
 export const STAMPEDE_APPROACHING_SEC = 6.0; // 地鳴り予兆フェーズ（突進前6秒 / 警報の約2.5秒前から予兆開始）
 export const STAMPEDE_WARNING_DURATION_SEC = 3.5; // 警告フェーズ（タップして止まるための猶予時間: 3.5秒）
-export const STAMPEDE_RUSH_DURATION_SEC = 2.0; // 巨獣群の突進通過時間
+export const STAMPEDE_RUSH_DURATION_SEC = 4.5; // 巨獣群の突進通過時間（ゆっくり重厚に駆け抜ける速度: 4.5秒）
 export const STAMPEDE_COOLDOWN_DURATION_SEC = 1.0; // 通過後の余韻・解除タイミング
 
 /** スタンピードの激突ダメージ (即死級) */

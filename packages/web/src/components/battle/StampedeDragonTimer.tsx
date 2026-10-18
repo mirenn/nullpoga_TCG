@@ -45,46 +45,41 @@ export const StampedeDragonTimer: React.FC<StampedeDragonTimerProps> = React.mem
     let timeColor = '#fef08a';
 
     if (isCooldown) {
-      badgeBg = 'rgba(20, 83, 45, 0.92)';
-      badgeBorder = '1.5px solid #22c55e';
-      badgeGlow = '0 0 14px rgba(34, 197, 94, 0.6)';
+      badgeBg = 'rgba(20, 83, 45, 0.88)';
+      badgeBorder = '1px solid #22c55e';
+      badgeGlow = '0 2px 8px rgba(34, 197, 94, 0.35)';
       icon = '✅';
-      label = '通過完了';
+      label = 'スタンピード';
       timeText = 'CLEAR';
       timeColor = '#bbf7d0';
     } else if (isRush) {
-      badgeBg = 'rgba(154, 52, 18, 0.95)';
-      badgeBorder = '2px solid #ea580c';
-      badgeGlow = '0 0 20px rgba(234, 88, 12, 0.9)';
-      iconAnim = 'stampede-beast-bob 0.15s infinite alternate';
+      badgeBg = 'rgba(124, 45, 18, 0.9)';
+      badgeBorder = '1px solid #ea580c';
+      badgeGlow = '0 2px 10px rgba(234, 88, 12, 0.5)';
       icon = '🦣';
-      label = '巨獣暴走中';
-      timeText = 'RUSH!';
+      label = 'スタンピード';
+      timeText = '突進中';
       timeColor = '#ffedd5';
     } else if (isWarning) {
-      badgeBg = 'rgba(153, 27, 27, 0.95)';
-      badgeBorder = '2px solid #ef4444';
-      badgeGlow = '0 0 20px rgba(239, 68, 68, 0.9)';
-      containerAnim = 'stampede-timer-alert 0.35s infinite alternate';
-      iconAnim = 'stampede-light-blink 0.35s infinite alternate';
+      badgeBg = 'rgba(127, 29, 29, 0.92)';
+      badgeBorder = '1.5px solid #ef4444';
+      badgeGlow = '0 2px 10px rgba(239, 68, 68, 0.5)';
       icon = '🚨';
-      label = 'スタンピード警報';
+      label = 'スタンピード';
       timeText = `${phaseTimer.toFixed(1)}s`;
       timeColor = '#fee2e2';
     } else if (isApproaching) {
-      badgeBg = 'rgba(120, 53, 15, 0.92)';
-      badgeBorder = '1.5px solid #f59e0b';
-      badgeGlow = '0 0 14px rgba(245, 158, 11, 0.7)';
-      containerAnim = 'stampede-timer-pulse 0.7s infinite alternate';
-      iconAnim = 'stampede-beast-bob 0.25s infinite alternate';
+      badgeBg = 'rgba(120, 53, 15, 0.9)';
+      badgeBorder = '1px solid #f59e0b';
+      badgeGlow = '0 2px 8px rgba(245, 158, 11, 0.4)';
       icon = '⚠️';
-      label = '地鳴り接近';
+      label = 'スタンピード';
       timeText = `${nextStampedeIn.toFixed(1)}s`;
       timeColor = '#fef3c7';
     } else {
       // 通常 idle
       icon = '🦣';
-      label = '巨獣スタンピード';
+      label = 'スタンピード';
       timeText = `${Math.ceil(nextStampedeIn)}s`;
       timeColor = '#fef08a';
     }
