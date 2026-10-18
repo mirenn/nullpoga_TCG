@@ -85,14 +85,14 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                 position: 'absolute',
                 left: `${cloud.x.toFixed(1)}%`,
                 top: `${cloud.y}%`,
-                width: `${cloud.radiusX * 2.1}%`,
-                height: `${cloud.radiusY * 2.1}%`,
+                width: `${cloud.radiusX * 2.0 * cloud.scale}%`,
+                height: `${cloud.radiusY * 2.0 * cloud.scale}%`,
                 transform: 'translate(-50%, -50%)',
                 borderRadius: '50%',
                 background: `radial-gradient(ellipse at center,
-                  rgba(15, 23, 42, ${cloud.shadowOpacity * 1.1}) 0%,
-                  rgba(30, 41, 59, ${cloud.shadowOpacity * 0.8}) 40%,
-                  rgba(51, 65, 85, ${cloud.shadowOpacity * 0.35}) 70%,
+                  rgba(15, 23, 42, ${cloud.shadowOpacity * 1.0}) 0%,
+                  rgba(30, 41, 59, ${cloud.shadowOpacity * 0.75}) 40%,
+                  rgba(51, 65, 85, ${cloud.shadowOpacity * 0.3}) 70%,
                   rgba(51, 65, 85, 0) 100%)`,
                 animation: 'cloud-shadow-pulse 5s ease-in-out infinite',
               }}
@@ -121,9 +121,9 @@ export const RenderClouds: React.FC<RenderCloudsProps> = React.memo(
                 style={{
                   position: 'absolute',
                   left: `${cloud.x.toFixed(1)}%`,
-                  top: `${cloud.y - 3}%`, // 地面の影よりも少し上空にオフセット
-                  width: `${cloud.radiusX * 2.15}%`,
-                  height: `${cloud.radiusY * 2.1}%`,
+                  top: `${cloud.y - 2}%`, // 地面の影よりも少し上空にオフセット
+                  width: `${cloud.radiusX * 2.0 * cloud.scale}%`,
+                  height: `${cloud.radiusY * 2.0 * cloud.scale}%`,
                   transform: 'translate(-50%, -50%)',
                   animation: `cloud-float-bob ${isMain ? '7s' : '6s'} ease-in-out infinite`,
                   opacity: cloud.opacity,
