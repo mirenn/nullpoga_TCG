@@ -34,6 +34,7 @@ import {
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
+import { getTerrainAt, isFlyingCard } from '../terrain';
 import {
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
@@ -991,12 +992,34 @@ export function updateUnitsMovementAndAttacks(params: {
 
     // 移動計算 (X軸方向 & 障害物・味方インタラクション)
     const obsAction = unit.obstacleAction ?? 'block';
-    let currentSpeed = isSprinting ? unit.speed * 3 : unit.speed;
+    const isFlying = isFlyingCard(unit.cardNo);
+    const terrain = getTerrainAt(x, unit.y);
+
+    let speedMult = 1.0;
+    if (terrain) {
+      if (terrain.type === 'swamp') {
+        if (!isFlying) speedMult = terrain.speedMultiplier;
+      } else if (terrain.type === 'road') {
+        speedMult = terrain.speedMultiplier;
+      } else if (terrain.type === 'river') {
+        if (!isFlying) speedMult = terrain.speedMultiplier;
+      }
+    }
+
+    let currentSpeed = (isSprinting ? unit.speed * 3 : unit.speed) * speedMult;
     if (isAmbushDashing) {
       currentSpeed *= HOLD_AMBUSH_DASH_SPEED_MULTIPLIER;
     }
     let moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
     y = unit.y;
+    let updatedLane = unit.lane ?? unit.y;
+
+    // 地形による進路変更 (川の流速・街道のガイド)
+    const riverDriftY =
+      terrain && terrain.type === 'river' && terrain.driftY && !isFlying && !isHolding
+        ? terrain.driftY * dt
+        : 0;
+
     let isJumping = false;
     let jumpProgress = 0;
     let isSliding = false;
@@ -1289,17 +1312,24 @@ export function updateUnitsMovementAndAttacks(params: {
           y += (targetY - y) * Math.min(1.0, dt * 8.0);
         }
       } else {
-        if (unit.lane !== undefined && Math.abs(y - unit.lane) > 0.4) {
+        if (riverDriftY !== 0) {
+          y = Math.max(12, Math.min(88, y + riverDriftY));
+          updatedLane = Math.max(12, Math.min(88, updatedLane + riverDriftY));
+        } else if (terrain && terrain.type === 'road' && !isHolding && !scoutTargetUnitId) {
+          // 街道の中央進行ガイド (y=50%へスムーズに寄せる)
+          y += (50 - y) * Math.min(1.0, dt * 2.5);
+          updatedLane += (50 - updatedLane) * Math.min(1.0, dt * 2.0);
+        } else if (updatedLane !== undefined && Math.abs(y - updatedLane) > 0.4) {
           const hasAllyBesideOnLane = unitsAfterHits.some(
             (u) =>
               u.owner === unit.owner &&
               u.id !== unit.id &&
               u.hp > 0 &&
               Math.abs(u.x - unit.x) < ALLY_MIN_GAP &&
-              isWithinCollisionY(u.y, unit.lane as number)
+              isWithinCollisionY(u.y, updatedLane as number)
           );
           if (!hasAllyBesideOnLane) {
-            y += (unit.lane - y) * Math.min(1.0, dt * 2.5);
+            y += (updatedLane - y) * Math.min(1.0, dt * 2.5);
           }
         }
       }
@@ -1322,6 +1352,7 @@ export function updateUnitsMovementAndAttacks(params: {
       ...unit,
       x,
       y,
+      lane: updatedLane,
       attack,
       distanceTraveled: distance,
       attackCooldown: cooldown,

@@ -8,6 +8,7 @@ import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
 import { RenderStampede } from './RenderStampede';
 import { StampedeDragonTimer } from './StampedeDragonTimer';
 import { RenderClouds } from './RenderClouds';
+import { RenderTerrain } from './RenderTerrain';
 import {
   clampSpawnX,
   clampPlayerSpawnX,
@@ -848,6 +849,9 @@ export function BattleField({
           </span>
         </div>
       ))}
+
+      {/* 1.5. 地形ゾーン（清流・街道・泥沼） */}
+      <RenderTerrain />
 
       {/* 2. インヒビター（6基: 左3基・右3基） */}
       {inhibitors.map((inhib) => (

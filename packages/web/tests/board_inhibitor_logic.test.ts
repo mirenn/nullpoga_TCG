@@ -92,6 +92,11 @@ import {
   generateClouds,
   updateCloudEvent,
 } from '../src/app/cloudEvent';
+import {
+  getTerrainAt,
+  isFlyingCard,
+  FIELD_TERRAIN_ZONES,
+} from '../src/app/terrain';
 import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
@@ -1410,4 +1415,90 @@ assert(uAfter.x > initialX, 'Unit advances on X axis towards target');
 assert(uAfter.y > initialY, `Unit moves diagonally on Y axis towards target Y (${initialY} -> ${uAfter.y})`);
 
 console.log('  -> Unit Scout Mode (160-deg sweep, auto-hold on sweep end, diagonal pursuit): PASSED');
-console.log('=== All 17 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 18. 地形ゾーン (Terrain Zones: 清流・街道・泥沼) ロジック
+// ==========================================
+console.log('[18/18] Testing Terrain Zones (River drift, Road haste, Swamp slow, Flying bypass)...');
+
+// 1. 地形ゾーン定義と座標検出
+const highwayZone = getTerrainAt(50, 50);
+assert(highwayZone !== null && highwayZone.type === 'road', 'Center (50, 50) must be a road');
+assert(highwayZone!.speedMultiplier === 1.35, 'Road must provide 1.35x speed boost');
+
+const northRiver = getTerrainAt(50, 30);
+assert(northRiver !== null && northRiver.type === 'river', '(50, 30) must be north river');
+assert(northRiver!.driftY !== undefined && northRiver!.driftY > 0, 'North river must drift downwards (+Y)');
+
+const southRiver = getTerrainAt(50, 70);
+assert(southRiver !== null && southRiver.type === 'river', '(50, 70) must be south river');
+assert(southRiver!.driftY !== undefined && southRiver!.driftY < 0, 'South river must drift upwards (-Y)');
+
+const swampZone = getTerrainAt(28, 22);
+assert(swampZone !== null && swampZone.type === 'swamp', '(28, 22) must be swamp');
+assert(swampZone!.speedMultiplier === 0.5, 'Swamp must reduce ground unit speed to 0.5x');
+
+// 2. 飛行ユニット判定
+assert(isFlyingCard(9) === true, 'Card 9 (Vampire Bat) must be a flying unit');
+assert(isFlyingCard(11) === true, 'Card 11 (Dragon) must be a flying unit');
+assert(isFlyingCard(1) === false, 'Card 1 (Mouse) must be a ground unit');
+assert(isFlyingCard(7) === false, 'Card 7 (Boar) must be a ground unit');
+
+// 3. 川の水流による地上ユニットのレーン移動・流速シミュレーション
+const terrainEngine = new RealtimeGameEngine(false);
+
+const groundUnitInRiver: Unit = {
+  id: 'ground_swimmer',
+  cardNo: 1, // ネズミ（地上）
+  name: '流されるネズミ',
+  icon: '🐭',
+  hp: 20,
+  maxHp: 20,
+  attack: 1,
+  range: 8,
+  speed: 5.0,
+  attackCooldown: 1.0,
+  attackInterval: 1.0,
+  owner: 'player',
+  x: 50,
+  y: 30, // 北の清流の中
+  lane: 30,
+};
+
+const batInRiver: Unit = {
+  id: 'flying_bat',
+  cardNo: 9, // コウモリ（飛行）
+  name: '空飛ぶコウモリ',
+  icon: '🦇',
+  hp: 20,
+  maxHp: 20,
+  attack: 2,
+  range: 8,
+  speed: 5.0,
+  attackCooldown: 1.0,
+  attackInterval: 1.0,
+  owner: 'player',
+  x: 50,
+  y: 30, // 北の清流の真上
+  lane: 30,
+};
+
+terrainEngine.state.cpuMana = 0;
+terrainEngine.state.units = [groundUnitInRiver, batInRiver];
+
+// 1秒間（100ms x 10 tick）進める
+let terrainNow = Date.now();
+for (let i = 0; i < 10; i++) {
+  terrainNow += 100;
+  terrainEngine.tick(0.1, terrainNow);
+}
+
+const uGroundAfter = terrainEngine.state.units.find((u) => u.id === 'ground_swimmer')!;
+const uBatAfter = terrainEngine.state.units.find((u) => u.id === 'flying_bat')!;
+
+assert(uGroundAfter.y > 30.5, `Ground unit must be pushed downstream by river drift: Y went from 30 to ${uGroundAfter.y}`);
+assert(uGroundAfter.lane !== undefined && uGroundAfter.lane > 30.5, `Ground unit target lane must update with drift: ${uGroundAfter.lane}`);
+assert(Math.abs(uBatAfter.y - 30) < 0.1, `Flying bat must ignore river current and stay at Y=30: Y is ${uBatAfter.y}`);
+
+console.log('  -> Terrain Zones (River drift, Road haste, Swamp slow, Flying bypass): PASSED');
+console.log('=== All 18 Test Suites PASSED Successfully! ===');
