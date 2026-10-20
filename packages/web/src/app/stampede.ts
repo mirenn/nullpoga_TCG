@@ -50,6 +50,15 @@ export const HOLD_AMBUSH_ATTACK_BONUS = 2;
 export const HOLD_AMBUSH_DASH_SPEED_MULTIPLIER = 1.8;
 export const HOLD_AMBUSH_DASH_DURATION_SEC = 1.5;
 
+/** 巨獣の当たり判定半径 (%) */
+export const STAMPEDE_BEAST_HIT_RADIUS_X = 4;
+export const STAMPEDE_BEAST_HIT_RADIUS_Y = 5;
+
+/** 巨獣の現在Y座標 (%)。RenderStampede の描画位置と同じ式 */
+export function getStampedeBeastY(beast: StampedeBeast, rushProgress: number): number {
+  return -15 + ((rushProgress * beast.speedFactor + beast.yProgressOffset) % 1.35) * 130;
+}
+
 /** 巨獣のプリセット定義 */
 const BEAST_PRESETS: Array<{ icon: string; name: string; size: number }> = [
   { icon: '🦣', name: '古代マンモス', size: 48 },
@@ -214,14 +223,22 @@ export function updateStampede(
     const elapsed = phaseDuration - phaseTimer;
     rushProgress = Math.min(1.0, Math.max(0, elapsed / phaseDuration));
 
-    // 回廊ゾーン内にいる未被弾ユニットを激突判定
-    // 突進は上(y=-10%)から下(y=110%)へ進むため、巨獣の先頭〜後尾の範囲をカバー
+    // 巨獣の体が実際に触れた未被弾ユニットのみ激突判定 (範囲一括ではなく、各巨獣の現在位置で判定)
+    const prevProgress = prevPhase === 'rush' ? state.rushProgress : 0;
     for (const unit of units) {
       if (unit.hp <= 0) continue;
       if (hitUnitIds[unit.id]) continue;
 
-      if (isUnitInStampedeZone(unit.x, state.zoneXMin, state.zoneXMax)) {
-        // 回廊内にいるユニットは激突！
+      const touched = beasts.some((beast) => {
+        if (Math.abs(unit.x - (50 + beast.xOffsetPercent)) > STAMPEDE_BEAST_HIT_RADIUS_X) return false;
+        // 前フレームから今フレームまでの軌跡をなぞり、すり抜けを防ぐ
+        const yTo = getStampedeBeastY(beast, rushProgress);
+        const yPrev = getStampedeBeastY(beast, prevProgress);
+        const yFrom = yPrev <= yTo ? yPrev : yTo; // 折り返し(ワープ)時は軌跡を引かない
+        return unit.y >= Math.min(yFrom, yTo) - STAMPEDE_BEAST_HIT_RADIUS_Y
+          && unit.y <= Math.max(yFrom, yTo) + STAMPEDE_BEAST_HIT_RADIUS_Y;
+      });
+      if (touched) {
         crushedUnitIds.push(unit.id);
         hitUnitIds[unit.id] = true;
       }

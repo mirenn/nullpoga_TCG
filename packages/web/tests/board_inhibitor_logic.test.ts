@@ -79,6 +79,7 @@ import {
   shouldCpuUnitHoldForStampede,
   isStampedeApproaching,
   updateStampede,
+  getStampedeBeastY,
 } from '../src/app/stampede';
 import {
   CLOUD_INITIAL_DELAY_SEC,
@@ -759,9 +760,17 @@ const playerCaughtInZone: Unit = {
   x: 50, // 回廊内
 };
 
-const updateRes = updateStampede(0.016, rushState, [playerWaitingSafe, playerCaughtInZone, cpuBoar]);
+// 巨獣が実際に触れた位置にユニットを置く (範囲一括ではなく接触で判定)
+const hitBeast = rushState.beasts[0];
+const beastY = getStampedeBeastY(hitBeast, 0);
+playerCaughtInZone.x = 50 + hitBeast.xOffsetPercent;
+playerCaughtInZone.y = beastY;
+const playerInZoneFar: Unit = { ...playerCaughtInZone, id: 'player_far', y: beastY + 40 };
+
+const updateRes = updateStampede(0.016, rushState, [playerWaitingSafe, playerCaughtInZone, playerInZoneFar, cpuBoar]);
 assert(!updateRes.crushedUnitIds.includes('player_safe'), 'Safe waiting unit must not be crushed');
-assert(updateRes.crushedUnitIds.includes('player_caught'), 'Unit in zone must be crushed');
+assert(updateRes.crushedUnitIds.includes('player_caught'), 'Unit touched by a beast must be crushed');
+assert(!updateRes.crushedUnitIds.includes('player_far'), 'Unit in zone but not yet touched by a beast must not be crushed');
 assert(updateRes.crushedUnitIds.includes('cpu_boar') === false, 'CPU Boar at x=60 has not entered zone yet');
 
 // 12-5. 立ち止まりインセンティブ（待機集中チャージ & 奇襲ダッシュ & 奇襲攻撃力+2）

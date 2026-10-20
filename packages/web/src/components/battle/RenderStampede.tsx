@@ -1,6 +1,6 @@
 import React from 'react';
 import type { StampedeState } from '../../app/types';
-import { isStampedeApproaching } from '../../app/stampede';
+import { isStampedeApproaching, getStampedeBeastY } from '../../app/stampede';
 
 interface RenderStampedeProps {
   stampede: StampedeState;
@@ -103,8 +103,7 @@ export const RenderStampede: React.FC<RenderStampedeProps> = React.memo(
             {/* 突進する巨獣たち（ゆっくり重厚に前進） */}
             {beasts.map((beast) => {
               // rushProgress (0〜1) に基いて Y座標を -15% から 115% へゆっくり移動
-              const effectiveProgress = (rushProgress * beast.speedFactor + beast.yProgressOffset) % 1.35;
-              const yPercent = -15 + effectiveProgress * 130;
+              const yPercent = getStampedeBeastY(beast, rushProgress);
               const xPercent = 50 + beast.xOffsetPercent;
 
               return (
