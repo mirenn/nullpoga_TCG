@@ -212,6 +212,7 @@ const VoxelBox = React.memo(function VoxelBox({
     const bevelThickness = Math.max(2, Math.round(h * 0.32));
     return (
       <div
+        key="flat" // 3Dモードの面divと使い回すと borderBottom の削除で shorthand 競合警告が出るため
         style={{
           position: 'absolute',
           left: `${ox - w / 2}px`,
@@ -234,6 +235,7 @@ const VoxelBox = React.memo(function VoxelBox({
     <React.Fragment>
       {/* 1. 上面 (Top Face: z = oz + h) */}
       <div
+        key="top"
         style={{
           position: 'absolute',
           left: `${ox - w / 2}px`,
