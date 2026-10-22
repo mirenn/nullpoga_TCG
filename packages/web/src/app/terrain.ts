@@ -116,6 +116,20 @@ export function resetRoadFlow(): void {
   }
 }
 
+/** 1歩の長さ (移動距離 %)。この距離ごとに右足・左足が入れ替わる */
+export const FOOT_STEP = 3;
+/** 足の位置の重心からの横ずれ (%)。タイルの境目を歩かせると左右の足で踏むタイルが変わる */
+export const FOOT_OFFSET_Y = 2.5;
+
+/**
+ * 今踏んでいる足のY方向オフセット (%)。最初の一歩は右足。進行方向(player:右/cpu:左)に対し
+ * 右足は画面下(player)・上(cpu)側。
+ */
+export function footOffsetY(distance: number, owner: 'player' | 'cpu'): number {
+  const right = Math.floor(distance / FOOT_STEP) % 2 === 0;
+  return (right === (owner === 'player') ? 1 : -1) * FOOT_OFFSET_Y;
+}
+
 /** タイルが与える (dx, dy) 速度 (%/s) */
 export function roadPush(zone: TerrainZone): [number, number] {
   const [vx, vy] = DIR_VEC[zone.flowDir ?? 0];

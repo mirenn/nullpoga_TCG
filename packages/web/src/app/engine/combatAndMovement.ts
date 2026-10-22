@@ -34,7 +34,7 @@ import {
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
-import { getTerrainAt, isFlyingCard, roadPush } from '../terrain';
+import { footOffsetY, getTerrainAt, isFlyingCard, roadPush } from '../terrain';
 import {
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
@@ -62,8 +62,9 @@ import {
 } from './engineTypes';
 
 /** 足元の矢印タイルの押し出しを座標に加える（交戦中・移動中の両方で共通） */
-function applyRoadPush(x: number, y: number, lane: number, dt: number) {
-  const terrain = getTerrainAt(x, y);
+function applyRoadPush(x: number, y: number, lane: number, dt: number, footDy: number) {
+  // 重心ではなく、今踏んでいる足の下のタイルが押す
+  const terrain = getTerrainAt(x, y + footDy);
   if (terrain?.type !== 'road') return { x, y, lane };
   const [px, py] = roadPush(terrain);
   return {
@@ -769,7 +770,7 @@ export function updateUnitsMovementAndAttacks(params: {
 
       if (!canMoveWhileAttacking) {
         // 交戦中で立ち止まっていても矢印タイルには流される
-        const pushed = unit.isHolding ? { x: unit.x, y: unit.y, lane: unit.lane } : applyRoadPush(unit.x, unit.y, unit.lane ?? unit.y, dt);
+        const pushed = unit.isHolding ? { x: unit.x, y: unit.y, lane: unit.lane } : applyRoadPush(unit.x, unit.y, unit.lane ?? unit.y, dt, footOffsetY(unit.distanceTraveled || 0, unit.owner));
         return {
           ...unit,
           x: pushed.x,
@@ -1347,7 +1348,7 @@ export function updateUnitsMovementAndAttacks(params: {
 
     // 街道パネルの微弱な押し出し（ユニット速度未満なので逆流はしない）
     if (!isHolding) {
-      ({ x, y, lane: updatedLane } = applyRoadPush(x, y, updatedLane, dt));
+      ({ x, y, lane: updatedLane } = applyRoadPush(x, y, updatedLane, dt, footOffsetY(distance, unit.owner)));
     }
 
     if (unit.cardNo === 2) {

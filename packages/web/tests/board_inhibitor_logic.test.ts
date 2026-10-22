@@ -95,6 +95,7 @@ import {
 } from '../src/app/cloudEvent';
 import {
   getTerrainAt,
+  footOffsetY,
   isFlyingCard,
   FIELD_TERRAIN_ZONES,
   ROAD_ROTATE_SEC,
@@ -1470,7 +1471,7 @@ const groundUnitInRiver: Unit = {
 };
 
 resetRoadFlow(); // 他テストのtickで進んだ自動回転タイマーを戻す
-const pushTile = getTerrainAt(55, 65)!;
+const pushTile = getTerrainAt(55, 65 + footOffsetY(0, 'player'))!; // first step = right foot
 pushTile.flowDir = 0; // 上向き
 terrainEngine.state.cpuMana = 0;
 terrainEngine.state.units = [groundUnitInRiver];
@@ -1501,6 +1502,10 @@ for (let i = 0; i < 10; i++) {
   meleeEngine.tick(0.1, meleeNow);
 }
 assert(meleeEngine.state.units.find((u) => u.id === 'melee_a')!.y < 64.5, 'Units standing in melee must still be pushed by arrow tiles');
+// Foot system: feet alternate each step, mirrored for cpu, and straddling a tile seam gives different tiles
+assert(footOffsetY(0, 'player') === -footOffsetY(3, 'player'), 'Feet must alternate every FOOT_STEP');
+assert(footOffsetY(0, 'player') === -footOffsetY(0, 'cpu'), 'cpu faces the other way so its right foot is on the opposite side');
+assert(getTerrainAt(58, 50 + footOffsetY(0, 'player')) !== getTerrainAt(58, 50 + footOffsetY(3, 'player')), 'Left/right foot must land on different tiles near a tile corner (58,50)');
 console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール
