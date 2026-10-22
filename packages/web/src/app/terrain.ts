@@ -22,7 +22,7 @@ export type FlowDir = 0 | 1 | 2 | 3;
 /** 街道パネルの左右の押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)未満にして逆流させない */
 export const ROAD_PUSH = 0.9;
 /** 上下は進行方向(X)と直交し逆流しないので強め。体感できる偏向量にする */
-export const ROAD_PUSH_Y = 2.5;
+export const ROAD_PUSH_Y = 6;
 /** 街道パネルが時計回りに90度回る間隔 (秒) */
 export const ROAD_ROTATE_SEC = 8;
 const DIR_VEC = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
