@@ -61,6 +61,18 @@ import {
   PendingMeteorHit,
 } from './engineTypes';
 
+/** 足元の矢印タイルの押し出しを座標に加える（交戦中・移動中の両方で共通） */
+function applyRoadPush(x: number, y: number, lane: number, dt: number) {
+  const terrain = getTerrainAt(x, y);
+  if (terrain?.type !== 'road') return { x, y, lane };
+  const [px, py] = roadPush(terrain);
+  return {
+    x: Math.max(5, Math.min(95, x + px * dt)),
+    y: Math.max(12, Math.min(88, y + py * dt)),
+    lane: Math.max(12, Math.min(88, lane + py * dt)),
+  };
+}
+
 /**
  * 味方が攻撃などで停止中（射程内に敵・敵インヒビターがいる）か判定
  */
@@ -756,8 +768,13 @@ export function updateUnitsMovementAndAttacks(params: {
         );
 
       if (!canMoveWhileAttacking) {
+        // 交戦中で立ち止まっていても矢印タイルには流される
+        const pushed = unit.isHolding ? { x: unit.x, y: unit.y, lane: unit.lane } : applyRoadPush(unit.x, unit.y, unit.lane ?? unit.y, dt);
         return {
           ...unit,
+          x: pushed.x,
+          y: pushed.y,
+          lane: pushed.lane,
           attackCooldown: cooldown,
           lastAttackEffectTime: lastAttack,
           isCharging,
@@ -1329,11 +1346,8 @@ export function updateUnitsMovementAndAttacks(params: {
     distance += moveDelta;
 
     // 街道パネルの微弱な押し出し（ユニット速度未満なので逆流はしない）
-    if (terrain && terrain.type === 'road' && !isHolding) {
-      const [px, py] = roadPush(terrain);
-      x = Math.max(5, Math.min(95, x + px * dt));
-      y = Math.max(12, Math.min(88, y + py * dt));
-      updatedLane = Math.max(12, Math.min(88, updatedLane + py * dt));
+    if (!isHolding) {
+      ({ x, y, lane: updatedLane } = applyRoadPush(x, y, updatedLane, dt));
     }
 
     if (unit.cardNo === 2) {

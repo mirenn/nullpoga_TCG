@@ -1485,6 +1485,21 @@ const uGroundAfter = terrainEngine.state.units.find((u) => u.id === 'ground_swim
 assert(uGroundAfter.y < 64.5, `Ground unit must be pushed up by the arrow tile: Y went from 65 to ${uGroundAfter.y}`);
 assert(uGroundAfter.lane !== undefined && uGroundAfter.lane < 64.5, `Ground unit target lane must follow the push: ${uGroundAfter.lane}`);
 
+// 交戦中（敵が射程内で立ち止まっている）ユニットも矢印タイルで流される
+resetRoadFlow();
+const meleeEngine = new RealtimeGameEngine(false);
+meleeEngine.state.cpuMana = 0;
+meleeEngine.state.units = [
+  { ...groundUnitInRiver, id: 'melee_a', x: 55, y: 65 },
+  { ...groundUnitInRiver, id: 'melee_e', owner: 'cpu', x: 59, y: 65, lane: 65 },
+];
+pushTile.flowDir = 0;
+let meleeNow = Date.now();
+for (let i = 0; i < 10; i++) {
+  meleeNow += 100;
+  meleeEngine.tick(0.1, meleeNow);
+}
+assert(meleeEngine.state.units.find((u) => u.id === 'melee_a')!.y < 64.5, 'Units standing in melee must still be pushed by arrow tiles');
 console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール
