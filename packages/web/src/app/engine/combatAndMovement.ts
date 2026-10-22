@@ -1315,10 +1315,6 @@ export function updateUnitsMovementAndAttacks(params: {
         if (riverDriftY !== 0) {
           y = Math.max(12, Math.min(88, y + riverDriftY));
           updatedLane = Math.max(12, Math.min(88, updatedLane + riverDriftY));
-        } else if (terrain && terrain.type === 'road' && !isHolding && !scoutTargetUnitId) {
-          // 街道の中央進行ガイド (y=50%へスムーズに寄せる)
-          y += (50 - y) * Math.min(1.0, dt * 2.5);
-          updatedLane += (50 - updatedLane) * Math.min(1.0, dt * 2.0);
         } else if (updatedLane !== undefined && Math.abs(y - updatedLane) > 0.4) {
           const hasAllyBesideOnLane = unitsAfterHits.some(
             (u) =>
