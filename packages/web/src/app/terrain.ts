@@ -70,20 +70,18 @@ export const FIELD_TERRAIN_ZONES: TerrainZone[] = [
     height: 16,
     speedMultiplier: 0.5,
   },
-  // 3. 矢印タイル: 8x8 枚。向きは斜めに4方向が散らばる初期配置
-  ...Array.from({ length: 64 }, (_, n): TerrainZone => {
-    const col = n % 8;
-    const row = Math.floor(n / 8);
+  // 3. 矢印タイル: 45度回転した菱形を斜め格子(i+jが偶数)で敷き詰める。矢印の向きは上下左右のまま
+  ...Array.from({ length: 81 }, (_, n) => [(n % 9) - 4, Math.floor(n / 9) - 4]).filter(([i, j]) => (i + j) % 2 === 0).map(([col, row]): TerrainZone => {
     return {
       id: `terrain_tile_${row}_${col}`,
       name: '矢印タイル',
       type: 'road',
-      x: 15 + col * 10,
-      y: 15 + row * 10,
-      width: 10,
-      height: 10,
+      x: 50 + col * 10,
+      y: 50 + row * 10,
+      width: 20, // 菱形の対角線の長さ（外接矩形）
+      height: 20,
       speedMultiplier: 1,
-      flowDir: ((col + row) % 4) as FlowDir,
+      flowDir: ((((col + row) / 2) % 4 + 4) % 4) as FlowDir,
     };
   }),
 ];
@@ -97,12 +95,10 @@ export function getTerrainAt(
   for (const zone of zones) {
     const halfW = zone.width / 2;
     const halfH = zone.height / 2;
-    if (
-      x >= zone.x - halfW &&
-      x <= zone.x + halfW &&
-      y >= zone.y - halfH &&
-      y <= zone.y + halfH
-    ) {
+    const dx = Math.abs(x - zone.x);
+    const dy = Math.abs(y - zone.y);
+    // 矢印タイルは菱形（|dx|/halfW + |dy|/halfH <= 1）、それ以外は矩形
+    if (zone.type === 'road' ? dx / halfW + dy / halfH <= 1 : dx <= halfW && dy <= halfH) {
       return zone;
     }
   }

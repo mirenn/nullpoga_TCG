@@ -1314,6 +1314,7 @@ console.log('  -> Spell Chant & Impact Timing Delays (Meteor, Fire, Heal, Haste)
 // Suite 17: 索敵モード (160度時計回りスイープ、待機自動復帰、斜め追跡移動)
 // ==========================================
 console.log('[17/17] Testing Unit Scout Mode (160-deg sweep, auto-hold on sweep end, diagonal pursuit)...');
+for (const z of FIELD_TERRAIN_ZONES) if (z.type === 'road') z.flowDir = 2; // arrow tiles all push down (toward target Y) so tile layout can't affect this pursuit test
 const scoutEngine = new RealtimeGameEngine();
 scoutEngine.state.playerMana = 10;
 const scoutStartTime = 2_000_000;

@@ -48,9 +48,10 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 height: `${zone.height}%`,
                 // 矢印の先端側ほど明るいグラデーション。ユニットが矢印を隠しても向きが分かる
                 background: `linear-gradient(${['to top', 'to right', 'to bottom', 'to left'][zone.flowDir ?? 0]}, rgba(251, 191, 36, 0.02) 0%, rgba(251, 191, 36, 0.4) 100%)`,
-                outline: '1px solid rgba(245, 158, 11, 0.45)',
+                clipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)', // 菱形。矢印は回さず上下左右のまま
                 display: 'grid',
                 gridTemplateColumns: '1fr 1fr',
+                padding: '25%', // 矢印4つを菱形の内側に収める
                 placeItems: 'center',
               }}
             >
