@@ -34,6 +34,10 @@ export function isFlyingCard(cardNo?: number): boolean {
   return cardNo === 9 || cardNo === 11; // 9: コウモリ, 11: ドラゴン
 }
 
+const riverPanel = (id: string, name: string, y: number, driftY: number): TerrainZone => ({
+  id: `terrain_river_${id}`, name, type: 'river', x: 50, y, width: 12, height: 8, speedMultiplier: 0.9, driftY,
+});
+
 /**
  * フィールド上に配置される地形ゾーン定義
  */
@@ -49,30 +53,10 @@ export const FIELD_TERRAIN_ZONES: TerrainZone[] = [
     height: 10,
     speedMultiplier: 1.35,
   },
-  // 2. 北の清流 (上レーン y=20 付近から中央 y=50 側へ下向きに流れる)
-  {
-    id: 'terrain_river_north',
-    name: '北のせせらぎ',
-    type: 'river',
-    x: 50,
-    y: 30,
-    width: 12,
-    height: 24,
-    speedMultiplier: 0.9,
-    driftY: 9.0, // 下向きに流す（中レーンへ合流）
-  },
-  // 3. 南の清流 (下レーン y=80 付近から中央 y=50 側へ上向きに流れる)
-  {
-    id: 'terrain_river_south',
-    name: '南のせせらぎ',
-    type: 'river',
-    x: 50,
-    y: 70,
-    width: 12,
-    height: 24,
-    speedMultiplier: 0.9,
-    driftY: -9.0, // 上向きに流す（中レーンへ合流）
-  },
+  // 2-3. 清流: 北(y=18~42)・南(y=58~82)を各3枚のパネルに分割。クリックで流向を反転できる
+  // 初期は中央 y=50 側へ合流する向き
+  ...[18, 26, 34].map((top, i) => riverPanel(`north_${i}`, '北のせせらぎ', top + 4, 9.0)),
+  ...[58, 66, 74].map((top, i) => riverPanel(`south_${i}`, '南のせせらぎ', top + 4, -9.0)),
   // 4. 西の泥沼 (プレイヤー側上部の湿地)
   {
     id: 'terrain_swamp_west',
@@ -116,4 +100,16 @@ export function getTerrainAt(
     }
   }
   return null;
+}
+
+const INITIAL_DRIFT = new Map(FIELD_TERRAIN_ZONES.map((z) => [z.id, z.driftY]));
+
+/** 川パネルの流向を反転する（エンジンは getTerrainAt 経由で毎フレーム参照するので即反映）。 */
+export function toggleRiverFlow(zone: TerrainZone): void {
+  if (zone.driftY) zone.driftY = -zone.driftY;
+}
+
+/** 新規ゲーム開始時に流向を初期（中央合流）へ戻す。 */
+export function resetRiverFlow(): void {
+  for (const z of FIELD_TERRAIN_ZONES) z.driftY = INITIAL_DRIFT.get(z.id);
 }

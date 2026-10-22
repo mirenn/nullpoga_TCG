@@ -1,11 +1,13 @@
-import React from 'react';
-import { FIELD_TERRAIN_ZONES, TerrainZone } from '../../app/terrain';
+import React, { useEffect, useState } from 'react';
+import { FIELD_TERRAIN_ZONES, TerrainZone, resetRiverFlow, toggleRiverFlow } from '../../app/terrain';
 
 export interface RenderTerrainProps {
   zones?: TerrainZone[];
 }
 
 export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProps) {
+  const [, rerender] = useState(0);
+  useEffect(() => { resetRiverFlow(); rerender((n) => n + 1); }, []);
   return (
     <div
       style={{
@@ -96,12 +98,17 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
           return (
             <div
               key={zone.id}
+              onClick={() => { toggleRiverFlow(zone); rerender((n) => n + 1); }}
+              title="クリックで流れる向きを反転"
               style={{
+                pointerEvents: 'auto',
+                cursor: 'pointer',
                 position: 'absolute',
                 left: `${left}%`,
                 top: `${top}%`,
                 width: `${zone.width}%`,
                 height: `${zone.height}%`,
+                outline: '1px solid rgba(56, 189, 248, 0.2)',
                 background: 'linear-gradient(90deg, rgba(14, 165, 233, 0.12) 0%, rgba(56, 189, 248, 0.28) 50%, rgba(14, 165, 233, 0.12) 100%)',
                 borderLeft: '1px solid rgba(56, 189, 248, 0.35)',
                 borderRight: '1px solid rgba(56, 189, 248, 0.35)',
