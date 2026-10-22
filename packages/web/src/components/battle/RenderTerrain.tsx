@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FIELD_TERRAIN_ZONES, TerrainZone, resetRiverFlow, toggleRiverFlow } from '../../app/terrain';
+import { FIELD_TERRAIN_ZONES, TerrainZone, resetRiverFlow, toggleRiverFlow, turnRoadPanel } from '../../app/terrain';
 
 export interface RenderTerrainProps {
   zones?: TerrainZone[];
@@ -44,7 +44,11 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
           return (
             <div
               key={zone.id}
+              onClick={() => { turnRoadPanel(zone); rerender((n) => n + 1); }}
+              title="クリックで矢印を時計回りに回す"
               style={{
+                pointerEvents: 'auto',
+                cursor: 'pointer',
                 position: 'absolute',
                 left: `${left}%`,
                 top: `${top}%`,
@@ -62,7 +66,7 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 style={{
                   fontSize: '14px',
                   color: 'rgba(251, 191, 36, 0.75)',
-                  transform: `rotate(${(zone.flowDir ?? 0) * 90}deg)`,
+                  transform: `rotate(${zone.spin ?? (zone.flowDir ?? 0) * 90}deg)`,
                   transition: 'transform 0.6s ease-in-out',
                 }}
               >

@@ -35,6 +35,7 @@ export interface TerrainZone {
   height: number;  // 高さ (%)
   speedMultiplier: number; // 移動速度倍率
   flowDir?: FlowDir; // 街道パネルの矢印の向き（0:上 1:右 2:下 3:左）
+  spin?: number; // 矢印の累積回転角(度)。3→0 で逆回りに見えないための表示用
   driftY?: number; // Y方向の流速 (%/s: 正で下方向、負で上方向)
 }
 
@@ -115,6 +116,7 @@ export function toggleRiverFlow(zone: TerrainZone): void {
 export function resetRiverFlow(): void {
   roadElapsed = 0;
   for (const z of FIELD_TERRAIN_ZONES) [z.driftY, z.flowDir] = INITIAL_DRIFT.get(z.id)!;
+  for (const z of FIELD_TERRAIN_ZONES) z.spin = undefined;
 }
 
 /** 街道パネルが与える (dx, dy) 速度 (%/s) */
@@ -123,11 +125,17 @@ export function roadPush(zone: TerrainZone): [number, number] {
   return [vx * ROAD_PUSH, vy * ROAD_PUSH];
 }
 
+/** 街道パネルを時計回りに90度回す（自動回転・クリック共通）。 */
+export function turnRoadPanel(zone: TerrainZone): void {
+  zone.spin = (zone.spin ?? (zone.flowDir ?? 0) * 90) + 90;
+  zone.flowDir = (((zone.flowDir ?? 0) + 1) % 4) as FlowDir;
+}
+
 let roadElapsed = 0;
 /** 街道パネルを一定時間ごとに時計回りへ回す。エンジンが毎tick呼ぶ */
 export function advanceRoadRotation(dt: number): void {
   roadElapsed += dt;
   if (roadElapsed < ROAD_ROTATE_SEC) return;
   roadElapsed -= ROAD_ROTATE_SEC;
-  for (const z of FIELD_TERRAIN_ZONES) if (z.type === 'road') z.flowDir = (((z.flowDir ?? 0) + 1) % 4) as FlowDir;
+  for (const z of FIELD_TERRAIN_ZONES) if (z.type === 'road') turnRoadPanel(z);
 }
