@@ -46,28 +46,33 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 top: `${top}%`,
                 width: `${zone.width}%`,
                 height: `${zone.height}%`,
-                background: 'rgba(148, 163, 184, 0.14)',
-                outline: '1px dashed rgba(245, 158, 11, 0.4)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
+                // 矢印の先端側ほど明るいグラデーション。ユニットが矢印を隠しても向きが分かる
+                background: `linear-gradient(${['to top', 'to right', 'to bottom', 'to left'][zone.flowDir ?? 0]}, rgba(251, 191, 36, 0.02) 0%, rgba(251, 191, 36, 0.4) 100%)`,
+                outline: '1px solid rgba(245, 158, 11, 0.45)',
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                placeItems: 'center',
               }}
             >
-              {/* 矢印: 0:上 1:右 2:下 3:左。回転時に滑らかに向きが変わる */}
-              <span
-                style={{
-                  fontSize: '14px',
-                  color: 'rgba(251, 191, 36, 0.75)',
-                  transform: `rotate(${zone.spin ?? (zone.flowDir ?? 0) * 90}deg)`,
-                  transition: 'transform 0.6s ease-in-out',
-                }}
-              >
-                ↑
-              </span>
+              {/* 矢印は4つ並べ、1体のユニットで全部は隠れないようにする。0:上 1:右 2:下 3:左 */}
+              {[0, 1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    color: 'rgba(253, 224, 71, 0.95)',
+                    textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
+                    transform: `rotate(${zone.spin ?? (zone.flowDir ?? 0) * 90}deg)`,
+                    transition: 'transform 0.6s ease-in-out',
+                  }}
+                >
+                  ↑
+                </span>
+              ))}
             </div>
           );
         }
-
         if (zone.type === 'swamp') {
           return (
             <div

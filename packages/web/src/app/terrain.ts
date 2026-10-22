@@ -17,10 +17,10 @@ export type TerrainZoneType = 'road' | 'swamp';
 
 export type FlowDir = 0 | 1 | 2 | 3;
 
-/** タイルの左右の押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)未満にして逆流させない */
-export const ROAD_PUSH = 0.9;
+/** タイルの左右の押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)は逆向きの矢印で押し戻される */
+export const ROAD_PUSH = 1.5;
 /** 上下は進行方向(X)と直交し逆流しないので強め。全面に敷くため壁に張り付かない程度に抑える */
-export const ROAD_PUSH_Y = 4;
+export const ROAD_PUSH_Y = 5;
 /** タイルが時計回りに90度回る間隔 (秒) */
 export const ROAD_ROTATE_SEC = 8;
 const DIR_VEC = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;

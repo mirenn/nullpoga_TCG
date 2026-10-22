@@ -96,7 +96,6 @@ import {
   getTerrainAt,
   isFlyingCard,
   FIELD_TERRAIN_ZONES,
-  ROAD_PUSH,
   ROAD_ROTATE_SEC,
   advanceRoadRotation,
   resetRoadFlow,
@@ -1430,7 +1429,6 @@ console.log('[18/18] Testing Terrain Zones (Arrow tiles, Swamp slow, Flying bypa
 const highwayZone = getTerrainAt(50, 50);
 assert(highwayZone !== null && highwayZone.type === 'road', 'Center (50, 50) must be a road');
 assert(highwayZone!.flowDir !== undefined, 'Road panel must have an arrow direction');
-assert(ROAD_PUSH < 2.5 * 0.375, 'Road push must stay below the slowest unit speed');
 const dirBefore = highwayZone!.flowDir!;
 advanceRoadRotation(ROAD_ROTATE_SEC);
 assert(highwayZone!.flowDir === (dirBefore + 1) % 4, 'Road panel must rotate clockwise after the interval');
