@@ -5,8 +5,8 @@ import type { Inhibitor, Owner } from './types';
  *
  * 横長（左右対戦）レイアウト仕様:
  * - 両陣営の自陣側、上(y=20%)・中央(y=50%)・下(y=80%)に配置（計6基）
- * - プレイヤー側インヒビター: x=18%
- * - CPU側インヒビター: x=82%
+ * - プレイヤー側インヒビター: x=15%
+ * - CPU側インヒビター: x=85%
  * - 自らは攻撃しない防壁。縦幅(±6.0%)の範囲を進むユニットを足止めする
  * - その隙間（y=35% や y=65% など）を進むユニットは素通り可能！
  * - 破壊した側はマナを獲得（即時マナ+2 ＋ マナ回復速度+20%永続アップ）
@@ -33,8 +33,8 @@ export const INHIBITOR_RADIUS_X = INHIBITOR_RADIUS_Y; // 互換エイリアス
 export const INHIBITOR_MAX_HP = 12;
 
 /** 配置位置（x%）: プレイヤー側(左) / CPU側(右) */
-export const PLAYER_INHIBITOR_X = 18;
-export const CPU_INHIBITOR_X = 82;
+export const PLAYER_INHIBITOR_X = 15;
+export const CPU_INHIBITOR_X = 85;
 
 // 互換エイリアス
 export const CPU_INHIBITOR_Y = CPU_INHIBITOR_X;
