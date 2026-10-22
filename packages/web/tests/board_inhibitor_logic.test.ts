@@ -164,7 +164,7 @@ assert(isWithinMeteorRange(50 + 9, 50 + 9, 50, 50), 'Diagonal (9,9) hypot~12.7 s
 assert(!isWithinMeteorRange(50 + 11, 50 + 11, 50, 50), 'Diagonal (11,11) hypot~15.5 should NOT be within meteor range');
 console.log('  -> Horizontal coordinates & geometry & fire column & meteor: PASSED');
 
-// 2. Inhibitor tests (Horizontal layout: Player at Left x=22, CPU at Right x=78)
+// 2. Inhibitor tests (Horizontal layout: Player at Left x=18, CPU at Right x=82)
 console.log('[2/4] Testing horizontal inhibitor configuration & mana rewards...');
 const initialInhibitors = createInitialInhibitors();
 assert(initialInhibitors.length === 6, 'Should create 6 inhibitors (3 per team)');
@@ -174,9 +174,9 @@ const cpuInhibitors = initialInhibitors.filter((i) => i.owner === 'cpu');
 assert(playerInhibitors.length === 3, 'Player should have 3 inhibitors');
 assert(cpuInhibitors.length === 3, 'CPU should have 3 inhibitors');
 
-// 位置確認 (Player x=22, CPU x=78, y=[20, 50, 80])
-assert(playerInhibitors.every((i) => i.x === PLAYER_INHIBITOR_X), 'Player inhibitors must be at x=22%');
-assert(cpuInhibitors.every((i) => i.x === CPU_INHIBITOR_X), 'CPU inhibitors must be at x=78%');
+// 位置確認 (Player x=18, CPU x=82, y=[20, 50, 80])
+assert(playerInhibitors.every((i) => i.x === PLAYER_INHIBITOR_X), 'Player inhibitors must be at x=18%');
+assert(cpuInhibitors.every((i) => i.x === CPU_INHIBITOR_X), 'CPU inhibitors must be at x=82%');
 const playerYs = playerInhibitors.map((i) => i.y).sort((a, b) => a - b);
 assert(
   JSON.stringify(playerYs) === JSON.stringify([20, 50, 80]),
