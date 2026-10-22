@@ -9,6 +9,7 @@ import { RenderStampede } from './RenderStampede';
 import { StampedeDragonTimer } from './StampedeDragonTimer';
 import { RenderClouds } from './RenderClouds';
 import { RenderTerrain } from './RenderTerrain';
+import { RenderHoles } from './RenderHoles';
 import {
   clampSpawnX,
   clampPlayerSpawnX,
@@ -73,6 +74,8 @@ export interface BattleFieldProps {
   playCardAtX?: (spawnX: number, cardIndexOverride?: number) => void;
   playerHp?: number;
   cpuHp?: number;
+  playerScore?: number;
+  cpuScore?: number;
   cpuMana?: number;
   showUnitRange?: boolean;
   playCardOnLane?: (laneIndex: number, cardIndexOverride?: number) => void;
@@ -110,6 +113,8 @@ export function BattleField({
   playerMana,
   playerHp,
   cpuHp,
+  playerScore,
+  cpuScore,
   cpuMana,
   showUnitRange = false,
   checkCanPlayCard,
@@ -852,6 +857,7 @@ export function BattleField({
 
       {/* 1.5. 地形ゾーン（清流・街道・泥沼） */}
       <RenderTerrain />
+      <RenderHoles playerScore={playerScore} cpuScore={cpuScore} />
 
       {/* 2. インヒビター（6基: 左3基・右3基） */}
       {inhibitors.map((inhib) => (

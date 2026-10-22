@@ -167,6 +167,8 @@ export function useRealtimeGame() {
   return {
     playerHp: state.playerHp,
     cpuHp: state.cpuHp,
+    playerScore: state.playerScore,
+    cpuScore: state.cpuScore,
     playerMana: state.playerMana,
     cpuMana: state.cpuMana,
     maxMana: MAX_MANA,

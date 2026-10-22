@@ -127,6 +127,8 @@ export interface ComboState {
 export interface RealtimeGameState {
   playerHp: number;
   cpuHp: number;
+  playerScore: number;
+  cpuScore: number;
   playerMana: number;
   cpuMana: number;
   manaRegenRate: number;

@@ -55,6 +55,7 @@ import {
   updateUnitsMovementAndAttacks,
 } from './combatAndMovement';
 import { advanceRoadRotation } from '../terrain';
+import { absorbIntoHoles, HOLE_WIN_SCORE } from '../holes';
 
 /**
  * 初期ゲーム状態を生成する純粋関数
@@ -64,6 +65,8 @@ export function createInitialRealtimeGameState(randomize: boolean = false): Real
   return {
     playerHp: INITIAL_LIFE,
     cpuHp: INITIAL_LIFE,
+    playerScore: 0,
+    cpuScore: 0,
     playerMana: INITIAL_MANA,
     cpuMana: INITIAL_MANA,
     manaRegenRate: DEFAULT_MANA_REGEN_PER_SEC,
@@ -621,6 +624,16 @@ export class RealtimeGameEngine {
           );
         }
       }
+    }
+
+    // 10.5. 端のホールに入ったユニットを吸い込んで得点。先に規定点に届いた側の勝ち
+    const holeRes = absorbIntoHoles(combatRes.finalUnits);
+    combatRes.finalUnits = holeRes.units;
+    this.state.playerScore += holeRes.gained.player;
+    this.state.cpuScore += holeRes.gained.cpu;
+    if (this.state.gameResult === 'playing') {
+      if (this.state.playerScore >= HOLE_WIN_SCORE) this.state.gameResult = 'win';
+      else if (this.state.cpuScore >= HOLE_WIN_SCORE) this.state.gameResult = 'lose';
     }
 
     // 11. 巨獣スタンピードの進行更新 & 激突判定

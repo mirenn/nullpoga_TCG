@@ -100,6 +100,7 @@ import {
   ROAD_ROTATE_SEC,
   advanceRoadRotation,
 } from '../src/app/terrain';
+import { absorbIntoHoles, HOLE_WIN_SCORE } from '../src/app/holes';
 import type { Unit } from '../src/app/types';
 
 function assert(condition: boolean, msg: string) {
@@ -1508,4 +1509,26 @@ assert(uGroundAfter.lane !== undefined && uGroundAfter.lane > 30.5, `Ground unit
 assert(Math.abs(uBatAfter.y - 30) < 0.1, `Flying bat must ignore river current and stay at Y=30: Y is ${uBatAfter.y}`);
 
 console.log('  -> Terrain Zones (River drift, Road haste, Swamp slow, Flying bypass): PASSED');
-console.log('=== All 18 Test Suites PASSED Successfully! ===');
+// ==========================================
+// 19. 得点ホール
+// ==========================================
+console.log('[19/19] Testing Scoring Holes (absorb, gap pass, win by score)...');
+const mk = (id: string, owner: 'player' | 'cpu', x: number, y: number) =>
+  ({ ...groundUnitInRiver, id, owner, x, y, lane: y }) as Unit;
+const holeRes = absorbIntoHoles([
+  mk('in_center', 'player', 95, 50), // 中央ホール=5点
+  mk('in_gap', 'player', 95, 42), // 隙間: 吸われない
+  mk('not_yet', 'player', 80, 50), // 端に未到達
+  mk('cpu_side', 'cpu', 5, 35), // CPU側の3点ホール
+]);
+assert(holeRes.gained.player === 5 && holeRes.gained.cpu === 3, `hole points wrong: ${JSON.stringify(holeRes.gained)}`);
+assert(holeRes.units.map((u) => u.id).join() === 'in_gap,not_yet', 'only gap/not-yet units must remain');
+
+const holeEngine = new RealtimeGameEngine(false);
+holeEngine.state.cpuMana = 0;
+holeEngine.state.units = [mk('scorer', 'player', 95, 50)];
+holeEngine.state.playerScore = HOLE_WIN_SCORE - 5;
+holeEngine.tick(0.1, Date.now());
+assert(holeEngine.state.gameResult === 'win', 'Reaching the win score via a hole must win the game');
+console.log('  -> Scoring Holes: PASSED');
+console.log('=== All 19 Test Suites PASSED Successfully! ===');

@@ -17,6 +17,8 @@ export default function RealtimeDemoPage() {
   const {
     playerHp,
     cpuHp,
+    playerScore,
+    cpuScore,
     playerMana,
     cpuMana,
     maxMana,
@@ -571,6 +573,8 @@ export default function RealtimeDemoPage() {
             playerMana={Math.floor(playerMana * 10) / 10}
             playerHp={playerHp}
             cpuHp={cpuHp}
+            playerScore={playerScore}
+            cpuScore={cpuScore}
             cpuMana={Math.floor(cpuMana * 10) / 10}
             showUnitRange={showUnitRange}
             checkCanPlayCard={checkCanPlayCard}
