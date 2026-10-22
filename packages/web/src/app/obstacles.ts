@@ -82,7 +82,7 @@ export const SPOT_AMBUSH_STUN_MS = 900;
 export const AMBUSH_DEPLOY_ATK_BONUS = 1;
 
 /**
- * フィールド上の立体遮蔽物（計6箇所）
+ * フィールド上の立体遮蔽物（茂み3箇所。岩・結晶は SOLID_OBSTACLE_PRESETS へ退避）
  * インヒビター（y=20, 50, 80）の間の素通り回廊（y=35, y=65）に配置し、
  * 奇襲ルートとカメラ覗き込みの駆け引きを生み出す。
  */
@@ -95,20 +95,6 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     side: 'player',
     x: 34,
     y: 35,
-    radiusX: 8.5,
-    radiusY: 7.5,
-    heightZ: 68,
-    hp: 80,
-    maxHp: 80,
-    isDestroyed: false,
-  },
-  {
-    id: 'obs_player_lower_rock',
-    name: '渓谷の遮蔽岩',
-    kind: 'rock',
-    side: 'player',
-    x: 34,
-    y: 65,
     radiusX: 8.5,
     radiusY: 7.5,
     heightZ: 68,
@@ -131,20 +117,6 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     maxHp: 80,
     isDestroyed: false,
   },
-  {
-    id: 'obs_mid_lower_crystal',
-    name: '蒼晶の巨大群生',
-    kind: 'crystal',
-    side: 'neutral',
-    x: 56,
-    y: 65,
-    radiusX: 9.0,
-    radiusY: 8.0,
-    heightZ: 76,
-    hp: 80,
-    maxHp: 80,
-    isDestroyed: false,
-  },
   // 敵陣奥（CPUの出撃予兆や忍びアサシンの出撃を隠す死角遮蔽物: x=88, radiusX=9.5 -> x=78.5〜97.5%をカバー）
   {
     id: 'obs_cpu_upper_forest',
@@ -156,6 +128,41 @@ export const FIELD_OBSTACLES: FieldObstacle[] = [
     radiusX: 9.5,
     radiusY: 8.5,
     heightZ: 84,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
+  },
+];
+
+/**
+ * 盤面から外した固い障害物（岩・結晶）。矢印タイルの押し出しを邪魔するため FIELD_OBSTACLES には含めない。
+ * 障害物ロジックのテストと、将来の再配置用に残している。
+ */
+export const SOLID_OBSTACLE_PRESETS: FieldObstacle[] = [
+  {
+    id: 'obs_player_lower_rock',
+    name: '渓谷の遮蔽岩',
+    kind: 'rock',
+    side: 'player',
+    x: 34,
+    y: 65,
+    radiusX: 8.5,
+    radiusY: 7.5,
+    heightZ: 68,
+    hp: 80,
+    maxHp: 80,
+    isDestroyed: false,
+  },
+  {
+    id: 'obs_mid_lower_crystal',
+    name: '蒼晶の巨大群生',
+    kind: 'crystal',
+    side: 'neutral',
+    x: 56,
+    y: 65,
+    radiusX: 9.0,
+    radiusY: 8.0,
+    heightZ: 76,
     hp: 80,
     maxHp: 80,
     isDestroyed: false,

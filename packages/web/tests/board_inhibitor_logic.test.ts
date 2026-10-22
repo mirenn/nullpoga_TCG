@@ -44,6 +44,7 @@ import { CARD_POOL, HOUND_TOKEN_SPEC } from '../src/app/cards';
 import { deriveAnimationState, getAttackAnimDuration } from '../src/components/units/animationLogic';
 import {
   FIELD_OBSTACLES,
+  SOLID_OBSTACLE_PRESETS,
   DEFAULT_CAMERA_3D,
   clampCameraPanX,
   clampCameraPanY,
@@ -103,6 +104,9 @@ import {
 import { absorbIntoHoles, HOLE_WIN_SCORE } from '../src/app/holes';
 import type { Unit } from '../src/app/types';
 
+
+// 岩・結晶は盤面から外したが、障害物ロジックのテストでは引き続き使う
+const ALL_OBSTACLES = [...FIELD_OBSTACLES, ...SOLID_OBSTACLE_PRESETS];
 function assert(condition: boolean, msg: string) {
   if (!condition) {
     throw new Error(`Assertion failed: ${msg}`);
@@ -354,7 +358,7 @@ console.log('  -> Unit attack range zone geometry: PASSED');
 
 // 7. 3D Diorama Obstacles, Parallax Projection & Camera Peeking (SPOT!) tests
 console.log('[7/7] Testing 3D obstacles, parallax canopy projection & camera peeking SPOT logic...');
-assert(FIELD_OBSTACLES.length === 6, 'Should define 6 strategic 3D obstacles along gap corridors');
+assert(ALL_OBSTACLES.length === 6, 'Should define 6 strategic 3D obstacles along gap corridors');
 assert(isStealthCapableCard(8) === true, 'Ninja Assassin (cardNo=8) must be stealth-capable');
 assert(isStealthCapableCard(1) === true, 'Mouse (cardNo=1) must be stealth-capable');
 assert(isStealthCapableCard(11) === false, 'Dragon (cardNo=11) is too large to hide in cover');
@@ -366,7 +370,7 @@ assert(clampCameraPanY(-500) === -180, 'PanY should clamp to min -180');
 assert(clampCameraZoom(3.0) === 1.65, 'Zoom should clamp to max 1.65');
 
 // CPU上奥の遮蔽物 (x=88, y=35) で隠密ユニット (忍びアサシン) が初期カメラ(pan=0,0)では死角に隠れることを確認
-const cpuUpperObs = FIELD_OBSTACLES.find((o) => o.id === 'obs_cpu_upper_forest')!;
+const cpuUpperObs = ALL_OBSTACLES.find((o) => o.id === 'obs_cpu_upper_forest')!;
 assert(Boolean(cpuUpperObs), 'obs_cpu_upper_forest should exist');
 assert(findCoveringObstacleGround(90, 35)?.id === 'obs_cpu_upper_forest', 'Point (90,35) should be inside CPU upper forest');
 
@@ -643,7 +647,7 @@ assert(dragon.obstacleAction === 'smash', 'Dragon must have obstacleAction: smas
 assert(turtle.obstacleAction === 'block', 'Turtle must have obstacleAction: block');
 
 // 11-2. 障害物の初期状態と isObstacleActive ヘルパー検証
-const sampleObs = { ...FIELD_OBSTACLES[0] };
+const sampleObs = { ...ALL_OBSTACLES[0] };
 assert(sampleObs.hp === 80 && sampleObs.maxHp === 80, 'Obstacle must have hp=80, maxHp=80');
 assert(sampleObs.isDestroyed === false, 'Obstacle must initially not be destroyed');
 assert(isObstacleActive(sampleObs) === true, 'Sample obstacle must be active');
@@ -831,9 +835,9 @@ console.log('  -> Stampede corridor, Dragon Timer & Hold Ambush mechanics: PASSE
 
 console.log('[13/13] Testing Unit Line of Sight (LoS), tree vision blocking, and LoL-style bush concealment...');
 // 13-1. 障害物種別による視界遮断判定
-const testForest = FIELD_OBSTACLES.find((o) => o.kind === 'bush' || o.kind === 'forest')!;
-const testRock = FIELD_OBSTACLES.find((o) => o.kind === 'rock')!;
-const testCrystal = FIELD_OBSTACLES.find((o) => o.kind === 'crystal')!;
+const testForest = ALL_OBSTACLES.find((o) => o.kind === 'bush' || o.kind === 'forest')!;
+const testRock = ALL_OBSTACLES.find((o) => o.kind === 'rock')!;
+const testCrystal = ALL_OBSTACLES.find((o) => o.kind === 'crystal')!;
 
 assert(isObstacleBlockingVision(testForest) === true, 'Bush/Forest obstacle must block vision');
 assert(isObstacleBlockingVision(testRock) === false, 'Rock obstacle must allow vision (user preference)');
@@ -869,16 +873,16 @@ assert(
 
 // 13-3. LoL風の視線判定 (hasLineOfSight)
 // (A) 木を挟んだ奥の敵 (x=45: 自陣の森の後ろ・中央の森の手前): 視線が遮断される
-const losAcrossTree = hasLineOfSight(20, 35, 45, 35, FIELD_OBSTACLES);
+const losAcrossTree = hasLineOfSight(20, 35, 45, 35, ALL_OBSTACLES);
 assert(losAcrossTree === false, 'Vision must be blocked when enemy is behind a forest tree');
 
 // (B) 岩を挟んだ奥の敵: 岩は視界を通すため見える (下ルート y=65)
-const losAcrossRock = hasLineOfSight(20, 65, 45, 65, FIELD_OBSTACLES);
+const losAcrossRock = hasLineOfSight(20, 65, 45, 65, ALL_OBSTACLES);
 assert(losAcrossRock === true, 'Vision must pass through rocks (rock is transparent to sight)');
 
 // (C) 森（草むら）の中に潜む小型隠密敵: 外のユニットからは見えない
 // 翠緑の隠れ森の中心 (34, 35) にいる未看破ネズミ (cardNo: 1)
-const losToHiddenMouse = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+const losToHiddenMouse = hasLineOfSight(20, 35, 34, 35, ALL_OBSTACLES, {
   isStructure: false,
   isStealthCapable: true,
   isSpotted: false,
@@ -886,7 +890,7 @@ const losToHiddenMouse = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
 assert(losToHiddenMouse === false, 'Unspotted stealth enemy in bush must not be visible from outside');
 
 // (D) 同じ森の中に入れば、森の中の敵が見える（LoLの同じ草むら仕様）
-const losInsideSameBush = hasLineOfSight(33, 35, 35, 35, FIELD_OBSTACLES, {
+const losInsideSameBush = hasLineOfSight(33, 35, 35, 35, ALL_OBSTACLES, {
   isStructure: false,
   isStealthCapable: true,
   isSpotted: false,
@@ -894,14 +898,14 @@ const losInsideSameBush = hasLineOfSight(33, 35, 35, 35, FIELD_OBSTACLES, {
 assert(losInsideSameBush === true, 'Enemies inside the same bush must be visible to each other');
 
 // (E) カメラ覗き込み等でSPOT看破された敵、または大型ユニット（ドラゴン cardNo: 11）は森の中にいても見える
-const losToSpottedEnemy = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+const losToSpottedEnemy = hasLineOfSight(20, 35, 34, 35, ALL_OBSTACLES, {
   isStructure: false,
   isStealthCapable: true,
   isSpotted: true,
 });
 assert(losToSpottedEnemy === true, 'Spotted enemy in bush must be visible from outside');
 
-const losToDragonInBush = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
+const losToDragonInBush = hasLineOfSight(20, 35, 34, 35, ALL_OBSTACLES, {
   isStructure: false,
   isStealthCapable: false,
   isSpotted: false,
@@ -909,7 +913,7 @@ const losToDragonInBush = hasLineOfSight(20, 35, 34, 35, FIELD_OBSTACLES, {
 assert(losToDragonInBush === true, 'Large non-stealth enemy in bush must be visible from outside');
 
 // (F) 木が破壊された場合、木を挟んだ奥の敵への視線が即座に通る
-const obstaclesWithBrokenTree = FIELD_OBSTACLES.map((o) =>
+const obstaclesWithBrokenTree = ALL_OBSTACLES.map((o) =>
   o.id === 'obs_player_upper_forest' ? { ...o, isDestroyed: true } : o
 );
 const losAfterTreeDestroyed = hasLineOfSight(20, 35, 45, 35, obstaclesWithBrokenTree);
@@ -917,7 +921,7 @@ assert(losAfterTreeDestroyed === true, 'Destroyed tree must open line of sight t
 
 // 13-4. 直進ユニットの最大視界到達点 (computeUnitMaxVisionReachX)
 // プレイヤーユニットが x=20, y=35 に配置された時、前方の木 (x=34, rx=8.5) の手前で視界がクリップされる
-const reachPlayerBeforeTree = computeUnitMaxVisionReachX(20, 35, 25, 'player', FIELD_OBSTACLES);
+const reachPlayerBeforeTree = computeUnitMaxVisionReachX(20, 35, 25, 'player', ALL_OBSTACLES);
 assert(reachPlayerBeforeTree.isBlockedByObstacle === true, 'Player unit facing tree must have sight blocked');
 assert(
   reachPlayerBeforeTree.effectiveRange < 25,
@@ -930,7 +934,7 @@ assert(
 
 // 13-5. 茂みの通り抜け（Passability in Movement）
 // solid な障害物リストには茂みが含まれないため、ユニットは茂みの前で停止・攻撃せず、通り抜ける
-const solidObstacles = FIELD_OBSTACLES.filter(isObstacleSolid);
+const solidObstacles = ALL_OBSTACLES.filter(isObstacleSolid);
 assert(solidObstacles.every((o) => o.kind !== 'bush' && o.kind !== 'forest'), 'Solid obstacles must exclude bushes');
 assert(solidObstacles.some((o) => o.kind === 'rock'), 'Solid obstacles must include rocks');
 assert(solidObstacles.some((o) => o.kind === 'crystal'), 'Solid obstacles must include crystals');
