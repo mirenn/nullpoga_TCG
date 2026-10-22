@@ -1001,8 +1001,6 @@ export function updateUnitsMovementAndAttacks(params: {
         if (!isFlying) speedMult = terrain.speedMultiplier;
       } else if (terrain.type === 'road') {
         speedMult = terrain.speedMultiplier;
-      } else if (terrain.type === 'river') {
-        if (!isFlying) speedMult = terrain.speedMultiplier;
       }
     }
 
@@ -1013,12 +1011,6 @@ export function updateUnitsMovementAndAttacks(params: {
     let moveDelta = isHolding ? 0 : currentSpeed * MOVE_SPEED_SCALE * dt;
     y = unit.y;
     let updatedLane = unit.lane ?? unit.y;
-
-    // 地形による進路変更 (川の流速・街道のガイド)
-    const riverDriftY =
-      terrain && terrain.type === 'river' && terrain.driftY && !isFlying && !isHolding
-        ? terrain.driftY * dt
-        : 0;
 
     let isJumping = false;
     let jumpProgress = 0;
@@ -1312,10 +1304,7 @@ export function updateUnitsMovementAndAttacks(params: {
           y += (targetY - y) * Math.min(1.0, dt * 8.0);
         }
       } else {
-        if (riverDriftY !== 0) {
-          y = Math.max(12, Math.min(88, y + riverDriftY));
-          updatedLane = Math.max(12, Math.min(88, updatedLane + riverDriftY));
-        } else if (updatedLane !== undefined && Math.abs(y - updatedLane) > 0.4) {
+        if (updatedLane !== undefined && Math.abs(y - updatedLane) > 0.4) {
           const hasAllyBesideOnLane = unitsAfterHits.some(
             (u) =>
               u.owner === unit.owner &&

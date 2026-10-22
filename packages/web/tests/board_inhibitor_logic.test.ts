@@ -99,6 +99,7 @@ import {
   ROAD_PUSH,
   ROAD_ROTATE_SEC,
   advanceRoadRotation,
+  resetRoadFlow,
 } from '../src/app/terrain';
 import { absorbIntoHoles, HOLE_WIN_SCORE } from '../src/app/holes';
 import type { Unit } from '../src/app/types';
@@ -1423,7 +1424,7 @@ console.log('  -> Unit Scout Mode (160-deg sweep, auto-hold on sweep end, diagon
 // ==========================================
 // 18. 地形ゾーン (Terrain Zones: 清流・街道・泥沼) ロジック
 // ==========================================
-console.log('[18/18] Testing Terrain Zones (River drift, Road haste, Swamp slow, Flying bypass)...');
+console.log('[18/18] Testing Terrain Zones (Arrow tiles, Swamp slow, Flying bypass)...');
 
 // 1. 地形ゾーン定義と座標検出
 const highwayZone = getTerrainAt(50, 50);
@@ -1433,14 +1434,6 @@ assert(ROAD_PUSH < 2.5 * 0.375, 'Road push must stay below the slowest unit spee
 const dirBefore = highwayZone!.flowDir!;
 advanceRoadRotation(ROAD_ROTATE_SEC);
 assert(highwayZone!.flowDir === (dirBefore + 1) % 4, 'Road panel must rotate clockwise after the interval');
-
-const northRiver = getTerrainAt(50, 30);
-assert(northRiver !== null && northRiver.type === 'river', '(50, 30) must be north river');
-assert(northRiver!.driftY !== undefined && northRiver!.driftY > 0, 'North river must drift downwards (+Y)');
-
-const southRiver = getTerrainAt(50, 70);
-assert(southRiver !== null && southRiver.type === 'river', '(50, 70) must be south river');
-assert(southRiver!.driftY !== undefined && southRiver!.driftY < 0, 'South river must drift upwards (-Y)');
 
 const swampZone = getTerrainAt(28, 22);
 assert(swampZone !== null && swampZone.type === 'swamp', '(28, 22) must be swamp');
@@ -1468,31 +1461,16 @@ const groundUnitInRiver: Unit = {
   attackCooldown: 1.0,
   attackInterval: 1.0,
   owner: 'player',
-  x: 50,
-  y: 30, // 北の清流の中
-  lane: 30,
+  x: 55,
+  y: 65, // 上向き矢印にしたタイルの中
+  lane: 65,
 };
 
-const batInRiver: Unit = {
-  id: 'flying_bat',
-  cardNo: 9, // コウモリ（飛行）
-  name: '空飛ぶコウモリ',
-  icon: '🦇',
-  hp: 20,
-  maxHp: 20,
-  attack: 2,
-  range: 8,
-  speed: 5.0,
-  attackCooldown: 1.0,
-  attackInterval: 1.0,
-  owner: 'player',
-  x: 50,
-  y: 30, // 北の清流の真上
-  lane: 30,
-};
-
+resetRoadFlow(); // 他テストのtickで進んだ自動回転タイマーを戻す
+const pushTile = getTerrainAt(55, 65)!;
+pushTile.flowDir = 0; // 上向き
 terrainEngine.state.cpuMana = 0;
-terrainEngine.state.units = [groundUnitInRiver, batInRiver];
+terrainEngine.state.units = [groundUnitInRiver];
 
 // 1秒間（100ms x 10 tick）進める
 let terrainNow = Date.now();
@@ -1502,13 +1480,10 @@ for (let i = 0; i < 10; i++) {
 }
 
 const uGroundAfter = terrainEngine.state.units.find((u) => u.id === 'ground_swimmer')!;
-const uBatAfter = terrainEngine.state.units.find((u) => u.id === 'flying_bat')!;
+assert(uGroundAfter.y < 64.5, `Ground unit must be pushed up by the arrow tile: Y went from 65 to ${uGroundAfter.y}`);
+assert(uGroundAfter.lane !== undefined && uGroundAfter.lane < 64.5, `Ground unit target lane must follow the push: ${uGroundAfter.lane}`);
 
-assert(uGroundAfter.y > 30.5, `Ground unit must be pushed downstream by river drift: Y went from 30 to ${uGroundAfter.y}`);
-assert(uGroundAfter.lane !== undefined && uGroundAfter.lane > 30.5, `Ground unit target lane must update with drift: ${uGroundAfter.lane}`);
-assert(Math.abs(uBatAfter.y - 30) < 0.1, `Flying bat must ignore river current and stay at Y=30: Y is ${uBatAfter.y}`);
-
-console.log('  -> Terrain Zones (River drift, Road haste, Swamp slow, Flying bypass): PASSED');
+console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール
 // ==========================================

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { FIELD_TERRAIN_ZONES, TerrainZone, resetRiverFlow, toggleRiverFlow, turnRoadPanel } from '../../app/terrain';
+import { FIELD_TERRAIN_ZONES, TerrainZone, resetRoadFlow, turnRoadPanel } from '../../app/terrain';
 
 export interface RenderTerrainProps {
   zones?: TerrainZone[];
@@ -7,7 +7,7 @@ export interface RenderTerrainProps {
 
 export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProps) {
   const [, rerender] = useState(0);
-  useEffect(() => { resetRiverFlow(); rerender((n) => n + 1); }, []);
+  useEffect(() => { resetRoadFlow(); rerender((n) => n + 1); }, []);
   return (
     <div
       style={{
@@ -18,14 +18,6 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
       }}
     >
       <style>{`
-        @keyframes riverFlowDown {
-          0% { transform: translateY(-16px); }
-          100% { transform: translateY(16px); }
-        }
-        @keyframes riverFlowUp {
-          0% { transform: translateY(16px); }
-          100% { transform: translateY(-16px); }
-        }
         @keyframes swampPulse {
           0%, 100% { opacity: 0.35; transform: scale(1); }
           50% { opacity: 0.55; transform: scale(1.02); }
@@ -71,79 +63,6 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 }}
               >
                 ↑
-              </span>
-            </div>
-          );
-        }
-
-        if (zone.type === 'river') {
-          const isDownflow = (zone.driftY ?? 0) > 0;
-          return (
-            <div
-              key={zone.id}
-              onClick={() => { toggleRiverFlow(zone); rerender((n) => n + 1); }}
-              title="クリックで流れる向きを反転"
-              style={{
-                pointerEvents: 'auto',
-                cursor: 'pointer',
-                position: 'absolute',
-                left: `${left}%`,
-                top: `${top}%`,
-                width: `${zone.width}%`,
-                height: `${zone.height}%`,
-                outline: '1px solid rgba(56, 189, 248, 0.2)',
-                background: 'linear-gradient(90deg, rgba(14, 165, 233, 0.12) 0%, rgba(56, 189, 248, 0.28) 50%, rgba(14, 165, 233, 0.12) 100%)',
-                borderLeft: '1px solid rgba(56, 189, 248, 0.35)',
-                borderRight: '1px solid rgba(56, 189, 248, 0.35)',
-                borderRadius: '8px',
-                overflow: 'hidden',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              {/* 水流の波紋・矢印アニメーション */}
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: -8,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'space-around',
-                  animation: `${isDownflow ? 'riverFlowDown' : 'riverFlowUp'} 1.8s linear infinite`,
-                  opacity: 0.6,
-                }}
-              >
-                {[...Array(5)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      fontSize: '11px',
-                      color: 'rgba(56, 189, 248, 0.7)',
-                      lineHeight: 1,
-                      filter: 'drop-shadow(0 0 2px rgba(14, 165, 233, 0.8))',
-                    }}
-                  >
-                    {isDownflow ? '▼' : '▲'}
-                  </div>
-                ))}
-              </div>
-              <span
-                style={{
-                  position: 'relative',
-                  fontSize: '8px',
-                  fontWeight: 'bold',
-                  color: 'rgba(224, 242, 254, 0.9)',
-                  background: 'rgba(12, 74, 110, 0.6)',
-                  padding: '1px 4px',
-                  borderRadius: '3px',
-                  letterSpacing: '0.5px',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                🌊 {zone.name}
               </span>
             </div>
           );

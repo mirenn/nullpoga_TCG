@@ -855,7 +855,7 @@ export function BattleField({
         </div>
       ))}
 
-      {/* 1.5. 地形ゾーン（清流・街道・泥沼） */}
+      {/* 1.5. 地形ゾーン（矢印タイル・泥沼） */}
       <RenderTerrain />
       <RenderHoles playerScore={playerScore} cpuScore={cpuScore} />
 
