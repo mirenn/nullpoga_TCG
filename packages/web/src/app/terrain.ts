@@ -19,8 +19,10 @@ export type TerrainZoneType = 'river' | 'road' | 'swamp';
 
 export type FlowDir = 0 | 1 | 2 | 3;
 
-/** 街道パネルが与える押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)未満にして逆流させない */
-export const ROAD_PUSH = 0.8;
+/** 街道パネルの左右の押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)未満にして逆流させない */
+export const ROAD_PUSH = 0.9;
+/** 上下は進行方向(X)と直交し逆流しないので強め。体感できる偏向量にする */
+export const ROAD_PUSH_Y = 2.5;
 /** 街道パネルが時計回りに90度回る間隔 (秒) */
 export const ROAD_ROTATE_SEC = 8;
 const DIR_VEC = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
@@ -122,7 +124,7 @@ export function resetRiverFlow(): void {
 /** 街道パネルが与える (dx, dy) 速度 (%/s) */
 export function roadPush(zone: TerrainZone): [number, number] {
   const [vx, vy] = DIR_VEC[zone.flowDir ?? 0];
-  return [vx * ROAD_PUSH, vy * ROAD_PUSH];
+  return [vx * ROAD_PUSH, vy * ROAD_PUSH_Y];
 }
 
 /** 街道パネルを時計回りに90度回す（自動回転・クリック共通）。 */
