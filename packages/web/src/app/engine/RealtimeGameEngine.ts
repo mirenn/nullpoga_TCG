@@ -54,6 +54,7 @@ import {
   resolveSmashPush,
   updateUnitsMovementAndAttacks,
 } from './combatAndMovement';
+import { advanceRoadRotation } from '../terrain';
 
 /**
  * 初期ゲーム状態を生成する純粋関数
@@ -572,6 +573,8 @@ export class RealtimeGameEngine {
     if (spotRes.newlySpottedCount > 0) {
       this.state.spottedCount += spotRes.newlySpottedCount;
     }
+
+    advanceRoadRotation(dt);
 
     // 8. 各ユニットの移動・攻撃・障害物インタラクション更新
     const moveAtkRes = updateUnitsMovementAndAttacks({

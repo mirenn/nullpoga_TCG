@@ -96,6 +96,9 @@ import {
   getTerrainAt,
   isFlyingCard,
   FIELD_TERRAIN_ZONES,
+  ROAD_PUSH,
+  ROAD_ROTATE_SEC,
+  advanceRoadRotation,
 } from '../src/app/terrain';
 import type { Unit } from '../src/app/types';
 
@@ -1424,7 +1427,11 @@ console.log('[18/18] Testing Terrain Zones (River drift, Road haste, Swamp slow,
 // 1. 地形ゾーン定義と座標検出
 const highwayZone = getTerrainAt(50, 50);
 assert(highwayZone !== null && highwayZone.type === 'road', 'Center (50, 50) must be a road');
-assert(highwayZone!.speedMultiplier === 1.35, 'Road must provide 1.35x speed boost');
+assert(highwayZone!.flowDir !== undefined, 'Road panel must have an arrow direction');
+assert(ROAD_PUSH < 2.5 * 0.375, 'Road push must stay below the slowest unit speed');
+const dirBefore = highwayZone!.flowDir!;
+advanceRoadRotation(ROAD_ROTATE_SEC);
+assert(highwayZone!.flowDir === (dirBefore + 1) % 4, 'Road panel must rotate clockwise after the interval');
 
 const northRiver = getTerrainAt(50, 30);
 assert(northRiver !== null && northRiver.type === 'river', '(50, 30) must be north river');

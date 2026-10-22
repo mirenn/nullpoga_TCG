@@ -34,7 +34,7 @@ import {
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
-import { getTerrainAt, isFlyingCard } from '../terrain';
+import { getTerrainAt, isFlyingCard, roadPush } from '../terrain';
 import {
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
@@ -1338,6 +1338,14 @@ export function updateUnitsMovementAndAttacks(params: {
 
     x = unit.owner === 'player' ? Math.min(95, maxXMove) : Math.max(5, maxXMove);
     distance += moveDelta;
+
+    // 街道パネルの微弱な押し出し（ユニット速度未満なので逆流はしない）
+    if (terrain && terrain.type === 'road' && !isHolding) {
+      const [px, py] = roadPush(terrain);
+      x = Math.max(5, Math.min(95, x + px * dt));
+      y = Math.max(12, Math.min(88, y + py * dt));
+      updatedLane = Math.max(12, Math.min(88, updatedLane + py * dt));
+    }
 
     if (unit.cardNo === 2) {
       const bonus = Math.min(4, Math.floor(distance / 20));

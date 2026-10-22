@@ -50,45 +50,24 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 top: `${top}%`,
                 width: `${zone.width}%`,
                 height: `${zone.height}%`,
-                background: 'linear-gradient(180deg, rgba(203, 213, 225, 0.08) 0%, rgba(148, 163, 184, 0.16) 50%, rgba(203, 213, 225, 0.08) 100%)',
-                borderTop: '1px dashed rgba(245, 158, 11, 0.4)',
-                borderBottom: '1px dashed rgba(245, 158, 11, 0.4)',
-                borderRadius: '4px',
+                background: 'rgba(148, 163, 184, 0.14)',
+                outline: '1px dashed rgba(245, 158, 11, 0.4)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                overflow: 'hidden',
               }}
             >
-              {/* 街道の中央進行ガイドライン */}
-              <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
-                <line
-                  x1="0"
-                  y1="50%"
-                  x2="100%"
-                  y2="50%"
-                  stroke="rgba(251, 191, 36, 0.28)"
-                  strokeWidth="2"
-                  strokeDasharray="8 8"
-                  style={{ animation: 'roadDashGlow 2.5s linear infinite' }}
-                />
-              </svg>
-              <div
+              {/* 矢印: 0:上 1:右 2:下 3:左。回転時に滑らかに向きが変わる */}
+              <span
                 style={{
-                  position: 'absolute',
-                  right: '6%',
-                  fontSize: '9px',
-                  fontWeight: 'bold',
-                  letterSpacing: '1px',
-                  color: 'rgba(251, 191, 36, 0.65)',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
+                  fontSize: '14px',
+                  color: 'rgba(251, 191, 36, 0.75)',
+                  transform: `rotate(${(zone.flowDir ?? 0) * 90}deg)`,
+                  transition: 'transform 0.6s ease-in-out',
                 }}
               >
-                <span>⚡ 街道 (加速 +35%)</span>
-              </div>
+                ↑
+              </span>
             </div>
           );
         }
