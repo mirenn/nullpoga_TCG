@@ -46,31 +46,43 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                 top: `${top}%`,
                 width: `${zone.width}%`,
                 height: `${zone.height}%`,
+                boxSizing: 'border-box',
                 // 矢印の先端側ほど明るいグラデーション。ユニットが矢印を隠しても向きが分かる
                 background: `linear-gradient(${['to top', 'to right', 'to bottom', 'to left'][zone.flowDir ?? 0]}, rgba(251, 191, 36, 0.02) 0%, rgba(251, 191, 36, 0.4) 100%)`,
                 clipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)', // 菱形。矢印は回さず上下左右のまま
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                padding: '25%', // 矢印4つを菱形の内側に収める
-                placeItems: 'center',
+                WebkitClipPath: 'polygon(50% 0, 100% 50%, 50% 100%, 0 50%)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
               }}
             >
-              {/* 矢印は4つ並べ、1体のユニットで全部は隠れないようにする。0:上 1:右 2:下 3:左 */}
-              {[0, 1, 2, 3].map((i) => (
-                <span
-                  key={i}
-                  style={{
-                    fontSize: '16px',
-                    fontWeight: 'bold',
-                    color: 'rgba(253, 224, 71, 0.95)',
-                    textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
-                    transform: `rotate(${zone.spin ?? (zone.flowDir ?? 0) * 90}deg)`,
-                    transition: 'transform 0.6s ease-in-out',
-                  }}
-                >
-                  ↑
-                </span>
-              ))}
+              {/* 矢印は4つ並べ、1体のユニットで全部は隠れないようにする。菱形の内接矩形(50%x50%)に収める */}
+              <div
+                style={{
+                  width: '50%',
+                  height: '50%',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  placeItems: 'center',
+                }}
+              >
+                {[0, 1, 2, 3].map((i) => (
+                  <span
+                    key={i}
+                    style={{
+                      fontSize: '14px',
+                      fontWeight: 'bold',
+                      color: 'rgba(253, 224, 71, 0.95)',
+                      textShadow: '0 0 3px rgba(0, 0, 0, 0.9)',
+                      transform: `rotate(${zone.spin ?? (zone.flowDir ?? 0) * 90}deg)`,
+                      transition: 'transform 0.6s ease-in-out',
+                      lineHeight: 1,
+                    }}
+                  >
+                    ↑
+                  </span>
+                ))}
+              </div>
             </div>
           );
         }
