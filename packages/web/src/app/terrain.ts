@@ -150,3 +150,18 @@ export function advanceRoadRotation(dt: number): void {
   roadElapsed -= ROAD_ROTATE_SEC;
   for (const z of FIELD_TERRAIN_ZONES) if (z.type === 'road') turnRoadPanel(z);
 }
+
+/** 現在の回転周期の経過秒数 (0 ~ ROAD_ROTATE_SEC) */
+export function getRoadElapsed(): number {
+  return roadElapsed;
+}
+
+/** 次回自動回転までの残り秒数 */
+export function getRoadNextRotateIn(): number {
+  return Math.max(0, ROAD_ROTATE_SEC - roadElapsed);
+}
+
+/** 現在の回転周期の進捗率 (0.0 ~ 1.0) */
+export function getRoadProgress(): number {
+  return Math.min(1, Math.max(0, roadElapsed / ROAD_ROTATE_SEC));
+}
