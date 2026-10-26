@@ -121,7 +121,7 @@ export function GuideContent() {
             <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🎯 奥行き配置（前衛・中衛・後衛）</div>
               <div style={styles.tipText}>
-                自陣エリア（左半面: x=6%〜48%）の任意位置をクリック/ドロップで出撃可能！前衛で即座に敵を迎撃したり、後衛に遠距離・回復役を配置して戦術的な布陣を敷くことができます。
+                自陣エリア（左側: x=6%〜33%、中央は両軍とも出撃不可）の任意位置をクリック/ドロップで出撃可能！前衛で即座に敵を迎撃したり、後衛に遠距離・回復役を配置して戦術的な布陣を敷くことができます。
               </div>
             </div>
             <div style={styles.tipBox}>

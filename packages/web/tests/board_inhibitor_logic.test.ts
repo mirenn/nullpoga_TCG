@@ -236,16 +236,16 @@ console.log('  -> CPU AI continuous decisions: PASSED');
 
 // 4. Horizontal depth coordinate & role classification tests
 console.log('[4/4] Testing depth / horizontal coordinate ranges and roles...');
-assert(PLAYER_SPAWN_X_MIN === 6 && PLAYER_SPAWN_X_MAX === 48, 'Player depth range must be 6% to 48%');
+assert(PLAYER_SPAWN_X_MIN === 6 && PLAYER_SPAWN_X_MAX === 33, 'Player depth range must be 6% to 33% (33-67% is a neutral no-spawn zone)');
 assert(PLAYER_DEFAULT_SPAWN_X === 6, 'Default spawn X must be 6%');
 assert(clampPlayerSpawnX(0) === PLAYER_SPAWN_X_MIN, 'Clamping 0% (offscreen) should return PLAYER_SPAWN_X_MIN (6%)');
-assert(clampPlayerSpawnX(80) === PLAYER_SPAWN_X_MAX, 'Clamping 80% (enemy area) should return PLAYER_SPAWN_X_MAX (48%)');
+assert(clampPlayerSpawnX(50) === PLAYER_SPAWN_X_MAX, 'Clamping 50% (neutral zone) should return PLAYER_SPAWN_X_MAX (33%)');
 assert(clampPlayerSpawnX(25.45) === 25.5, 'Clamping should round to 1 decimal place');
 
 // Role classification
 assert(getSpawnDepthRole(12).key === 'rearguard' && getSpawnDepthRole(12).label === '後衛', 'X=12% should be rearguard');
-assert(getSpawnDepthRole(25).key === 'midguard' && getSpawnDepthRole(25).label === '中衛', 'X=25% should be midguard');
-assert(getSpawnDepthRole(42).key === 'vanguard' && getSpawnDepthRole(42).label === '前衛', 'X=42% should be vanguard');
+assert(getSpawnDepthRole(20).key === 'midguard' && getSpawnDepthRole(20).label === '中衛', 'X=20% should be midguard');
+assert(getSpawnDepthRole(30).key === 'vanguard' && getSpawnDepthRole(30).label === '前衛', 'X=30% should be vanguard');
 console.log('  -> Depth & horizontal coordinates: PASSED');
 
 // 5. Unit attack windup, animation state and SVG renderer tests

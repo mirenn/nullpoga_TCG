@@ -3,8 +3,8 @@
  *
  * PC画面に最適化した左右方向（横長）レイアウト:
  * - 左側 (x: 0〜5%): 自軍拠点 (Player Base)
- * - 左半面 (x: 6〜48%): 自軍出撃ゾーン (後衛・中衛・前衛)
- * - 中央 (x: 50%): ミッドライン (Midline)
+ * - 左側 (x: 6〜33%): 自軍出撃ゾーン (後衛・中衛・前衛)
+ * - 中央 (x: 33〜67%): 両軍とも出撃できない中立ゾーン。ミッドラインは x=50%
  * - 右側 (x: 95〜100%): 敵軍拠点 (CPU Base)
  * - 縦軸 (y: 0〜100%): レーン軸 (Top=20%, Mid=50%, Bot=80%)
  *
@@ -30,8 +30,16 @@ export const SPAWN_Y_MAX = 88;
 
 /** プレイヤーユニットの有効配置横範囲 (奥行き・前後方向) */
 export const PLAYER_SPAWN_X_MIN = 6;  // 後衛端 (自陣ベース手前)
-export const PLAYER_SPAWN_X_MAX = 48; // 前衛端 (ミッドライン x=50 の手前)
+export const PLAYER_SPAWN_X_MAX = 33; // 前衛端 (中央 x=33〜67 は両軍出撃不可の中立ゾーン)
 export const PLAYER_DEFAULT_SPAWN_X = 6; // デフォルトの最奥出撃位置
+
+/** 中立交戦ゾーン横範囲 (両軍とも出撃不可) */
+export const NEUTRAL_ZONE_X_MIN = 33;
+export const NEUTRAL_ZONE_X_MAX = 67;
+
+/** 敵軍 (CPU) ゾーン横範囲 */
+export const CPU_SPAWN_X_MIN = 67;
+export const CPU_SPAWN_X_MAX = 94;
 
 /** 縦方向（レーン交戦）の近接・索敵幅 (Y座標の差がこの値以内の敵を捕捉して戦闘する) */
 export const ENGAGE_HALF_WIDTH_Y = 6.5;
@@ -264,7 +272,7 @@ export function computeUnitRangeZone(
   };
 }
 
-/** クリック/タッチ座標から有効なプレイヤーXパーセント(6〜48%)を算出 */
+/** クリック/タッチ座標から有効なプレイヤーXパーセント(6〜33%)を算出 */
 export function clampPlayerSpawnX(rawXPercent: number): number {
   return Math.max(PLAYER_SPAWN_X_MIN, Math.min(PLAYER_SPAWN_X_MAX, Math.round(rawXPercent * 10) / 10));
 }
@@ -302,9 +310,9 @@ export interface DepthRoleInfo {
 
 /** X座標（奥行き）から配置の役割（後衛・中衛・前衛）を取得 */
 export function getSpawnDepthRole(x: number): DepthRoleInfo {
-  if (x <= 18) {
+  if (x <= 15) {
     return { key: 'rearguard', label: '後衛', icon: '🏹' };
-  } else if (x <= 33) {
+  } else if (x <= 24) {
     return { key: 'midguard', label: '中衛', icon: '🛡️' };
   } else {
     return { key: 'vanguard', label: '前衛', icon: '⚔️' };

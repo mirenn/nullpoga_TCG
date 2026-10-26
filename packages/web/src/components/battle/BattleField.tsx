@@ -28,6 +28,10 @@ import {
   PLAYER_SPAWN_X_MIN,
   PLAYER_SPAWN_X_MAX,
   PLAYER_DEFAULT_SPAWN_X,
+  NEUTRAL_ZONE_X_MIN,
+  NEUTRAL_ZONE_X_MAX,
+  CPU_SPAWN_X_MIN,
+  CPU_SPAWN_X_MAX,
 } from '../../app/board';
 import {
   FIELD_OBSTACLES,
@@ -749,6 +753,32 @@ export function BattleField({
           <span style={{ fontSize: '10px', color: '#38bdf8', fontWeight: 'bold' }}>⚡{playerMana.toFixed(1)}</span>
         </div>
       </div>
+
+      {/* 中立ゾーン境界ライン (x=33%, x=67%) */}
+      <div
+        style={{
+          position: 'absolute',
+          left: `${NEUTRAL_ZONE_X_MIN}%`,
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          borderLeft: '1px dotted rgba(148, 163, 184, 0.2)',
+          pointerEvents: 'none',
+          zIndex: 3,
+        }}
+      />
+      <div
+        style={{
+          position: 'absolute',
+          left: `${NEUTRAL_ZONE_X_MAX}%`,
+          top: 0,
+          bottom: 0,
+          width: '1px',
+          borderLeft: '1px dotted rgba(148, 163, 184, 0.2)',
+          pointerEvents: 'none',
+          zIndex: 3,
+        }}
+      />
 
       {/* 中央境界ライン (x=50%) */}
       <div
@@ -1844,99 +1874,171 @@ export function BattleField({
         />
       )}
 
-      {/* 8. 自陣出撃ゾーン（左半面: 後衛〜前衛の奥行き領域可視化） */}
+      {/* 8. 自陣出撃ゾーン ＆ 中立ゾーン ＆ 敵陣ゾーンの可視化 */}
       {activeCard && activeCard.type === 'MONSTER' && (
-        <div
-          style={{
-            position: 'absolute',
-            left: `${PLAYER_SPAWN_X_MIN}%`,
-            width: `${PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN}%`,
-            top: '8%',
-            bottom: '8%',
-            backgroundColor: 'rgba(30, 58, 138, 0.08)',
-            border: '1px dashed rgba(59, 130, 246, 0.45)',
-            borderRadius: '8px',
-            pointerEvents: 'none',
-            zIndex: 12,
-            overflow: 'hidden',
-          }}
-        >
-          {/* 後衛・中衛境界線 (x=18%) */}
+        <>
+          {/* 自陣出撃ゾーン (x=6〜33%) */}
           <div
             style={{
               position: 'absolute',
-              left: `${((18 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
-              top: 0,
-              bottom: 0,
-              borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
+              left: `${PLAYER_SPAWN_X_MIN}%`,
+              width: `${PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN}%`,
+              top: '8%',
+              bottom: '8%',
+              backgroundColor: 'rgba(30, 58, 138, 0.08)',
+              border: '1px dashed rgba(59, 130, 246, 0.45)',
+              borderRadius: '8px',
+              pointerEvents: 'none',
+              zIndex: 12,
+              overflow: 'hidden',
             }}
-          />
-          {/* 中衛・前衛境界線 (x=33%) */}
-          <div
-            style={{
-              position: 'absolute',
-              left: `${((33 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
-              top: 0,
-              bottom: 0,
-              borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
-            }}
-          />
+          >
+            {/* 後衛・中衛境界線 (x=15%) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: `${((15 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+                top: 0,
+                bottom: 0,
+                borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
+              }}
+            />
+            {/* 中衛・前衛境界線 (x=24%) */}
+            <div
+              style={{
+                position: 'absolute',
+                left: `${((24 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+                top: 0,
+                bottom: 0,
+                borderLeft: '1px dotted rgba(59, 130, 246, 0.3)',
+              }}
+            />
 
-          {/* ゾーンラベル表示 */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '6px',
-              left: '6px',
-              fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.8)',
-              fontWeight: 'bold',
-              letterSpacing: '1px',
-            }}
-          >
-            🏹 後衛 (REAR)
-          </div>
-          <div
-            style={{
-              position: 'absolute',
-              top: '6px',
-              left: `${((25 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
-              transform: 'translateX(-50%)',
-              fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.8)',
-              fontWeight: 'bold',
-              letterSpacing: '1px',
-            }}
-          >
-            🛡️ 中衛 (MID)
-          </div>
-          <div
-            style={{
-              position: 'absolute',
-              top: '6px',
-              right: '6px',
-              fontSize: '8.5px',
-              color: 'rgba(147, 197, 253, 0.8)',
-              fontWeight: 'bold',
-              letterSpacing: '1px',
-            }}
-          >
-            ⚔️ 前衛 (VANGUARD)
+            {/* ゾーンラベル表示 */}
+            <div
+              style={{
+                position: 'absolute',
+                top: '6px',
+                left: '6px',
+                fontSize: '8.5px',
+                color: 'rgba(147, 197, 253, 0.8)',
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+              }}
+            >
+              🏹 後衛
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                top: '6px',
+                left: `${((19.5 - PLAYER_SPAWN_X_MIN) / (PLAYER_SPAWN_X_MAX - PLAYER_SPAWN_X_MIN)) * 100}%`,
+                transform: 'translateX(-50%)',
+                fontSize: '8.5px',
+                color: 'rgba(147, 197, 253, 0.8)',
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+              }}
+            >
+              🛡️ 中衛
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                top: '6px',
+                right: '6px',
+                fontSize: '8.5px',
+                color: 'rgba(147, 197, 253, 0.8)',
+                fontWeight: 'bold',
+                letterSpacing: '1px',
+              }}
+            >
+              ⚔️ 前衛
+            </div>
+
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '5px',
+                left: '8px',
+                fontSize: '8px',
+                color: 'rgba(147, 197, 253, 0.55)',
+                fontWeight: 'bold',
+              }}
+            >
+              DEPLOY ZONE (自陣・出撃可能)
+            </div>
           </div>
 
+          {/* 中央中立ゾーン (x=33〜67%: 両軍出撃不可) */}
           <div
             style={{
               position: 'absolute',
-              bottom: '5px',
-              left: '8px',
-              fontSize: '8px',
-              color: 'rgba(147, 197, 253, 0.55)',
-              fontWeight: 'bold',
+              left: `${NEUTRAL_ZONE_X_MIN}%`,
+              width: `${NEUTRAL_ZONE_X_MAX - NEUTRAL_ZONE_X_MIN}%`,
+              top: '8%',
+              bottom: '8%',
+              backgroundColor: 'rgba(15, 23, 42, 0.22)',
+              border: '1px dashed rgba(148, 163, 184, 0.22)',
+              borderRadius: '8px',
+              pointerEvents: 'none',
+              zIndex: 12,
+              overflow: 'hidden',
             }}
           >
-            DEPLOY ZONE (自陣・クリック/ドロップで出撃)
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '5px',
+                left: '50%',
+                transform: 'translateX(-50%)',
+                fontSize: '8px',
+                fontWeight: 'bold',
+                color: 'rgba(148, 163, 184, 0.6)',
+                letterSpacing: '1px',
+                backgroundColor: 'rgba(15, 23, 42, 0.75)',
+                padding: '2px 8px',
+                borderRadius: '4px',
+                border: '1px solid rgba(148, 163, 184, 0.2)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              🚫 NEUTRAL ZONE (中央・両軍出撃不可)
+            </div>
           </div>
-        </div>
+
+          {/* 敵陣ゾーン (x=67〜95%: 出撃不可) */}
+          <div
+            style={{
+              position: 'absolute',
+              left: `${CPU_SPAWN_X_MIN}%`,
+              width: `${CPU_SPAWN_X_MAX - CPU_SPAWN_X_MIN}%`,
+              top: '8%',
+              bottom: '8%',
+              backgroundColor: 'rgba(127, 29, 29, 0.05)',
+              border: '1px dashed rgba(239, 68, 68, 0.2)',
+              borderRadius: '8px',
+              pointerEvents: 'none',
+              zIndex: 12,
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                bottom: '5px',
+                right: '8px',
+                fontSize: '8px',
+                fontWeight: 'bold',
+                color: 'rgba(248, 113, 113, 0.55)',
+                letterSpacing: '1px',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              ENEMY ZONE (敵陣)
+            </div>
+          </div>
+        </>
       )}
 
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
