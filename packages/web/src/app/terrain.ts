@@ -5,7 +5,7 @@
  * 「横方向ピンボール」の盤面を作る。
  *
  * 1. 矢印タイル（Road）:
- *    x=10~90, y=15~85 に菱形タイルを敷き詰める（画面上でほぼ正方形）。各タイルが上下左右いずれかへ
+ *    レーンの間(y=35/65)の要所6枚に菱形タイルを置く（画面上でほぼ正方形）。各タイルが上下左右いずれかへ
  *    ユニットを押し、一定時間ごとに時計回りに回る。クリックでも回せる。
  * 2. 泥沼（Swamp）:
  *    タイルの上に重なる湿地帯。地上ユニットの移動速度を0.5倍に低下させる（タイルより優先）。
@@ -19,7 +19,7 @@ export type FlowDir = 0 | 1 | 2 | 3;
 
 /** タイルの左右の押し出し速度 (%/s)。最遅ユニット(speed2.5 → 約0.94%/s)は逆向きの矢印で押し戻される */
 export const ROAD_PUSH = 1.5;
-/** 上下は進行方向(X)と直交し逆流しないので強め。全面に敷くため壁に張り付かない程度に抑える */
+/** 上下は進行方向(X)と直交し逆流しないので強め */
 export const ROAD_PUSH_Y = 5;
 /** タイルが時計回りに90度回る間隔 (秒) */
 export const ROAD_ROTATE_SEC = 8;
@@ -70,19 +70,19 @@ export const FIELD_TERRAIN_ZONES: TerrainZone[] = [
     height: 16,
     speedMultiplier: 0.5,
   },
-  // 3. 矢印タイル: 45度回転した菱形を斜め格子(i+jが偶数)で敷き詰める。矢印の向きは上下左右のまま
+  // 3. 矢印タイル: レーン間(y=35/65)の要所6枚だけに置く菱形。上下向きならレーン乗り換え、左右向きなら加速/押し戻し
   // shortcut: フィールドの縦横比を約1.75:1(デスクトップ実測)と仮定して縦を1.75倍にし正方形に見せる。画面比が大きく変わるなら実測値で描画側を補正する
-  ...Array.from({ length: 45 }, (_, n) => [(n % 9) - 4, Math.floor(n / 9) - 2]).filter(([i, j]) => (i + j) % 2 === 0).map(([col, row]): TerrainZone => {
+  ...[-1, 0, 1].flatMap((col) => [-1, 1].map((row) => [col, row])).map(([col, row]): TerrainZone => {
     return {
       id: `terrain_tile_${row}_${col}`,
       name: '矢印タイル',
       type: 'road',
-      x: 50 + col * 10,
-      y: 50 + row * 17.5,
+      x: 50 + col * 25,
+      y: 50 + row * 15,
       width: 20, // 菱形の対角線の長さ（外接矩形）
       height: 35,
       speedMultiplier: 1,
-      flowDir: ((((col + row) / 2) % 4 + 4) % 4) as FlowDir,
+      flowDir: (((col + row) % 4 + 4) % 4) as FlowDir,
     };
   }),
 ];
