@@ -85,6 +85,8 @@ export interface Unit {
   isAmbushDeploy?: boolean; // 自陣遮蔽物の陰から奇襲出撃したバフ適用中か
   isCloudConcealed?: boolean; // 雲の影に入って死角に隠れているか
   isCloudSpotted?: boolean; // 雲の中にいるが味方接近等で看破されたか
+  slideVx?: number; // 出撃時の地上スライド射出X速度 (%/s)
+  slideVy?: number; // 出撃時の地上スライド射出Y（奥行き）速度 (%/s)
   lane?: number; // 互換エイリアス
 }
 
