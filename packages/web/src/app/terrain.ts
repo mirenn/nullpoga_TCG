@@ -5,7 +5,7 @@
  * 「横方向ピンボール」の盤面を作る。
  *
  * 1. 矢印タイル（Road）:
- *    x=10~90, y=10~90 を 10x10 のタイルで敷き詰める。各タイルが上下左右いずれかへ
+ *    x=10~90, y=15~85 に菱形タイルを敷き詰める（画面上でほぼ正方形）。各タイルが上下左右いずれかへ
  *    ユニットを押し、一定時間ごとに時計回りに回る。クリックでも回せる。
  * 2. 泥沼（Swamp）:
  *    タイルの上に重なる湿地帯。地上ユニットの移動速度を0.5倍に低下させる（タイルより優先）。
@@ -71,15 +71,16 @@ export const FIELD_TERRAIN_ZONES: TerrainZone[] = [
     speedMultiplier: 0.5,
   },
   // 3. 矢印タイル: 45度回転した菱形を斜め格子(i+jが偶数)で敷き詰める。矢印の向きは上下左右のまま
-  ...Array.from({ length: 81 }, (_, n) => [(n % 9) - 4, Math.floor(n / 9) - 4]).filter(([i, j]) => (i + j) % 2 === 0).map(([col, row]): TerrainZone => {
+  // shortcut: フィールドの縦横比を約1.75:1(デスクトップ実測)と仮定して縦を1.75倍にし正方形に見せる。画面比が大きく変わるなら実測値で描画側を補正する
+  ...Array.from({ length: 45 }, (_, n) => [(n % 9) - 4, Math.floor(n / 9) - 2]).filter(([i, j]) => (i + j) % 2 === 0).map(([col, row]): TerrainZone => {
     return {
       id: `terrain_tile_${row}_${col}`,
       name: '矢印タイル',
       type: 'road',
       x: 50 + col * 10,
-      y: 50 + row * 10,
+      y: 50 + row * 17.5,
       width: 20, // 菱形の対角線の長さ（外接矩形）
-      height: 20,
+      height: 35,
       speedMultiplier: 1,
       flowDir: ((((col + row) / 2) % 4 + 4) % 4) as FlowDir,
     };

@@ -1505,7 +1505,7 @@ assert(meleeEngine.state.units.find((u) => u.id === 'melee_a')!.y < 64.5, 'Units
 // Foot system: feet alternate each step, mirrored for cpu, and straddling a tile seam gives different tiles
 assert(footOffsetY(0, 'player') === -footOffsetY(3, 'player'), 'Feet must alternate every FOOT_STEP');
 assert(footOffsetY(0, 'player') === -footOffsetY(0, 'cpu'), 'cpu faces the other way so its right foot is on the opposite side');
-assert(getTerrainAt(58, 50 + footOffsetY(0, 'player')) !== getTerrainAt(58, 50 + footOffsetY(3, 'player')), 'Left/right foot must land on different tiles near a tile corner (58,50)');
+assert(getTerrainAt(59, 50 + footOffsetY(0, 'player')) !== getTerrainAt(59, 50 + footOffsetY(3, 'player')), 'Left/right foot must land on different tiles near a tile corner (59,50)');
 console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール
