@@ -454,52 +454,43 @@ export function updateUnitsMovementAndAttacks(params: {
 
   const rawUpdatedUnits = unitsAfterSpot.map((rawUnit) => {
     let unit = rawUnit;
-    let slideVx = unit.slideVx ?? 0;
     let slideVy = unit.slideVy ?? 0;
-    if (Math.hypot(slideVx, slideVy) > 1.0) {
+    if (Math.abs(slideVy) > 1.0) {
       const slideTerrain = getTerrainAt(unit.x, unit.y);
       let friction = SLIDE_FRICTION;
       if (slideTerrain?.type === 'road') {
-        const [px, py] = roadPush(slideTerrain);
-        slideVx += px * 32 * dt;
-        slideVy += py * 20 * dt;
+        // 矢印タイルは奥行き(Y)方向の速度だけに作用させる（X方向の加速はしない）
+        slideVy += roadPush(slideTerrain)[1] * 20 * dt;
       } else if (slideTerrain?.type === 'swamp' && !isFlyingCard(unit.cardNo)) {
         friction *= 3.0;
       }
-      const nextX = Math.max(6, Math.min(94, unit.x + slideVx * dt));
       const nextY = Math.max(12, Math.min(88, unit.y + slideVy * dt));
-      const spd = Math.hypot(slideVx, slideVy);
-      const nextSpd = Math.max(0, spd - friction * dt);
+      const nextSpd = Math.max(0, Math.abs(slideVy) - friction * dt);
       let isAmbushDeploy = unit.isAmbushDeploy;
       let nextAtk = unit.attack;
       if (nextSpd <= 1.0 || nextY <= 12.1 || nextY >= 88.1) {
-        slideVx = 0;
         slideVy = 0;
         if (
           unit.owner === 'player' &&
           !isAmbushDeploy &&
-          findPlayerAmbushObstacle(nextX, nextY, obstacles)
+          findPlayerAmbushObstacle(unit.x, nextY, obstacles)
         ) {
           isAmbushDeploy = true;
           if (unit.cardNo !== 2) nextAtk += AMBUSH_DEPLOY_ATK_BONUS;
         }
       } else {
-        const scale = nextSpd / spd;
-        slideVx *= scale;
-        slideVy *= scale;
+        slideVy = Math.sign(slideVy) * nextSpd;
       }
       unit = {
         ...unit,
-        x: nextX,
         y: nextY,
         lane: nextY,
         attack: nextAtk,
         isAmbushDeploy,
-        slideVx,
         slideVy,
       };
-    } else if (slideVx !== 0 || slideVy !== 0) {
-      unit = { ...unit, slideVx: 0, slideVy: 0 };
+    } else if (slideVy !== 0) {
+      unit = { ...unit, slideVy: 0 };
     }
 
     const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
@@ -1109,7 +1100,7 @@ export function updateUnitsMovementAndAttacks(params: {
       scoutTargetUnitId = undefined;
     }
 
-    const isLaunchingSlide = Math.hypot(slideVx, slideVy) > 1.0;
+    const isLaunchingSlide = Math.abs(slideVy) > 1.0;
     if (!isHolding) {
       let allyToOvertake: Unit | null = null;
       if (!isLaunchingSlide && (obsAction === 'slide' || obsAction === 'jump')) {
@@ -1583,9 +1574,8 @@ export function resolveSmashPush(
     for (let i = 0; i < ownerIndices.length; i++) {
       const sIdx = ownerIndices[i];
       const slider = updatedUnits[sIdx];
-      const svx = slider.slideVx ?? 0;
       const svy = slider.slideVy ?? 0;
-      if (Math.hypot(svx, svy) <= 2) continue;
+      if (Math.abs(svy) <= 2) continue;
 
       for (let j = 0; j < ownerIndices.length; j++) {
         if (i === j) continue;
@@ -1596,13 +1586,11 @@ export function resolveSmashPush(
           updatedUnits[aIdx] = {
             ...ally,
             slideVy: (ally.slideVy ?? 0) + svy * 0.75,
-            slideVx: (ally.slideVx ?? 0) + svx * 0.75 + dir * 14,
             isPushed: true,
           };
           updatedUnits[sIdx] = {
             ...slider,
             slideVy: svy * 0.3,
-            slideVx: svx * 0.3,
             isPushing: true,
           };
           break;

@@ -130,7 +130,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
   // プレイヤーは常に手前(y=88%)から奥方向(-Y)へ地上スライド射出する
   const startY = owner === 'player' ? SPAWN_Y_MAX : spawnY;
   const slideVy = owner === 'player' ? computeSlideLaunchVelocityY(card, spawnY) : undefined;
-  const slideVx = owner === 'player' && slideVy ? 0 : undefined;
 
   // プレイヤー側の立体遮蔽物エリアからの奇襲出撃（アンブッシュ）判定（滑走停止時にも再判定される）
   const isAmbushDeploy =
@@ -165,7 +164,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
     comboCount: comboCount > 1 ? comboCount : undefined,
     killCount: 0,
-    slideVx,
     slideVy,
   };
 
@@ -199,7 +197,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
       comboCount: comboCount > 1 ? comboCount : undefined,
       killCount: 0,
-      slideVx,
       slideVy,
     };
     return [mainUnit, houndUnit];
