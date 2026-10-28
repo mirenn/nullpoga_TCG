@@ -7,7 +7,7 @@ import {
   isWithinEngageY,
   PLAYER_DEFAULT_SPAWN_X,
   PLAYER_SPAWN_X_MAX,
-  PLAYER_SPAWN_X_MIN,
+  SLIDE_CANCEL_Y,
   SPAWN_Y_MAX,
 } from '../board';
 import { AMBUSH_DEPLOY_ATK_BONUS, findPlayerAmbushObstacle } from '../obstacles';
@@ -65,8 +65,9 @@ export function validateCanPlayCard(
   }
   // モンスターの出撃エリア＆出撃スペース制限 (横・縦)
   if (card.type === 'MONSTER') {
-    if (spawnX !== undefined && (spawnX < PLAYER_SPAWN_X_MIN || spawnX > PLAYER_SPAWN_X_MAX)) {
-      return { canPlay: false, reason: '自陣エリア外' };
+    // 射出はXをクランプして行うので横位置では弾かない。手前へ引き戻した場合だけキャンセル扱い
+    if (spawnY !== undefined && spawnY >= SLIDE_CANCEL_Y) {
+      return { canPlay: false, reason: '↓ 下に戻すとキャンセル' };
     }
     if (spawnX !== undefined || spawnY !== undefined) {
       const targetX = spawnX !== undefined ? clampPlayerSpawnX(spawnX) : PLAYER_DEFAULT_SPAWN_X;

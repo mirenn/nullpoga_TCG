@@ -28,6 +28,7 @@ import {
   PLAYER_SPAWN_X_MIN,
   PLAYER_SPAWN_X_MAX,
   PLAYER_DEFAULT_SPAWN_X,
+  SLIDE_CANCEL_Y,
   NEUTRAL_ZONE_X_MIN,
   NEUTRAL_ZONE_X_MAX,
   CPU_SPAWN_X_MIN,
@@ -2039,6 +2040,32 @@ export function BattleField({
             </div>
           </div>
         </>
+      )}
+
+      {/* キャンセル帯: モンスターを手前へ引き戻して離すと射出しない */}
+      {activeCard && activeCard.type === 'MONSTER' && (isDragging || selectedCard) && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            top: `${SLIDE_CANCEL_Y}%`,
+            bottom: 0,
+            backgroundColor: isTargetBlocked && validation.reason?.includes('キャンセル') ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 68, 68, 0.07)',
+            borderTop: '1px dashed rgba(239, 68, 68, 0.45)',
+            color: 'rgba(252, 165, 165, 0.7)',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            paddingBottom: '4px',
+            pointerEvents: 'none',
+            zIndex: 11,
+          }}
+        >
+          ↓ ここで離すとキャンセル
+        </div>
       )}
 
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}

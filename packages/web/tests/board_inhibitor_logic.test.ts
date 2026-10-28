@@ -26,6 +26,7 @@ import {
   computeUnitRangeZone,
   isWithinCircularRange,
   computeUnitCircularRangeZone,
+  SLIDE_CANCEL_Y,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
@@ -1542,6 +1543,12 @@ const heavyVy = computeSlideLaunchVelocityY({ life: 8 }, 35);
 assert(lightVy < heavyVy && heavyVy < 0, `Light unit should launch faster into -Y (${lightVy} vs ${heavyVy})`);
 
 // 2. 出撃時は手前(y=88%)から始まり、tickとともに奥(-Y)へ滑り、手前にいる味方にぶつかると弾き飛ばす
+// 2a. 横位置は問わず射出できる（自陣外Xでも弾かない）が、手前へ引き戻す(y>=SLIDE_CANCEL_Y)とキャンセル
+const cancelEngine = new RealtimeGameEngine(false);
+cancelEngine.state.playerMana = 10;
+assert(cancelEngine.checkCanPlayCard(0, 70, 30, 1).canPlay, 'Throwing from beyond the deploy X range must be allowed (X is clamped)');
+const cancelRes = cancelEngine.checkCanPlayCard(0, 20, SLIDE_CANCEL_Y, 1);
+assert(!cancelRes.canPlay && cancelRes.reason!.includes('キャンセル'), 'Pulling back to the launch edge must cancel');
 const slideEngine = new RealtimeGameEngine(false);
 slideEngine.state.playerMana = 10;
 slideEngine.state.cpuMana = 0;

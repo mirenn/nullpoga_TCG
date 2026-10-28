@@ -33,6 +33,9 @@ export const PLAYER_SPAWN_X_MIN = 6;  // 後衛端 (自陣ベース手前)
 export const PLAYER_SPAWN_X_MAX = 33; // 前衛端 (中央 x=33〜67 は両軍出撃不可の中立ゾーン)
 export const PLAYER_DEFAULT_SPAWN_X = 6; // デフォルトの最奥出撃位置
 
+/** 手前の発射口(y=88%)側へ引き戻してこのY以上で離すと、モンスターの射出をキャンセルする */
+export const SLIDE_CANCEL_Y = 80;
+
 /** 中立交戦ゾーン横範囲 (両軍とも出撃不可) */
 export const NEUTRAL_ZONE_X_MIN = 33;
 export const NEUTRAL_ZONE_X_MAX = 67;
