@@ -177,7 +177,7 @@ export const CARD_POOL: DemoCard[] = [
     name: '癒やしの雨',
     type: 'SPELL',
     manaCost: 3,
-    effectDesc: '指定地点周辺の味方ユニットすべてのHPを3回復する（詠唱1.4秒後に回復雨が着弾）。',
+    effectDesc: '指定地点周辺の相手ユニットをノックバックさせ、オートアタックタイマーをリセットする（詠唱1.4秒後に着弾）。',
     icon: '🌧️',
   },
   {

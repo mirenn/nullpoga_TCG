@@ -70,7 +70,6 @@ export interface PendingHealSpellCast {
   x: number;
   y: number;
   targetOwner: Owner;
-  healAmount: number;
   applyTime: number;
 }
 

@@ -1242,24 +1242,26 @@ spellEngine.tick(0.8, spellNow + 1600);
 const enemyAfter1600 = spellEngine.state.units.find((u) => u.id === 'test_enemy_meteor');
 assert(enemyAfter1600 !== undefined && enemyAfter1600.hp === 2, 'Enemy takes 3 damage at 1600ms impact');
 
-// 3. 癒やしの雨の詠唱〜着弾シミュレーション検証
-const woundedAlly: Unit = {
-  id: 'test_wounded_ally',
+// 3. 癒やしの雨の詠唱〜着弾シミュレーション検証（相手ノックバック＆AAタイマーリセット）
+const targetEnemyForRain: Unit = {
+  id: 'test_enemy_rain',
   cardNo: 3,
-  name: '負傷味方ネコ',
+  name: '敵ネコ',
   icon: '🐱',
-  hp: 1,
+  hp: 6,
   maxHp: 6,
   attack: 1,
   range: 8,
   attackCooldown: 0,
-  attackInterval: 2.0,
-  speed: 1.0,
-  owner: 'player',
+  attackInterval: 3.0,
+  isCharging: true,
+  chargeStartTime: spellNow + 4800,
+  speed: 0,
+  owner: 'cpu',
   x: 50,
   y: 50,
 };
-spellEngine.state.units = [woundedAlly];
+spellEngine.state.units = [targetEnemyForRain];
 const healCard = CARD_POOL.find((c) => c.id === 'heal_spell')!;
 spellEngine.state.deckState.hand[0] = healCard;
 
@@ -1268,13 +1270,17 @@ spellEngine.playCardAt(50, 50, 0, healCastTime);
 assert(spellEngine.state.pendingHealSpellCasts.length === 1, '1 pending heal spell cast queued');
 assert(spellEngine.state.spellEffects.some((e) => e.type === 'heal_warning'), 'heal_warning effect spawned');
 
-// 700ms経過: まだ回復しない
+// 700ms経過: まだ着弾しない
 spellEngine.tick(0.7, healCastTime + 700);
-assert(spellEngine.state.units[0].hp === 1, 'Ally HP must remain 1 at 700ms (chanting heal)');
+const xAt700 = spellEngine.state.units[0].x;
+assert(xAt700 < 55, 'Enemy must not be knocked back at 700ms (chanting heal_spell)');
+assert(spellEngine.state.units[0].attackCooldown === 0, 'Enemy attackCooldown must remain 0 at 700ms');
 
-// 1400ms経過: 回復雨が着弾しHP+3 (1 -> 4) になり、heal_warningが消えてhealエフェクトになる
-spellEngine.tick(0.7, healCastTime + 1400);
-assert(spellEngine.state.units[0].hp === 4, 'Ally HP recovered by +3 at 1400ms');
+// 1400ms経過: 着弾し相手がノックバック(+10)＆AAタイマーがリセットされ、healエフェクトになる
+spellEngine.tick(0, healCastTime + 1400);
+assert(spellEngine.state.units[0].x === xAt700 + 10, 'Enemy knocked back by +10 at 1400ms');
+assert(spellEngine.state.units[0].attackCooldown === 3.0, 'Enemy AA timer reset to full attackInterval (3.0s) at 1400ms');
+assert(!spellEngine.state.units[0].isCharging, 'Enemy attack charge cancelled at 1400ms');
 assert(spellEngine.state.spellEffects.some((e) => e.type === 'heal'), 'heal landing effect spawned');
 
 // 4. 疾風の号令の詠唱〜発動シミュレーション検証

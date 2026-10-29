@@ -1827,7 +1827,7 @@ export function BattleField({
                   animation: 'heal-spell-anim 1.2s ease-out forwards',
                 }}
               >
-                🌧️ 癒やしの雨着弾!! ✨HP+3
+                🌧️ 癒やしの雨着弾!! 💨ノックバック＆AAリセット
               </div>
             </div>
           );
@@ -2489,7 +2489,7 @@ export function BattleField({
                 : activeCard.id === 'meteor'
                 ? '☄️ ドロップで範囲隕石！ (詠唱1.6秒)'
                 : activeCard.id === 'heal_spell'
-                ? '🌧️ ドロップで範囲回復！ (詠唱1.4秒)'
+                ? '🌧️ ドロップでノックバック＆AAリセット！ (詠唱1.4秒)'
                 : activeCard.id === 'haste_spell'
                 ? '💨 ドロップでAAリセット号令！ (詠唱1.1秒)'
                 : activeCard.type === 'SPELL'
@@ -2502,7 +2502,7 @@ export function BattleField({
               : activeCard.id === 'meteor'
               ? '☄️ クリックで範囲隕石！ (詠唱1.6秒)'
               : activeCard.id === 'heal_spell'
-              ? '🌧️ クリックで範囲回復！ (詠唱1.4秒)'
+              ? '🌧️ クリックでノックバック＆AAリセット！ (詠唱1.4秒)'
               : activeCard.id === 'haste_spell'
               ? '💨 クリックでAAリセット号令！ (詠唱1.1秒)'
               : activeCard.type === 'SPELL'

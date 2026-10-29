@@ -195,18 +195,16 @@ export function computeCpuAction(
         }
       } else if (card.id === 'heal_spell') {
         validSpawnYs.forEach((y) => {
-          const wounded = cpuUnits.filter(
-            (u) => isWithinEngageY(u.y, y, SPELL_RADIUS) && u.hp < u.maxHp
-          );
-          if (wounded.length > 0) {
-            const avgX = wounded.reduce((acc, cur) => acc + cur.x, 0) / wounded.length;
+          const targets = playerUnits.filter((u) => isWithinEngageY(u.y, y, SPELL_RADIUS));
+          if (targets.length > 0) {
+            const avgX = targets.reduce((acc, cur) => acc + cur.x, 0) / targets.length;
             options.push({
               handIndex: idx,
               card,
               targetY: y,
               targetX: Math.max(15, Math.min(85, Math.round(avgX))),
               targetLane: y,
-              score: 8 + wounded.length * 6 + Math.random() * 2,
+              score: 8 + targets.length * 6 + Math.random() * 2,
             });
           }
         });

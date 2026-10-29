@@ -261,7 +261,6 @@ export class RealtimeGameEngine {
         x,
         y,
         targetOwner,
-        healAmount: 3,
         applyTime: now + HEAL_SPELL_CAST_DELAY_MS,
       },
     ];
@@ -343,7 +342,7 @@ export class RealtimeGameEngine {
       } else if (card.id === 'haste_spell') {
         this.enqueueHasteSpell(spawnX, spawnY, 'player', now);
       } else if (card.id === 'heal_spell') {
-        this.enqueueHealSpell(spawnX, spawnY, 'player', now);
+        this.enqueueHealSpell(spawnX, spawnY, 'cpu', now);
       }
     }
 
@@ -462,7 +461,7 @@ export class RealtimeGameEngine {
       } else if (chosen.card.id === 'haste_spell') {
         this.enqueueHasteSpell(spellX, spellY, 'cpu', now);
       } else if (chosen.card.id === 'heal_spell') {
-        this.enqueueHealSpell(spellX, spellY, 'cpu', now);
+        this.enqueueHealSpell(spellX, spellY, 'player', now);
       }
     }
   }

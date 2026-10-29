@@ -223,7 +223,14 @@ export function resolveDelayedSpellQueue(params: {
 
       units = units.map((u) => {
         if (u.owner === hc.targetOwner && Math.hypot(u.x - hc.x, u.y - hc.y) <= SPELL_RADIUS) {
-          return { ...u, hp: Math.min(u.hp + hc.healAmount, u.maxHp) };
+          const knockback = u.owner === 'player' ? -10 : 10;
+          return {
+            ...u,
+            x: Math.max(5, Math.min(95, u.x + knockback)),
+            attackCooldown: u.attackInterval,
+            isCharging: false,
+            chargeStartTime: undefined,
+          };
         }
         return u;
       });

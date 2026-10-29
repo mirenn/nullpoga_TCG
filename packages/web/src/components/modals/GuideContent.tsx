@@ -109,7 +109,7 @@ export function GuideContent() {
             <div style={styles.tipBox}>
               <div style={styles.tipTitle}>🌧️ 癒やしの雨</div>
               <div style={styles.tipText}>
-                指定レーンの味方全員を3回回復。カメなどの高耐久ユニットと好相性です。
+                指定地点の相手ユニットをノックバックさせ、さらにオートアタックタイマーをリセットして攻撃を封じます。
               </div>
             </div>
             <div style={styles.tipBox}>
