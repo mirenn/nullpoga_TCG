@@ -1,6 +1,10 @@
 import React from 'react';
 import type { StampedeState } from '../../app/types';
-import { isStampedeApproaching } from '../../app/stampede';
+import {
+  isStampedeApproaching,
+  STAMPEDE_INTERVAL_SEC,
+  STAMPEDE_WARNING_DURATION_SEC,
+} from '../../app/stampede';
 
 interface StampedeDragonTimerProps {
   stampede: StampedeState;
@@ -29,8 +33,7 @@ export const StampedeDragonTimer: React.FC<StampedeDragonTimerProps> = React.mem
     const isCooldown = phase === 'cooldown';
 
     // プログレスバーのパーセンテージ（次の突進までのゲージ）
-    // 通常サイクルは約27.5秒 (interval 24s + warning 3.5s)
-    const maxCycleSec = 27.5;
+    const maxCycleSec = STAMPEDE_INTERVAL_SEC + STAMPEDE_WARNING_DURATION_SEC;
     const cycleProgress = Math.max(0, Math.min(100, ((maxCycleSec - nextStampedeIn) / maxCycleSec) * 100));
 
     // フェーズごとの外観スタイル定義

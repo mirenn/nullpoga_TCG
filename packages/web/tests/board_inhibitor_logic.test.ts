@@ -70,6 +70,7 @@ import {
   STAMPEDE_ZONE_X_MIN,
   STAMPEDE_ZONE_X_MAX,
   STAMPEDE_CRUSH_DAMAGE,
+  STAMPEDE_INITIAL_DELAY_SEC,
   STAMPEDE_APPROACHING_SEC,
   STAMPEDE_WARNING_DURATION_SEC,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
@@ -806,7 +807,7 @@ const ambushAttack = baseAttack + HOLD_AMBUSH_ATTACK_BONUS;
 assert(ambushAttack === 4, `Ambush attack must add +2 (got ${ambushAttack})`);
 
 // 12-6. LoL風ドラゴンタイマー＆地鳴り予兆（Approaching Rumble）カウントダウン
-assert(stampedeInitial.nextStampedeIn === 14 + STAMPEDE_WARNING_DURATION_SEC, 'Initial countdown must sum idle delay and warning duration');
+assert(stampedeInitial.nextStampedeIn === STAMPEDE_INITIAL_DELAY_SEC + STAMPEDE_WARNING_DURATION_SEC, 'Initial countdown must sum idle delay and warning duration');
 assert(isStampedeApproaching(stampedeInitial) === false, 'Initial state (>6s) must not be approaching');
 
 const approachingState = {

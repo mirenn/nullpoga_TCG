@@ -30,8 +30,8 @@ export const STAMPEDE_ZONE_X_MAX = 55;
 export const STAMPEDE_ZONE_CENTER_X = 50;
 
 /** 各フェーズの時間設定 (秒) */
-export const STAMPEDE_INITIAL_DELAY_SEC = 14; // ゲーム開始から初回警報までの秒数 (初回突進は 14 + 3.5 = 17.5秒)
-export const STAMPEDE_INTERVAL_SEC = 24; // 通常アイドル時間 (突進間隔は 24 + 3.5 = 27.5秒)
+export const STAMPEDE_INITIAL_DELAY_SEC = 35; // ゲーム開始から初回警報までの秒数 (初回突進は 35 + 3.5 = 38.5秒)
+export const STAMPEDE_INTERVAL_SEC = 50; // 通常アイドル時間 (突進間隔は 50 + 3.5 = 53.5秒)
 export const STAMPEDE_APPROACHING_SEC = 6.0; // 地鳴り予兆フェーズ（突進前6秒 / 警報の約2.5秒前から予兆開始）
 export const STAMPEDE_WARNING_DURATION_SEC = 3.5; // 警告フェーズ（タップして止まるための猶予時間: 3.5秒）
 export const STAMPEDE_RUSH_DURATION_SEC = 4.5; // 巨獣群の突進通過時間（ゆっくり重厚に駆け抜ける速度: 4.5秒）
