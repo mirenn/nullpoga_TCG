@@ -88,6 +88,9 @@ export interface Unit {
   isCloudConcealed?: boolean; // 雲の影に入って死角に隠れているか
   isCloudSpotted?: boolean; // 雲の中にいるが味方接近等で看破されたか
   hasSpellShield?: boolean; // スペルシールド保持中か（1回被弾で消費）
+  kickVx?: number; // 矢印タイル回転時のバースト加速X (%/s)
+  kickVy?: number; // 矢印タイル回転時のバースト加速Y (%/s)
+  spin?: number; // 矢印タイル回転時のくるんとスピン累積角(度)
   lane?: number; // 互換エイリアス
 }
 

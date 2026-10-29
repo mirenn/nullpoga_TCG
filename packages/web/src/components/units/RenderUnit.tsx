@@ -478,7 +478,8 @@ export const RenderUnit = React.memo(function RenderUnit({
           outlineOffset: isScouting || isHolding ? '2px' : undefined,
           border: unit.isSpotted ? '1.5px solid #facc15' : 'none',
           backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
-          transform: isPlayer ? 'none' : 'scaleX(-1)',
+          transform: `${isPlayer ? '' : 'scaleX(-1) '}rotate(${unit.spin ?? 0}deg)`,
+          transition: unit.spin ? 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' : undefined,
           boxShadow: isBlockingSpawn
             ? '0 0 12px #ea580c'
             : unit.hasAmbushCharge

@@ -36,7 +36,14 @@ import {
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
-import { footOffsetY, getTerrainAt, isFlyingCard, roadPush } from '../terrain';
+import {
+  clearRoadTurned,
+  footOffsetY,
+  getTerrainAt,
+  isFlyingCard,
+  ROAD_TURN_DECAY,
+  roadPush,
+} from '../terrain';
 import {
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
@@ -63,16 +70,25 @@ import {
   PendingMeteorHit,
 } from './engineTypes';
 
-/** 足元の矢印タイルの押し出しを座標に加える（交戦中・移動中の両方で共通） */
-function applyRoadPush(x: number, y: number, lane: number, dt: number, footDy: number) {
-  // 重心ではなく、今踏んでいる足の下のタイルが押す
+/** 足元の矢印タイルの押し出し＋回転時バースト加速を座標に加える（交戦中・移動中の両方で共通） */
+function applyRoadPush(unit: Unit, x: number, y: number, lane: number, dt: number, footDy: number) {
   const terrain = getTerrainAt(x, y + footDy);
-  if (terrain?.type !== 'road') return { x, y, lane };
-  const [px, py] = roadPush(terrain);
+  const turnedRoad = [terrain, getTerrainAt(x, y)].find((z) => z?.type === 'road' && z.turned);
+  let [kickVx, kickVy] = turnedRoad ? roadPush(turnedRoad, true) : [unit.kickVx ?? 0, unit.kickVy ?? 0];
+  const spin = turnedRoad ? (unit.spin ?? 0) + 360 : unit.spin;
+  const [px, py] = terrain?.type === 'road' ? roadPush(terrain) : [0, 0];
+  const vx = px + kickVx;
+  const vy = py + kickVy;
+  const decay = Math.max(0, 1 - dt * ROAD_TURN_DECAY);
+  kickVx = Math.abs(kickVx * decay) < 0.5 ? 0 : kickVx * decay;
+  kickVy = Math.abs(kickVy * decay) < 0.5 ? 0 : kickVy * decay;
   return {
-    x: Math.max(5, Math.min(95, x + px * dt)),
-    y: Math.max(12, Math.min(88, y + py * dt)),
-    lane: Math.max(12, Math.min(88, lane + py * dt)),
+    x: Math.max(5, Math.min(95, x + vx * dt)),
+    y: Math.max(12, Math.min(88, y + vy * dt)),
+    lane: Math.max(12, Math.min(88, lane + vy * dt)),
+    kickVx,
+    kickVy,
+    spin,
   };
 }
 
@@ -807,12 +823,12 @@ export function updateUnitsMovementAndAttacks(params: {
 
       if (!canMoveWhileAttacking) {
         // 交戦中で立ち止まっていても矢印タイルには流される
-        const pushed = unit.isHolding ? { x: unit.x, y: unit.y, lane: unit.lane } : applyRoadPush(unit.x, unit.y, unit.lane ?? unit.y, dt, footOffsetY(unit.distanceTraveled || 0, unit.owner));
+        const pushed = unit.isHolding
+          ? { x: unit.x, y: unit.y, lane: unit.lane, kickVx: 0, kickVy: 0, spin: unit.spin }
+          : applyRoadPush(unit, unit.x, unit.y, unit.lane ?? unit.y, dt, footOffsetY(unit.distanceTraveled || 0, unit.owner));
         return {
           ...unit,
-          x: pushed.x,
-          y: pushed.y,
-          lane: pushed.lane,
+          ...pushed,
           attackCooldown: cooldown,
           lastAttackEffectTime: lastAttack,
           isCharging,
@@ -1383,10 +1399,11 @@ export function updateUnitsMovementAndAttacks(params: {
     x = unit.owner === 'player' ? Math.min(95, maxXMove) : Math.max(5, maxXMove);
     distance += moveDelta;
 
-    // 街道パネルの微弱な押し出し（ユニット速度未満なので逆流はしない）
-    if (!isHolding) {
-      ({ x, y, lane: updatedLane } = applyRoadPush(x, y, updatedLane, dt, footOffsetY(distance, unit.owner)));
-    }
+    // 街道パネルの微弱な押し出し＋回転時のバースト加速
+    const pushed = isHolding
+      ? { x, y, lane: updatedLane, kickVx: 0, kickVy: 0, spin: unit.spin }
+      : applyRoadPush(unit, x, y, updatedLane, dt, footOffsetY(distance, unit.owner));
+    ({ x, y, lane: updatedLane } = pushed);
 
     if (unit.cardNo === 2) {
       const bonus = Math.min(2, Math.floor(distance / 20));
@@ -1398,6 +1415,9 @@ export function updateUnitsMovementAndAttacks(params: {
       x,
       y,
       lane: updatedLane,
+      kickVx: pushed.kickVx,
+      kickVy: pushed.kickVy,
+      spin: pushed.spin,
       attack,
       distanceTraveled: distance,
       attackCooldown: cooldown,
@@ -1420,6 +1440,7 @@ export function updateUnitsMovementAndAttacks(params: {
       isAttackingObstacle,
     };
   });
+  clearRoadTurned();
 
   return {
     rawUpdatedUnits,

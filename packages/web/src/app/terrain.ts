@@ -21,6 +21,10 @@ export type FlowDir = 0 | 1 | 2 | 3;
 export const ROAD_PUSH = 1.5;
 /** 上下は進行方向(X)と直交し逆流しないので強め */
 export const ROAD_PUSH_Y = 5;
+/** タイル回転時に搭乗中ユニットへ与える瞬間バースト初速 (%/s) と減衰率 (/s) */
+export const ROAD_KICK = 28;
+export const ROAD_KICK_Y = 38;
+export const ROAD_TURN_DECAY = 4.5;
 /** タイルが時計回りに90度回る間隔 (秒) */
 export const ROAD_ROTATE_SEC = 8;
 const DIR_VEC = [[0, -1], [1, 0], [0, 1], [-1, 0]] as const;
@@ -36,6 +40,7 @@ export interface TerrainZone {
   speedMultiplier: number; // 移動速度倍率
   flowDir?: FlowDir; // タイルの矢印の向き（0:上 1:右 2:下 3:左）
   spin?: number; // 矢印の累積回転角(度)。3→0 で逆回りに見えないための表示用
+  turned?: boolean; // 直近に矢印が回転したか（搭乗中ユニットのバースト加速トリガー用）
 }
 
 /** 飛行ユニット判定（地上地形の減速を無視） */
@@ -116,6 +121,7 @@ export function resetRoadFlow(): void {
   for (const z of FIELD_TERRAIN_ZONES) {
     z.flowDir = INITIAL_FLOW.get(z.id);
     z.spin = undefined;
+    z.turned = false;
   }
 }
 
@@ -133,10 +139,10 @@ export function footOffsetY(distance: number, owner: 'player' | 'cpu'): number {
   return (right === (owner === 'player') ? 1 : -1) * FOOT_OFFSET_Y;
 }
 
-/** タイルが与える (dx, dy) 速度 (%/s) */
-export function roadPush(zone: TerrainZone): [number, number] {
+/** タイルが与える (dx, dy) 速度 (%/s)。kick=true なら回転時のバースト初速を返す */
+export function roadPush(zone: TerrainZone, kick = false): [number, number] {
   const [vx, vy] = DIR_VEC[zone.flowDir ?? 0];
-  return [vx * ROAD_PUSH, vy * ROAD_PUSH_Y];
+  return [vx * (kick ? ROAD_KICK : ROAD_PUSH), vy * (kick ? ROAD_KICK_Y : ROAD_PUSH_Y)];
 }
 
 /** 味方ユニット（重心または踏み足）がタイル上にいる間だけ手動クリック回転できる */
@@ -160,6 +166,12 @@ export function canTurnRoadPanel(
 export function turnRoadPanel(zone: TerrainZone): void {
   zone.spin = (zone.spin ?? (zone.flowDir ?? 0) * 90) + 90;
   zone.flowDir = (((zone.flowDir ?? 0) + 1) % 4) as FlowDir;
+  zone.turned = true;
+}
+
+/** 1tick分のバースト判定消化後に回転フラグをクリアする */
+export function clearRoadTurned(zones: TerrainZone[] = FIELD_TERRAIN_ZONES): void {
+  for (const z of zones) z.turned = false;
 }
 
 let roadElapsed = 0;

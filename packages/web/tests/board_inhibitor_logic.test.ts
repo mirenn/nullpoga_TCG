@@ -105,6 +105,7 @@ import {
   advanceRoadRotation,
   resetRoadFlow,
   canTurnRoadPanel,
+  turnRoadPanel,
 } from '../src/app/terrain';
 import { absorbIntoHoles, HOLE_WIN_SCORE } from '../src/app/holes';
 import type { Unit } from '../src/app/types';
@@ -1519,6 +1520,18 @@ assert(getTerrainAt(52, 50 + footOffsetY(0, 'player')) !== getTerrainAt(52, 50 +
 assert(!canTurnRoadPanel(pushTile, []), 'Empty road panel must be locked for manual rotation');
 assert(!canTurnRoadPanel(pushTile, [{ ...groundUnitInRiver, owner: 'cpu', x: 50, y: 65 }]), 'Enemy unit on road panel must not unlock manual rotation');
 assert(canTurnRoadPanel(pushTile, [{ ...groundUnitInRiver, owner: 'player', x: 50, y: 65 }]), 'Ally unit on road panel must unlock manual rotation');
+
+// タイル回転時のバースト加速＆スピン: 通常の上向き押し出し(0.3秒で-1.5%)より大幅に強く移動し、spinが+360度つく
+resetRoadFlow();
+const kickEngine = new RealtimeGameEngine(false);
+kickEngine.state.cpuMana = 0;
+kickEngine.state.units = [{ ...groundUnitInRiver, id: 'kicked_u', x: 50, y: 65, lane: 65, speed: 0 }];
+pushTile.flowDir = 3; // 左向きから…
+turnRoadPanel(pushTile); // 時計回りに回して 0 (上向き) へ変更！
+for (let i = 0; i < 3; i++) kickEngine.tick(0.1, 6_000_000 + i * 100);
+const kickedUnit = kickEngine.state.units[0];
+assert(kickedUnit.y < 60, `Road turn kick must strongly burst unit in new arrow direction (65 -> ${kickedUnit.y})`);
+assert(kickedUnit.spin === 360, `Road turn must add 360 deg spin to unit on tile (got ${kickedUnit.spin})`);
 console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール
