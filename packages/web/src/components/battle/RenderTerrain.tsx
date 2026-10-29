@@ -26,8 +26,7 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
 
   const progress = getRoadProgress();
   const nextRotateIn = getRoadNextRotateIn();
-  const isUrgent = nextRotateIn <= 0.8;
-  const isWarning = nextRotateIn <= 2.0;
+  const isWarning = nextRotateIn <= 1.5;
 
   // 円周 2 * PI * 13 ≈ 81.68
   const RING_CIRCUMFERENCE = 81.68;
@@ -47,14 +46,6 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
           0%, 100% { opacity: 0.35; transform: scale(1); }
           50% { opacity: 0.55; transform: scale(1.02); }
         }
-        @keyframes rotateWarningPulse {
-          0%, 100% { opacity: 0.85; transform: scale(1); }
-          50% { opacity: 1.0; transform: scale(1.08); filter: brightness(1.25); }
-        }
-        @keyframes rotateUrgentPulse {
-          0%, 100% { opacity: 0.7; transform: scale(0.96); }
-          50% { opacity: 1.0; transform: scale(1.14); filter: brightness(1.4); }
-        }
       `}</style>
 
       {zones.map((zone) => {
@@ -64,17 +55,12 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
         if (zone.type === 'road') {
           const dir = (zone.flowDir ?? 0) % 4;
           const theme = DIR_THEMES[dir];
-          const anim = isUrgent
-            ? 'rotateUrgentPulse 0.32s ease-in-out infinite'
-            : isWarning
-            ? 'rotateWarningPulse 0.64s ease-in-out infinite'
-            : undefined;
 
           return (
             <div
               key={zone.id}
               onClick={() => { turnRoadPanel(zone); rerender((n) => n + 1); }}
-              title={`矢印タイル [${theme.name}向き] - 回転まで約${nextRotateIn.toFixed(1)}秒 (クリックで時計回りに手動回転)`}
+              title={`矢印タイル [${theme.name}向き] - 回転まで約${Math.ceil(nextRotateIn)}秒 (クリックで時計回りに手動回転)`}
               style={{
                 pointerEvents: 'auto',
                 cursor: 'pointer',
@@ -101,14 +87,13 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  animation: anim,
                 }}
               >
                 <svg
                   width="32"
                   height="32"
                   viewBox="0 0 32 32"
-                  style={{ overflow: 'visible', filter: `drop-shadow(0 0 4px ${theme.shadow})` }}
+                  style={{ overflow: 'visible', filter: `drop-shadow(0 0 3px ${theme.shadow})` }}
                 >
                   {/* 背景タイマーリング */}
                   <circle
@@ -116,8 +101,8 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                     cy="16"
                     r="13"
                     fill="rgba(15, 23, 42, 0.55)"
-                    stroke="rgba(255, 255, 255, 0.12)"
-                    strokeWidth="1.6"
+                    stroke="rgba(255, 255, 255, 0.1)"
+                    strokeWidth="1.5"
                   />
                   {/* 8秒タイマー進行度リング (時計回りに満ちる) */}
                   <circle
@@ -125,13 +110,13 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                     cy="16"
                     r="13"
                     fill="none"
-                    stroke={isWarning ? '#fef08a' : theme.color}
-                    strokeWidth="2.2"
+                    stroke={theme.color}
+                    strokeWidth="1.8"
                     strokeDasharray={RING_CIRCUMFERENCE}
                     strokeDashoffset={ringOffset}
                     strokeLinecap="round"
                     transform="rotate(-90 16 16)"
-                    opacity={isWarning ? 1.0 : 0.85}
+                    opacity={isWarning ? 0.9 : 0.55}
                   />
                   {/* 大きな太矢印 (方向別色 + スムーズ回転アニメ) */}
                   <g

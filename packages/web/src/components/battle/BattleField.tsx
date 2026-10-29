@@ -632,21 +632,8 @@ export function BattleField({
             👁️ 看破: {spottedCount}
           </span>
         )}
-      </div>
 
-      {/* 巨獣スタンピード・ドラゴンタイマーHUD (LoLスタイル常時オブジェクトタイマー) */}
-      {stampede && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{
-            position: 'absolute',
-            top: '38px',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 60,
-          }}
-        >
+        {stampede && (
           <StampedeDragonTimer
             stampede={stampede}
             onFocusStampedeZone={() =>
@@ -657,8 +644,8 @@ export function BattleField({
               }))
             }
           />
-        </div>
-      )}
+        )}
+      </div>
 
       {/* 3D箱庭ボード本体（perspective内で平行移動・ズーム・チルトが適用される盤面） */}
       <div
