@@ -6,7 +6,7 @@
  *
  * 1. 矢印タイル（Road）:
  *    レーンの間(y=35/65)の要所6枚に菱形タイルを置く（画面上でほぼ正方形）。各タイルが上下左右いずれかへ
- *    ユニットを押し、一定時間ごとに時計回りに回る。クリックでも回せる。
+ *    ユニットを押し、一定時間ごとに時計回りに回る。味方ユニットがタイル上にいる間だけクリックでも回せる。
  * 2. 泥沼（Swamp）:
  *    タイルの上に重なる湿地帯。地上ユニットの移動速度を0.5倍に低下させる（タイルより優先）。
  *
@@ -87,6 +87,15 @@ export const FIELD_TERRAIN_ZONES: TerrainZone[] = [
   }),
 ];
 
+/** 座標 (x, y) が指定ゾーン内にあるか判定（矢印タイルは菱形、それ以外は矩形） */
+export function isInTerrainZone(x: number, y: number, zone: TerrainZone): boolean {
+  const halfW = zone.width / 2;
+  const halfH = zone.height / 2;
+  const dx = Math.abs(x - zone.x);
+  const dy = Math.abs(y - zone.y);
+  return zone.type === 'road' ? dx / halfW + dy / halfH <= 1 : dx <= halfW && dy <= halfH;
+}
+
 /** 指定した座標 (x, y) にある地形ゾーンを返す（複数重なる場合は配列の先頭側を優先） */
 export function getTerrainAt(
   x: number,
@@ -94,14 +103,7 @@ export function getTerrainAt(
   zones: TerrainZone[] = FIELD_TERRAIN_ZONES
 ): TerrainZone | null {
   for (const zone of zones) {
-    const halfW = zone.width / 2;
-    const halfH = zone.height / 2;
-    const dx = Math.abs(x - zone.x);
-    const dy = Math.abs(y - zone.y);
-    // 矢印タイルは菱形（|dx|/halfW + |dy|/halfH <= 1）、それ以外は矩形
-    if (zone.type === 'road' ? dx / halfW + dy / halfH <= 1 : dx <= halfW && dy <= halfH) {
-      return zone;
-    }
+    if (isInTerrainZone(x, y, zone)) return zone;
   }
   return null;
 }
@@ -135,6 +137,23 @@ export function footOffsetY(distance: number, owner: 'player' | 'cpu'): number {
 export function roadPush(zone: TerrainZone): [number, number] {
   const [vx, vy] = DIR_VEC[zone.flowDir ?? 0];
   return [vx * ROAD_PUSH, vy * ROAD_PUSH_Y];
+}
+
+/** 味方ユニット（重心または踏み足）がタイル上にいる間だけ手動クリック回転できる */
+export function canTurnRoadPanel(
+  zone: TerrainZone,
+  units: readonly { owner: 'player' | 'cpu'; hp: number; x: number; y: number; distanceTraveled?: number }[]
+): boolean {
+  return (
+    zone.type === 'road' &&
+    units.some(
+      (u) =>
+        u.owner === 'player' &&
+        u.hp > 0 &&
+        (isInTerrainZone(u.x, u.y, zone) ||
+          isInTerrainZone(u.x, u.y + footOffsetY(u.distanceTraveled || 0, u.owner), zone))
+    )
+  );
 }
 
 /** タイルを時計回りに90度回す（自動回転・クリック共通）。 */

@@ -104,6 +104,7 @@ import {
   ROAD_ROTATE_SEC,
   advanceRoadRotation,
   resetRoadFlow,
+  canTurnRoadPanel,
 } from '../src/app/terrain';
 import { absorbIntoHoles, HOLE_WIN_SCORE } from '../src/app/holes';
 import type { Unit } from '../src/app/types';
@@ -1515,6 +1516,9 @@ assert(meleeEngine.state.units.find((u) => u.id === 'melee_a')!.y < 64.5, 'Units
 assert(footOffsetY(0, 'player') === -footOffsetY(3, 'player'), 'Feet must alternate every FOOT_STEP');
 assert(footOffsetY(0, 'player') === -footOffsetY(0, 'cpu'), 'cpu faces the other way so its right foot is on the opposite side');
 assert(getTerrainAt(52, 50 + footOffsetY(0, 'player')) !== getTerrainAt(52, 50 + footOffsetY(3, 'player')), 'Left/right foot must land on different tiles near a tile corner (52,50)');
+assert(!canTurnRoadPanel(pushTile, []), 'Empty road panel must be locked for manual rotation');
+assert(!canTurnRoadPanel(pushTile, [{ ...groundUnitInRiver, owner: 'cpu', x: 50, y: 65 }]), 'Enemy unit on road panel must not unlock manual rotation');
+assert(canTurnRoadPanel(pushTile, [{ ...groundUnitInRiver, owner: 'player', x: 50, y: 65 }]), 'Ally unit on road panel must unlock manual rotation');
 console.log('  -> Terrain Zones (Arrow tiles, Swamp slow, Flying bypass): PASSED');
 // ==========================================
 // 19. 得点ホール

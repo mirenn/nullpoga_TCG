@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import type { Unit } from '../../app/types';
 import {
   FIELD_TERRAIN_ZONES,
   TerrainZone,
   resetRoadFlow,
+  canTurnRoadPanel,
   turnRoadPanel,
   getRoadNextRotateIn,
   getRoadProgress,
@@ -10,6 +12,7 @@ import {
 
 export interface RenderTerrainProps {
   zones?: TerrainZone[];
+  units?: Unit[];
 }
 
 /** 向き別のアクセントカラー (0:上=シアン, 1:右=ゴールド, 2:下=オレンジ, 3:左=パープル) */
@@ -20,7 +23,7 @@ const DIR_THEMES = [
   { gradientDir: 'to left', color: '#c084fc', bg: 'rgba(192, 132, 252, 0.32)', shadow: 'rgba(192, 132, 252, 0.8)', name: '左' },
 ] as const;
 
-export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProps) {
+export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES, units = [] }: RenderTerrainProps) {
   const [, rerender] = useState(0);
   useEffect(() => { resetRoadFlow(); rerender((n) => n + 1); }, []);
 
@@ -55,15 +58,23 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
         if (zone.type === 'road') {
           const dir = (zone.flowDir ?? 0) % 4;
           const theme = DIR_THEMES[dir];
+          const canTurn = canTurnRoadPanel(zone, units);
 
           return (
             <div
               key={zone.id}
-              onClick={() => { turnRoadPanel(zone); rerender((n) => n + 1); }}
-              title={`矢印タイル [${theme.name}向き] - 回転まで約${Math.ceil(nextRotateIn)}秒 (クリックで時計回りに手動回転)`}
+              onClick={() => {
+                if (!canTurn) return;
+                turnRoadPanel(zone);
+                rerender((n) => n + 1);
+              }}
+              title={`矢印タイル [${theme.name}向き] - 自動回転まで約${Math.ceil(nextRotateIn)}秒 (${
+                canTurn ? '🟢味方搭乗中: クリックで時計回りに手動回転' : '🔒味方ユニットがタイル上にいる間のみ手動回転可'
+              })`}
               style={{
                 pointerEvents: 'auto',
-                cursor: 'pointer',
+                cursor: canTurn ? 'pointer' : 'not-allowed',
+                opacity: canTurn ? 1 : 0.65,
                 position: 'absolute',
                 left: `${left}%`,
                 top: `${top}%`,
@@ -93,16 +104,16 @@ export function RenderTerrain({ zones = FIELD_TERRAIN_ZONES }: RenderTerrainProp
                   width="32"
                   height="32"
                   viewBox="0 0 32 32"
-                  style={{ overflow: 'visible', filter: `drop-shadow(0 0 3px ${theme.shadow})` }}
+                  style={{ overflow: 'visible', filter: `drop-shadow(0 0 ${canTurn ? '6px' : '3px'} ${theme.shadow})` }}
                 >
-                  {/* 背景タイマーリング */}
+                  {/* 背景タイマーリング（味方搭乗中はゴールド枠で点灯） */}
                   <circle
                     cx="16"
                     cy="16"
                     r="13"
                     fill="rgba(15, 23, 42, 0.55)"
-                    stroke="rgba(255, 255, 255, 0.1)"
-                    strokeWidth="1.5"
+                    stroke={canTurn ? 'rgba(250, 204, 21, 0.85)' : 'rgba(255, 255, 255, 0.1)'}
+                    strokeWidth={canTurn ? '2' : '1.5'}
                   />
                   {/* 8秒タイマー進行度リング (時計回りに満ちる) */}
                   <circle

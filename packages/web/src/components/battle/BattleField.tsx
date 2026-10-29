@@ -873,7 +873,7 @@ export function BattleField({
       ))}
 
       {/* 1.5. 地形ゾーン（矢印タイル・泥沼） */}
-      <RenderTerrain />
+      <RenderTerrain units={units} />
       <RenderHoles playerScore={playerScore} cpuScore={cpuScore} />
 
       {/* 2. インヒビター（6基: 左3基・右3基） */}
