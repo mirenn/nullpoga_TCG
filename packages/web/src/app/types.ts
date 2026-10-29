@@ -76,6 +76,10 @@ export interface Unit {
   holdDuration?: number; // 待機（ホールド）継続秒数
   hasAmbushCharge?: boolean; // 2秒以上待機でチャージ完了（次の攻撃力+2＆解除後1.5秒ダッシュ）
   ambushDashUntil?: number; // チャージ解除後の奇襲ダッシュ終了タイムスタンプ (ms)
+  lastSwayTime?: number; // バックステップ寸止め（スウェー）開始タイムスタンプ (ms)
+  lastWhiffTime?: number; // 空振り（WHIFF）発生タイムスタンプ (ms)
+  whiffVulnerableUntil?: number; // 空振り後の後隙（被カウンター状態）終了タイムスタンプ (ms)
+  lastCounterHitTime?: number; // 差し返しカウンターヒット発生タイムスタンプ (ms)
   isScouting?: boolean; // 索敵モード中（その場で立ち止まり、前方160度をスキャン）
   scoutProgress?: number; // 索敵スキャンの進行度 (0.0 〜 1.0)
   scoutTargetUnitId?: string; // 索敵で発見して追跡中の敵ユニットID

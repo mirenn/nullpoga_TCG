@@ -11,6 +11,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 3,
     speed: 8, // 高速ダッシュ型アタッカー（旧16から調整）
     range: 8, // 近接接触
+    hitRange: 7, // 実効命中距離（寸止めスウェーで空振り誘発可能）
     attackInterval: 4.2,
     attackWindup: 0.8, // 攻撃前隙（タメ0.8秒）
     effectDesc: '足が速い低コストユニット。0.8秒のタメから飛びつく。奇襲や前線の足止めに。',
@@ -26,6 +27,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 5, // 標準歩兵ペース（旧10から調整）
     range: 8,
+    hitRange: 7,
     attackInterval: 4.4,
     attackWindup: 1.0, // 攻撃前隙（狙い1.0秒）
     obstacleAction: 'slide', // 障害物・前方味方に当たると身軽にスライド迂回・追い抜き
@@ -42,6 +44,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 5,
     speed: 5, // じっくり前進（旧10から調整）
     range: 10, // 走り込みバイト射程（チャージしながら接近）
+    hitRange: 8.5,
     attackInterval: 4.2,
     attackWindup: 1.1, // 攻撃前隙（構え1.1秒）
     canMoveWhileCharging: true, // 構え・チャージ中も低姿勢で走り込みながら前進
@@ -75,6 +78,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 3.5, // 後方支援ペース
     range: 28, // 長距離放電（旧12から大幅拡大：遠くから雷撃）
+    hitRange: 25,
     attackInterval: 9.0, // 攻撃間隔9.0秒
     attackWindup: 2.4, // 攻撃前隙（チャージモーション2.4秒）
     obstacleAction: 'block',
@@ -91,6 +95,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 7,
     speed: 7, // 突破突進（旧13から調整）
     range: 12, // 突進探知射程（チャージしながら激突まで猛ダッシュ）
+    hitRange: 9.5,
     attackInterval: 4.8,
     attackWindup: 1.4, // 攻撃前隙（ブルチャージタメ1.4秒）
     canMoveWhileCharging: true, // チャージ中も猛突進して敵に激突
@@ -108,6 +113,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 5, // 通常速度5（敵不在時は3倍速の15）
     range: 16, // 全方位円形探知・手裏剣射程 16%
+    hitRange: 14,
     isCircularRange: true, // 円形全方位探知
     attackInterval: 3.8,
     attackWindup: 0.9, // 手裏剣投擲の振りかぶり構え0.9秒
@@ -125,6 +131,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 6, // 飛行による素早い前進
     range: 8, // 近接接触
+    hitRange: 7,
     attackInterval: 4.0,
     attackWindup: 1.0, // 攻撃前隙（急降下狙い1.0秒）
     obstacleAction: 'jump', // 障害物や前の味方を羽ばたきで飛び越える
@@ -158,6 +165,7 @@ export const CARD_POOL: DemoCard[] = [
     life: 4,
     speed: 3.5, // 後方支援ペース
     range: 22, // 遠距離射撃
+    hitRange: 19.5,
     attackInterval: 3.8,
     attackWindup: 1.0, // 弓の引き絞り1.0秒
     effectDesc: '出撃時に前衛として「猟犬」(HP4/ATK1)を召喚。猟犬が敵を足止めしている間に、遠距離から矢を放って援護する。',
@@ -222,6 +230,7 @@ export const HOUND_TOKEN_SPEC = {
   life: 4,
   speed: 6.5,
   range: 8,
+  hitRange: 7,
   attackInterval: 3.2,
   attackWindup: 0.7,
   obstacleAction: 'slide' as const,

@@ -45,10 +45,14 @@ import {
   roadPush,
 } from '../terrain';
 import {
+  COUNTER_HIT_ATTACK_BONUS,
+  COUNTER_HIT_COOLDOWN_MULT,
   HOLD_AMBUSH_ATTACK_BONUS,
   HOLD_AMBUSH_CHARGE_TIME_SEC,
   HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
   shouldCpuUnitHoldForStampede,
+  WHIFF_RECOVERY_FREEZE_MS,
+  WHIFF_VULNERABLE_MS,
 } from '../stampede';
 
 export const SCOUT_SWEEP_DURATION_SEC = 1.6; // 160度スキャンの所要時間（秒）
@@ -521,6 +525,8 @@ export function updateUnitsMovementAndAttacks(params: {
     let lastAttack = unit.lastAttackEffectTime;
     let isCharging = unit.isCharging || false;
     let chargeStartTime = unit.chargeStartTime;
+    let lastWhiffTime = unit.lastWhiffTime;
+    let whiffVulnerableUntil = unit.whiffVulnerableUntil;
 
     if (isStunned) {
       return {
@@ -699,111 +705,154 @@ export function updateUnitsMovementAndAttacks(params: {
       }
     });
 
-    // 敵が射程内にいる場合：攻撃処理
-    if (targetEnemy && minDistance <= unit.range) {
+    // 敵が射程内にいる場合（または攻撃モーションにコミット中／空振り硬直中）：攻撃処理
+    const foundTarget = targetEnemy as CombatTarget | null;
+    const effectiveHitRange = unit.hitRange ?? unit.range;
+    const targetUnitObj =
+      foundTarget && !foundTarget.isStructure
+        ? unitsAfterHits.find((u) => u.id === foundTarget.id)
+        : undefined;
+    const isBaitedByHold = Boolean(
+      targetUnitObj?.isHolding &&
+        (!lastWhiffTime || (targetUnitObj.lastSwayTime ?? 0) > lastWhiffTime)
+    );
+    const engageDistance = isBaitedByHold ? unit.range : effectiveHitRange;
+    const hasRecentSwayEnemy = unitsAfterHits.some(
+      (u) =>
+        u.owner !== unit.owner &&
+        u.hp > 0 &&
+        Boolean(u.lastSwayTime && chargeStartTime && u.lastSwayTime >= chargeStartTime - 200)
+    );
+    const isCommittedCharge = Boolean(
+      isCharging &&
+        !unit.isAttackingObstacle &&
+        cooldown <= 0 &&
+        ((foundTarget && minDistance <= unit.range) || hasRecentSwayEnemy)
+    );
+    const isWhiffFrozen = Boolean(
+      lastWhiffTime && now - lastWhiffTime < WHIFF_RECOVERY_FREEZE_MS
+    );
+
+    if ((foundTarget && minDistance <= engageDistance) || isCommittedCharge || isWhiffFrozen) {
       const windup = unit.attackWindup || 0;
 
-      if (cooldown <= 0) {
-        if (windup > 0 && !isCharging) {
-          isCharging = true;
-          chargeStartTime = now;
-        } else {
-          const chargeElapsed =
-            isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
-          if (windup === 0 || chargeElapsed >= windup) {
-            isCharging = false;
-            chargeStartTime = undefined;
-            cooldown = unit.attackInterval;
-            lastAttack = now;
+      if (!isWhiffFrozen) {
+        if (cooldown <= 0) {
+          if (windup > 0 && !isCharging) {
+            isCharging = true;
+            chargeStartTime = now;
+          } else {
+            const chargeElapsed =
+              isCharging && chargeStartTime ? (now - chargeStartTime) / 1000 : 0;
+            if (windup === 0 || chargeElapsed >= windup) {
+              isCharging = false;
+              chargeStartTime = undefined;
+              cooldown = unit.attackInterval;
+              lastAttack = now;
 
-            let effectType: AttackEffectType = 'slash';
-            let duration = 300;
-            let flightMs: number | undefined;
+              const isWhiff = !foundTarget || minDistance > effectiveHitRange;
+              if (isWhiff) {
+                lastWhiffTime = now;
+                whiffVulnerableUntil = now + WHIFF_VULNERABLE_MS;
+              }
 
-            if (unit.cardNo === 11) {
-              effectType = 'fireball';
-              duration = 1350;
-            } else if (unit.cardNo === 6) {
-              effectType = 'lightning';
-              const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
-              flightMs = Math.round(
-                LIGHTNING_FLIGHT_MIN_MS +
-                  distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS)
-              );
-              duration = flightMs + 450;
-            } else if (unit.cardNo === 1) {
-              effectType = 'bite';
-              duration = 260;
-            } else if (unit.cardNo === 2) {
-              effectType = 'tackle';
-              duration = 320;
-            } else if (unit.cardNo === 3) {
-              effectType = 'claw';
-              duration = 300;
-            } else if (unit.cardNo === 7) {
-              effectType = 'headbutt';
-              duration = 380;
-            } else if (unit.cardNo === 8) {
-              effectType = 'shuriken';
-              const distRatio = Math.min(1, minDistance / 16);
-              flightMs = Math.round(110 + distRatio * 110);
-              duration = flightMs + 320;
-            } else if (unit.cardNo === 9) {
-              effectType = 'blood_bite';
-              duration = 320;
-            } else if (unit.cardNo === 12) {
-              effectType = 'arrow';
-              const distRatio = Math.min(1, minDistance / 25);
-              flightMs = Math.round(100 + distRatio * 150);
-              duration = flightMs + 300;
-            } else if (unit.cardNo === 13) {
-              effectType = 'bite';
-              duration = 260;
-            }
+              let effectType: AttackEffectType = 'slash';
+              let duration = 300;
+              let flightMs: number | undefined;
 
-            const primaryTarget = targetEnemy as CombatTarget;
-            attackTargets.set(unit.id, primaryTarget);
+              if (unit.cardNo === 11) {
+                effectType = 'fireball';
+                duration = 1350;
+              } else if (unit.cardNo === 6) {
+                effectType = 'lightning';
+                const distRatio = Math.min(1, minDistance / LIGHTNING_MAX_RANGE);
+                flightMs = Math.round(
+                  LIGHTNING_FLIGHT_MIN_MS +
+                    distRatio * (LIGHTNING_FLIGHT_MAX_MS - LIGHTNING_FLIGHT_MIN_MS)
+                );
+                duration = flightMs + 450;
+              } else if (unit.cardNo === 1) {
+                effectType = 'bite';
+                duration = 260;
+              } else if (unit.cardNo === 2) {
+                effectType = 'tackle';
+                duration = 320;
+              } else if (unit.cardNo === 3) {
+                effectType = 'claw';
+                duration = 300;
+              } else if (unit.cardNo === 7) {
+                effectType = 'headbutt';
+                duration = 380;
+              } else if (unit.cardNo === 8) {
+                effectType = 'shuriken';
+                const distRatio = Math.min(1, minDistance / 16);
+                flightMs = Math.round(110 + distRatio * 110);
+                duration = flightMs + 320;
+              } else if (unit.cardNo === 9) {
+                effectType = 'blood_bite';
+                duration = 320;
+              } else if (unit.cardNo === 12) {
+                effectType = 'arrow';
+                const distRatio = Math.min(1, minDistance / 25);
+                flightMs = Math.round(100 + distRatio * 150);
+                duration = flightMs + 300;
+              } else if (unit.cardNo === 13) {
+                effectType = 'bite';
+                duration = 260;
+              }
 
-            const dirSign = unit.owner === 'player' ? 1 : -1;
-            const effectToX =
-              unit.hitRange !== undefined && minDistance > unit.hitRange
-                ? unit.x + dirSign * unit.hitRange
+              const dirSign = unit.owner === 'player' ? 1 : -1;
+              const fallbackTarget: CombatTarget = {
+                id: 'whiff_air',
+                x: unit.x + dirSign * effectiveHitRange,
+                y: unit.y,
+                lane: unit.lane ?? unit.y,
+                isStructure: false,
+              };
+              const primaryTarget = (targetEnemy as CombatTarget | null) ?? fallbackTarget;
+              if (!isWhiff && targetEnemy) {
+                attackTargets.set(unit.id, primaryTarget);
+              }
+
+              const effectToX = isWhiff
+                ? unit.x + dirSign * effectiveHitRange
                 : primaryTarget.x;
 
-            newAttackEffects.push({
-              id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
-              attackerId: unit.id,
-              fromX: unit.x,
-              toX: effectToX,
-              lane: unit.lane ?? unit.y,
-              toLane: primaryTarget.lane ?? primaryTarget.y,
-              fromY: unit.y,
-              toY: primaryTarget.y,
-              owner: unit.owner,
-              effectType,
-              damage: attack,
-              createdAt: now,
-              duration,
-              flightDuration: flightMs,
-            });
-
-            if (unit.cardNo === 6 && flightMs) {
-              newPendingHits.push({
-                id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
-                targetId: primaryTarget.id,
+              newAttackEffects.push({
+                id: `atk_${now}_${Math.random().toString(36).substring(2, 7)}`,
                 attackerId: unit.id,
-                x: primaryTarget.x,
+                fromX: unit.x,
+                toX: effectToX,
                 lane: unit.lane ?? unit.y,
-                damage: attack,
-                stunDuration: 1200,
-                hitTime: now + flightMs,
+                toLane: primaryTarget.lane ?? primaryTarget.y,
+                fromY: unit.y,
+                toY: primaryTarget.y,
+                owner: unit.owner,
+                effectType,
+                damage: isWhiff ? 0 : attack,
+                createdAt: now,
+                duration,
+                flightDuration: flightMs,
               });
+
+              if (unit.cardNo === 6 && flightMs && !isWhiff && targetEnemy) {
+                newPendingHits.push({
+                  id: `lhit_${now}_${Math.random().toString(36).substring(2, 7)}`,
+                  targetId: primaryTarget.id,
+                  attackerId: unit.id,
+                  x: primaryTarget.x,
+                  lane: unit.lane ?? unit.y,
+                  damage: attack,
+                  stunDuration: 1200,
+                  hitTime: now + flightMs,
+                });
+              }
             }
           }
+        } else {
+          isCharging = false;
+          chargeStartTime = undefined;
         }
-      } else {
-        isCharging = false;
-        chargeStartTime = undefined;
       }
 
       const obstacleDist = blockingObstacle
@@ -813,13 +862,14 @@ export function updateUnitsMovementAndAttacks(params: {
         : 999;
       const canMoveDuringCharge = Boolean(unit.canMoveWhileCharging && isCharging);
       const canMoveWhileAttacking =
-        (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 8.0) ||
-        canMoveDuringCharge ||
-        Boolean(
-          unit.scoutTargetUnitId &&
-            targetEnemy &&
-            !isWithinEngageY((targetEnemy as CombatTarget).y, unit.y)
-        );
+        !isWhiffFrozen &&
+        ((Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 8.0) ||
+          canMoveDuringCharge ||
+          Boolean(
+            unit.scoutTargetUnitId &&
+              targetEnemy &&
+              !isWithinEngageY((targetEnemy as CombatTarget).y, unit.y)
+          ));
 
       if (!canMoveWhileAttacking) {
         // 交戦中で立ち止まっていても矢印タイルには流される
@@ -831,6 +881,8 @@ export function updateUnitsMovementAndAttacks(params: {
           ...pushed,
           attackCooldown: cooldown,
           lastAttackEffectTime: lastAttack,
+          lastWhiffTime,
+          whiffVulnerableUntil,
           isCharging,
           chargeStartTime,
           isHolding: Boolean(unit.isHolding),
@@ -1165,8 +1217,8 @@ export function updateUnitsMovementAndAttacks(params: {
       if (blockingObstacle) {
         const enemyWall =
           unit.owner === 'player'
-            ? (blockingObstacle as CombatTarget).x - 7.5
-            : (blockingObstacle as CombatTarget).x + 7.5;
+            ? (blockingObstacle as CombatTarget).x - 6.0
+            : (blockingObstacle as CombatTarget).x + 6.0;
         maxXMove =
           unit.owner === 'player'
             ? Math.min(maxXMove, enemyWall)
@@ -1422,6 +1474,8 @@ export function updateUnitsMovementAndAttacks(params: {
       distanceTraveled: distance,
       attackCooldown: cooldown,
       lastAttackEffectTime: lastAttack,
+      lastWhiffTime,
+      whiffVulnerableUntil,
       isCharging,
       chargeStartTime,
       isHolding,
@@ -1498,7 +1552,7 @@ export function resolveSmashPush(
             if (!isWithinCollisionY(enemy.y, front.y)) continue;
             const eDist = dir * (enemy.x - front.x);
             if (eDist >= -1) {
-              const wallX = enemy.x - dir * 7.5;
+              const wallX = enemy.x - dir * 6.0;
               frontMaxAllowedX =
                 owner === 'player'
                   ? Math.min(frontMaxAllowedX, wallX)
@@ -1601,12 +1655,15 @@ export function resolveCombatDamageAndInhibitors(params: {
 } {
   const { updatedUnits, attackTargets, resolvedHits, inhibitors, now } = params;
   const killCountMap = new Map<string, number>();
+  const counterHitAttackers = new Set<string>();
 
   const unitsAfterDamage = updatedUnits.map((unit) => {
     let currentHp = unit.hp;
     let stunnedUntil = unit.isStunnedUntil;
     let x = unit.x;
     let hasSpellShield = unit.hasSpellShield;
+    let whiffVulnerableUntil = unit.whiffVulnerableUntil;
+    let lastCounterHitTime = unit.lastCounterHitTime;
 
     updatedUnits.forEach((attacker) => {
       if (attacker.owner === unit.owner || attacker.lastAttackEffectTime !== now) return;
@@ -1615,9 +1672,14 @@ export function resolveCombatDamageAndInhibitors(params: {
       if (!primary || primary.isStructure) return;
 
       const isPrimary = primary.id === unit.id;
-      const dist = attacker.owner === 'player' ? unit.x - attacker.x : attacker.x - unit.x;
+      const dist =
+        attacker.isCircularRange || attacker.cardNo === 8
+          ? Math.hypot(unit.x - attacker.x, unit.y - attacker.y)
+          : attacker.owner === 'player'
+          ? unit.x - attacker.x
+          : attacker.x - unit.x;
       if (attacker.hitRange !== undefined && dist > attacker.hitRange) return;
-      const isAreaAttacker = attacker.hitRange !== undefined;
+      const isAreaAttacker = attacker.cardNo === 11;
       const splashReach = isAreaAttacker ? (attacker.hitRange as number) : attacker.range + 2;
       const isSplash =
         isAreaAttacker &&
@@ -1631,17 +1693,23 @@ export function resolveCombatDamageAndInhibitors(params: {
           return;
         }
         const hadHp = currentHp > 0;
-        const hasAmbushBonus = Boolean(
-          attacker.hasAmbushCharge || (attacker.ambushDashUntil && now < attacker.ambushDashUntil)
-        );
-        const effectiveAttack = hasAmbushBonus
-          ? attacker.attack + HOLD_AMBUSH_ATTACK_BONUS
-          : attacker.attack;
+        const hasAmbushBonus = Boolean(attacker.hasAmbushCharge);
+        const isCounterHit = Boolean(whiffVulnerableUntil && now < whiffVulnerableUntil);
+        const effectiveAttack =
+          attacker.attack +
+          (hasAmbushBonus ? HOLD_AMBUSH_ATTACK_BONUS : 0) +
+          (isCounterHit ? COUNTER_HIT_ATTACK_BONUS : 0);
         const dealt =
           isAreaAttacker && !isPrimary
             ? Math.round(effectiveAttack * AREA_SPLASH_DAMAGE_RATIO)
             : effectiveAttack;
         currentHp -= dealt;
+        if (isCounterHit) {
+          whiffVulnerableUntil = undefined;
+          lastCounterHitTime = now;
+          counterHitAttackers.add(attacker.id);
+          stunnedUntil = Math.max(stunnedUntil ?? 0, now + 400);
+        }
         if (hadHp && currentHp <= 0) {
           killCountMap.set(attacker.id, (killCountMap.get(attacker.id) || 0) + 1);
         }
@@ -1666,6 +1734,8 @@ export function resolveCombatDamageAndInhibitors(params: {
       isStunnedUntil: stunnedUntil,
       isStunned: isUnitStunned,
       hasSpellShield,
+      whiffVulnerableUntil,
+      lastCounterHitTime,
     };
   });
 
@@ -1722,6 +1792,13 @@ export function resolveCombatDamageAndInhibitors(params: {
     .filter((u) => u.hp > 0)
     .map((unit) => {
       let updated = unit;
+      if (counterHitAttackers.has(unit.id)) {
+        updated = {
+          ...updated,
+          attackCooldown: updated.attackCooldown * COUNTER_HIT_COOLDOWN_MULT,
+          lastCounterHitTime: now,
+        };
+      }
       if (
         unit.lastAttackEffectTime === now &&
         (unit.hasAmbushCharge || unit.ambushDashUntil)

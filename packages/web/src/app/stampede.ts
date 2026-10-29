@@ -50,6 +50,17 @@ export const HOLD_AMBUSH_ATTACK_BONUS = 2;
 export const HOLD_AMBUSH_DASH_SPEED_MULTIPLIER = 1.8;
 export const HOLD_AMBUSH_DASH_DURATION_SEC = 1.5;
 
+/** 寸止めバックステップ（スウェー）の後退距離 (%) */
+export const SWAY_BACKSTEP_DISTANCE = 4.5;
+
+/** 空振り（WHIFF）後の後隙・被カウンター脆弱時間 (ms) と 硬直時間 (ms) */
+export const WHIFF_VULNERABLE_MS = 2400;
+export const WHIFF_RECOVERY_FREEZE_MS = 800;
+
+/** 差し返し（カウンターヒット）時のボーナス攻撃力 & 次の攻撃CD短縮率 */
+export const COUNTER_HIT_ATTACK_BONUS = 2;
+export const COUNTER_HIT_COOLDOWN_MULT = 0.6;
+
 /** 巨獣の当たり判定半径 (%) */
 export const STAMPEDE_BEAST_HIT_RADIUS_X = 4;
 export const STAMPEDE_BEAST_HIT_RADIUS_Y = 5;

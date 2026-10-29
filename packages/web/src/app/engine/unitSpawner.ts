@@ -157,6 +157,7 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       attack: HOUND_TOKEN_SPEC.attack + ambushBonusAtk,
       speed: HOUND_TOKEN_SPEC.speed,
       range: HOUND_TOKEN_SPEC.range,
+      hitRange: HOUND_TOKEN_SPEC.hitRange,
       obstacleAction: HOUND_TOKEN_SPEC.obstacleAction,
       attackCooldown: 0,
       attackInterval: Math.max(0.1, HOUND_TOKEN_SPEC.attackInterval - counterBonusInterval),

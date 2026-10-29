@@ -1350,22 +1350,22 @@ const scoutTestUnit: Unit = {
 };
 scoutEngine.state.units = [scoutTestUnit];
 
-// 1回目クリック: 待機
+// 1回目クリック: スウェー後退＆待機
 scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime);
-assert(scoutEngine.state.units[0].isHolding === true && !scoutEngine.state.units[0].isScouting, '1st click: enters holding mode');
+assert(scoutEngine.state.units[0].isHolding === true && !scoutEngine.state.units[0].isScouting, '1st click: enters sway holding mode');
+assert(scoutEngine.state.units[0].x < 20, '1st click: sways back on X');
 
-// 2回目クリック: 索敵
+// 2回目クリック: 踏み込みダッシュで通常前進に復帰
 scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 100);
-assert(scoutEngine.state.units[0].isHolding === true && scoutEngine.state.units[0].isScouting === true, '2nd click: enters scouting mode');
-assert(scoutEngine.state.units[0].scoutProgress === 0, 'scoutProgress starts at 0');
+assert(!scoutEngine.state.units[0].isHolding && !scoutEngine.state.units[0].isScouting, '2nd click: resumes advance with step-in dash');
 
-// 3回目クリック: 通常前進に復帰
-scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 200);
-assert(!scoutEngine.state.units[0].isHolding && !scoutEngine.state.units[0].isScouting, '3rd click: resumes advance');
-
-// 2. 敵不在時の160度掃引完了 -> 待機状態への自動復帰テスト (選択肢2の仕様検証)
-scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 300); // 待機
-scoutEngine.toggleUnitHold('test_scout_unit', scoutStartTime + 400); // 索敵
+// 2. 敵不在時の160度掃引完了 -> 待機状態への自動復帰テスト
+scoutEngine.state.units[0] = {
+  ...scoutEngine.state.units[0],
+  isHolding: true,
+  isScouting: true,
+  scoutProgress: 0,
+};
 assert(scoutEngine.state.units[0].isScouting === true, 'Unit enters scouting mode');
 
 // 1.6秒以上 tick を進める (敵不在)
@@ -1716,4 +1716,100 @@ shieldEngine.tick(0.05, 5_002_000);
 const turtleAfterMeteor = shieldEngine.state.units[0];
 assert(turtleAfterMeteor.hp === 10 && turtleAfterMeteor.hasSpellShield === false, 'Spell Shield must block Meteor damage once');
 console.log('  -> Turtle Spell Shield: PASSED');
-console.log('=== All 22 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 23. 交戦の「寸止めスウェー・空振り誘発(WHIFF)・差し返しカウンター」検証
+// ==========================================
+console.log('[23/23] Testing Sway Backstep, Whiff Induction, and Counter-Hit...');
+const swayEngine = new RealtimeGameEngine(false);
+swayEngine.state.cpuMana = 0;
+const playerDuelCat: Unit = {
+  ...groundUnitInRiver,
+  id: 'duel_player_cat',
+  cardNo: 3,
+  name: 'ネコ',
+  icon: '🐱',
+  owner: 'player',
+  x: 47,
+  y: 50,
+  lane: 50,
+  hp: 4,
+  maxHp: 4,
+  attack: 1,
+  range: 8,
+  hitRange: 7,
+  attackCooldown: 2.0,
+  attackInterval: 4.4,
+  attackWindup: 0.2,
+  speed: 5,
+};
+const cpuDuelBoar: Unit = {
+  ...groundUnitInRiver,
+  id: 'duel_cpu_boar',
+  cardNo: 3,
+  name: '敵ネコ',
+  icon: '🐱',
+  owner: 'cpu',
+  x: 53.5, // 距離 6.5 (hitRange 7 以内)
+  y: 50,
+  lane: 50,
+  hp: 6,
+  maxHp: 6,
+  attack: 2,
+  range: 8,
+  hitRange: 7,
+  attackCooldown: 0,
+  attackInterval: 4.4,
+  attackWindup: 0.5,
+  speed: 5,
+};
+swayEngine.state.units = [playerDuelCat, cpuDuelBoar];
+
+// 1. 敵が攻撃タメ（isCharging）を開始する
+const swayT0 = 7_000_000;
+swayEngine.tick(0.05, swayT0);
+const chargingEnemy = swayEngine.state.units.find((u) => u.id === 'duel_cpu_boar')!;
+assert(chargingEnemy.isCharging === true, 'Enemy must start attack windup charge');
+
+// 2. 敵の攻撃前隙を見てプレイヤーユニットをクリック -> スウェー後退（x: 47 -> 42.5）して射程外へ逃れる
+swayEngine.toggleUnitHold('duel_player_cat', swayT0 + 100);
+const swayedPlayer = swayEngine.state.units.find((u) => u.id === 'duel_player_cat')!;
+assert(swayedPlayer.isHolding === true && swayedPlayer.x === 42.5, `Player unit must sway back by 4.5% to 42.5 (got ${swayedPlayer.x})`);
+
+// 3. 敵の攻撃モーションがコミット完了 -> 届かず空振り（WHIFF! ダメージ0＆後隙whiffVulnerableUntil付与）
+swayEngine.tick(0.1, swayT0 + 600);
+const playerAfterWhiff = swayEngine.state.units.find((u) => u.id === 'duel_player_cat')!;
+const enemyAfterWhiff = swayEngine.state.units.find((u) => u.id === 'duel_cpu_boar')!;
+assert(playerAfterWhiff.hp === 4, `Player unit must take 0 damage from whiffed enemy attack (got HP ${playerAfterWhiff.hp})`);
+assert(
+  Boolean(enemyAfterWhiff.whiffVulnerableUntil && enemyAfterWhiff.whiffVulnerableUntil > swayT0 + 600),
+  'Enemy must become whiff-vulnerable after missing committed swing'
+);
+
+// 4. 空振りを見て2回目クリック -> 踏み込みラッシュ（CD即座に0＆1.8倍速ダッシュ）で接近して差し返しカウンター (+2ダメージ！)
+swayEngine.toggleUnitHold('duel_player_cat', swayT0 + 650);
+const steppingPlayer = swayEngine.state.units.find((u) => u.id === 'duel_player_cat')!;
+assert(steppingPlayer.isHolding === false && steppingPlayer.attackCooldown === 0, '2nd click during enemy whiff window must reset attackCooldown to 0 and release hold');
+
+// ダッシュで間合いに入り攻撃発動・命中するまで tick を進める
+let swaySimNow = swayT0 + 650;
+for (let i = 0; i < 15; i++) {
+  swaySimNow += 100;
+  swayEngine.tick(0.1, swaySimNow);
+}
+const enemyAfterCounter = swayEngine.state.units.find((u) => u.id === 'duel_cpu_boar')!;
+const playerAfterCounter = swayEngine.state.units.find((u) => u.id === 'duel_player_cat')!;
+assert(
+  enemyAfterCounter.hp === 3,
+  `Counter-hit must deal base ATK (1) + Counter Bonus (+2) = 3 damage, reducing enemy HP from 6 to 3 (got ${enemyAfterCounter.hp})`
+);
+assert(
+  enemyAfterCounter.whiffVulnerableUntil === undefined,
+  'Whiff vulnerability must be consumed after taking a counter-hit'
+);
+assert(
+  playerAfterCounter.lastCounterHitTime !== undefined,
+  'Attacker must record lastCounterHitTime on counter-hit'
+);
+console.log('  -> Sway Backstep, Whiff Induction, and Counter-Hit: PASSED');
+console.log('=== All 23 Test Suites PASSED Successfully! ===');

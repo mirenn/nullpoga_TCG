@@ -178,6 +178,11 @@ export const RenderUnit = React.memo(function RenderUnit({
   const hasBatBuff = unit.cardNo === 9 && (unit.killCount || 0) > 0; // 吸血コウモリ撃破バフ
   const isRecentKill = Boolean(unit.lastKillTime && Date.now() - unit.lastKillTime < 800);
   const isRecentSpot = Boolean(unit.lastSpottedTime && Date.now() - unit.lastSpottedTime < 1800);
+  const nowMs = Date.now();
+  const isWhiffVulnerable = Boolean(unit.whiffVulnerableUntil && nowMs < unit.whiffVulnerableUntil);
+  const isRecentSway = Boolean(unit.lastSwayTime && nowMs - unit.lastSwayTime < 900);
+  const isRecentCounterHit = Boolean(unit.lastCounterHitTime && nowMs - unit.lastCounterHitTime < 1200);
+  const isEnemyCharging = Boolean(!isPlayer && unit.isCharging && !unit.isAttackingObstacle);
 
   // SVG アニメーション状態を算出
   const animState = deriveAnimationState(unit);
@@ -405,6 +410,110 @@ export const RenderUnit = React.memo(function RenderUnit({
           }}
         >
           ⛏️ 障害物破壊中!
+        </div>
+      )}
+
+      {/* 差し返しカウンターヒット発生ポップアップ */}
+      {isRecentCounterHit && (
+        <div
+          data-badge="counter-hit"
+          style={{
+            position: 'absolute',
+            top: '-30px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#dc2626',
+            color: '#fef08a',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            padding: '2px 7px',
+            borderRadius: '999px',
+            border: '1.5px solid #fef08a',
+            boxShadow: '0 0 14px rgba(239, 68, 68, 0.95)',
+            whiteSpace: 'nowrap',
+            zIndex: 48,
+            pointerEvents: 'none',
+          }}
+        >
+          ⚡ カウンター! +2!
+        </div>
+      )}
+
+      {/* 空振り（WHIFF）後の後隙・被カウンター状態インジケーター */}
+      {!isRecentCounterHit && isWhiffVulnerable && (
+        <div
+          data-badge="whiff-vulnerable"
+          style={{
+            position: 'absolute',
+            top: '-26px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#7c2d12',
+            color: '#fed7aa',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '999px',
+            border: '1.5px dashed #fb923c',
+            boxShadow: '0 0 12px rgba(249, 115, 22, 0.9)',
+            whiteSpace: 'nowrap',
+            zIndex: 47,
+            pointerEvents: 'none',
+          }}
+        >
+          💨 空振り! 隙だらけ
+        </div>
+      )}
+
+      {/* 敵の攻撃前隙（タメ中）インジケーター：スウェー誘発の合図 */}
+      {!isRecentCounterHit && !isWhiffVulnerable && isEnemyCharging && !isCpuHiddenInCloud && (
+        <div
+          data-badge="enemy-windup"
+          style={{
+            position: 'absolute',
+            top: '-25px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#b91c1c',
+            color: '#fef08a',
+            fontSize: '9px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '999px',
+            border: '1px solid #facc15',
+            boxShadow: '0 0 10px rgba(250, 204, 21, 0.9)',
+            whiteSpace: 'nowrap',
+            zIndex: 46,
+            pointerEvents: 'none',
+          }}
+        >
+          ⚠️ 攻撃タメ中!
+        </div>
+      )}
+
+      {/* バックステップ寸止め（スウェー）ポップアップ */}
+      {!isRecentCounterHit && isRecentSway && (
+        <div
+          data-badge="sway"
+          style={{
+            position: 'absolute',
+            top: '-26px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            backgroundColor: '#0f766e',
+            color: '#ccfbf1',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            padding: '1px 6px',
+            borderRadius: '999px',
+            border: '1px solid #2dd4bf',
+            boxShadow: '0 0 10px rgba(45, 212, 191, 0.85)',
+            whiteSpace: 'nowrap',
+            zIndex: 47,
+            pointerEvents: 'none',
+          }}
+        >
+          💨 スウェー寸止め!
         </div>
       )}
 

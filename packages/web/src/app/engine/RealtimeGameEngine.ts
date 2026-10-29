@@ -28,6 +28,7 @@ import {
   createInitialStampedeState,
   HOLD_AMBUSH_DASH_DURATION_SEC,
   STAMPEDE_CRUSH_DAMAGE,
+  SWAY_BACKSTEP_DISTANCE,
   updateStampede,
 } from '../stampede';
 import {
@@ -353,56 +354,43 @@ export class RealtimeGameEngine {
     return true;
   }
 
-  /** ユニットのクリックによる 前進／待機／索敵 状態の切り替え（プレイヤーユニットのみ） */
+  /** ユニットのクリックによる 寸止めスウェー待機 ⇔ 踏み込みラッシュ 2段階切り替え（プレイヤーユニットのみ） */
   public toggleUnitHold(unitId: string, now: number = Date.now()): void {
+    const hasVulnerableEnemy = this.state.units.some(
+      (e) => e.owner === 'cpu' && e.whiffVulnerableUntil && now < e.whiffVulnerableUntil,
+    );
+
     this.state.units = this.state.units.map((u) => {
       if (u.id === unitId && u.owner === 'player') {
-        // 1. 待ち伏せチャージ完了済みの場合は即座に奇襲ダッシュで前進再開
-        if (u.isHolding && u.hasAmbushCharge) {
+        // 1. 待機中（または索敵中） -> 踏み込みラッシュ（1.8倍速ダッシュ＆即時攻撃準備）で前進再開！
+        if (u.isHolding || u.isScouting) {
+          const isCounterStepIn = Boolean(u.hasAmbushCharge || hasVulnerableEnemy);
           return {
             ...u,
             isHolding: false,
             isScouting: false,
-            hasAmbushCharge: false,
             holdDuration: 0,
             scoutProgress: undefined,
             scoutTargetUnitId: undefined,
             ambushDashUntil: now + HOLD_AMBUSH_DASH_DURATION_SEC * 1000,
+            attackCooldown: isCounterStepIn ? 0 : u.attackCooldown,
           };
         }
 
-        // 2. 索敵中 -> 通常前進へ
-        if (u.isScouting) {
-          return {
-            ...u,
-            isHolding: false,
-            isScouting: false,
-            scoutProgress: undefined,
-            scoutTargetUnitId: undefined,
-            holdDuration: 0,
-          };
-        }
-
-        // 3. 待機中 -> 索敵モードへ
-        if (u.isHolding) {
-          return {
-            ...u,
-            isHolding: true,
-            isScouting: true,
-            scoutProgress: 0,
-            scoutTargetUnitId: undefined,
-            holdDuration: 0,
-          };
-        }
-
-        // 4. 通常前進中 -> 待機モードへ
+        // 2. 通常前進中 -> バックステップ寸止め（スウェー）待機へ！
+        // 敵の攻撃モーションを見てクリックすると後ろへ4.5%スウェー後退し、敵の攻撃を空振り(WHIFF)させる
+        const swayX = Math.max(5, u.x - SWAY_BACKSTEP_DISTANCE);
         return {
           ...u,
+          x: swayX,
           isHolding: true,
           isScouting: false,
+          isCharging: false,
+          chargeStartTime: undefined,
           scoutProgress: undefined,
           scoutTargetUnitId: undefined,
           holdDuration: 0,
+          lastSwayTime: now,
         };
       }
       return u;
