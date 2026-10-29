@@ -28,14 +28,12 @@ import {
   evaluateUnitStealthAndSpot,
   FIELD_OBSTACLES,
   FieldObstacle,
-  findPlayerAmbushObstacle,
   hasLineOfSight,
   isObstacleActive,
   isObstacleSolid,
   isStealthCapableCard,
   SPOT_AMBUSH_STUN_MS,
 } from '../obstacles';
-import { SLIDE_FRICTION } from './unitSpawner';
 import { footOffsetY, getTerrainAt, isFlyingCard, roadPush } from '../terrain';
 import {
   HOLD_AMBUSH_ATTACK_BONUS,
@@ -452,47 +450,7 @@ export function updateUnitsMovementAndAttacks(params: {
 
   const isAllyStopped = (ally: Unit) => isAllyUnitStopped(ally, unitsAfterHits, inhibitors);
 
-  const rawUpdatedUnits = unitsAfterSpot.map((rawUnit) => {
-    let unit = rawUnit;
-    let slideVy = unit.slideVy ?? 0;
-    if (Math.abs(slideVy) > 1.0) {
-      const slideTerrain = getTerrainAt(unit.x, unit.y);
-      let friction = SLIDE_FRICTION;
-      if (slideTerrain?.type === 'road') {
-        // 矢印タイルは奥行き(Y)方向の速度だけに作用させる（X方向の加速はしない）
-        slideVy += roadPush(slideTerrain)[1] * 20 * dt;
-      } else if (slideTerrain?.type === 'swamp' && !isFlyingCard(unit.cardNo)) {
-        friction *= 3.0;
-      }
-      const nextY = Math.max(12, Math.min(88, unit.y + slideVy * dt));
-      const nextSpd = Math.max(0, Math.abs(slideVy) - friction * dt);
-      let isAmbushDeploy = unit.isAmbushDeploy;
-      let nextAtk = unit.attack;
-      if (nextSpd <= 1.0 || nextY <= 12.1 || nextY >= 88.1) {
-        slideVy = 0;
-        if (
-          unit.owner === 'player' &&
-          !isAmbushDeploy &&
-          findPlayerAmbushObstacle(unit.x, nextY, obstacles)
-        ) {
-          isAmbushDeploy = true;
-          if (unit.cardNo !== 2) nextAtk += AMBUSH_DEPLOY_ATK_BONUS;
-        }
-      } else {
-        slideVy = Math.sign(slideVy) * nextSpd;
-      }
-      unit = {
-        ...unit,
-        y: nextY,
-        lane: nextY,
-        attack: nextAtk,
-        isAmbushDeploy,
-        slideVy,
-      };
-    } else if (slideVy !== 0) {
-      unit = { ...unit, slideVy: 0 };
-    }
-
+  const rawUpdatedUnits = unitsAfterSpot.map((unit) => {
     const isStunned = unit.isStunnedUntil && unit.isStunnedUntil > now;
     let cooldown = Math.max(0, unit.attackCooldown - dt);
     let x = unit.x;
@@ -1100,10 +1058,9 @@ export function updateUnitsMovementAndAttacks(params: {
       scoutTargetUnitId = undefined;
     }
 
-    const isLaunchingSlide = Math.abs(slideVy) > 1.0;
     if (!isHolding) {
       let allyToOvertake: Unit | null = null;
-      if (!isLaunchingSlide && (obsAction === 'slide' || obsAction === 'jump')) {
+      if (obsAction === 'slide' || obsAction === 'jump') {
         let bestDist = 999;
         for (const u of unitsAfterHits) {
           if (u.owner !== unit.owner || u.id === unit.id || u.hp <= 0) continue;
@@ -1566,34 +1523,6 @@ export function resolveSmashPush(
             ...back,
             x: nextBackX,
           };
-        }
-      }
-    }
-
-    // Pass 3 (ビリヤード衝突): 奥行きスライド射出中のユニットが味方にぶつかると運動量を渡して弾き出す
-    for (let i = 0; i < ownerIndices.length; i++) {
-      const sIdx = ownerIndices[i];
-      const slider = updatedUnits[sIdx];
-      const svy = slider.slideVy ?? 0;
-      if (Math.abs(svy) <= 2) continue;
-
-      for (let j = 0; j < ownerIndices.length; j++) {
-        if (i === j) continue;
-        const aIdx = ownerIndices[j];
-        const ally = updatedUnits[aIdx];
-        if (Math.abs((ally.slideVy ?? 0) - svy) < 1) continue; // 同時出撃ペア（狩人＋猟犬）は除外
-        if (Math.hypot(ally.x - slider.x, ally.y - slider.y) < COLLISION_HALF_WIDTH_Y + 2.0) {
-          updatedUnits[aIdx] = {
-            ...ally,
-            slideVy: (ally.slideVy ?? 0) + svy * 0.75,
-            isPushed: true,
-          };
-          updatedUnits[sIdx] = {
-            ...slider,
-            slideVy: svy * 0.3,
-            isPushing: true,
-          };
-          break;
         }
       }
     }

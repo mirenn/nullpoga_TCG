@@ -28,7 +28,6 @@ import {
   PLAYER_SPAWN_X_MIN,
   PLAYER_SPAWN_X_MAX,
   PLAYER_DEFAULT_SPAWN_X,
-  SLIDE_CANCEL_Y,
   NEUTRAL_ZONE_X_MIN,
   NEUTRAL_ZONE_X_MAX,
   CPU_SPAWN_X_MIN,
@@ -2042,32 +2041,6 @@ export function BattleField({
         </>
       )}
 
-      {/* キャンセル帯: モンスターを手前へ引き戻して離すと射出しない */}
-      {activeCard && activeCard.type === 'MONSTER' && (isDragging || selectedCard) && (
-        <div
-          style={{
-            position: 'absolute',
-            left: 0,
-            right: 0,
-            top: `${SLIDE_CANCEL_Y}%`,
-            bottom: 0,
-            backgroundColor: isTargetBlocked && validation.reason?.includes('キャンセル') ? 'rgba(239, 68, 68, 0.22)' : 'rgba(239, 68, 68, 0.07)',
-            borderTop: '1px dashed rgba(239, 68, 68, 0.45)',
-            color: 'rgba(252, 165, 165, 0.7)',
-            fontSize: '10px',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            paddingBottom: '4px',
-            pointerEvents: 'none',
-            zIndex: 11,
-          }}
-        >
-          ↓ ここで離すとキャンセル
-        </div>
-      )}
-
       {/* 9. 照準カーソル / 出撃プレビュー（ホバー・ドラッグ追従：X/Y両軸クロスヘア） */}
       {hoverX !== null && hoverY !== null && activeCard && (
         <>
@@ -2449,76 +2422,29 @@ export function BattleField({
             }}
           />
 
-          {/* 水平照準ライン (SPELLのみY座標を表示。MONSTERは着地地点を隠して手前発射矢印のみ表示) */}
-          {activeCard.type === 'SPELL' && (
-            <div
-              style={{
-                position: 'absolute',
-                left: 0,
-                right: 0,
-                top: `${currentTargetY}%`,
-                height: '1px',
-                transform: 'translateY(-50%)',
-                backgroundColor: isTargetBlocked
-                  ? 'rgba(239, 68, 68, 0.45)'
-                  : 'rgba(56, 189, 248, 0.45)',
-                borderBottom: `1px dashed ${isTargetBlocked ? 'rgba(239, 68, 68, 0.8)' : 'rgba(56, 189, 248, 0.8)'}`,
-                pointerEvents: 'none',
-                zIndex: 20,
-              }}
-            />
-          )}
-
-          {/* MONSTER用: 手前(y=88%)から奥へ向かう発射パワー矢印（着地地点は物理・地形任せ） */}
-          {activeCard.type === 'MONSTER' && !isTargetBlocked && (() => {
-            const powerRatio = Math.max(0.08, Math.min(1, (88 - currentTargetY) / 76));
-            const arrowHeight = 5 + powerRatio * 19; // 最大でも手前24%までの短い矢印にとどめ着地位置は隠す
-            const arrowColor =
-              powerRatio > 0.75 ? '#f97316' : powerRatio > 0.4 ? '#38bdf8' : '#4ade80';
-            return (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: `${currentTargetX}%`,
-                  top: `${88 - arrowHeight}%`,
-                  height: `${arrowHeight}%`,
-                  width: '10px',
-                  transform: 'translateX(-50%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  pointerEvents: 'none',
-                  zIndex: 21,
-                }}
-              >
-                <span
-                  style={{
-                    color: arrowColor,
-                    fontSize: '14px',
-                    lineHeight: '10px',
-                    textShadow: `0 0 8px ${arrowColor}`,
-                  }}
-                >
-                  ▲
-                </span>
-                <div
-                  style={{
-                    flex: 1,
-                    width: '4px',
-                    borderRadius: '2px',
-                    background: `linear-gradient(to top, rgba(56, 189, 248, 0.2), ${arrowColor})`,
-                    boxShadow: `0 0 10px ${arrowColor}`,
-                  }}
-                />
-              </div>
-            );
-          })()}
-
-          {/* 出撃位置の照準サークル（MONSTERは手前 y=88% の発射口に固定、SPELLはターゲット位置） */}
+          {/* 水平照準ライン (Y座標 / レーン) */}
           <div
             style={{
               position: 'absolute',
-              top: `${activeCard.type === 'MONSTER' ? 88 : currentTargetY}%`,
+              left: 0,
+              right: 0,
+              top: `${currentTargetY}%`,
+              height: '1px',
+              transform: 'translateY(-50%)',
+              backgroundColor: isTargetBlocked
+                ? 'rgba(239, 68, 68, 0.45)'
+                : 'rgba(56, 189, 248, 0.45)',
+              borderBottom: `1px dashed ${isTargetBlocked ? 'rgba(239, 68, 68, 0.8)' : 'rgba(56, 189, 248, 0.8)'}`,
+              pointerEvents: 'none',
+              zIndex: 20,
+            }}
+          />
+
+          {/* 出撃位置の照準ターゲットサークル (X, Y) */}
+          <div
+            style={{
+              position: 'absolute',
+              top: `${currentTargetY}%`,
               left: `${currentTargetX}%`,
               transform: 'translate(-50%, -50%)',
               width: '42px',
@@ -2541,16 +2467,11 @@ export function BattleField({
             <span style={{ fontSize: '18px' }}>{activeCard.icon}</span>
           </div>
 
-          {/* ガイドバッジ */}
+          {/* ガイドバッジ（出撃可能 / 理由表示 ＆ 奥行きロール [前衛/中衛/後衛] / 奇襲出撃ボーナス） */}
           <div
             style={{
               position: 'absolute',
-              top:
-                activeCard.type === 'MONSTER'
-                  ? '93%'
-                  : currentTargetY > 70
-                  ? `${currentTargetY - 8}%`
-                  : `${currentTargetY + 8}%`,
+              top: currentTargetY > 70 ? `${currentTargetY - 8}%` : `${currentTargetY + 8}%`,
               left: `${currentTargetX}%`,
               transform: 'translateX(-50%)',
               backgroundColor: isTargetBlocked
@@ -2559,6 +2480,8 @@ export function BattleField({
                   : '#ef4444'
                 : activeCard.type === 'SPELL'
                 ? '#8b5cf6'
+                : targetAmbushObstacle
+                ? '#15803d'
                 : '#2563eb',
               color: '#ffffff',
               fontSize: '10px',
@@ -2573,13 +2496,6 @@ export function BattleField({
           >
             {isTargetBlocked
               ? `🚫 ${validation.reason}`
-              : activeCard.type === 'MONSTER'
-              ? (() => {
-                  const pct = Math.round(Math.max(5, Math.min(100, ((88 - currentTargetY) / 76) * 100)));
-                  const life = activeCard.life ?? 3;
-                  const weightLabel = life <= 2 ? '軽量・よく滑る' : life >= 6 ? '重量・手前停止' : '標準';
-                  return `🏹 奥へスライド射出 [${depthRole.label} / 強さ${pct}%・${weightLabel}]`;
-                })()
               : isDragging
               ? activeCard.id === 'fire_spell'
                 ? '🔥 ドロップで縦一列業火！ (詠唱1.6秒)'
@@ -2589,7 +2505,11 @@ export function BattleField({
                 ? '🌧️ ドロップで範囲回復！ (詠唱1.4秒)'
                 : activeCard.id === 'haste_spell'
                 ? '💨 ドロップでAAリセット号令！ (詠唱1.1秒)'
-                : '✨ ドロップ発動'
+                : activeCard.type === 'SPELL'
+                ? '✨ ドロップ発動'
+                : targetAmbushObstacle
+                ? `🌿 奇襲ドロップ出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
+                : `🎯 ドロップ出撃 [${depthRole.label}]`
               : activeCard.id === 'fire_spell'
               ? '🔥 クリックで縦一列業火！ (詠唱1.6秒)'
               : activeCard.id === 'meteor'
@@ -2598,7 +2518,11 @@ export function BattleField({
               ? '🌧️ クリックで範囲回復！ (詠唱1.4秒)'
               : activeCard.id === 'haste_spell'
               ? '💨 クリックでAAリセット号令！ (詠唱1.1秒)'
-              : '✨ クリック発動'}
+              : activeCard.type === 'SPELL'
+              ? '✨ クリック発動'
+              : targetAmbushObstacle
+              ? `🌿 奇襲クリック出撃 (${targetAmbushObstacle.name}: 攻撃力+1)`
+              : `🎯 クリック出撃 [${depthRole.label}]`}
           </div>
         </>
       )}

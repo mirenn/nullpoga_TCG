@@ -26,7 +26,6 @@ import {
   computeUnitRangeZone,
   isWithinCircularRange,
   computeUnitCircularRangeZone,
-  SLIDE_CANCEL_Y,
 } from '../src/app/board';
 import {
   createInitialInhibitors,
@@ -1530,48 +1529,4 @@ holeEngine.state.playerScore = HOLE_WIN_SCORE - 5;
 holeEngine.tick(0.1, Date.now());
 assert(holeEngine.state.gameResult === 'win', 'Reaching the win score via a hole must win the game');
 console.log('  -> Scoring Holes: PASSED');
-
-// ==========================================
-// 20. 奥行きスライド射出 (Depth Slide Launch & Billiard Collision)
-// ==========================================
-console.log('[20/20] Testing Depth Slide Launch (y=88% launch, weight factor, billiard push)...');
-import { computeSlideLaunchVelocityY } from '../src/app/engine';
-
-// 1. 軽量ユニット(HP=1)の方が重量ユニット(HP=8)より同じストロークでも初速が速い
-const lightVy = computeSlideLaunchVelocityY({ life: 1 }, 35);
-const heavyVy = computeSlideLaunchVelocityY({ life: 8 }, 35);
-assert(lightVy < heavyVy && heavyVy < 0, `Light unit should launch faster into -Y (${lightVy} vs ${heavyVy})`);
-
-// 2. 出撃時は手前(y=88%)から始まり、tickとともに奥(-Y)へ滑り、手前にいる味方にぶつかると弾き飛ばす
-// 2a. 横位置は問わず射出できる（自陣外Xでも弾かない）が、手前へ引き戻す(y>=SLIDE_CANCEL_Y)とキャンセル
-const cancelEngine = new RealtimeGameEngine(false);
-cancelEngine.state.playerMana = 10;
-assert(cancelEngine.checkCanPlayCard(0, 70, 30, 1).canPlay, 'Throwing from beyond the deploy X range must be allowed (X is clamped)');
-const cancelRes = cancelEngine.checkCanPlayCard(0, 20, SLIDE_CANCEL_Y, 1);
-assert(!cancelRes.canPlay && cancelRes.reason!.includes('キャンセル'), 'Pulling back to the launch edge must cancel');
-const slideEngine = new RealtimeGameEngine(false);
-slideEngine.state.playerMana = 10;
-slideEngine.state.cpuMana = 0;
-const stationaryAlly: Unit = {
-  ...groundUnitInRiver,
-  id: 'billiard_target',
-  owner: 'player',
-  x: 15,
-  y: 72,
-  lane: 72,
-  isHolding: true,
-};
-slideEngine.state.units = [stationaryAlly];
-slideEngine.playCardAt(15, 25, 0, 3_000_000);
-const launched = slideEngine.state.units.find((u) => u.id !== 'billiard_target')!;
-assert(launched.y === 88 && (launched.slideVy ?? 0) < -50, 'Unit must spawn at front edge y=88 with upward slideVy');
-
-let slideNow = 3_000_000;
-for (let i = 0; i < 6; i++) {
-  slideNow += 50;
-  slideEngine.tick(0.05, slideNow);
-}
-const targetAfterHit = slideEngine.state.units.find((u) => u.id === 'billiard_target')!;
-assert(targetAfterHit.y < 72, `Stationary ally should be knocked deeper into -Y by billiard collision (72 -> ${targetAfterHit.y})`);
-console.log('  -> Depth Slide Launch: PASSED');
-console.log('=== All 20 Test Suites PASSED Successfully! ===');
+console.log('=== All 19 Test Suites PASSED Successfully! ===');

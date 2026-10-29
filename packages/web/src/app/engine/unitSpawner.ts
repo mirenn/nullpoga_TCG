@@ -7,29 +7,10 @@ import {
   isWithinEngageY,
   PLAYER_DEFAULT_SPAWN_X,
   PLAYER_SPAWN_X_MAX,
-  SLIDE_CANCEL_Y,
-  SPAWN_Y_MAX,
+  PLAYER_SPAWN_X_MIN,
 } from '../board';
 import { AMBUSH_DEPLOY_ATK_BONUS, findPlayerAmbushObstacle } from '../obstacles';
 import { PlayValidationResult, RealtimeGameState, SpawnTimestampRecord } from './engineTypes';
-
-/** 地上スライド射出時の基本摩擦減速度 (%/s^2) */
-export const SLIDE_FRICTION = 140;
-
-/** カードの重さ（HP）に応じたスライド距離倍率（軽量ほどよく滑り、重量級ほど手前で止まりやすい） */
-export function getCardSlideWeightFactor(card: Pick<DemoCard, 'life'>): number {
-  return Math.max(0.65, Math.min(1.2, 1.15 - (card.life ?? 3) * 0.06));
-}
-
-/** 手前(y=88%)からのドラッグ/ストローク量とカードの重さから奥方向(-Y)の初速(%/s)を算出 */
-export function computeSlideLaunchVelocityY(
-  card: Pick<DemoCard, 'life'>,
-  targetY: number
-): number {
-  const strokeY = Math.max(0, SPAWN_Y_MAX - clampSpawnY(targetY));
-  const dist = strokeY * getCardSlideWeightFactor(card);
-  return dist > 0.5 ? -Math.sqrt(2 * SLIDE_FRICTION * dist) : 0;
-}
 
 /**
  * プレイヤーが指定カードをプレイ可能かどうかの純粋バリデーション関数
@@ -65,21 +46,16 @@ export function validateCanPlayCard(
   }
   // モンスターの出撃エリア＆出撃スペース制限 (横・縦)
   if (card.type === 'MONSTER') {
-    // 射出はXをクランプして行うので横位置では弾かない。手前へ引き戻した場合だけキャンセル扱い
-    if (spawnY !== undefined && spawnY >= SLIDE_CANCEL_Y) {
-      return { canPlay: false, reason: '↓ 下に戻すとキャンセル' };
+    if (spawnX !== undefined && (spawnX < PLAYER_SPAWN_X_MIN || spawnX > PLAYER_SPAWN_X_MAX)) {
+      return { canPlay: false, reason: '自陣エリア外' };
     }
     if (spawnX !== undefined || spawnY !== undefined) {
       const targetX = spawnX !== undefined ? clampPlayerSpawnX(spawnX) : PLAYER_DEFAULT_SPAWN_X;
+      const targetY = spawnY !== undefined ? clampSpawnY(spawnY) : 50;
 
-      // 出撃スペース制限: 発射ライン(手前 y=88%)の同X座標付近に停止・歩行中の味方がいる場合は待機
+      // 出撃スペース制限: 指定(X, Y)座標の直前・至近に味方モンスターがいる場合は前進するまで待機
       const hasBlockingAlly = state.units.some((u) => {
-        if (
-          u.owner !== 'player' ||
-          u.hp <= 0 ||
-          Math.abs(u.slideVy ?? 0) >= 5 ||
-          !isWithinCollisionY(u.y, SPAWN_Y_MAX)
-        ) {
+        if (u.owner !== 'player' || u.hp <= 0 || !isWithinCollisionY(u.y, targetY)) {
           return false;
         }
         if (spawnX !== undefined) {
@@ -128,13 +104,9 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     counterBonusInterval = 0.2;
   }
 
-  // プレイヤーは常に手前(y=88%)から奥方向(-Y)へ地上スライド射出する
-  const startY = owner === 'player' ? SPAWN_Y_MAX : spawnY;
-  const slideVy = owner === 'player' ? computeSlideLaunchVelocityY(card, spawnY) : undefined;
-
-  // プレイヤー側の立体遮蔽物エリアからの奇襲出撃（アンブッシュ）判定（滑走停止時にも再判定される）
+  // プレイヤー側の立体遮蔽物エリアからの奇襲出撃（アンブッシュ）判定
   const isAmbushDeploy =
-    owner === 'player' ? Boolean(findPlayerAmbushObstacle(spawnX, startY)) : false;
+    owner === 'player' ? Boolean(findPlayerAmbushObstacle(spawnX, spawnY)) : false;
   const ambushBonusAtk = isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0;
 
   const mainUnit: Unit = {
@@ -143,8 +115,8 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     name: card.name,
     owner,
     x: spawnX,
-    lane: startY,
-    y: startY,
+    lane: spawnY,
+    y: spawnY,
     maxHp: (card.life || 1) + comboBonusHp,
     hp: (card.life || 1) + comboBonusHp,
     attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
@@ -165,7 +137,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
     comboCount: comboCount > 1 ? comboCount : undefined,
     killCount: 0,
-    slideVy,
   };
 
   if (card.cardNo === 12) {
@@ -179,8 +150,8 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       name: HOUND_TOKEN_SPEC.name,
       owner,
       x: houndX,
-      lane: startY,
-      y: startY,
+      lane: spawnY,
+      y: spawnY,
       maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp,
       hp: HOUND_TOKEN_SPEC.life + comboBonusHp,
       attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
@@ -198,7 +169,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
       comboCount: comboCount > 1 ? comboCount : undefined,
       killCount: 0,
-      slideVy,
     };
     return [mainUnit, houndUnit];
   }
