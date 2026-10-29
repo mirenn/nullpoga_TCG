@@ -47,11 +47,11 @@ test('Verify Vampire Bat card, summoning, SVG rendering and initial stats', asyn
   const batSvgBody = batUnit.locator('svg .bat-walk-body, svg .bat-idle-body').first();
   await expect(batSvgBody).toBeAttached({ timeout: 3000 });
 
-  // ユニット初期ステータス（ATK: 2, HP: 2）の確認
+  // ユニット初期ステータス（ATK: 1, HP: 4）の確認
   const atkBadge = batUnit.locator('[data-badge="atk"]').first();
-  await expect(atkBadge).toHaveText('2');
+  await expect(atkBadge).toHaveText('1');
   const hpBadge = batUnit.locator('[data-badge="hp"]').first();
-  await expect(hpBadge).toHaveText('2');
+  await expect(hpBadge).toHaveText('4');
 
   // スクリーンショット撮影
   await page.screenshot({ path: 'vampire-bat-summoned.png' });

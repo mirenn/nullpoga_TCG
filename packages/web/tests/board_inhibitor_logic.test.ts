@@ -280,15 +280,15 @@ const jellyfishCard = CARD_POOL.find((c) => c.id === 'jellyfish')!;
 const dragonCard = CARD_POOL.find((c) => c.id === 'dragon')!;
 const hunterMonsterCard = CARD_POOL.find((c) => c.id === 'hunter')!;
 
-assert(mouseCard.attackWindup === 0.5, 'Mouse windup must be 0.5s');
-assert(catCard.attackWindup === 0.7, 'Cat windup must be 0.7s');
-assert(shibaCard.attackWindup === 0.8, 'Shiba windup must be 0.8s');
-assert(boarCard.attackWindup === 1.0, 'Boar windup must be 1.0s');
-assert(assassinCard.attackWindup === 0.5, 'Assassin windup must be 0.5s');
-assert(batCard.attackWindup === 0.7, 'Bat windup must be 0.7s');
-assert(jellyfishCard.attackWindup === 2.0, 'Jellyfish windup must be 2.0s');
-assert(dragonCard.attackWindup === 1.6, 'Dragon windup must be 1.6s');
-assert(hunterMonsterCard.attackWindup === 0.6, 'Hunter windup must be 0.6s');
+assert(mouseCard.attackWindup === 0.8, 'Mouse windup must be 0.8s');
+assert(catCard.attackWindup === 1.0, 'Cat windup must be 1.0s');
+assert(shibaCard.attackWindup === 1.1, 'Shiba windup must be 1.1s');
+assert(boarCard.attackWindup === 1.4, 'Boar windup must be 1.4s');
+assert(assassinCard.attackWindup === 0.9, 'Assassin windup must be 0.9s');
+assert(batCard.attackWindup === 1.0, 'Bat windup must be 1.0s');
+assert(jellyfishCard.attackWindup === 2.4, 'Jellyfish windup must be 2.4s');
+assert(dragonCard.attackWindup === 2.2, 'Dragon windup must be 2.2s');
+assert(hunterMonsterCard.attackWindup === 1.0, 'Hunter windup must be 1.0s');
 
 // 5-2. deriveAnimationState 状態遷移テスト
 const baseUnit: Unit = {
@@ -425,13 +425,13 @@ const hunterCard = CARD_POOL.find((c) => c.cardNo === 12);
 assert(hunterCard !== undefined, 'Card 12 (森の狩人と猟犬) must exist in CARD_POOL');
 assert(hunterCard!.manaCost === 3, 'Hunter mana cost must be 3');
 assert(hunterCard!.attack === 2, 'Hunter attack must be 2');
-assert(hunterCard!.life === 2, 'Hunter life must be 2');
+assert(hunterCard!.life === 4, 'Hunter life must be 4');
 assert(hunterCard!.range === 22, 'Hunter range must be 22 (ranged backline)');
 assert(hunterCard!.speed === 3.5, 'Hunter speed must be 3.5');
 
 assert(HOUND_TOKEN_SPEC.cardNo === 13, 'Hound token cardNo must be 13');
 assert(HOUND_TOKEN_SPEC.attack === 1, 'Hound token attack must be 1 (weaker token)');
-assert(HOUND_TOKEN_SPEC.life === 2, 'Hound token life must be 2');
+assert(HOUND_TOKEN_SPEC.life === 4, 'Hound token life must be 4');
 assert(HOUND_TOKEN_SPEC.range === 8, 'Hound token range must be 8 (melee frontline)');
 assert(HOUND_TOKEN_SPEC.speed === 6.5, 'Hound token speed must be 6.5');
 
@@ -476,8 +476,8 @@ const ninjaCard = CARD_POOL.find((c) => c.id === 'assassin')!;
 assert(ninjaCard.cardNo === 8, 'Ninja cardNo must be 8');
 assert(ninjaCard.range === 16, 'Ninja range must be 16% (circular detection)');
 assert(ninjaCard.isCircularRange === true, 'Ninja must have isCircularRange=true');
-assert(ninjaCard.attackWindup === 0.5, 'Ninja attackWindup must be 0.5s');
-assert(ninjaCard.attackInterval === 2.6, 'Ninja attackInterval must be 2.6s');
+assert(ninjaCard.attackWindup === 0.9, 'Ninja attackWindup must be 0.9s');
+assert(ninjaCard.attackInterval === 3.8, 'Ninja attackInterval must be 3.8s');
 
 // 円形探知 (isWithinCircularRange) の検証:
 // 忍者 (x=40, y=50) に対して、少し下 (y=62, Y差12%) をすれ違う敵
@@ -683,11 +683,11 @@ const jumpOffsetY = -Math.sin(jumpProgress * Math.PI) * 26;
 assert(jumpOffsetY < -5, `Jump offset must lift unit vertically into the air, got ${jumpOffsetY}`);
 
 // 11-5. ③ 激突粉砕 (smash) の挙動シミュレーション
-// イノシシ (ATK 3) が激突すると、60〜75以上のダメージを与えて一撃で耐久値80を削り切り粉砕する
-const smashDamage = Math.max(60, boar.attack! * 25); // 75
-const obsAfterSmashHp = Math.max(0, catSlideObs.hp! - smashDamage); // 80 - 75 = 5
+// イノシシ (ATK 2) が激突すると60ダメージ、ドラゴン (ATK 3) は90ダメージで一撃で耐久値80を削り切り粉砕する
+const smashDamage = Math.max(60, boar.attack! * 30); // 60
+const obsAfterSmashHp = Math.max(0, catSlideObs.hp! - smashDamage); // 80 - 60 = 20
 assert(obsAfterSmashHp < catSlideObs.hp!, 'Smash must inflict heavy damage to obstacle');
-const smashDamage2 = Math.max(60, dragon.attack! * 25); // 125
+const smashDamage2 = Math.max(60, dragon.attack! * 30); // 90
 const obsAfterDragonSmashHp = Math.max(0, catSlideObs.hp! - smashDamage2);
 assert(obsAfterDragonSmashHp === 0, 'Dragon smash must completely crush obstacle');
 const isCrushed = obsAfterDragonSmashHp <= 0;
@@ -1600,4 +1600,55 @@ scuttleEngine.tick(0.05, scuttleNow + SCUTTLE_RESPAWN_MS);
 const respawnedScuttle = scuttleEngine.state.inhibitors.find((i) => i.id === 'inhib_scuttle_top')!;
 assert(respawnedScuttle.hp === respawnedScuttle.maxHp && respawnedScuttle.respawnAt === undefined, 'Scuttle crab respawns after cooldown');
 console.log('  -> River Scuttle Crab: PASSED');
-console.log('=== All 20 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 21. 足止め耐久（マルチヒット生存）＆単体攻撃の非スプラッシュ検証
+// ==========================================
+console.log('[21/21] Testing Fodder Blocker Survival & Single-Target vs Area Splash...');
+const combatEngine = new RealtimeGameEngine(false);
+combatEngine.state.cpuMana = 0;
+// プレイヤー側ネズミ2体（前衛x=46, 後衛x=48）に対し、CPUイノシシ（x=53, ATK 2, Windup 0で即時1発目検証）が攻撃
+const frontMouse: Unit = {
+  ...groundUnitInRiver,
+  id: 'front_mouse',
+  cardNo: 1,
+  owner: 'player',
+  x: 48,
+  y: 50,
+  lane: 50,
+  hp: mouseCard.life!,
+  maxHp: mouseCard.life!,
+  attack: mouseCard.attack!,
+  speed: 0,
+};
+const backMouse: Unit = {
+  ...frontMouse,
+  id: 'back_mouse',
+  x: 44,
+};
+const enemyBoar: Unit = {
+  ...groundUnitInRiver,
+  id: 'enemy_boar',
+  cardNo: 7,
+  owner: 'cpu',
+  x: 54,
+  y: 50,
+  lane: 50,
+  hp: boarCard.life!,
+  maxHp: boarCard.life!,
+  attack: boarCard.attack!,
+  range: boarCard.range!,
+  attackCooldown: 0,
+  attackInterval: boarCard.attackInterval!,
+  attackWindup: 0,
+  speed: 0,
+};
+combatEngine.state.units = [frontMouse, backMouse, enemyBoar];
+combatEngine.tick(0.05, 4_000_000);
+
+const frontAfterHit = combatEngine.state.units.find((u) => u.id === 'front_mouse');
+const backAfterHit = combatEngine.state.units.find((u) => u.id === 'back_mouse');
+assert(frontAfterHit !== undefined && frontAfterHit.hp === 1, `Front mouse (HP 3) must survive 1st Boar hit (ATK 2) with 1 HP, got ${frontAfterHit?.hp}`);
+assert(backAfterHit !== undefined && backAfterHit.hp === 3, `Back mouse must take 0 splash damage from single-target Boar, got ${backAfterHit?.hp}`);
+console.log('  -> Fodder Blocker Survival & Single-Target vs Area Splash: PASSED');
+console.log('=== All 21 Test Suites PASSED Successfully! ===');

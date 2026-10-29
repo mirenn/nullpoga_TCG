@@ -93,14 +93,13 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
   );
 
   let comboBonusHp = 0;
-  let comboBonusAtk = 0;
   if (comboCount >= 2) comboBonusHp += 1;
-  if (comboCount >= 3) comboBonusAtk += 1;
+  if (comboCount >= 3) comboBonusHp += 1;
 
-  let counterBonusAtk = 0;
+  let counterBonusHp = 0;
   let counterBonusInterval = 0;
   if (isCounterDeploy) {
-    counterBonusAtk += 1;
+    counterBonusHp += 1;
     counterBonusInterval = 0.2;
   }
 
@@ -117,9 +116,9 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     x: spawnX,
     lane: spawnY,
     y: spawnY,
-    maxHp: (card.life || 1) + comboBonusHp,
-    hp: (card.life || 1) + comboBonusHp,
-    attack: (card.attack || 1) + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
+    maxHp: (card.life || 1) + comboBonusHp + counterBonusHp,
+    hp: (card.life || 1) + comboBonusHp + counterBonusHp,
+    attack: (card.attack ?? 1) + ambushBonusAtk,
     speed: card.speed || 10,
     range: card.range || 3,
     canMoveWhileCharging: card.canMoveWhileCharging,
@@ -152,9 +151,9 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       x: houndX,
       lane: spawnY,
       y: spawnY,
-      maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp,
-      hp: HOUND_TOKEN_SPEC.life + comboBonusHp,
-      attack: HOUND_TOKEN_SPEC.attack + comboBonusAtk + counterBonusAtk + ambushBonusAtk,
+      maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp + counterBonusHp,
+      hp: HOUND_TOKEN_SPEC.life + comboBonusHp + counterBonusHp,
+      attack: HOUND_TOKEN_SPEC.attack + ambushBonusAtk,
       speed: HOUND_TOKEN_SPEC.speed,
       range: HOUND_TOKEN_SPEC.range,
       obstacleAction: HOUND_TOKEN_SPEC.obstacleAction,

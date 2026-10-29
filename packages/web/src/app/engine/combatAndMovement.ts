@@ -465,14 +465,10 @@ export function updateUnitsMovementAndAttacks(params: {
     let x = unit.x;
     let y = unit.y;
     let distance = unit.distanceTraveled || 0;
-    const shibaBaseAtk =
-      1 +
-      (unit.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0) +
-      (unit.isCounterDeploy ? 1 : 0) +
-      ((unit.comboCount || 0) >= 3 ? 1 : 0);
+    const shibaBaseAtk = 1 + (unit.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0);
     let attack =
       unit.cardNo === 2
-        ? shibaBaseAtk + Math.min(4, Math.floor(distance / 20))
+        ? shibaBaseAtk + Math.min(2, Math.floor(distance / 20))
         : unit.attack;
     let lastAttack = unit.lastAttackEffectTime;
     let isCharging = unit.isCharging || false;
@@ -769,7 +765,7 @@ export function updateUnitsMovementAndAttacks(params: {
         : 999;
       const canMoveDuringCharge = Boolean(unit.canMoveWhileCharging && isCharging);
       const canMoveWhileAttacking =
-        (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 5.0) ||
+        (Boolean(unit.isCircularRange || unit.cardNo === 8) && obstacleDist > 8.0) ||
         canMoveDuringCharge ||
         Boolean(
           unit.scoutTargetUnitId &&
@@ -1172,7 +1168,7 @@ export function updateUnitsMovementAndAttacks(params: {
             contactDist <= nearestObs.radiusX + 1.5 + extraSmashReach &&
             contactDist >= -nearestObs.radiusX
           ) {
-            const smashDamage = Math.max(60, unit.attack * 25);
+            const smashDamage = Math.max(60, unit.attack * 30);
             const curHp = nearestObs.hp ?? 80;
             const nextHp = Math.max(0, curHp - smashDamage);
             nearestObs.hp = nextHp;
@@ -1361,7 +1357,7 @@ export function updateUnitsMovementAndAttacks(params: {
     }
 
     if (unit.cardNo === 2) {
-      const bonus = Math.min(4, Math.floor(distance / 20));
+      const bonus = Math.min(2, Math.floor(distance / 20));
       attack = shibaBaseAtk + bonus;
     }
 
@@ -1478,12 +1474,8 @@ export function resolveSmashPush(
           const nextDist = (front.distanceTraveled || 0) + pushedDelta;
           let nextFrontAtk = front.attack;
           if (front.cardNo === 2) {
-            const frontShibaBaseAtk =
-              1 +
-              (front.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0) +
-              (front.isCounterDeploy ? 1 : 0) +
-              ((front.comboCount || 0) >= 3 ? 1 : 0);
-            nextFrontAtk = frontShibaBaseAtk + Math.min(4, Math.floor(nextDist / 20));
+            const frontShibaBaseAtk = 1 + (front.isAmbushDeploy ? AMBUSH_DEPLOY_ATK_BONUS : 0);
+            nextFrontAtk = frontShibaBaseAtk + Math.min(2, Math.floor(nextDist / 20));
           }
 
           updatedUnits[frontIdx] = {
@@ -1574,8 +1566,7 @@ export function resolveCombatDamageAndInhibitors(params: {
       const isAreaAttacker = attacker.hitRange !== undefined;
       const splashReach = isAreaAttacker ? (attacker.hitRange as number) : attacker.range + 2;
       const isSplash =
-        !attacker.isCircularRange &&
-        attacker.cardNo !== 8 &&
+        isAreaAttacker &&
         isWithinEngageY(unit.y, primary.y, 4.0) &&
         dist >= -2 &&
         dist <= splashReach;
@@ -1598,7 +1589,7 @@ export function resolveCombatDamageAndInhibitors(params: {
         }
 
         if (attacker.cardNo === 7) {
-          const pushBackAmount = 8 + Math.random() * 2;
+          const pushBackAmount = 3 + Math.random();
           if (attacker.owner === 'player') {
             x = Math.min(95, x + pushBackAmount);
           } else {
