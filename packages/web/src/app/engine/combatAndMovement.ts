@@ -21,6 +21,8 @@ import {
 import {
   inhibitorBlocksY,
   inhibitorEngageableY,
+  SCUTTLE_RESPAWN_MS,
+  SCUTTLE_SHRINE_RADIUS,
 } from '../inhibitors';
 import {
   AMBUSH_DEPLOY_ATK_BONUS,
@@ -1610,36 +1612,55 @@ export function resolveCombatDamageAndInhibitors(params: {
     };
   });
 
-  // インヒビターへのダメージ
+  // インヒビター＆中立スカトルへのダメージ
   const inhibitorDamage = new Map<string, number>();
+  const inhibitorLastAttacker = new Map<string, Unit>();
   updatedUnits.forEach((attacker) => {
     if (attacker.lastAttackEffectTime !== now || attacker.cardNo === 6) return;
     const primary = attackTargets.get(attacker.id);
     if (primary && primary.isStructure) {
       inhibitorDamage.set(primary.id, (inhibitorDamage.get(primary.id) || 0) + attacker.attack);
+      inhibitorLastAttacker.set(primary.id, attacker);
     }
   });
   for (const hit of resolvedHits) {
     if (hit.targetId.startsWith('inhib_')) {
       inhibitorDamage.set(hit.targetId, (inhibitorDamage.get(hit.targetId) || 0) + hit.damage);
+      const atk = updatedUnits.find((u) => u.id === hit.attackerId);
+      if (atk) inhibitorLastAttacker.set(hit.targetId, atk);
     }
   }
 
   let nextInhibitors = inhibitors;
   const inhibitorDestroyedBy: Owner[] = [];
+  const scuttleKilledBy: { side: Owner; x: number; y: number }[] = [];
   if (inhibitorDamage.size > 0) {
     nextInhibitors = inhibitors.map((inhib) => {
       const dmg = inhibitorDamage.get(inhib.id);
       if (!dmg || inhib.hp <= 0) return inhib;
       const hp = Math.max(0, inhib.hp - dmg);
+      const lastAtk = inhibitorLastAttacker.get(inhib.id);
       if (hp === 0) {
-        inhibitorDestroyedBy.push(inhib.owner === 'player' ? 'cpu' : 'player');
+        const killerSide: Owner =
+          inhib.owner === 'neutral'
+            ? (lastAtk?.owner ?? 'player')
+            : inhib.owner === 'player'
+            ? 'cpu'
+            : 'player';
+        inhibitorDestroyedBy.push(killerSide);
+        if (inhib.owner === 'neutral') {
+          scuttleKilledBy.push({ side: killerSide, x: inhib.x, y: inhib.y });
+          if (lastAtk) {
+            killCountMap.set(lastAtk.id, (killCountMap.get(lastAtk.id) || 0) + 1);
+          }
+          return { ...inhib, hp: 0, lastHitTime: now, respawnAt: now + SCUTTLE_RESPAWN_MS };
+        }
       }
       return { ...inhib, hp, lastHitTime: now };
     });
   }
 
-  // 生存ユニットにキルボーナス（吸血コウモリ成長など）＆奇襲チャージ消費を適用
+  // 生存ユニットにキルボーナス（吸血コウモリ成長など）・スカトルシュライン効果＆奇襲チャージ消費を適用
   const finalUnits = unitsAfterDamage
     .filter((u) => u.hp > 0)
     .map((unit) => {
@@ -1653,6 +1674,26 @@ export function resolveCombatDamageAndInhibitors(params: {
           hasAmbushCharge: false,
           ambushDashUntil: undefined,
         };
+      }
+
+      for (const sc of scuttleKilledBy) {
+        if (
+          updated.owner === sc.side &&
+          Math.hypot(updated.x - sc.x, updated.y - sc.y) <= SCUTTLE_SHRINE_RADIUS
+        ) {
+          updated = {
+            ...updated,
+            attackCooldown: 0,
+            ambushDashUntil: now + 2000,
+          };
+        } else if (updated.owner !== sc.side && !updated.isSpotted) {
+          updated = {
+            ...updated,
+            isSpotted: true,
+            lastSpottedTime: now,
+            isSprinting: false,
+          };
+        }
       }
 
       const kills = killCountMap.get(unit.id) || 0;

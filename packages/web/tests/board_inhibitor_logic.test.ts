@@ -29,6 +29,8 @@ import {
 } from '../src/app/board';
 import {
   createInitialInhibitors,
+  createInitialScuttleCrabs,
+  SCUTTLE_RESPAWN_MS,
   inhibitorBlocksY,
   inhibitorEngageableY,
   countDestroyedEnemyInhibitors,
@@ -1529,4 +1531,66 @@ holeEngine.state.playerScore = HOLE_WIN_SCORE - 5;
 holeEngine.tick(0.1, Date.now());
 assert(holeEngine.state.gameResult === 'win', 'Reaching the win score via a hole must win the game');
 console.log('  -> Scoring Holes: PASSED');
-console.log('=== All 19 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 20. リバースカトル（中立ジャングルファーム）
+// ==========================================
+console.log('[20/20] Testing River Scuttle Crab (neutral farm, mana & shrine buff, respawn)...');
+const scuttleEngine = new RealtimeGameEngine(false);
+scuttleEngine.state.cpuMana = 0;
+scuttleEngine.state.playerMana = 2;
+const scuttles = createInitialScuttleCrabs();
+assert(scuttles.length === 2 && scuttles.every((s) => s.owner === 'neutral'), '2 neutral scuttle crabs created');
+assert(countDestroyedEnemyInhibitors(scuttles.map((s) => ({ ...s, hp: 0 })), 'player') === 0, 'Neutral scuttles must not count as enemy lane inhibitors');
+
+// 吸血コウモリ (ATK 4にして一撃ラストヒット検証) と未看破の敵隠密ユニットを配置
+const farmingBat: Unit = {
+  ...groundUnitInRiver,
+  id: 'farm_bat',
+  cardNo: 9,
+  name: '吸血コウモリ',
+  owner: 'player',
+  x: 45,
+  y: 35,
+  lane: 35,
+  attack: 4,
+  hp: 2,
+  maxHp: 2,
+  range: 8,
+  attackCooldown: 0,
+  attackInterval: 1.0,
+  attackWindup: 0,
+};
+const hiddenCpuMouse: Unit = {
+  ...groundUnitInRiver,
+  id: 'hidden_cpu_mouse',
+  cardNo: 1,
+  owner: 'cpu',
+  x: 88,
+  y: 35,
+  lane: 35,
+  speed: 0,
+  isSpotted: false,
+};
+scuttleEngine.state.units = [farmingBat, hiddenCpuMouse];
+const scuttleNow = 3_000_000;
+scuttleEngine.tick(0.05, scuttleNow);
+
+const topScuttle = scuttleEngine.state.inhibitors.find((i) => i.id === 'inhib_scuttle_top')!;
+assert(topScuttle.hp === 0 && topScuttle.respawnAt === scuttleNow + SCUTTLE_RESPAWN_MS, 'Scuttle crab killed and scheduled for respawn');
+assert(scuttleEngine.state.playerMana >= 4, `Killing scuttle grants +${INHIBITOR_DESTROY_MANA_BONUS} mana (got ${scuttleEngine.state.playerMana})`);
+
+const batAfterFarm = scuttleEngine.state.units.find((u) => u.id === 'farm_bat')!;
+assert(batAfterFarm.killCount === 1 && batAfterFarm.attack === 5 && batAfterFarm.maxHp === 3, 'Vampire Bat grows +1/+1 from farming Scuttle');
+assert(Boolean(batAfterFarm.ambushDashUntil && batAfterFarm.ambushDashUntil > scuttleNow), 'Scuttle Shrine grants speed dash to nearby ally');
+
+const spottedMouse = scuttleEngine.state.units.find((u) => u.id === 'hidden_cpu_mouse')!;
+assert(spottedMouse.isSpotted === true, 'Scuttle Vision Ward spots hidden enemy units');
+
+// 15秒後にリスポーンすることを確認
+scuttleEngine.state.units = [];
+scuttleEngine.tick(0.05, scuttleNow + SCUTTLE_RESPAWN_MS);
+const respawnedScuttle = scuttleEngine.state.inhibitors.find((i) => i.id === 'inhib_scuttle_top')!;
+assert(respawnedScuttle.hp === respawnedScuttle.maxHp && respawnedScuttle.respawnAt === undefined, 'Scuttle crab respawns after cooldown');
+console.log('  -> River Scuttle Crab: PASSED');
+console.log('=== All 20 Test Suites PASSED Successfully! ===');

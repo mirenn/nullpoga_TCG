@@ -24,15 +24,16 @@ export interface DemoCard {
 
 export type Owner = 'player' | 'cpu';
 
-/** インヒビター（破壊可能な非攻撃オブジェクト） */
+/** インヒビター＆中立スカトル（破壊可能な非攻撃オブジェクト） */
 export interface Inhibitor {
   id: string;
-  owner: Owner;
+  owner: Owner | 'neutral';
   x: number; // 0〜100%
   y: number; // 0〜100%
   hp: number;
   maxHp: number;
   lastHitTime?: number; // 被弾演出用
+  respawnAt?: number; // 中立スカトル等の再出現時刻 (ms)
   lane?: number; // 互換エイリアス
 }
 

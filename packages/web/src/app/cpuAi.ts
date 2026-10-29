@@ -84,9 +84,9 @@ export function computeCpuAction(
         const nearbyEnemies = playerUnits.filter((u) => isWithinEngageY(u.y, y));
         // CPU拠点(x=95)に迫っている敵 (x > 50)
         const closeEnemies = nearbyEnemies.filter((u) => u.x > 50);
-        // このY座標の進路上に敵インヒビターがあるか
+        // このY座標の進路上に敵インヒビターまたは中立スカトルがあるか
         const enemyInhibitor = inhibitors.find(
-          (i) => i.owner === 'player' && inhibitorBlocksY(i, y)
+          (i) => i.owner !== 'cpu' && inhibitorBlocksY(i, y)
         );
 
         if (card.cardNo === 8) {

@@ -14,8 +14,10 @@ import {
 } from '../board';
 import {
   createInitialInhibitors,
+  createInitialScuttleCrabs,
   INHIBITOR_DESTROY_MANA_BONUS,
   manaRegenMultiplier,
+  stepScuttleCrabs,
 } from '../inhibitors';
 import {
   Camera3DState,
@@ -76,7 +78,7 @@ export function createInitialRealtimeGameState(randomize: boolean = false): Real
     playCooldownUntil: 0,
     cpuSpawnWarnings: [],
     units: [],
-    inhibitors: createInitialInhibitors(),
+    inhibitors: [...createInitialInhibitors(), ...createInitialScuttleCrabs()],
     obstacles: FIELD_OBSTACLES.map((o) => ({
       ...o,
       hp: o.maxHp ?? 80,
@@ -578,6 +580,7 @@ export class RealtimeGameEngine {
     }
 
     advanceRoadRotation(dt);
+    this.state.inhibitors = stepScuttleCrabs(this.state.inhibitors, now);
 
     // 8. 各ユニットの移動・攻撃・障害物インタラクション更新
     const moveAtkRes = updateUnitsMovementAndAttacks({

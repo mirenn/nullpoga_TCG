@@ -46,6 +46,16 @@ export const INHIBITOR_DESTROY_MANA_BONUS = 2;
 /** 破壊1つごとのマナ回復速度の上昇率（+20%） */
 export const INHIBITOR_REGEN_BONUS_PER_KILL = 0.2;
 
+/** リバースカトル（中立ジャングルキャンプ）の設定 */
+export const SCUTTLE_X = 50;
+export const SCUTTLE_SLOTS = [
+  { key: 'top', y: 35 },
+  { key: 'bottom', y: 65 },
+] as const;
+export const SCUTTLE_MAX_HP = 4;
+export const SCUTTLE_RESPAWN_MS = 15000;
+export const SCUTTLE_SHRINE_RADIUS = 20;
+
 export function createInitialInhibitors(): Inhibitor[] {
   const list: Inhibitor[] = [];
   for (const owner of ['player', 'cpu'] as Owner[]) {
@@ -63,6 +73,41 @@ export function createInitialInhibitors(): Inhibitor[] {
     }
   }
   return list;
+}
+
+export function createInitialScuttleCrabs(): Inhibitor[] {
+  return SCUTTLE_SLOTS.map((slot) => ({
+    id: `inhib_scuttle_${slot.key}`,
+    owner: 'neutral',
+    lane: slot.y,
+    x: SCUTTLE_X,
+    y: slot.y,
+    hp: SCUTTLE_MAX_HP,
+    maxHp: SCUTTLE_MAX_HP,
+  }));
+}
+
+/** 河を上下に徘徊するスカトルの位置更新＆リスポーン解決 */
+export function stepScuttleCrabs(inhibitors: Inhibitor[], now: number): Inhibitor[] {
+  let changed = false;
+  const next = inhibitors.map((i, idx) => {
+    if (i.owner !== 'neutral') return i;
+    const baseY = i.id.endsWith('top') ? 35 : 65;
+    if (i.hp <= 0) {
+      if (i.respawnAt && now >= i.respawnAt) {
+        changed = true;
+        return { ...i, hp: i.maxHp, y: baseY, lane: baseY, respawnAt: undefined };
+      }
+      return i;
+    }
+    const y = Math.round((baseY + Math.sin(now / 900 + idx * 2) * 2.5) * 10) / 10;
+    if (y !== i.y) {
+      changed = true;
+      return { ...i, y, lane: y };
+    }
+    return i;
+  });
+  return changed ? next : inhibitors;
 }
 
 /** 指定のY位置を進むユニットを足止め（前進ストップ）するか */
@@ -83,9 +128,9 @@ export function inhibitorEngageableX(inhib: Inhibitor, unitYOrX: number): boolea
   return inhibitorEngageableY(inhib, unitYOrX);
 }
 
-/** `side` が破壊した相手インヒビター数 */
+/** `side` が破壊した相手インヒビター数（中立スカトルは除外） */
 export function countDestroyedEnemyInhibitors(inhibitors: Inhibitor[], side: Owner): number {
-  return inhibitors.filter((i) => i.owner !== side && i.hp <= 0).length;
+  return inhibitors.filter((i) => i.owner !== side && i.owner !== 'neutral' && i.hp <= 0).length;
 }
 
 /** `side` のマナ回復速度倍率 */
