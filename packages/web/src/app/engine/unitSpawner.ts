@@ -124,6 +124,7 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     canMoveWhileCharging: card.canMoveWhileCharging,
     isCircularRange: card.isCircularRange,
     obstacleAction: card.obstacleAction,
+    hasSpellShield: card.hasSpellShield,
     hitRange: card.hitRange,
     attackCooldown: 0,
     attackInterval: Math.max(0.1, (card.attackInterval ?? 1.0) - counterBonusInterval),

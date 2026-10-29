@@ -23,7 +23,13 @@ interface UnitCooldownRingProps {
 function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCooldownRingProps) {
   // 攻撃力0のユニット（亀など盾役）は専用の防御フレーム（リロードゲージ不要）
   if (unit.attack === 0) {
-    const shieldColor = isBlockingSpawn ? '#ea580c' : isPlayer ? '#10b981' : '#f59e0b';
+    const shieldColor = isBlockingSpawn
+      ? '#ea580c'
+      : unit.hasSpellShield
+      ? '#38bdf8'
+      : isPlayer
+      ? '#10b981'
+      : '#f59e0b';
     return (
       <svg
         style={{
@@ -42,9 +48,9 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
           cx={RING_CENTER}
           cy={RING_CENTER}
           r={COOLDOWN_RING_RADIUS}
-          fill="none"
+          fill={unit.hasSpellShield ? 'rgba(56, 189, 248, 0.18)' : 'none'}
           stroke={shieldColor}
-          strokeWidth="2.5"
+          strokeWidth={unit.hasSpellShield ? '3' : '2.5'}
         />
       </svg>
     );
@@ -597,6 +603,23 @@ export const RenderUnit = React.memo(function RenderUnit({
       <div style={styles.unitBadges}>
         <span data-badge="atk" style={styles.unitAtkBadge}>{unit.attack}</span>
         <span data-badge="hp" style={styles.unitHpBadge}>{unit.hp}</span>
+        {unit.hasSpellShield && (
+          <span
+            data-badge="spell-shield"
+            style={{
+              fontSize: '9px',
+              backgroundColor: '#0284c7',
+              color: '#e0f2fe',
+              padding: '0 3px',
+              borderRadius: '2px',
+              lineHeight: '13px',
+              fontWeight: 'bold',
+            }}
+            title="スペルシールド: 最初の被弾ダメージと状態異常を1回無効化"
+          >
+            🛡️盾
+          </span>
+        )}
         {unit.isSpotted && (
           <span
             data-badge="spotted"

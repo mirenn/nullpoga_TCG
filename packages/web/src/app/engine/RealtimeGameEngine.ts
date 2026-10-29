@@ -664,6 +664,9 @@ export class RealtimeGameEngine {
               createdAt: now,
               duration: 400,
             });
+            if (u.hasSpellShield) {
+              return { ...u, hasSpellShield: false };
+            }
             const knockback = u.owner === 'player' ? -10 : 10;
             return {
               ...u,

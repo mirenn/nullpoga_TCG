@@ -61,7 +61,8 @@ export const CARD_POOL: DemoCard[] = [
     range: 8,
     attackInterval: 5.0,
     obstacleAction: 'block',
-    effectDesc: '高耐久の盾役。後ろの味方を守りながらじっくり進む。後ろからイノシシ等に押されると高速で前線へ運ばれる。',
+    hasSpellShield: true,
+    effectDesc: 'スペルシールドを持ち、どんな攻撃や呪文も最初の1回だけ完全に防ぐ（弱い攻撃でも剥がれる）。後ろからイノシシ等に押されると高速で前線へ運ばれる。',
     icon: '🐢',
   },
   {

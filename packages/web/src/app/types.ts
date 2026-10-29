@@ -18,6 +18,7 @@ export interface DemoCard {
   canMoveWhileCharging?: boolean; // 攻撃チャージ中（attackWindup）も立ち止まらずに前進・突進可能か（猪・柴犬など）
   isCircularRange?: boolean; // 円形探知範囲（忍者など）
   obstacleAction?: ObstacleAction; // 障害物衝突時の性質（slide=スライド迂回, jump=飛び越え, smash=激突粉砕, block=停止）
+  hasSpellShield?: boolean; // スペルシールド（あらゆる被弾ダメージ＆付随効果を最初の1回だけ無効化）
   effectDesc: string;
   icon: string;
 }
@@ -86,6 +87,7 @@ export interface Unit {
   isAmbushDeploy?: boolean; // 自陣遮蔽物の陰から奇襲出撃したバフ適用中か
   isCloudConcealed?: boolean; // 雲の影に入って死角に隠れているか
   isCloudSpotted?: boolean; // 雲の中にいるが味方接近等で看破されたか
+  hasSpellShield?: boolean; // スペルシールド保持中か（1回被弾で消費）
   lane?: number; // 互換エイリアス
 }
 

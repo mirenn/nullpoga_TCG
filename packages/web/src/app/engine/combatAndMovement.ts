@@ -142,12 +142,19 @@ export function resolveDelayedSpellQueue(params: {
     units = units
       .map((u) => {
         let hp = u.hp;
+        let hasSpellShield = u.hasSpellShield;
         for (const m of resolvedMeteors) {
           if (u.owner === m.targetOwner && isWithinMeteorRange(u.x, u.y, m.x, m.y)) {
-            hp -= m.damage;
+            if (hasSpellShield) {
+              hasSpellShield = false;
+            } else {
+              hp -= m.damage;
+            }
           }
         }
-        return hp !== u.hp ? { ...u, hp } : u;
+        return hp !== u.hp || hasSpellShield !== u.hasSpellShield
+          ? { ...u, hp, hasSpellShield }
+          : u;
       })
       .filter((u) => u.hp > 0);
   }
@@ -223,6 +230,9 @@ export function resolveDelayedSpellQueue(params: {
 
       units = units.map((u) => {
         if (u.owner === hc.targetOwner && Math.hypot(u.x - hc.x, u.y - hc.y) <= SPELL_RADIUS) {
+          if (u.hasSpellShield) {
+            return { ...u, hasSpellShield: false };
+          }
           const knockback = u.owner === 'player' ? -10 : 10;
           return {
             ...u,
@@ -329,15 +339,30 @@ export function resolveLightningHits(
     .map((unit) => {
       let hp = unit.hp;
       let stunnedUntil = unit.isStunnedUntil;
+      let hasSpellShield = unit.hasSpellShield;
       for (const hit of resolvedHits) {
         if (hit.targetId === unit.id && hp > 0) {
-          hp -= hit.damage;
-          stunnedUntil = now + hit.stunDuration;
+          if (hasSpellShield) {
+            hasSpellShield = false;
+          } else {
+            hp -= hit.damage;
+            stunnedUntil = now + hit.stunDuration;
+          }
         }
       }
-      if (hp !== unit.hp || stunnedUntil !== unit.isStunnedUntil) {
+      if (
+        hp !== unit.hp ||
+        stunnedUntil !== unit.isStunnedUntil ||
+        hasSpellShield !== unit.hasSpellShield
+      ) {
         const isUnitStunned = Boolean(stunnedUntil && stunnedUntil > now);
-        return { ...unit, hp, isStunnedUntil: stunnedUntil, isStunned: isUnitStunned };
+        return {
+          ...unit,
+          hp,
+          isStunnedUntil: stunnedUntil,
+          isStunned: isUnitStunned,
+          hasSpellShield,
+        };
       }
       return unit;
     })
@@ -371,6 +396,7 @@ export function resolveFireSpellWaves(
     .map((unit) => {
       if (unit.hp <= 0) return unit;
       let hp = unit.hp;
+      let hasSpellShield = unit.hasSpellShield;
 
       for (const fire of activeFireSpells) {
         if (unit.owner === fire.targetOwner && !fire.hitUnitIds.has(unit.id)) {
@@ -379,13 +405,19 @@ export function resolveFireSpellWaves(
             const currentSpreadRadiusY = (elapsed / 1000) * FIRE_SPELL_SPREAD_SPEED_Y;
             if (Math.abs(unit.y - fire.originY) <= currentSpreadRadiusY) {
               fire.hitUnitIds.add(unit.id);
-              hp -= fire.damage;
+              if (hasSpellShield) {
+                hasSpellShield = false;
+              } else {
+                hp -= fire.damage;
+              }
             }
           }
         }
       }
 
-      return hp !== unit.hp ? { ...unit, hp } : unit;
+      return hp !== unit.hp || hasSpellShield !== unit.hasSpellShield
+        ? { ...unit, hp, hasSpellShield }
+        : unit;
     })
     .filter((u) => u.hp > 0);
 
@@ -1553,6 +1585,7 @@ export function resolveCombatDamageAndInhibitors(params: {
     let currentHp = unit.hp;
     let stunnedUntil = unit.isStunnedUntil;
     let x = unit.x;
+    let hasSpellShield = unit.hasSpellShield;
 
     updatedUnits.forEach((attacker) => {
       if (attacker.owner === unit.owner || attacker.lastAttackEffectTime !== now) return;
@@ -1572,6 +1605,10 @@ export function resolveCombatDamageAndInhibitors(params: {
         dist <= splashReach;
 
       if (isPrimary || isSplash) {
+        if (hasSpellShield) {
+          hasSpellShield = false;
+          return;
+        }
         const hadHp = currentHp > 0;
         const hasAmbushBonus = Boolean(
           attacker.hasAmbushCharge || (attacker.ambushDashUntil && now < attacker.ambushDashUntil)
@@ -1607,6 +1644,7 @@ export function resolveCombatDamageAndInhibitors(params: {
       x,
       isStunnedUntil: stunnedUntil,
       isStunned: isUnitStunned,
+      hasSpellShield,
     };
   });
 

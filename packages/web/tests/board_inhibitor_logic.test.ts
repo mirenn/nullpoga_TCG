@@ -1655,4 +1655,52 @@ const backAfterHit = combatEngine.state.units.find((u) => u.id === 'back_mouse')
 assert(frontAfterHit !== undefined && frontAfterHit.hp === 1, `Front mouse (HP 3) must survive 1st Boar hit (ATK 2) with 1 HP, got ${frontAfterHit?.hp}`);
 assert(backAfterHit !== undefined && backAfterHit.hp === 3, `Back mouse must take 0 splash damage from single-target Boar, got ${backAfterHit?.hp}`);
 console.log('  -> Fodder Blocker Survival & Single-Target vs Area Splash: PASSED');
-console.log('=== All 21 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 22. 亀のスペルシールド検証（どんな攻撃・呪文も1回防ぐが、弱い攻撃でも剥がれる）
+// ==========================================
+console.log('[22/22] Testing Turtle Spell Shield...');
+assert(turtle.hasSpellShield === true, 'Turtle card must have hasSpellShield: true');
+const shieldEngine = new RealtimeGameEngine(false);
+shieldEngine.state.cpuMana = 0;
+const spawnedTurtle: Unit = {
+  ...groundUnitInRiver,
+  id: 'shield_turtle',
+  cardNo: 5,
+  owner: 'player',
+  x: 48,
+  y: 50,
+  lane: 50,
+  hp: turtle.life!,
+  maxHp: turtle.life!,
+  attack: 0,
+  speed: 0,
+  hasSpellShield: turtle.hasSpellShield,
+};
+const weakEnemyMouse: Unit = {
+  ...enemyBoar,
+  id: 'weak_mouse',
+  cardNo: 1,
+  attack: 1,
+  range: 8,
+  attackInterval: 1.0,
+};
+shieldEngine.state.units = [spawnedTurtle, weakEnemyMouse];
+// 1発目: 1ダメージの弱い攻撃でもシールドが剥がれ、ダメージは0（HP 10維持）
+shieldEngine.tick(0.05, 5_000_000);
+const turtleAfterFirstHit = shieldEngine.state.units.find((u) => u.id === 'shield_turtle')!;
+assert(turtleAfterFirstHit.hp === 10 && turtleAfterFirstHit.hasSpellShield === false, 'Weak 1-damage hit must pop Spell Shield while taking 0 damage');
+
+// 2発目: シールド喪失後は通常通りダメージを受ける（HP 9）
+shieldEngine.tick(1.05, 5_001_050);
+const turtleAfterSecondHit = shieldEngine.state.units.find((u) => u.id === 'shield_turtle')!;
+assert(turtleAfterSecondHit.hp === 9, `Second hit after shield pop must deal 1 damage (got HP ${turtleAfterSecondHit.hp})`);
+
+// 隕石（3ダメージ）もシールドがあれば1回だけ無傷で防ぐ
+shieldEngine.state.units = [{ ...spawnedTurtle, hasSpellShield: true }];
+shieldEngine.state.pendingMeteorHits = [{ id: 'm1', x: 48, y: 50, targetOwner: 'player', damage: 3, impactTime: 5_002_000 }];
+shieldEngine.tick(0.05, 5_002_000);
+const turtleAfterMeteor = shieldEngine.state.units[0];
+assert(turtleAfterMeteor.hp === 10 && turtleAfterMeteor.hasSpellShield === false, 'Spell Shield must block Meteor damage once');
+console.log('  -> Turtle Spell Shield: PASSED');
+console.log('=== All 22 Test Suites PASSED Successfully! ===');
