@@ -204,8 +204,6 @@ export function useRealtimeGame() {
     playCardOnLane,
     resetGame,
     toggleUnitHold,
-    comboCount: state.playerCombo.count,
-    lastComboTime: state.playerCombo.lastTime,
     onProfilerRender,
   };
 }

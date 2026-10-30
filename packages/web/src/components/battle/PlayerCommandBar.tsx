@@ -7,7 +7,6 @@ interface PlayerCommandBarProps {
   playerMana: number;
   maxMana: number;
   manaRegenMultiplier?: number;
-  displayCombo: { count: number; visible: boolean };
   nextCard: DemoCard | null;
   deckCount: number;
   discardCount: number;
@@ -29,7 +28,6 @@ export const PlayerCommandBar = React.memo(function PlayerCommandBar({
   playerMana,
   maxMana,
   manaRegenMultiplier = 1,
-  displayCombo,
   nextCard,
   deckCount,
   discardCount,
@@ -104,29 +102,6 @@ export const PlayerCommandBar = React.memo(function PlayerCommandBar({
                       </div>
                     </div>
                   </div>
-
-                  {/* コンボ表示 */}
-                  {displayCombo.count > 0 && (
-                    <div
-                      style={{
-                        marginLeft: '4px',
-                        color: '#f97316',
-                        fontWeight: 'bold',
-                        fontSize: '12px',
-                        textShadow: '0 0 8px #ea580c, 0 0 16px #f97316',
-                        opacity: displayCombo.visible ? 1 : 0,
-                        transform: displayCombo.visible ? 'scale(1)' : 'scale(0.8)',
-                        transition: 'all 0.2s ease-out',
-                        pointerEvents: 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {displayCombo.count >= 3 ? '🔥🔥 ' : '🔥 '}
-                      {displayCombo.count} COMBO!
-                    </div>
-                  )}
                 </div>
       
                 {/* 4. 手札カードリスト & NEXTドック */}
@@ -266,8 +241,6 @@ export const PlayerCommandBar = React.memo(function PlayerCommandBar({
     prev.playerHp !== next.playerHp ||
     Math.floor(prev.playerMana * 10) !== Math.floor(next.playerMana * 10) ||
     prev.manaRegenMultiplier !== next.manaRegenMultiplier ||
-    prev.displayCombo.visible !== next.displayCombo.visible ||
-    prev.displayCombo.count !== next.displayCombo.count ||
     prev.nextCard !== next.nextCard ||
     prev.deckCount !== next.deckCount ||
     prev.discardCount !== next.discardCount ||

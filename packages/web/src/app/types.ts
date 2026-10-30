@@ -73,7 +73,6 @@ export interface Unit {
   distanceTraveled?: number; // 移動距離（柴犬のバフ用）
   lastAttackEffectTime?: number; // エフェクト描画用
   isCounterDeploy?: boolean; // カウンターデプロイバフ適用中
-  comboCount?: number; // コンボボーナス段階 (2=2コンボ, 3=3コンボ)
   isHolding?: boolean; // クリックで待機中（移動のみ停止。射程内なら攻撃は継続）
   holdDuration?: number; // 待機（ホールド）継続秒数
   hasAmbushCharge?: boolean; // 2秒以上待機でチャージ完了（次の攻撃力+2＆解除後1.5秒ダッシュ）
@@ -151,7 +150,6 @@ export interface CpuSpawnWarning {
   card: DemoCard;
   startTime: number;
   durationMs: number;
-  comboCount?: number;
   lane?: number;
 }
 

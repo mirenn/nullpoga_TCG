@@ -53,8 +53,6 @@ export default function RealtimeDemoPage() {
     playCardOnLane,
     resetGame,
     toggleUnitHold,
-    comboCount,
-    lastComboTime,
     onProfilerRender,
   } = useRealtimeGame();
 
@@ -131,20 +129,6 @@ export default function RealtimeDemoPage() {
     hasMoved: boolean;
   } | null>(null);
   const ignoreNextCardClickRef = useRef<boolean>(false);
-
-  const [displayCombo, setDisplayCombo] = useState<{ count: number; visible: boolean }>({ count: 0, visible: false });
-
-  useEffect(() => {
-    if (comboCount > 1) {
-      setDisplayCombo({ count: comboCount, visible: true });
-      const timer = setTimeout(() => {
-        setDisplayCombo((prev) => ({ ...prev, visible: false }));
-      }, 2000);
-      return () => clearTimeout(timer);
-    } else {
-      setDisplayCombo((prev) => ({ ...prev, visible: false }));
-    }
-  }, [comboCount, lastComboTime]);
 
   const selectedCard = selectedCardIndex !== null ? hand[selectedCardIndex] : null;
   const activeDraggedCard = draggedCardIndex !== null ? hand[draggedCardIndex] : null;
@@ -593,7 +577,6 @@ export default function RealtimeDemoPage() {
             playerMana={Math.floor(playerMana * 10) / 10}
             maxMana={maxMana}
             manaRegenMultiplier={playerManaRegenMultiplier}
-            displayCombo={displayCombo}
             nextCard={nextCard}
             deckCount={deckCount}
             discardCount={discardCount}

@@ -76,7 +76,6 @@ export interface SpawnMonsterParams {
   owner: Owner;
   spawnX: number;
   spawnY: number;
-  comboCount: number;
   opponentSpawnTimestamps: SpawnTimestampRecord[];
   now: number;
 }
@@ -85,16 +84,12 @@ export interface SpawnMonsterParams {
  * モンスターカードから出撃ユニット群（狩人の場合は猟犬トークン含む）を生成する純粋関数
  */
 export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
-  const { card, owner, spawnX, spawnY, comboCount, opponentSpawnTimestamps, now } = params;
+  const { card, owner, spawnX, spawnY, opponentSpawnTimestamps, now } = params;
 
   // カウンターデプロイ判定: 1.5秒以内に同じレーン(Y)に出撃した相手ユニットがいるか
   const isCounterDeploy = opponentSpawnTimestamps.some(
     (s) => isWithinEngageY(s.y, spawnY) && now - s.time <= 1500
   );
-
-  let comboBonusHp = 0;
-  if (comboCount >= 2) comboBonusHp += 1;
-  if (comboCount >= 3) comboBonusHp += 1;
 
   let counterBonusHp = 0;
   let counterBonusInterval = 0;
@@ -116,8 +111,8 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     x: spawnX,
     lane: spawnY,
     y: spawnY,
-    maxHp: (card.life || 1) + comboBonusHp + counterBonusHp,
-    hp: (card.life || 1) + comboBonusHp + counterBonusHp,
+    maxHp: (card.life || 1) + counterBonusHp,
+    hp: (card.life || 1) + counterBonusHp,
     attack: (card.attack ?? 1) + ambushBonusAtk,
     speed: card.speed || 10,
     range: card.range || 3,
@@ -136,7 +131,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     distanceTraveled: 0,
     isCounterDeploy,
     isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
-    comboCount: comboCount > 1 ? comboCount : undefined,
     killCount: 0,
   };
 
@@ -153,8 +147,8 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       x: houndX,
       lane: spawnY,
       y: spawnY,
-      maxHp: HOUND_TOKEN_SPEC.life + comboBonusHp + counterBonusHp,
-      hp: HOUND_TOKEN_SPEC.life + comboBonusHp + counterBonusHp,
+      maxHp: HOUND_TOKEN_SPEC.life + counterBonusHp,
+      hp: HOUND_TOKEN_SPEC.life + counterBonusHp,
       attack: HOUND_TOKEN_SPEC.attack + ambushBonusAtk,
       speed: HOUND_TOKEN_SPEC.speed,
       range: HOUND_TOKEN_SPEC.range,
@@ -169,7 +163,6 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
       distanceTraveled: 0,
       isCounterDeploy,
       isAmbushDeploy: owner === 'player' ? isAmbushDeploy : undefined,
-      comboCount: comboCount > 1 ? comboCount : undefined,
       killCount: 0,
     };
     return [mainUnit, houndUnit];

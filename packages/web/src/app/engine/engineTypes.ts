@@ -113,12 +113,6 @@ export interface SpawnTimestampRecord {
   time: number;
 }
 
-/** コンボ状態 */
-export interface ComboState {
-  count: number;
-  lastTime: number;
-}
-
 /**
  * Reactから完全に独立したリアルタイムバトルの状態スナップショット
  */
@@ -150,8 +144,6 @@ export interface RealtimeGameState {
   pendingHealSpellCasts: PendingHealSpellCast[];
   pendingHasteSpellCasts: PendingHasteSpellCast[];
   gameResult: 'playing' | 'win' | 'lose';
-  playerCombo: ComboState;
-  cpuCombo: ComboState;
   playerSpawnTimestamps: SpawnTimestampRecord[];
   cpuSpawnTimestamps: SpawnTimestampRecord[];
   cpuActionTimer: number;

@@ -95,8 +95,6 @@ export function createInitialRealtimeGameState(randomize: boolean = false): Real
     pendingHealSpellCasts: [],
     pendingHasteSpellCasts: [],
     gameResult: 'playing',
-    playerCombo: { count: 0, lastTime: 0 },
-    cpuCombo: { count: 0, lastTime: 0 },
     playerSpawnTimestamps: [],
     cpuSpawnTimestamps: [],
     cpuActionTimer: 0,
@@ -310,18 +308,12 @@ export class RealtimeGameEngine {
     // マナ消費
     this.state.playerMana = Math.max(0, this.state.playerMana - card.manaCost);
 
-    // コンボ更新
-    const newComboCount =
-      now - this.state.playerCombo.lastTime <= 2000 ? this.state.playerCombo.count + 1 : 1;
-    this.state.playerCombo = { count: newComboCount, lastTime: now };
-
     if (card.type === 'MONSTER') {
       const spawnedUnits = createMonsterUnitsForSpawn({
         card,
         owner: 'player',
         spawnX,
         spawnY,
-        comboCount: newComboCount,
         opponentSpawnTimestamps: this.state.cpuSpawnTimestamps,
         now,
       });
@@ -416,10 +408,6 @@ export class RealtimeGameEngine {
       chosen.card
     );
 
-    const newComboCount =
-      now - this.state.cpuCombo.lastTime <= 2000 ? this.state.cpuCombo.count + 1 : 1;
-    this.state.cpuCombo = { count: newComboCount, lastTime: now };
-
     if (chosen.card.type === 'MONSTER') {
       const spawnY = clampSpawnY(chosen.targetY ?? chosen.targetLane ?? 50);
       const spawnX = 95;
@@ -432,7 +420,6 @@ export class RealtimeGameEngine {
         card: chosen.card,
         startTime: now,
         durationMs: 650,
-        comboCount: newComboCount,
       };
       this.state.cpuSpawnWarnings = [...this.state.cpuSpawnWarnings, warning];
     } else if (chosen.card.type === 'SPELL') {
@@ -511,7 +498,6 @@ export class RealtimeGameEngine {
             owner: 'cpu',
             spawnX: 95,
             spawnY,
-            comboCount: w.comboCount || 1,
             opponentSpawnTimestamps: this.state.playerSpawnTimestamps,
             now,
           });

@@ -656,9 +656,6 @@ export const RenderUnit = React.memo(function RenderUnit({
         {unit.isCounterDeploy && (
           <span style={{ fontSize: '9px', backgroundColor: '#6366f1', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title="カウンターデプロイ">⚔️</span>
         )}
-        {unit.comboCount && unit.comboCount > 1 && (
-          <span style={{ fontSize: '9px', backgroundColor: '#ea580c', padding: '0 2px', borderRadius: '2px', lineHeight: '13px' }} title={`${unit.comboCount}コンボボーナス`}>🔥</span>
-        )}
       </div>
 
       {/* 出撃スペース塞ぎ中の前進待ちインジケーター */}
