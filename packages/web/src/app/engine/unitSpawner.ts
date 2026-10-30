@@ -123,6 +123,7 @@ export function createMonsterUnitsForSpawn(params: SpawnMonsterParams): Unit[] {
     range: card.range || 3,
     canMoveWhileCharging: card.canMoveWhileCharging,
     isCircularRange: card.isCircularRange,
+    fanHalfAngleDeg: card.fanHalfAngleDeg,
     obstacleAction: card.obstacleAction,
     hasSpellShield: card.hasSpellShield,
     hitRange: card.hitRange,

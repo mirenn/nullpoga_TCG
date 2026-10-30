@@ -25,6 +25,7 @@ import {
   getSpawnDepthRole,
   computeUnitRangeZone,
   isWithinCircularRange,
+  isWithinFanRange,
   computeUnitCircularRangeZone,
 } from '../src/app/board';
 import {
@@ -1812,4 +1813,40 @@ assert(
   'Attacker must record lastCounterHitTime on counter-hit'
 );
 console.log('  -> Sway Backstep, Whiff Induction, and Counter-Hit: PASSED');
-console.log('=== All 23 Test Suites PASSED Successfully! ===');
+
+// ==========================================
+// 24. 吸血コウモリの前方扇形探知（isWithinFanRange & fanHalfAngleDeg）検証
+// ==========================================
+console.log('[24/24] Testing Vampire Bat forward fan detection (fanHalfAngleDeg)...');
+assert(batCard.range === 16 && batCard.hitRange === 14 && batCard.fanHalfAngleDeg === 40, 'Vampire Bat must have range=16, hitRange=14, fanHalfAngleDeg=40');
+// 前方斜め (dx=10, dy=8 -> dist≈12.8 <= 16, angle≈38.6° <= 40°): 従来の縦幅(6.5%)外だが扇形内なので探知可能
+assert(isWithinFanRange(30, 50, 40, 58, 16, 'player', 40) === true, 'Diagonal front enemy within ±40° cone must be detected');
+// 角度オーバー (dx=6, dy=10 -> angle≈59° > 40°): 距離は近いが扇形角度外なので探知不可
+assert(isWithinFanRange(30, 50, 36, 60, 16, 'player', 40) === false, 'Enemy outside ±40° cone angle must NOT be detected');
+// 後方 (dx=-5, dy=0): 扇形は前方のみなので探知不可
+assert(isWithinFanRange(30, 50, 25, 50, 16, 'player', 40) === false, 'Enemy behind unit must NOT be detected by forward fan');
+
+const fanEngine = new RealtimeGameEngine(false);
+fanEngine.state.cpuMana = 0;
+fanEngine.state.playerMana = 10;
+fanEngine.state.deckState.hand[0] = batCard;
+fanEngine.playCardAt(20, 50, 0, 8_000_000);
+const spawnedBat = fanEngine.state.units[0];
+assert(spawnedBat.fanHalfAngleDeg === 40, 'Spawned Vampire Bat must inherit fanHalfAngleDeg=40');
+// 従来の直線帯(|dy|<=6.5%)より外の斜め前方 (x=30, y=58 -> dx=10, dy=8, dist≈12.8 <= hitRange 14, angle≈38.6° <= 40°) に敵を配置
+fanEngine.state.units.push({
+  ...groundUnitInRiver,
+  id: 'fan_target_enemy',
+  owner: 'cpu',
+  x: 30,
+  y: 58,
+  lane: 58,
+  hp: 4,
+  maxHp: 4,
+  speed: 0,
+});
+fanEngine.tick(0.05, 8_000_050);
+const chargingBat = fanEngine.state.units.find((u) => u.id === spawnedBat.id)!;
+assert(chargingBat.isCharging === true, 'Vampire Bat must detect and start charging at diagonal enemy inside forward fan');
+console.log('  -> Vampire Bat forward fan detection: PASSED');
+console.log('=== All 24 Test Suites PASSED Successfully! ===');

@@ -170,6 +170,26 @@ export function isWithinCircularRange(
   return Math.hypot(x1 - x2, y1 - y2) <= radius;
 }
 
+/** ターゲット座標 (x2, y2) が起点 (x1, y1) の前方扇形（半径 radius・片側角度 halfAngleDeg）内にあるか */
+export function isWithinFanRange(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  radius: number,
+  owner: 'player' | 'cpu',
+  halfAngleDeg: number
+): boolean {
+  const dx = owner === 'player' ? x2 - x1 : x1 - x2;
+  if (dx < 0) return false;
+  const dy = y2 - y1;
+  const dist = Math.hypot(dx, dy);
+  if (dist > radius) return false;
+  if (dist === 0) return true;
+  const angleDeg = (Math.atan2(Math.abs(dy), dx) * 180) / Math.PI;
+  return angleDeg <= halfAngleDeg;
+}
+
 /** 円形探知ユニットの射程範囲ジオメトリ情報 (%単位) */
 export interface UnitCircularRangeZone {
   centerX: number;

@@ -945,6 +945,7 @@ export function BattleField({
         const isPlayer = unit.owner === 'player';
         const isShieldUnit = unit.attack === 0;
         const isCircularUnit = Boolean(unit.isCircularRange || unit.cardNo === 8);
+        const fanHalfAngle = unit.fanHalfAngleDeg;
 
         // 前方に未破壊の茂みや雲（drifting clouds）がある場合、視界・探知は手前で遮断される
         const visionReach = computeUnitMaxVisionReachX(
@@ -959,7 +960,7 @@ export function BattleField({
         const effectiveVisionRange = visionReach.effectiveRange;
 
         const isScouting = Boolean(unit.isScouting);
-        const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit && !isScouting
+        const rangeZone = showUnitRange && !isUnitConcealed && !isCircularUnit && !fanHalfAngle && !isScouting
           ? computeUnitRangeZone(unit.x, unit.y, effectiveVisionRange, unit.owner)
           : null;
         const hitZone =
@@ -1099,6 +1100,56 @@ export function BattleField({
                 </span>
               </div>
             )}
+
+            {/* 前方扇形探知ユニット（吸血コウモリなど）の射程コーン */}
+            {showUnitRange && !isUnitConcealed && !isScouting && Boolean(fanHalfAngle) && effectiveVisionRange > 0 && (() => {
+              const rad = ((fanHalfAngle as number) * Math.PI) / 180;
+              const dir = isPlayer ? 1 : -1;
+              const sweep = isPlayer ? 1 : 0;
+              const r = effectiveVisionRange;
+              const sx1 = unit.x + dir * r * Math.cos(rad);
+              const sy1 = unit.y - r * Math.sin(rad);
+              const sx2 = unit.x + dir * r * Math.cos(rad);
+              const sy2 = unit.y + r * Math.sin(rad);
+              const hr = unit.hitRange !== undefined && unit.hitRange < r ? unit.hitRange : 0;
+              const hx1 = hr ? unit.x + dir * hr * Math.cos(rad) : 0;
+              const hy1 = hr ? unit.y - hr * Math.sin(rad) : 0;
+              const hx2 = hr ? unit.x + dir * hr * Math.cos(rad) : 0;
+              const hy2 = hr ? unit.y + hr * Math.sin(rad) : 0;
+              return (
+                <svg
+                  data-unit-range-id={unit.id}
+                  data-unit-range={unit.range}
+                  data-unit-owner={unit.owner}
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 6,
+                  }}
+                >
+                  <path
+                    d={`M ${unit.x} ${unit.y} L ${sx1} ${sy1} A ${r} ${r} 0 0 ${sweep} ${sx2} ${sy2} Z`}
+                    fill={isPlayer ? 'rgba(168, 85, 247, 0.16)' : 'rgba(244, 63, 94, 0.16)'}
+                    stroke={isPlayer ? '#c084fc' : '#f43f5e'}
+                    strokeWidth="0.3"
+                    strokeDasharray="0.9 0.6"
+                  />
+                  {hr > 0 && (
+                    <path
+                      d={`M ${unit.x} ${unit.y} L ${hx1} ${hy1} A ${hr} ${hr} 0 0 ${sweep} ${hx2} ${hy2} Z`}
+                      fill="rgba(249, 115, 22, 0.22)"
+                      stroke="#f97316"
+                      strokeWidth="0.28"
+                    />
+                  )}
+                </svg>
+              );
+            })()}
 
             {/* 各ユニットの射程範囲 (X軸: 前方unit.range%, Y軸: 交戦幅±ENGAGE_HALF_WIDTH_Y%) */}
             {rangeZone && rangeZone.width > 0 && (
@@ -2228,14 +2279,48 @@ export function BattleField({
           {showUnitRange && activeCard.type === 'MONSTER' && (() => {
             const previewRange = activeCard.range ?? 8;
             const isCircular = Boolean(activeCard.isCircularRange || activeCard.cardNo === 8);
+            const previewFanAngle = activeCard.fanHalfAngleDeg;
             const isShield = (activeCard.attack ?? 0) === 0;
             const previewColor = isTargetBlocked
               ? '#ef4444'
               : isCircular
               ? '#00f0ff'
+              : previewFanAngle
+              ? '#c084fc'
               : isShield
               ? '#10b981'
               : '#38bdf8';
+
+            if (previewFanAngle) {
+              const rad = (previewFanAngle * Math.PI) / 180;
+              const sx1 = currentTargetX + previewRange * Math.cos(rad);
+              const sy1 = currentTargetY - previewRange * Math.sin(rad);
+              const sx2 = currentTargetX + previewRange * Math.cos(rad);
+              const sy2 = currentTargetY + previewRange * Math.sin(rad);
+              return (
+                <svg
+                  data-spawn-fan-preview={previewRange}
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    pointerEvents: 'none',
+                    zIndex: 19,
+                  }}
+                >
+                  <path
+                    d={`M ${currentTargetX} ${currentTargetY} L ${sx1} ${sy1} A ${previewRange} ${previewRange} 0 0 1 ${sx2} ${sy2} Z`}
+                    fill={isTargetBlocked ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.22)'}
+                    stroke={previewColor}
+                    strokeWidth="0.35"
+                    strokeDasharray="1.0 0.6"
+                  />
+                </svg>
+              );
+            }
 
             if (isCircular) {
               return (

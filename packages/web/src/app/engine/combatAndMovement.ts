@@ -14,6 +14,7 @@ import {
   FIRE_SPELL_SPREAD_SPEED_Y,
   isWithinCollisionY,
   isWithinEngageY,
+  isWithinFanRange,
   isWithinFireSpellColumn,
   isWithinMeteorRange,
   SPELL_RADIUS,
@@ -104,6 +105,21 @@ export function isAllyUnitStopped(
   units: Unit[],
   inhibitors: Inhibitor[]
 ): boolean {
+  if (ally.fanHalfAngleDeg) {
+    const enemyInFan = units.some(
+      (e) =>
+        e.owner !== ally.owner &&
+        e.hp > 0 &&
+        isWithinFanRange(ally.x, ally.y, e.x, e.y, ally.range, ally.owner, ally.fanHalfAngleDeg!)
+    );
+    if (enemyInFan) return true;
+    return inhibitors.some(
+      (i) =>
+        i.owner !== ally.owner &&
+        i.hp > 0 &&
+        isWithinFanRange(ally.x, ally.y, i.x, i.y, ally.range, ally.owner, ally.fanHalfAngleDeg!)
+    );
+  }
   const fwd = (tx: number) => (ally.owner === 'player' ? tx - ally.x : ally.x - tx);
   const enemyInReach = units.some(
     (e) =>
@@ -551,7 +567,7 @@ export function updateUnitsMovementAndAttacks(params: {
     let targetEnemy: CombatTarget | null = null;
     let minDistance = 999;
 
-    if (unit.isCircularRange || unit.cardNo === 8) {
+    if (unit.isCircularRange || unit.cardNo === 8 || unit.fanHalfAngleDeg) {
       const allEnemies = unitsAfterHits.filter((u) => u.owner !== unit.owner && u.hp > 0);
       const allInhibitors = inhibitors.filter((i) => i.owner !== unit.owner && i.hp > 0);
       targetCandidates = [
@@ -569,7 +585,18 @@ export function updateUnitsMovementAndAttacks(params: {
       ];
       targetCandidates.forEach((enemy) => {
         const dist = Math.hypot(enemy.x - unit.x, enemy.y - unit.y);
-        if (dist <= unit.range && dist < minDistance) {
+        const inShape = unit.fanHalfAngleDeg
+          ? isWithinFanRange(
+              unit.x,
+              unit.y,
+              enemy.x,
+              enemy.y,
+              unit.range,
+              unit.owner,
+              unit.fanHalfAngleDeg
+            ) || unit.scoutTargetUnitId === enemy.id
+          : dist <= unit.range;
+        if (inShape && dist < minDistance) {
           const sightClear = hasLineOfSight(
             unit.x,
             unit.y,
@@ -655,7 +682,7 @@ export function updateUnitsMovementAndAttacks(params: {
     let blockingObstacle: CombatTarget | null = null;
     let minBlockDist = 999;
     const obstacleCandidates =
-      unit.isCircularRange || unit.cardNo === 8
+      unit.isCircularRange || unit.cardNo === 8 || unit.fanHalfAngleDeg
         ? [
             ...unitsAfterHits
               .filter(
@@ -1673,7 +1700,7 @@ export function resolveCombatDamageAndInhibitors(params: {
 
       const isPrimary = primary.id === unit.id;
       const dist =
-        attacker.isCircularRange || attacker.cardNo === 8
+        attacker.isCircularRange || attacker.cardNo === 8 || attacker.fanHalfAngleDeg
           ? Math.hypot(unit.x - attacker.x, unit.y - attacker.y)
           : attacker.owner === 'player'
           ? unit.x - attacker.x

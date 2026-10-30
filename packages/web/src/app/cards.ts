@@ -130,12 +130,13 @@ export const CARD_POOL: DemoCard[] = [
     attack: 1,
     life: 4,
     speed: 6, // 飛行による素早い前進
-    range: 8, // 近接接触
-    hitRange: 7,
+    range: 16, // 前方扇形（超音波ソナー）探知射程 16%
+    hitRange: 14,
+    fanHalfAngleDeg: 40, // 前方±40度（計80度）の扇形探知
     attackInterval: 4.0,
     attackWindup: 1.0, // 攻撃前隙（急降下狙い1.0秒）
     obstacleAction: 'jump', // 障害物や前の味方を羽ばたきで飛び越える
-    effectDesc: '障害物や前の味方に追いつくと羽ばたいて頭上を飛び越える。1.0秒の狙いから急降下して噛みつく。相手ユニットにとどめを刺すと吸血し、攻撃力+1・最大HP+1・HP+1（成長）する。',
+    effectDesc: '前方扇形（半径16%・±40°）に超音波を放って敵を探知し、1.0秒の狙いから急降下して噛みつく。障害物や前の味方は飛び越える。とどめを刺すと吸血し+1/+1成長。',
     icon: '🦇',
   },
   {

@@ -17,6 +17,7 @@ export interface DemoCard {
   attackWindup?: number; // 攻撃前隙・チャージ時間 (秒、例: 1.0)
   canMoveWhileCharging?: boolean; // 攻撃チャージ中（attackWindup）も立ち止まらずに前進・突進可能か（猪・柴犬など）
   isCircularRange?: boolean; // 円形探知範囲（忍者など）
+  fanHalfAngleDeg?: number; // 前方扇形探知の片側角度（度、吸血コウモリなど）
   obstacleAction?: ObstacleAction; // 障害物衝突時の性質（slide=スライド迂回, jump=飛び越え, smash=激突粉砕, block=停止）
   hasSpellShield?: boolean; // スペルシールド（あらゆる被弾ダメージ＆付随効果を最初の1回だけ無効化）
   effectDesc: string;
@@ -53,6 +54,7 @@ export interface Unit {
   range: number; // 射程 (%)
   canMoveWhileCharging?: boolean; // 攻撃チャージ中も前進可能か
   isCircularRange?: boolean; // 円形全方位探知（忍者など）
+  fanHalfAngleDeg?: number; // 前方扇形探知の片側角度（度、吸血コウモリなど）
   obstacleAction?: ObstacleAction; // 障害物・前方味方への接触時の性質（slide=スライド迂回, jump=飛び越え, smash=障害物粉砕＆味方押し出しプッシュ, block=障害物を攻撃破壊・味方に追従）
   isJumping?: boolean; // 障害物・味方の飛び越え中か
   jumpProgress?: number; // ジャンプ進行度 (0〜1)
