@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
-    "test": "npx tsx tests/board_inhibitor_logic.test.ts"
+    "test": "npx tsx tests/board_inhibitor_logic.test.ts && npx tsx src/app/circle/circlePhysics.test.ts && npx tsx src/app/circle/circleCpu.test.ts"
   },
   "dependencies": {
     "next": "16.1.1",
