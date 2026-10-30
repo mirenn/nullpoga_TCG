@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+</head>
+<body class="bg-[var(--background)] text-[var(--foreground)] antialiased p-5">
+<div class="max-w-xl mx-auto bg-[var(--card)] border border-[var(--border)] rounded-xl p-5 shadow-sm">
+  <h2 class="font-semibold text-lg">円形フィールド：回転モード比較</h2>
+  <p class="text-sm text-[var(--muted-foreground)]">マウスで狙ってクリックで発射（下＝あなた / 上＝CPU）。中央の穴に入ると1点。敵ユニット同士が触れると相打ち。</p>
+  <div id="modes" class="flex flex-wrap gap-2 my-3"></div>
+  <p id="desc" class="text-sm text-[var(--muted-foreground)] min-h-[2.5rem]"></p>
+  <div class="flex flex-wrap items-center gap-4 text-sm my-2">
+    <label>回転速度 <input id="spd" type="range" min="0" max="60" value="20" class="align-middle"> <span id="spdv"></span>°/s</label>
+    <label><input id="pred" type="checkbox" checked> 予測線</label>
+    <button id="reset" class="px-2 py-1 rounded border border-[var(--border)]">リセット</button>
+  </div>
+  <div class="flex justify-between text-sm font-semibold">
+    <span id="sp" style="color:#3b82f6">あなた 0</span><span id="sc" style="color:#ef4444">CPU 0</span>
+  </div>
+  <canvas id="cv" width="420" height="420" class="w-full max-w-[420px] mx-auto block mt-2 cursor-crosshair"></canvas>
+</div>
+<script>
+const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+const W = 420, C = W / 2, R = 195, HOLE = 18, RING = 70, UR = 7, SPEED = 110, TAU = Math.PI * 2;
+const MODES = [
+  { id: '0', name: '回転なし', desc: '基準。まっすぐ撃つだけ。' },
+  { id: 'A', name: 'A: 壁だけ回る', desc: '壁・バンパーだけ回転、ユニットはまっすぐ進む → すき間が来るタイミングを読む遊び。' },
+  { id: 'B', name: 'B: 盤面ごと回る（一緒に回る）', desc: 'ユニットも盤面に乗って一緒に回る。盤面から見ると「自分の出撃口が外周を回っている」のと同じ。' },
+  { id: 'C', name: 'C: 盤面が回り、流される', desc: 'ユニットは向きを保ったまま回転に流される → 進路がカーブ。ズレを見越した偏差撃ちが必要（CPUは偏差しないので外しがち）。' },
+];
+const GAPS = [0, Math.PI], GAPW = 0.38;              // 穴を囲むリング壁のすき間（盤面座標の角度, 半幅rad）
+const BUMPERS = [[0.5, 135, 14], [2.6, 135, 14], [4.7, 135, 14]]; // [角度, 中心距離, 半径]
+const SPAWN = { p: [0, R - 14], c: [0, -(R - 14)] };
+
+let mode = 'C', theta = 0, units = [], fx = [], score = { p: 0, c: 0 }, mouse = null, pCd = 0, cCd = 1.2;
+const $ = (id) => document.getElementById(id);
+const omega = () => (mode === '0' ? 0 : ($('spd').value * Math.PI) / 180);
+const rot = (x, y, a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+const angDiff = (a, b) => { let d = (a - b) % TAU; if (d > Math.PI) d -= TAU; if (d < -Math.PI) d += TAU; return d; };
+const reflect = (u, nx, ny, vn) => { u.vx -= 2 * vn * nx; u.vy -= 2 * vn * ny; };
+
+function step(u, dt, th, w) {
+  if (mode === 'C') { const x = u.x, y = u.y; u.x += (u.vx - w * y) * dt; u.y += (u.vy + w * x) * dt; }
+  else {
+    u.x += u.vx * dt; u.y += u.vy * dt;
+    if (mode === 'B') { [u.x, u.y] = rot(u.x, u.y, w * dt); [u.vx, u.vy] = rot(u.vx, u.vy, w * dt); }
+  }
+  const d = Math.hypot(u.x, u.y);
+  if (d < HOLE) return 'hole';
+  const nx = u.x / d, ny = u.y / d, vn = u.vx * nx + u.vy * ny;
+  if (d > R - UR && vn > 0) reflect(u, nx, ny, vn);
+  if (Math.abs(d - RING) < UR) {
+    const a = Math.atan2(u.y, u.x) - th;
+    if (!GAPS.some((g) => Math.abs(angDiff(a, g)) < GAPW) && vn * (d - RING) < 0) reflect(u, nx, ny, vn);
+  }
+  for (const [ba, bd, br] of BUMPERS) {
+    const dx = u.x - Math.cos(ba + th) * bd, dy = u.y - Math.sin(ba + th) * bd, dd = Math.hypot(dx, dy);
+    if (dd < br + UR) { const mx = dx / dd, my = dy / dd, v2 = u.vx * mx + u.vy * my; if (v2 < 0) reflect(u, mx, my, v2); }
+  }
+  u.t += dt;
+  return u.t > 14 ? 'dead' : null;
+}
+
+function launch(owner, tx, ty) {
+  const [sx, sy] = SPAWN[owner], l = Math.hypot(tx - sx, ty - sy) || 1;
+  units.push({ owner, x: sx, y: sy, vx: ((tx - sx) / l) * SPEED, vy: ((ty - sy) / l) * SPEED, t: 0 });
+}
+
+function update(dt) {
+  const w = omega();
+  if (mode !== '0') theta = (theta + w * dt) % TAU;
+  pCd -= dt; cCd -= dt;
+  if (cCd <= 0) { // CPU：中央を素直に狙う（偏差なし）
+    const n = (Math.random() - 0.5) * 0.25;
+    launch('c', Math.sin(n) * 200, SPAWN.c[1] + Math.cos(n) * 200);
+    cCd = 1.6 + Math.random() * 0.8;
+  }
+  units = units.filter((u) => {
+    const r = step(u, dt, theta, w);
+    if (r === 'hole') { score[u.owner]++; fx.push({ x: 0, y: 0, t: 0, col: u.owner === 'p' ? '#3b82f6' : '#ef4444' }); }
+    return !r;
+  });
+  for (const a of units) for (const b of units) {
+    if (a.owner === 'p' && b.owner === 'c' && !a.dead && !b.dead && Math.hypot(a.x - b.x, a.y - b.y) < UR * 2) {
+      a.dead = b.dead = true; fx.push({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, t: 0, col: '#f59e0b' });
+    }
+  }
+  units = units.filter((u) => !u.dead);
+  fx = fx.filter((f) => (f.t += dt) < 0.4);
+  $('sp').textContent = `あなた ${score.p}`; $('sc').textContent = `CPU ${score.c}`;
+}
+
+function predict() {
+  if (!mouse) return null;
+  const [sx, sy] = SPAWN.p, l = Math.hypot(mouse[0] - sx, mouse[1] - sy) || 1;
+  const u = { x: sx, y: sy, vx: ((mouse[0] - sx) / l) * SPEED, vy: ((mouse[1] - sy) / l) * SPEED, t: 0 };
+  const pts = [[u.x, u.y]], w = omega(); let th = theta, hit = false;
+  for (let i = 0; i < 240; i++) {
+    if (mode !== '0') th += w / 60;
+    const r = step(u, 1 / 60, th, w);
+    pts.push([u.x, u.y]);
+    if (r) { hit = r === 'hole'; break; }
+  }
+  return { pts, hit };
+}
+
+function draw() {
+  const light = document.documentElement.classList.contains('light');
+  const fg = light ? '#334155' : '#cbd5e1', dim = light ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.08)';
+  const diskTh = mode === 'B' || mode === 'C' ? theta : 0;
+  ctx.clearRect(0, 0, W, W); ctx.save(); ctx.translate(C, C);
+  ctx.fillStyle = light ? '#eef2f7' : '#1c2230'; ctx.beginPath(); ctx.arc(0, 0, R, 0, TAU); ctx.fill();
+  ctx.strokeStyle = fg; ctx.lineWidth = 2; ctx.stroke();
+  ctx.strokeStyle = dim; ctx.lineWidth = 1; // 盤面の放射線（盤面が回っているかの目印）
+  for (let i = 0; i < 12; i++) { const a = diskTh + (i * Math.PI) / 6; ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(Math.cos(a) * R, Math.sin(a) * R); ctx.stroke(); }
+  ctx.strokeStyle = fg; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  for (let i = 0; i < GAPS.length; i++) {
+    const s = GAPS[i] + GAPW + theta, e = (i + 1 < GAPS.length ? GAPS[i + 1] : GAPS[0] + TAU) - GAPW + theta;
+    ctx.beginPath(); ctx.arc(0, 0, RING, s, e); ctx.stroke();
+  }
+  ctx.fillStyle = light ? '#94a3b8' : '#64748b';
+  for (const [ba, bd, br] of BUMPERS) { ctx.beginPath(); ctx.arc(Math.cos(ba + theta) * bd, Math.sin(ba + theta) * bd, br, 0, TAU); ctx.fill(); }
+  ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, 0, HOLE, 0, TAU); ctx.fill();
+  for (const [k, col] of [['p', '#3b82f6'], ['c', '#ef4444']]) {
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(SPAWN[k][0], SPAWN[k][1], 9, 0, TAU); ctx.globalAlpha = 0.35; ctx.fill(); ctx.globalAlpha = 1;
+  }
+  const pr = $('pred').checked && predict();
+  if (pr) {
+    ctx.setLineDash([4, 5]); ctx.lineWidth = 2; ctx.strokeStyle = pr.hit ? '#22c55e' : (light ? 'rgba(0,0,0,.4)' : 'rgba(255,255,255,.45)');
+    ctx.beginPath(); pr.pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke(); ctx.setLineDash([]);
+  }
+  for (const u of units) { ctx.fillStyle = u.owner === 'p' ? '#3b82f6' : '#ef4444'; ctx.beginPath(); ctx.arc(u.x, u.y, UR, 0, TAU); ctx.fill(); }
+  for (const f of fx) { ctx.strokeStyle = f.col; ctx.lineWidth = 3; ctx.globalAlpha = 1 - f.t / 0.4; ctx.beginPath(); ctx.arc(f.x, f.y, 8 + f.t * 60, 0, TAU); ctx.stroke(); ctx.globalAlpha = 1; }
+  ctx.restore();
+}
+
+let last = performance.now();
+function loop(now) { update(Math.min(0.05, (now - last) / 1000)); last = now; draw(); requestAnimationFrame(loop); }
+
+const toLocal = (e) => { const b = cv.getBoundingClientRect(); return [((e.clientX - b.left) / b.width) * W - C, ((e.clientY - b.top) / b.height) * W - C]; };
+cv.addEventListener('mousemove', (e) => (mouse = toLocal(e)));
+cv.addEventListener('mouseleave', () => (mouse = null));
+cv.addEventListener('click', (e) => { if (pCd > 0) return; const [x, y] = toLocal(e); launch('p', x, y); pCd = 0.5; });
+$('spd').addEventListener('input', () => ($('spdv').textContent = $('spd').value));
+$('reset').addEventListener('click', () => { units = []; fx = []; score = { p: 0, c: 0 }; theta = 0; });
+
+function renderModes() {
+  $('modes').innerHTML = '';
+  for (const m of MODES) {
+    const b = document.createElement('button');
+    b.textContent = m.name;
+    b.className = 'px-3 py-1 rounded-lg text-sm border border-[var(--border)] ' + (m.id === mode ? 'bg-[var(--primary)] text-[var(--primary-foreground)]' : '');
+    b.onclick = () => { mode = m.id; units = []; theta = 0; renderModes(); };
+    $('modes').appendChild(b);
+  }
+  $('desc').textContent = MODES.find((m) => m.id === mode).desc;
+}
+renderModes(); $('spdv').textContent = $('spd').value; requestAnimationFrame(loop);
+</script>
+</body>
+</html>
