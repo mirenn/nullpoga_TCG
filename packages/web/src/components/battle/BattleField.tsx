@@ -1,12 +1,10 @@
 import React, { useRef, useState, useCallback, useEffect } from 'react';
-import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor, StampedeState, CloudEventState } from '../../app/types';
+import type { Unit, SpellEffect, AttackEffect, CpuSpawnWarning, DemoCard, Inhibitor, CloudEventState } from '../../app/types';
 import { styles } from '../../app/page.styles';
 import { RenderUnit } from '../units/RenderUnit';
 import { RenderAttackEffect } from '../effects/RenderAttackEffect';
 import { RenderInhibitor } from './RenderInhibitor';
 import { RenderObstacleGround, RenderObstacleCanopy } from './RenderObstacle3D';
-import { RenderStampede } from './RenderStampede';
-import { StampedeDragonTimer } from './StampedeDragonTimer';
 import { RenderClouds } from './RenderClouds';
 import { RenderTerrain } from './RenderTerrain';
 import { RenderHoles } from './RenderHoles';
@@ -58,7 +56,6 @@ export interface BattleFieldProps {
   units: Unit[];
   inhibitors: Inhibitor[];
   obstacles?: FieldObstacle[];
-  stampede?: StampedeState;
   cloudEvent?: CloudEventState;
   camera3D?: Camera3DState;
   setCamera3D?: (updater: Camera3DState | ((prev: Camera3DState) => Camera3DState)) => void;
@@ -100,7 +97,6 @@ export function BattleField({
   units,
   inhibitors,
   obstacles = FIELD_OBSTACLES,
-  stampede,
   cloudEvent,
   camera3D: externalCamera3D,
   setCamera3D: externalSetCamera3D,
@@ -632,19 +628,6 @@ export function BattleField({
             👁️ 看破: {spottedCount}
           </span>
         )}
-
-        {stampede && (
-          <StampedeDragonTimer
-            stampede={stampede}
-            onFocusStampedeZone={() =>
-              updateCamera((prev) => ({
-                ...prev,
-                panX: 0,
-                panY: 0,
-              }))
-            }
-          />
-        )}
       </div>
 
       {/* 3D箱庭ボード本体（perspective内で平行移動・ズーム・チルトが適用される盤面） */}
@@ -880,9 +863,6 @@ export function BattleField({
       {inhibitors.map((inhib) => (
         <RenderInhibitor key={inhib.id} inhibitor={inhib} />
       ))}
-
-      {/* 2.2. 巨獣スタンピード回廊（中央危険ゾーン & 突進する巨獣群） */}
-      {stampede && <RenderStampede stampede={stampede} />}
 
       {/* 2.3. 流雲イベント（動的死角・地面の影と上空の雲） */}
       {cloudEvent && <RenderClouds cloudEvent={cloudEvent} />}

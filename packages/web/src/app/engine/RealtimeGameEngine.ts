@@ -25,12 +25,9 @@ import {
   FIELD_OBSTACLES,
 } from '../obstacles';
 import {
-  createInitialStampedeState,
   HOLD_AMBUSH_DASH_DURATION_SEC,
-  STAMPEDE_CRUSH_DAMAGE,
   SWAY_BACKSTEP_DISTANCE,
-  updateStampede,
-} from '../stampede';
+} from './combatAndMovement';
 import {
   createInitialCloudEventState,
   updateCloudEvent,
@@ -86,7 +83,6 @@ export function createInitialRealtimeGameState(randomize: boolean = false): Real
       isDestroyed: false,
       lastHitTime: undefined,
     })),
-    stampede: createInitialStampedeState(),
     cloudEvent: createInitialCloudEventState(),
     camera3D: { ...DEFAULT_CAMERA_3D },
     spottedCount: 0,
@@ -575,7 +571,6 @@ export class RealtimeGameEngine {
       unitsAfterHits: lightningRes.unitsAfterHits,
       inhibitors: this.state.inhibitors,
       obstacles: this.state.obstacles,
-      stampede: this.state.stampede,
       clouds: this.state.cloudEvent.phase === 'drifting' ? this.state.cloudEvent.clouds : undefined,
       dt,
       now,
@@ -626,55 +621,12 @@ export class RealtimeGameEngine {
       else if (this.state.cpuScore >= HOLE_WIN_SCORE) this.state.gameResult = 'lose';
     }
 
-    // 11. 巨獣スタンピードの進行更新 & 激突判定
-    const stampedeRes = updateStampede(dt, this.state.stampede, combatRes.finalUnits);
-    this.state.stampede = stampedeRes.nextState;
-
-    let unitsAfterStampede = combatRes.finalUnits;
-    const newAttackEffects = [...moveAtkRes.newAttackEffects];
-    if (stampedeRes.crushedUnitIds.length > 0) {
-      const crushedSet = new Set(stampedeRes.crushedUnitIds);
-      unitsAfterStampede = combatRes.finalUnits
-        .map((u) => {
-          if (crushedSet.has(u.id)) {
-            newAttackEffects.push({
-              id: `stampede_hit_${now}_${u.id}`,
-              attackerId: 'stampede',
-              fromX: u.x,
-              toX: u.x,
-              lane: u.lane ?? u.y,
-              toLane: u.lane ?? u.y,
-              fromY: u.y,
-              toY: u.y,
-              owner: u.owner === 'player' ? 'cpu' : 'player',
-              effectType: 'base_hit',
-              damage: STAMPEDE_CRUSH_DAMAGE,
-              createdAt: now,
-              duration: 400,
-            });
-            if (u.hasSpellShield) {
-              return { ...u, hasSpellShield: false };
-            }
-            const knockback = u.owner === 'player' ? -10 : 10;
-            return {
-              ...u,
-              hp: Math.max(0, u.hp - STAMPEDE_CRUSH_DAMAGE),
-              x: Math.max(5, Math.min(95, u.x + knockback)),
-              isStunnedUntil: now + 1500,
-              isStunned: true,
-            };
-          }
-          return u;
-        })
-        .filter((u) => u.hp > 0);
-    }
-
-    // 12. 流雲イベントの進行更新 & 雲隠れ（動的死角）判定
-    const cloudRes = updateCloudEvent(dt, this.state.cloudEvent, unitsAfterStampede);
+    // 11. 流雲イベントの進行更新 & 雲隠れ（動的死角）判定
+    const cloudRes = updateCloudEvent(dt, this.state.cloudEvent, combatRes.finalUnits);
     this.state.cloudEvent = cloudRes.nextState;
     this.state.units = cloudRes.updatedUnits;
 
-    // 13. 本拠地直接到達ダメージ反映
+    // 12. 本拠地直接到達ダメージ反映
     if (moveAtkRes.pDamageToCpu > 0) {
       this.state.cpuHp = Math.max(0, this.state.cpuHp - moveAtkRes.pDamageToCpu);
       if (this.state.cpuHp === 0) this.state.gameResult = 'win';
@@ -684,13 +636,13 @@ export class RealtimeGameEngine {
       if (this.state.playerHp === 0) this.state.gameResult = 'lose';
     }
 
-    // 14. エフェクト・遅延ヒットキューの更新と期限切れ掃除
+    // 13. エフェクト・遅延ヒットキューの更新と期限切れ掃除
     const aliveAttackEffects = this.state.attackEffects.filter(
       (e) => now - e.createdAt < e.duration + 300
     );
     this.state.attackEffects =
-      newAttackEffects.length > 0
-        ? [...aliveAttackEffects, ...newAttackEffects]
+      moveAtkRes.newAttackEffects.length > 0
+        ? [...aliveAttackEffects, ...moveAtkRes.newAttackEffects]
         : aliveAttackEffects;
 
     this.state.pendingLightningHits = [

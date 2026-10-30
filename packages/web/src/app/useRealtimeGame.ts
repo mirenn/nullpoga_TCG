@@ -188,7 +188,6 @@ export function useRealtimeGame() {
     units: state.units,
     inhibitors: state.inhibitors,
     obstacles: state.obstacles,
-    stampede: state.stampede,
     cloudEvent: state.cloudEvent,
     camera3D: state.camera3D,
     setCamera3D,

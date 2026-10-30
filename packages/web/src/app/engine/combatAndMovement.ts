@@ -5,7 +5,6 @@ import {
   Inhibitor,
   Owner,
   SpellEffect,
-  StampedeState,
   Unit,
 } from '../types';
 import { ALLY_MIN_GAP, MOVE_SPEED_SCALE } from '../cards';
@@ -45,16 +44,26 @@ import {
   ROAD_TURN_DECAY,
   roadPush,
 } from '../terrain';
-import {
-  COUNTER_HIT_ATTACK_BONUS,
-  COUNTER_HIT_COOLDOWN_MULT,
-  HOLD_AMBUSH_ATTACK_BONUS,
-  HOLD_AMBUSH_CHARGE_TIME_SEC,
-  HOLD_AMBUSH_DASH_SPEED_MULTIPLIER,
-  shouldCpuUnitHoldForStampede,
-  WHIFF_RECOVERY_FREEZE_MS,
-  WHIFF_VULNERABLE_MS,
-} from '../stampede';
+/** 立ち止まり（ホールド）による「待ち伏せ集中」の必要秒数 */
+export const HOLD_AMBUSH_CHARGE_TIME_SEC = 2.0;
+
+/** 待ち伏せ集中完了後の初回攻撃力ボーナス */
+export const HOLD_AMBUSH_ATTACK_BONUS = 2;
+
+/** 待ち伏せ解除後のダッシュ倍率 & 持続秒数 */
+export const HOLD_AMBUSH_DASH_SPEED_MULTIPLIER = 1.8;
+export const HOLD_AMBUSH_DASH_DURATION_SEC = 1.5;
+
+/** 寸止めバックステップ（スウェー）の後退距離 (%) */
+export const SWAY_BACKSTEP_DISTANCE = 4.5;
+
+/** 空振り（WHIFF）後の後隙・被カウンター脆弱時間 (ms) と 硬直時間 (ms) */
+export const WHIFF_VULNERABLE_MS = 2400;
+export const WHIFF_RECOVERY_FREEZE_MS = 800;
+
+/** 差し返し（カウンターヒット）時のボーナス攻撃力 & 次の攻撃CD短縮率 */
+export const COUNTER_HIT_ATTACK_BONUS = 2;
+export const COUNTER_HIT_COOLDOWN_MULT = 0.6;
 
 export const SCOUT_SWEEP_DURATION_SEC = 1.6; // 160度スキャンの所要時間（秒）
 export const SCOUT_TOTAL_ANGLE_DEG = 160; // 索敵の総角度（度）
@@ -504,7 +513,6 @@ export function updateUnitsMovementAndAttacks(params: {
   unitsAfterHits: Unit[];
   inhibitors: Inhibitor[];
   obstacles: FieldObstacle[];
-  stampede: StampedeState;
   clouds?: CloudEntity[];
   dt: number;
   now: number;
@@ -517,7 +525,7 @@ export function updateUnitsMovementAndAttacks(params: {
   cpuDamageToPlayer: number;
   obstacleMutated: boolean;
 } {
-  const { unitsAfterSpot, unitsAfterHits, inhibitors, obstacles, stampede, clouds, dt, now } = params;
+  const { unitsAfterSpot, unitsAfterHits, inhibitors, obstacles, clouds, dt, now } = params;
   const newAttackEffects: AttackEffect[] = [];
   const newPendingHits: PendingLightningHit[] = [];
   const attackTargets = new Map<string, CombatTarget>();
@@ -1062,7 +1070,6 @@ export function updateUnitsMovementAndAttacks(params: {
         u.hp > 0 &&
         (unit.owner === 'player' ? u.x > unit.x - 2 : u.x < unit.x + 2)
     );
-    const isCpuHolding = shouldCpuUnitHoldForStampede(unit, stampede);
     let isScouting = Boolean(unit.isScouting);
     let scoutProgress = unit.scoutProgress;
     let scoutTargetUnitId = unit.scoutTargetUnitId;
@@ -1117,9 +1124,7 @@ export function updateUnitsMovementAndAttacks(params: {
     }
 
     const isHolding =
-      (unit.owner === 'player' && (Boolean(unit.isHolding) || isScouting)) && !scoutTargetUnitId
-        ? true
-        : (unit.owner === 'player' && Boolean(unit.isHolding) && !scoutTargetUnitId) || isCpuHolding;
+      unit.owner === 'player' && (Boolean(unit.isHolding) || isScouting) && !scoutTargetUnitId;
 
     let holdDuration = unit.holdDuration || 0;
     let hasAmbushCharge = Boolean(unit.hasAmbushCharge);

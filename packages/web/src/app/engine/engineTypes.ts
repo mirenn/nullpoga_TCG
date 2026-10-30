@@ -6,7 +6,6 @@ import type {
   CpuSpawnWarning,
   Inhibitor,
   Owner,
-  StampedeState,
   CloudEventState,
 } from '../types';
 import type { DeckState } from '../cards';
@@ -139,7 +138,6 @@ export interface RealtimeGameState {
   units: Unit[];
   inhibitors: Inhibitor[];
   obstacles: FieldObstacle[];
-  stampede: StampedeState;
   cloudEvent: CloudEventState;
   camera3D: Camera3DState;
   spottedCount: number;

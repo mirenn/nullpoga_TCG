@@ -108,9 +108,9 @@ export function GuideModal({ isOpen, onClose }: GuideModalProps) {
                 </div>
               </div>
               <div style={styles.tipBox}>
-                <div style={styles.tipTitle}>🦣 巨獣スタンピード ＆ 🛑 タップ待機（待ち伏せ集中）</div>
+                <div style={styles.tipTitle}>🛑 タップ待機（スウェー＆待ち伏せ集中）</div>
                 <div style={styles.tipText}>
-                  フィールド中央（x=45〜55%）には定期的に巨獣の大群が突進！警報（🚨）が鳴ったらユニットをタップして待機（HOLD）させ、手前でやり過ごしましょう。2秒以上待機すると「待ち伏せ集中」が完了し、解除時に奇襲ダッシュ＆初回攻撃力+2！敵をおびき寄せてスタンピードに轢かせるトレインキルも爽快です。
+                  進軍中の味方ユニットをタップすると寸止め後退（スウェー）して待機状態（HOLD）になります。敵の攻撃空振りを誘って差し返したり、2秒以上待機して「待ち伏せ集中」を完了させると、タップ解除時に高速ダッシュ＆初回攻撃力+2で一気に敵陣へ切り込めます！
                 </div>
               </div>
             </div>
