@@ -3,14 +3,7 @@ import type { Unit } from '../../app/types';
 import { UnitSvgRenderer, hasUnitSvg, deriveAnimationState } from './UnitSvgRenderer';
 import { styles } from '../../app/page.styles';
 
-// ユニット本体(36px)の外側に一回り大きいリングを描き、アイコンと重ならず一目でゲージと分かるようにする
-const RING_SIZE = 46;
-const RING_CENTER = RING_SIZE / 2;
-const RING_OFFSET = -(RING_SIZE - 36) / 2;
-const COOLDOWN_RING_RADIUS = 20;
-const COOLDOWN_RING_CIRCUMFERENCE = 2 * Math.PI * COOLDOWN_RING_RADIUS; // ~103.67
-
-interface UnitCooldownRingProps {
+interface UnitCooldownBarProps {
   unit: Unit;
   isPlayer: boolean;
   isStunned: boolean;
@@ -18,10 +11,9 @@ interface UnitCooldownRingProps {
 }
 
 /**
- * ユニットの攻撃クールダウン（リロード時間）を円形枠のプログレスリングとして可視化する
+ * ユニットの攻撃クールダウン（リロード時間・攻撃前隙・麻痺）をHPバー直下の極細2pxバーとして可視化する
  */
-function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCooldownRingProps) {
-  // 攻撃力0のユニット（亀など盾役）は専用の防御フレーム（リロードゲージ不要）
+function UnitCooldownBar({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCooldownBarProps) {
   if (unit.attack === 0) {
     const shieldColor = isBlockingSpawn
       ? '#ea580c'
@@ -31,28 +23,9 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
       ? '#10b981'
       : '#f59e0b';
     return (
-      <svg
-        style={{
-          position: 'absolute',
-          top: RING_OFFSET,
-          left: RING_OFFSET,
-          width: RING_SIZE,
-          height: RING_SIZE,
-          pointerEvents: 'none',
-          overflow: 'visible',
-          zIndex: 2,
-        }}
-        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-      >
-        <circle
-          cx={RING_CENTER}
-          cy={RING_CENTER}
-          r={COOLDOWN_RING_RADIUS}
-          fill={unit.hasSpellShield ? 'rgba(56, 189, 248, 0.18)' : 'none'}
-          stroke={shieldColor}
-          strokeWidth={unit.hasSpellShield ? '3' : '2.5'}
-        />
-      </svg>
+      <div style={styles.unitCooldownBarBg}>
+        <div style={{ width: '100%', height: '100%', backgroundColor: shieldColor }} />
+      </div>
     );
   }
 
@@ -60,7 +33,6 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
   const cooldown = Math.max(0, unit.attackCooldown || 0);
   const isCharging = Boolean(unit.isCharging);
 
-  // チャージ中は前隙（タメ時間）の進行度を0〜100%で表現し、それ以外はクールダウン復帰度
   let rawProgress = 1;
   if (isCharging && unit.chargeStartTime && unit.attackWindup && unit.attackWindup > 0) {
     const elapsed = (Date.now() - unit.chargeStartTime) / 1000;
@@ -70,17 +42,9 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
   }
 
   const isReady = !isCharging && rawProgress >= 0.999;
-  // iPad WebKitでの毎Tick SVG属性再計算・再ラスタライズ負荷を抑えるため20段階(5%刻み)に量子化
   const progress = isReady ? 1 : Math.round(rawProgress * 20) / 20;
 
-  // トラック（下地の溝）: 白系の半透明にして、暗い背景でも未充填部分が見えるようにする
-  let trackColor = 'rgba(255, 255, 255, 0.28)';
-  if (isBlockingSpawn) trackColor = 'rgba(234, 88, 12, 0.25)';
-  if (isStunned) trackColor = 'rgba(234, 179, 8, 0.15)';
-
-  // ゲージの色: リロード中はオレンジ（陣営色と区別）、攻撃準備完了で陣営色に変化
   let gaugeColor = '#fb923c';
-
   if (isBlockingSpawn) {
     gaugeColor = '#ea580c';
   } else if (isStunned) {
@@ -91,69 +55,18 @@ function UnitCooldownRing({ unit, isPlayer, isStunned, isBlockingSpawn }: UnitCo
     gaugeColor = isPlayer ? '#00f0ff' : '#ff1744';
   }
 
-  const strokeDashoffset = COOLDOWN_RING_CIRCUMFERENCE * (1 - progress);
-
-  // ゲージ先端のドット位置（12時から時計回り）
-  const tipAngle = progress * 2 * Math.PI - Math.PI / 2;
-  const tipX = RING_CENTER + COOLDOWN_RING_RADIUS * Math.cos(tipAngle);
-  const tipY = RING_CENTER + COOLDOWN_RING_RADIUS * Math.sin(tipAngle);
-  const showTip = !isStunned && !isReady && progress > 0.01;
-
   return (
-    <svg
-      style={{
-        position: 'absolute',
-        top: RING_OFFSET,
-        left: RING_OFFSET,
-        width: RING_SIZE,
-        height: RING_SIZE,
-        pointerEvents: 'none',
-        overflow: 'visible',
-        zIndex: 2,
-      }}
-      viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-    >
-      {/* ベース下地の溝（未充填部分） */}
-      <circle
-        cx={RING_CENTER}
-        cy={RING_CENTER}
-        r={COOLDOWN_RING_RADIUS}
-        fill="none"
-        stroke={trackColor}
-        strokeWidth="2.4"
+    <div style={styles.unitCooldownBarBg}>
+      <div
+        style={{
+          width: isStunned ? '100%' : `${progress * 100}%`,
+          height: '100%',
+          background: isStunned
+            ? 'repeating-linear-gradient(90deg, #eab308 0 3px, transparent 3px 5px)'
+            : gaugeColor,
+        }}
       />
-
-      {/* 状態に応じたゲージ表示 */}
-      {isStunned ? (
-        // 麻痺中は破線で停止を表現
-        <circle
-          cx={RING_CENTER}
-          cy={RING_CENTER}
-          r={COOLDOWN_RING_RADIUS}
-          fill="none"
-          stroke={gaugeColor}
-          strokeWidth="3.2"
-          strokeDasharray="4 3"
-        />
-      ) : (
-        // クールダウン進行ゲージ（上部12時から時計回りに満ちる。iPad SafariでのGPUフィルタ負荷を避けるためfilter: drop-shadowを使わず鮮明なストロークで描画）
-        <circle
-          cx={RING_CENTER}
-          cy={RING_CENTER}
-          r={COOLDOWN_RING_RADIUS}
-          fill="none"
-          stroke={gaugeColor}
-          strokeWidth={isReady || isCharging ? 3.5 : 3.0}
-          strokeDasharray={COOLDOWN_RING_CIRCUMFERENCE}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap={progress > 0.05 ? 'round' : 'butt'}
-          transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
-        />
-      )}
-      {showTip && (
-        <circle cx={tipX} cy={tipY} r="2.6" fill="#fff" stroke={gaugeColor} strokeWidth="1" />
-      )}
-    </svg>
+    </div>
   );
 }
 
@@ -190,11 +103,6 @@ export const RenderUnit = React.memo(function RenderUnit({
   const attackClass = isAttacking
     ? (isPlayer ? 'unit-attacking-player' : 'unit-attacking-cpu')
     : '';
-
-  // クールダウン完了状態（攻撃可能）かどうか
-  const interval = unit.attackInterval || 1.0;
-  const cooldown = Math.max(0, unit.attackCooldown || 0);
-  const isReady = interval > 0 ? (cooldown / interval) <= 0.001 : true;
 
   const hasSvg = hasUnitSvg(unit.cardNo);
 
@@ -549,17 +457,25 @@ export const RenderUnit = React.memo(function RenderUnit({
         </div>
       )}
 
-      {/* HPバー (雲の死角にいる敵ユニットはHP秘匿) */}
+      {/* HPバー & クールダウンバー (雲の死角にいる敵ユニットは秘匿) */}
       {!isCpuHiddenInCloud && (
-        <div style={styles.unitHpBarBg}>
-          <div
-            style={{
-              ...styles.unitHpBarFill,
-              width: `${Math.max(0, (unit.hp / unit.maxHp) * 100)}%`,
-              backgroundColor: isPlayer ? '#22c55e' : '#ef4444',
-            }}
+        <>
+          <div style={styles.unitHpBarBg}>
+            <div
+              style={{
+                ...styles.unitHpBarFill,
+                width: `${Math.max(0, (unit.hp / unit.maxHp) * 100)}%`,
+                backgroundColor: isPlayer ? '#22c55e' : '#ef4444',
+              }}
+            />
+          </div>
+          <UnitCooldownBar
+            unit={unit}
+            isPlayer={isPlayer}
+            isStunned={isStunned}
+            isBlockingSpawn={isBlockingSpawn}
           />
-        </div>
+        </>
       )}
 
       {/* ユニット本体アイコン */}
@@ -579,46 +495,13 @@ export const RenderUnit = React.memo(function RenderUnit({
           ...styles.unitBody,
           pointerEvents: canToggleHold ? 'auto' : undefined,
           cursor: canToggleHold ? 'pointer' : undefined,
-          outline: isScouting
-            ? '2px dashed #06b6d4'
-            : isHolding
-            ? '2px dashed #f59e0b'
-            : undefined,
-          outlineOffset: isScouting || isHolding ? '2px' : undefined,
-          border: unit.isSpotted ? '1.5px solid #facc15' : 'none',
-          backgroundColor: isPlayer ? '#1e293b' : '#2d1515',
           transform: `${isPlayer ? '' : 'scaleX(-1) '}rotate(${unit.spin ?? 0}deg)`,
           transition: unit.spin ? 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)' : undefined,
-          boxShadow: isBlockingSpawn
-            ? '0 0 12px #ea580c'
-            : unit.hasAmbushCharge
-            ? '0 0 18px #f59e0b, 0 0 28px rgba(251, 191, 36, 0.95)'
-            : unit.isSpotted
-            ? '0 0 14px #facc15, 0 0 22px rgba(234, 179, 8, 0.85)'
-            : isStunned
-            ? '0 0 10px #eab308'
-            : hasBatBuff
-            ? '0 0 14px #a855f7, 0 0 20px #7e22ce'
-            : unit.isSprinting
-            ? '0 0 14px #06b6d4, 0 0 20px #0284c7'
-            : unit.isCharging
-            ? '0 0 14px #38bdf8, 0 0 20px #facc15'
-            : isReady
-            ? (isPlayer ? '0 0 8px rgba(56, 189, 248, 0.6)' : '0 0 8px rgba(244, 63, 94, 0.6)')
-            : '0 2px 4px rgba(0,0,0,0.5)',
           animation: unit.hasAmbushCharge ? 'unit-ambush-charge-pulse 1.2s infinite alternate' : undefined,
           // SVG の尻尾・触手がはみ出せるように
           overflow: hasSvg ? 'visible' : undefined,
         }}
       >
-        {/* 円形攻撃クールダウンゲージ（リロードリング） */}
-        <UnitCooldownRing
-          unit={unit}
-          isPlayer={isPlayer}
-          isStunned={isStunned}
-          isBlockingSpawn={isBlockingSpawn}
-        />
-
         {/* SVG コンポーネント or 絵文字フォールバック (雲の死角の敵は「❓」シルエット) */}
         {isCpuHiddenInCloud ? (
           <span style={{ fontSize: '20px', textShadow: '0 0 6px #000', opacity: 0.9 }}>❓</span>
