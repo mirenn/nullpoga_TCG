@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+import React, { useRef, useState, useCallback, useMemo, useEffect } from 'react';
 import { useCircleGame } from './useCircleGame';
-import { PlayerCommandBar } from '../../components/battle/PlayerCommandBar';
+import { CircleSidePanel } from './CircleSidePanel';
 import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { MAX_MANA } from '../engine/engineTypes';
@@ -68,6 +68,28 @@ export default function CircleModePage() {
     setDraggedCardIndex(idx);
   }, []);
 
+  // Keyboard shortcut [1] - [4] for card selection, Escape to cancel
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedCardIndex(null);
+        return;
+      }
+      const num = parseInt(e.key, 10);
+      if (num >= 1 && num <= 4) {
+        const idx = num - 1;
+        if (idx < playerDeck.hand.length) {
+          const card = playerDeck.hand[idx];
+          if (card && playerMana >= card.manaCost) {
+            setSelectedCardIndex((prev) => (prev === idx ? null : idx));
+          }
+        }
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [playerDeck.hand, playerMana]);
+
   const prediction = useMemo(() => {
     const cardIndex = draggedCardIndex !== null ? draggedCardIndex : selectedCardIndex;
     if (cardIndex !== null && mousePos) {
@@ -88,137 +110,171 @@ export default function CircleModePage() {
 
   return (
     <div style={{ ...styles.container, touchAction: 'none' }}>
-      <div style={styles.topBar}>
-        <div style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>Circle Mode (Experimental)</div>
+      {/* Top Header */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          padding: '8px 16px',
+          backgroundColor: '#0f172a',
+          borderRadius: '8px',
+          border: '1px solid #1e293b',
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ fontSize: '1.15rem', fontWeight: 'bold' }}>Circle Mode (Experimental)</div>
         <div style={{ display: 'flex', gap: '20px' }}>
           <div style={{ color: '#3b82f6', fontWeight: 'bold' }}>Player: {score.p} / {MAX_SCORE}</div>
           <div style={{ color: '#ef4444', fontWeight: 'bold' }}>CPU: {score.c} / {MAX_SCORE}</div>
         </div>
       </div>
 
-      <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
+      {/* Main Board & Side Panel Container */}
+      <div
+        style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '24px',
+          minHeight: 0,
+          overflow: 'hidden',
+          padding: '8px 0',
+        }}
+      >
+        {/* 円盤ボードエリア */}
         <div
-          ref={containerRef}
-          onPointerMove={handlePointerMove}
-          onPointerLeave={handlePointerLeave}
-          onPointerUp={handlePointerUp}
           style={{
-            width: W,
-            height: W,
+            flex: 1,
+            height: '100%',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
             position: 'relative',
-            backgroundColor: isLight ? '#eef2f7' : '#1c2230',
-            borderRadius: '50%',
-            border: `2px solid ${fg}`,
-            overflow: 'hidden',
-            cursor: (draggedCardIndex !== null || selectedCardIndex !== null) ? 'crosshair' : 'default',
           }}
         >
-          <svg width={W} height={W} viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}>
-            {/* Board Rotational Lines */}
-            {Array.from({ length: 12 }).map((_, i) => {
-              const a = theta + (i * Math.PI) / 6;
-              return (
-                <line
+          <div
+            ref={containerRef}
+            onPointerMove={handlePointerMove}
+            onPointerLeave={handlePointerLeave}
+            onPointerUp={handlePointerUp}
+            style={{
+              width: W,
+              height: W,
+              position: 'relative',
+              backgroundColor: isLight ? '#eef2f7' : '#1c2230',
+              borderRadius: '50%',
+              border: `2px solid ${fg}`,
+              overflow: 'hidden',
+              cursor: (draggedCardIndex !== null || selectedCardIndex !== null) ? 'crosshair' : 'default',
+              boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+            }}
+          >
+            <svg width={W} height={W} viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}>
+              {/* Board Rotational Lines */}
+              {Array.from({ length: 12 }).map((_, i) => {
+                const a = theta + (i * Math.PI) / 6;
+                return (
+                  <line
+                    key={i}
+                    x1={0} y1={0}
+                    x2={fmt(Math.cos(a) * R)} y2={fmt(Math.sin(a) * R)}
+                    stroke={dim} strokeWidth={1}
+                  />
+                );
+              })}
+
+              {/* Gaps / Rings */}
+              {GAPS.map((gapAngle, i) => {
+                const startAngle = gapAngle + GAPW + theta;
+                const endAngle = (i + 1 < GAPS.length ? GAPS[i + 1] : GAPS[0] + Math.PI * 2) - GAPW + theta;
+                const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 0 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
+                return (
+                  <path key={i} d={path} fill="none" stroke={fg} strokeWidth={5} strokeLinecap="round" />
+                );
+              })}
+
+              {/* Bumpers */}
+              {BUMPERS.map(([ba, bd, br], i) => (
+                <circle
                   key={i}
-                  x1={0} y1={0}
-                  x2={fmt(Math.cos(a) * R)} y2={fmt(Math.sin(a) * R)}
-                  stroke={dim} strokeWidth={1}
+                  cx={fmt(Math.cos(ba + theta) * bd)}
+                  cy={fmt(Math.sin(ba + theta) * bd)}
+                  r={br}
+                  fill={isLight ? '#94a3b8' : '#64748b'}
                 />
-              );
-            })}
+              ))}
 
-            {/* Gaps / Rings */}
-            {GAPS.map((gapAngle, i) => {
-              const startAngle = gapAngle + GAPW + theta;
-              const endAngle = (i + 1 < GAPS.length ? GAPS[i + 1] : GAPS[0] + Math.PI * 2) - GAPW + theta;
-              const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 0 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
-              return (
-                <path key={i} d={path} fill="none" stroke={fg} strokeWidth={5} strokeLinecap="round" />
-              );
-            })}
+              {/* Center Hole */}
+              <circle cx={0} cy={0} r={HOLE} fill="#000" />
 
-            {/* Bumpers */}
-            {BUMPERS.map(([ba, bd, br], i) => (
-              <circle
-                key={i}
-                cx={fmt(Math.cos(ba + theta) * bd)}
-                cy={fmt(Math.sin(ba + theta) * bd)}
-                r={br}
-                fill={isLight ? '#94a3b8' : '#64748b'}
-              />
-            ))}
+              {/* Spawns */}
+              <circle cx={SPAWN.p[0]} cy={SPAWN.p[1]} r={9} fill="#3b82f6" opacity={0.35} />
+              <circle cx={SPAWN.c[0]} cy={SPAWN.c[1]} r={9} fill="#ef4444" opacity={0.35} />
 
-            {/* Center Hole */}
-            <circle cx={0} cy={0} r={HOLE} fill="#000" />
-
-            {/* Spawns */}
-            <circle cx={SPAWN.p[0]} cy={SPAWN.p[1]} r={9} fill="#3b82f6" opacity={0.35} />
-            <circle cx={SPAWN.c[0]} cy={SPAWN.c[1]} r={9} fill="#ef4444" opacity={0.35} />
-
-            {/* Prediction Line */}
-            {prediction && (
-              <polyline
-                points={prediction.pts.map(p => `${p[0]},${p[1]}`).join(' ')}
-                fill="none"
-                stroke={prediction.hit ? '#22c55e' : 'rgba(0,0,0,0.4)'}
-                strokeWidth={2}
-                strokeDasharray="4,5"
-              />
-            )}
-          </svg>
-
-          {/* Units (Overlay) */}
-          {units.map(u => (
-            <div
-              key={u.id}
-              style={{
-                position: 'absolute',
-                left: u.x + W / 2,
-                top: u.y + W / 2,
-                transform: 'translate(-50%, -50%)',
-                width: 24,
-                height: 24,
-                pointerEvents: 'none',
-              }}
-            >
-              {hasUnitSvg(u.cardNo) ? (
-                <UnitSvgRenderer
-                  cardNo={u.cardNo}
-                  isPlayer={u.owner === 'p'}
-                  state={u.isEngaged ? 'attacking' : 'walking'}
-
-
+              {/* Prediction Line */}
+              {prediction && (
+                <polyline
+                  points={prediction.pts.map(p => `${p[0]},${p[1]}`).join(' ')}
+                  fill="none"
+                  stroke={prediction.hit ? '#22c55e' : 'rgba(0,0,0,0.4)'}
+                  strokeWidth={2}
+                  strokeDasharray="4,5"
                 />
-              ) : (
-                <div style={{ width: '100%', height: '100%', backgroundColor: u.owner === 'p' ? '#3b82f6' : '#ef4444', borderRadius: '50%' }} />
               )}
-              {/* HP Bar */}
-              <div style={{ position: 'absolute', bottom: -4, left: 0, width: '100%', height: 3, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                <div style={{ width: `${(u.hp / u.maxHp) * 100}%`, height: '100%', backgroundColor: '#22c55e' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+            </svg>
 
-      <PlayerCommandBar
-        playerHp={100}
-        playerMana={playerMana}
-        maxMana={MAX_MANA}
-        nextCard={playerDeck.nextCard}
-        deckCount={playerDeck.deck.length}
-        discardCount={playerDeck.discardPile.length}
-        hand={playerDeck.hand}
-        selectedCardIndex={selectedCardIndex}
-        draggedCardIndex={draggedCardIndex}
-        isDragging={draggedCardIndex !== null}
-        gameResult={gameResult}
-        checkCanPlayCard={checkCanPlayCard}
-        setSelectedCardIndex={setSelectedCardIndex}
-        handleDragStart={handleDragStart}
-        handleDragEnd={() => setDraggedCardIndex(null)}
-        handleCardPointerDown={(e, idx) => setSelectedCardIndex(idx)}
-      />
+            {/* Units (Overlay) */}
+            {units.map(u => (
+              <div
+                key={u.id}
+                style={{
+                  position: 'absolute',
+                  left: u.x + W / 2,
+                  top: u.y + W / 2,
+                  transform: 'translate(-50%, -50%)',
+                  width: 24,
+                  height: 24,
+                  pointerEvents: 'none',
+                }}
+              >
+                {hasUnitSvg(u.cardNo) ? (
+                  <UnitSvgRenderer
+                    cardNo={u.cardNo}
+                    isPlayer={u.owner === 'p'}
+                    state={u.isEngaged ? 'attacking' : 'walking'}
+                  />
+                ) : (
+                  <div style={{ width: '100%', height: '100%', backgroundColor: u.owner === 'p' ? '#3b82f6' : '#ef4444', borderRadius: '50%' }} />
+                )}
+                {/* HP Bar */}
+                <div style={{ position: 'absolute', bottom: -4, left: 0, width: '100%', height: 3, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div style={{ width: `${(u.hp / u.maxHp) * 100}%`, height: '100%', backgroundColor: '#22c55e' }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* 右サイドパネル (手札・マナ・NEXT) */}
+        <CircleSidePanel
+          playerMana={playerMana}
+          maxMana={MAX_MANA}
+          deckCount={playerDeck.deck.length}
+          nextCard={playerDeck.nextCard}
+          hand={playerDeck.hand}
+          selectedCardIndex={selectedCardIndex}
+          draggedCardIndex={draggedCardIndex}
+          gameResult={gameResult}
+          checkCanPlayCard={checkCanPlayCard}
+          setSelectedCardIndex={setSelectedCardIndex}
+          handleDragStart={handleDragStart}
+          handleDragEnd={() => setDraggedCardIndex(null)}
+          handleCardPointerDown={(idx) => setSelectedCardIndex(idx)}
+        />
+      </div>
 
       {gameResult !== 'playing' && (
         <GameResultModal
