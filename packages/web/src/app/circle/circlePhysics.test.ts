@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -107,4 +107,18 @@ for (let i = 0; i < 15; i++) {
 const afterSpeed = Math.hypot(gravUnit.vx, gravUnit.vy);
 assert.ok(gravUnit.vy < -10, `Expected trajectory to bend toward gravity well (vy < -10), got vy=${gravUnit.vy}`);
 assert.ok(afterSpeed > 100, `Expected swing-by speed boost (> 100), got ${afterSpeed}`);
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: depth scale shrinks toward center, expanding effective inner field');
+const outerScale = getDepthScale(0, R);
+const innerRingScale = getDepthScale(0, 70);
+const deepCenterScale = getDepthScale(0, 15);
+assert.strictEqual(outerScale, 1);
+assert.ok(innerRingScale < outerScale && innerRingScale > 0.7, `Expected inner ring scale around 0.75, got ${innerRingScale}`);
+assert.ok(deepCenterScale < 0.5, `Expected deep center scale < 0.5, got ${deepCenterScale}`);
+const outerUnit: CircleUnit = { ...gravUnit, x: 0, y: 180, vx: 100, vy: 0, t: 5 };
+const deepUnit: CircleUnit = { ...gravUnit, x: 0, y: 20, vx: 100, vy: 0, t: 5 };
+const [outerVx] = getUnitTangentVelocity(outerUnit, 0);
+const [deepVx] = getUnitTangentVelocity(deepUnit, 0);
+assert.ok(deepVx < outerVx * 0.55, `Expected apparent velocity in deep center (${deepVx}) to be < 55% of outer rim (${outerVx})`);
 console.log('  -> PASSED');

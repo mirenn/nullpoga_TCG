@@ -1,9 +1,10 @@
 export const W = 420;
 export const C = W / 2;
 export const R = 195;
-export const HOLE = 18;
+export const HOLE = 12;
 export const RING = 70;
 export const UR = 7;
+export const MIN_DEPTH_SCALE = 0.35;
 // SPEED scalar reference from prototype. We will scale card speed using this.
 export const BASE_SPEED = 110;
 // 射出時の初速ボーナスと減衰率（外周の回転流速を突破して狙った方向へ飛び出し、減速後は回転に流される）
@@ -83,21 +84,33 @@ export const reflect = (u: CircleUnit, nx: number, ny: number, vn: number) => {
 export type StepResult = 'hole' | 'dead' | null;
 
 /**
+ * 中心に向かって深く（遠くに）なるすり鉢状の遠近スケール係数 (MIN_DEPTH_SCALE 〜 1.0)
+ * 外周付近は手前(1.0)に見え、内周(RING〜中心HOLE)へ進むほど遠くの深い谷底へ縮小する
+ */
+export function getDepthScale(x: number, y: number): number {
+  const ratio = Math.min(1, Math.hypot(x, y) / R);
+  const curve = 1 - Math.pow(1 - ratio, 2.2);
+  return MIN_DEPTH_SCALE + (1 - MIN_DEPTH_SCALE) * curve;
+}
+
+/**
  * ユニットの現在の軌道接線ベクトル (dx/dt, dy/dt) を返す
- * 自力の推進ベクトル(初速ブースト込み)と盤面回転による流速(-w*y, w*x)の合成ベクトル
+ * 自力の推進ベクトル(初速ブースト・遠近深度スケール込み)と盤面回転による流速(-w*y, w*x)の合成ベクトル
  */
 export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA): [number, number] {
   const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
-  return [u.vx * boostScale - w * u.y, u.vy * boostScale + w * u.x];
+  const depthScale = getDepthScale(u.x, u.y);
+  return [u.vx * boostScale * depthScale - w * u.y, u.vy * boostScale * depthScale + w * u.x];
 }
 
 /**
  * 攻撃対象 b が a の探知範囲内にいるか判定する
- * 電気クラゲ(cardNo=6)は軌道の接線方向(実際の移動方向)への長方形、それ以外は全方位円形
+ * 電気クラゲ(cardNo=6)は軌道の接線方向(実際の移動方向)への長方形、それ以外は全方位円形（遠近深度スケールを反映）
  */
 export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA): boolean {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
+  const depthScale = getDepthScale(a.x, a.y);
   if (a.cardNo === JELLYFISH_CARD_NO) {
     const [tvx, tvy] = getUnitTangentVelocity(a, w);
     const len = Math.hypot(tvx, tvy) || 1;
@@ -105,9 +118,9 @@ export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA)
     const fy = tvy / len;
     const forward = dx * fx + dy * fy;
     const lateral = Math.abs(-dx * fy + dy * fx);
-    return forward >= 0 && forward <= a.range && lateral <= JELLYFISH_HALF_WIDTH;
+    return forward >= 0 && forward <= a.range * depthScale && lateral <= JELLYFISH_HALF_WIDTH * depthScale;
   }
-  return Math.hypot(dx, dy) < a.range;
+  return Math.hypot(dx, dy) < a.range * depthScale;
 }
 
 /**
@@ -121,18 +134,20 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   const d = Math.hypot(u.x, u.y);
   if (d < HOLE) return 'hole';
 
+  const ur = UR * getDepthScale(u.x, u.y);
+
   // 速度ベクトルの法線成分 (反射計算用)
   const nx = u.x / d;
   const ny = u.y / d;
   const vn = u.vx * nx + u.vy * ny;
 
   // 外周壁の反射
-  if (d > R - UR && vn > 0) {
+  if (d > R - ur && vn > 0) {
     reflect(u, nx, ny, vn);
   }
 
   // リング壁(すき間あり)の反射
-  if (Math.abs(d - RING) < UR) {
+  if (Math.abs(d - RING) < ur) {
     const a = Math.atan2(u.y, u.x) - th;
     if (!GAPS.some((g) => Math.abs(angDiff(a, g)) < GAPW) && vn * (d - RING) < 0) {
       reflect(u, nx, ny, vn);
@@ -144,7 +159,7 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
     const dx = u.x - Math.cos(ba + th) * bd;
     const dy = u.y - Math.sin(ba + th) * bd;
     const dd = Math.hypot(dx, dy);
-    if (dd < br + UR) {
+    if (dd < br + ur) {
       const mx = dx / dd;
       const my = dy / dd;
       const v2 = u.vx * mx + u.vy * my;
@@ -169,7 +184,7 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
     if (s >= 0 && s <= rLen) {
       const cx = x1 + s * tx;
       const cy = y1 + s * ty;
-      if (Math.hypot(u.x - cx, u.y - cy) < RAIL_CAPTURE_WIDTH + UR) {
+      if (Math.hypot(u.x - cx, u.y - cy) < RAIL_CAPTURE_WIDTH + ur) {
         const dir = u.vx * tx + u.vy * ty < -u.speed * 0.25 ? -1 : 1;
         const glideSpeed = Math.max(Math.hypot(u.vx, u.vy), u.speed * RAIL_SPEED_MULT);
         u.vx = tx * dir * glideSpeed;
@@ -244,7 +259,7 @@ export function predict(
   let th = currentTheta;
   let hit = false;
 
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < 320; i++) {
     th += w / 60;
     const r = stepPhysics(u, 1 / 60, th, w);
     pts.push([u.x, u.y]);

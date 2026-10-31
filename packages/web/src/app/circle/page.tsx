@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity } from './circlePhysics';
+import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -194,6 +194,35 @@ export default function CircleModePage() {
               viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}
               style={{ position: 'absolute', inset: 0, display: 'block', width: '100%', height: '100%' }}
             >
+              <defs>
+                {/* 中心に向かって深く（遠くに）落ち込むすり鉢状の陰影グラデーション */}
+                <radialGradient id="circleFunnelGrad" cx="50%" cy="50%" r="50%">
+                  <stop offset="0%" stopColor="#090d16" />
+                  <stop offset="10%" stopColor="#1e293b" />
+                  <stop offset="24%" stopColor="#64748b" stopOpacity={0.55} />
+                  <stop offset="40%" stopColor="#94a3b8" stopOpacity={0.32} />
+                  <stop offset="68%" stopColor="#cbd5e1" stopOpacity={0.14} />
+                  <stop offset="100%" stopColor="#eef2f7" stopOpacity={0} />
+                </radialGradient>
+              </defs>
+
+              {/* すり鉢状の深度グラデーション背景 */}
+              <circle cx={0} cy={0} r={R} fill="url(#circleFunnelGrad)" />
+
+              {/* 遠近感を表す同心円グリッド（中心に向かうほど間隔が詰まり深さを強調） */}
+              {[162, 130, 100, 52, 36, 23].map((cr, idx) => (
+                <circle
+                  key={`depth-ring-${cr}`}
+                  cx={0}
+                  cy={0}
+                  r={cr}
+                  fill="none"
+                  stroke={idx >= 3 ? 'rgba(15, 23, 42, 0.22)' : dim}
+                  strokeWidth={idx >= 3 ? 1.2 : 1}
+                  strokeDasharray={idx >= 3 ? '3,3' : undefined}
+                />
+              ))}
+
               {/* Board Rotational Lines */}
               {Array.from({ length: 12 }).map((_, i) => {
                 const a = theta + (i * Math.PI) / 6;
@@ -302,10 +331,11 @@ export default function CircleModePage() {
                 />
               )}
 
-              {/* 電気クラゲの進行方向(軌道の接線方向)・長方形探知範囲 */}
+              {/* 電気クラゲの進行方向(軌道の接線方向)・長方形探知範囲（中心ほど深く小さくなる遠近スケール反映） */}
               {units.filter(u => u.cardNo === JELLYFISH_CARD_NO).map(u => {
                 const [tvx, tvy] = getUnitTangentVelocity(u, OMEGA);
                 const deg = (Math.atan2(tvy, tvx) * 180) / Math.PI;
+                const depthScale = getDepthScale(u.x, u.y);
                 const col = u.owner === 'p' ? '#3b82f6' : '#ef4444';
                 return (
                   <rect
@@ -314,7 +344,7 @@ export default function CircleModePage() {
                     y={-JELLYFISH_HALF_WIDTH}
                     width={u.range}
                     height={JELLYFISH_HALF_WIDTH * 2}
-                    transform={`translate(${fmt(u.x)}, ${fmt(u.y)}) rotate(${fmt(deg)})`}
+                    transform={`translate(${fmt(u.x)}, ${fmt(u.y)}) rotate(${fmt(deg)}) scale(${fmt(depthScale)})`}
                     fill={col}
                     fillOpacity={u.isEngaged ? 0.16 : 0.08}
                     stroke={col}
@@ -326,11 +356,12 @@ export default function CircleModePage() {
               })}
             </svg>
 
-            {/* Units (Overlay) */}
+            {/* Units (Overlay: 中心に近づくほど遠く深くなるよう scale と zIndex を遠近変化させる) */}
             {units.map(u => {
               const isPlayer = u.owner === 'p';
               const teamColor = isPlayer ? '#3b82f6' : '#ef4444';
               const teamBg = isPlayer ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+              const depthScale = getDepthScale(u.x, u.y);
               return (
                 <div
                   key={u.id}
@@ -339,7 +370,8 @@ export default function CircleModePage() {
                     position: 'absolute',
                     left: `${((u.x + W / 2) / W) * 100}%`,
                     top: `${((u.y + W / 2) / W) * 100}%`,
-                    transform: 'translate(-50%, -50%)',
+                    transform: `translate(-50%, -50%) scale(${fmt(depthScale)})`,
+                    zIndex: Math.round(depthScale * 100),
                     width: 30,
                     height: 30,
                     borderRadius: '50%',
