@@ -6,7 +6,7 @@ import { CircleSidePanel } from './CircleSidePanel';
 import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN } from './circlePhysics';
+import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 
@@ -242,6 +242,28 @@ export default function CircleModePage() {
                   strokeDasharray="4,5"
                 />
               )}
+
+              {/* 電気クラゲの進行方向・長方形探知範囲 */}
+              {units.filter(u => u.cardNo === JELLYFISH_CARD_NO).map(u => {
+                const deg = (Math.atan2(u.vy, u.vx) * 180) / Math.PI;
+                const col = u.owner === 'p' ? '#3b82f6' : '#ef4444';
+                return (
+                  <rect
+                    key={`range-${u.id}`}
+                    x={0}
+                    y={-JELLYFISH_HALF_WIDTH}
+                    width={u.range}
+                    height={JELLYFISH_HALF_WIDTH * 2}
+                    transform={`translate(${fmt(u.x)}, ${fmt(u.y)}) rotate(${fmt(deg)})`}
+                    fill={col}
+                    fillOpacity={u.isEngaged ? 0.16 : 0.08}
+                    stroke={col}
+                    strokeOpacity={0.45}
+                    strokeWidth={1.2}
+                    strokeDasharray="4,3"
+                  />
+                );
+              })}
             </svg>
 
             {/* Units (Overlay) */}

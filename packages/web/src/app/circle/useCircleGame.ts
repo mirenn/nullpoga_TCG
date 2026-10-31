@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_REGEN_PER_SEC } from '../cards';
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
-import { CircleUnit, OMEGA, SPAWN, stepPhysics, BASE_SPEED, MAX_SCORE } from './circlePhysics';
+import { CircleUnit, OMEGA, SPAWN, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE } from './circlePhysics';
 import { computeCpuLaunchAngle } from './circleCpu';
 
 const MONSTER_CARDS = CARD_POOL.filter((c) => c.type === 'MONSTER');
@@ -116,9 +116,9 @@ export function useCircleGame() {
         let minDist = Infinity;
 
         for (const b of nextUnits) {
-          if (a.owner !== b.owner) {
+          if (a.owner !== b.owner && isInAttackRange(a, b)) {
             const dist = Math.hypot(a.x - b.x, a.y - b.y);
-            if (dist < a.range && dist < minDist) {
+            if (dist < minDist) {
               minDist = dist;
               nearestEnemy = b;
             }

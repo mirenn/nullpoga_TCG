@@ -9,6 +9,8 @@ export const BASE_SPEED = 110;
 // 射出時の初速ボーナスと減衰率（外周の回転流速を突破して狙った方向へ飛び出し、減速後は回転に流される）
 export const LAUNCH_SPEED_BONUS = 200;
 export const LAUNCH_DECAY_RATE = 1.4;
+export const JELLYFISH_CARD_NO = 6;
+export const JELLYFISH_HALF_WIDTH = 26; // 通常モードの ENGAGE_HALF_WIDTH_Y(6.5) * 4
 export const TAU = Math.PI * 2;
 export const GAPS = [0, Math.PI];
 export const GAPW = 0.38;
@@ -66,18 +68,34 @@ export const reflect = (u: CircleUnit, nx: number, ny: number, vn: number) => {
 export type StepResult = 'hole' | 'dead' | null;
 
 /**
+ * 攻撃対象 b が a の探知範囲内にいるか判定する
+ * 電気クラゲ(cardNo=6)は進行方向(vx,vy)への長方形、それ以外は全方位円形
+ */
+export function isInAttackRange(a: CircleUnit, b: CircleUnit): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  if (a.cardNo === JELLYFISH_CARD_NO) {
+    const len = Math.hypot(a.vx, a.vy) || 1;
+    const fx = a.vx / len;
+    const fy = a.vy / len;
+    const forward = dx * fx + dy * fy;
+    const lateral = Math.abs(-dx * fy + dy * fx);
+    return forward >= 0 && forward <= a.range && lateral <= JELLYFISH_HALF_WIDTH;
+  }
+  return Math.hypot(dx, dy) < a.range;
+}
+
+/**
  * ユニットの物理挙動を1ステップ進める
- * 交戦中(isEngaged=true)の場合は vx, vy の前進成分は0になるが、回転(ω)による流されは適用する。
  */
 export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA): StepResult {
   const x = u.x;
   const y = u.y;
 
-  // 交戦中は前進速度(vx,vy)を無視し、回転の流され(-w*y, w*x)のみ適用する
   // 射出直後は初速ボーナスを乗せ、時間経過(u.t)とともに本来のカード速度(u.speed)へ減衰させる
   const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
-  const currentVx = u.isEngaged ? 0 : u.vx * boostScale;
-  const currentVy = u.isEngaged ? 0 : u.vy * boostScale;
+  const currentVx = u.vx * boostScale;
+  const currentVy = u.vy * boostScale;
 
   u.x += (currentVx - w * y) * dt;
   u.y += (currentVy + w * x) * dt;
