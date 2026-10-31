@@ -84,6 +84,7 @@ export default function CircleModePage() {
   const isLight = true; // Use light mode colors for simplicity
   const fg = isLight ? '#334155' : '#cbd5e1';
   const dim = isLight ? 'rgba(0,0,0,.10)' : 'rgba(255,255,255,.08)';
+  const fmt = (n: number) => Math.round(n * 100) / 100;
 
   return (
     <div style={{ ...styles.container, touchAction: 'none' }}>
@@ -120,7 +121,7 @@ export default function CircleModePage() {
                 <line
                   key={i}
                   x1={0} y1={0}
-                  x2={Math.cos(a) * R} y2={Math.sin(a) * R}
+                  x2={fmt(Math.cos(a) * R)} y2={fmt(Math.sin(a) * R)}
                   stroke={dim} strokeWidth={1}
                 />
               );
@@ -130,7 +131,7 @@ export default function CircleModePage() {
             {GAPS.map((gapAngle, i) => {
               const startAngle = gapAngle + GAPW + theta;
               const endAngle = (i + 1 < GAPS.length ? GAPS[i + 1] : GAPS[0] + Math.PI * 2) - GAPW + theta;
-              const path = `M ${Math.cos(startAngle) * RING} ${Math.sin(startAngle) * RING} A ${RING} ${RING} 0 0 1 ${Math.cos(endAngle) * RING} ${Math.sin(endAngle) * RING}`;
+              const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 0 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
               return (
                 <path key={i} d={path} fill="none" stroke={fg} strokeWidth={5} strokeLinecap="round" />
               );
@@ -140,8 +141,8 @@ export default function CircleModePage() {
             {BUMPERS.map(([ba, bd, br], i) => (
               <circle
                 key={i}
-                cx={Math.cos(ba + theta) * bd}
-                cy={Math.sin(ba + theta) * bd}
+                cx={fmt(Math.cos(ba + theta) * bd)}
+                cy={fmt(Math.sin(ba + theta) * bd)}
                 r={br}
                 fill={isLight ? '#94a3b8' : '#64748b'}
               />

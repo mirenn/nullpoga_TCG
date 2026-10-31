@@ -7,8 +7,9 @@ import { computeCpuLaunchAngle } from './circleCpu';
 
 const MONSTER_CARDS = CARD_POOL.filter((c) => c.type === 'MONSTER');
 
-function createMonsterOnlyDeckState(): DeckState {
-  const cards = shuffleCards(createDefault15Deck().filter((c) => c.type === 'MONSTER'));
+function createMonsterOnlyDeckState(shuffle = false): DeckState {
+  const monsterCards = createDefault15Deck().filter((c) => c.type === 'MONSTER');
+  const cards = shuffle ? shuffleCards(monsterCards) : monsterCards;
   return { hand: cards.slice(0, 4), nextCard: cards[4] ?? null, deck: cards.slice(5), discardPile: [] };
 }
 
@@ -17,7 +18,7 @@ export function useCircleGame() {
   const [score, setScore] = useState({ p: 0, c: 0 });
   const [theta, setTheta] = useState(0);
   const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
-  const [playerDeck, setPlayerDeck] = useState(createMonsterOnlyDeckState);
+  const [playerDeck, setPlayerDeck] = useState(() => createMonsterOnlyDeckState(false));
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
   const lastTimeRef = useRef(Date.now());
@@ -26,17 +27,23 @@ export function useCircleGame() {
   const scoreRef = useRef({ p: 0, c: 0 });
   // CPUのマナ・山札は画面に出さないのでrefで持つ（state updater内の副作用はStrictModeで二重実行されるため）
   const cpuManaRef = useRef(INITIAL_MANA);
-  const cpuDeckRef = useRef<DeckState>(createMonsterOnlyDeckState());
+  const cpuDeckRef = useRef<DeckState>(createMonsterOnlyDeckState(false));
+
+  // クライアント初回マウント時にデッキをランダムシャッフル（SSRハイドレーション不一致を防止）
+  useEffect(() => {
+    setPlayerDeck(createMonsterOnlyDeckState(true));
+    cpuDeckRef.current = createMonsterOnlyDeckState(true);
+  }, []);
 
   const resetGame = useCallback(() => {
     setUnits([]);
     setScore({ p: 0, c: 0 });
     setTheta(0);
     setPlayerMana(INITIAL_MANA);
-    setPlayerDeck(createMonsterOnlyDeckState());
+    setPlayerDeck(createMonsterOnlyDeckState(true));
     setGameResult('playing');
     cpuManaRef.current = INITIAL_MANA;
-    cpuDeckRef.current = createMonsterOnlyDeckState();
+    cpuDeckRef.current = createMonsterOnlyDeckState(true);
 
     unitsRef.current = [];
     thetaRef.current = 0;
