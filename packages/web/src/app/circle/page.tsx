@@ -245,34 +245,65 @@ export default function CircleModePage() {
             </svg>
 
             {/* Units (Overlay) */}
-            {units.map(u => (
-              <div
-                key={u.id}
-                style={{
-                  position: 'absolute',
-                  left: `${((u.x + W / 2) / W) * 100}%`,
-                  top: `${((u.y + W / 2) / W) * 100}%`,
-                  transform: 'translate(-50%, -50%)',
-                  width: 28,
-                  height: 28,
-                  pointerEvents: 'none',
-                }}
-              >
-                {hasUnitSvg(u.cardNo) ? (
-                  <UnitSvgRenderer
-                    cardNo={u.cardNo}
-                    isPlayer={u.owner === 'p'}
-                    state={u.isEngaged ? 'attacking' : 'walking'}
-                  />
-                ) : (
-                  <div style={{ width: '100%', height: '100%', backgroundColor: u.owner === 'p' ? '#3b82f6' : '#ef4444', borderRadius: '50%' }} />
-                )}
-                {/* HP Bar */}
-                <div style={{ position: 'absolute', bottom: -4, left: 0, width: '100%', height: 3, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div style={{ width: `${(u.hp / u.maxHp) * 100}%`, height: '100%', backgroundColor: '#22c55e' }} />
+            {units.map(u => {
+              const isPlayer = u.owner === 'p';
+              const teamColor = isPlayer ? '#3b82f6' : '#ef4444';
+              const teamBg = isPlayer ? 'rgba(59, 130, 246, 0.2)' : 'rgba(239, 68, 68, 0.2)';
+              return (
+                <div
+                  key={u.id}
+                  data-owner={u.owner}
+                  style={{
+                    position: 'absolute',
+                    left: `${((u.x + W / 2) / W) * 100}%`,
+                    top: `${((u.y + W / 2) / W) * 100}%`,
+                    transform: 'translate(-50%, -50%)',
+                    width: 30,
+                    height: 30,
+                    borderRadius: '50%',
+                    border: `2px solid ${teamColor}`,
+                    backgroundColor: teamBg,
+                    boxSizing: 'border-box',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    pointerEvents: 'none',
+                  }}
+                >
+                  {hasUnitSvg(u.cardNo) ? (
+                    <UnitSvgRenderer
+                      cardNo={u.cardNo}
+                      isPlayer={isPlayer}
+                      state={u.isEngaged ? 'attacking' : 'walking'}
+                      size={26}
+                    />
+                  ) : (
+                    <div style={{ width: '100%', height: '100%', backgroundColor: teamColor, borderRadius: '50%' }} />
+                  )}
+                  {/* HP Bar */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: -6,
+                      left: -1,
+                      right: -1,
+                      height: 4,
+                      backgroundColor: 'rgba(15, 23, 42, 0.7)',
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: `${Math.max(0, (u.hp / u.maxHp) * 100)}%`,
+                        height: '100%',
+                        backgroundColor: teamColor,
+                      }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
