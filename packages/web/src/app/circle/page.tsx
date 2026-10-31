@@ -16,7 +16,6 @@ export default function CircleModePage() {
     score,
     theta,
     playerMana,
-    cpuMana,
     playerDeck,
     setPlayerDeck,
     setPlayerMana,

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { CARD_POOL, createRandomDeckState, DeckState, DEFAULT_MANA_REGEN_PER_SEC } from '../cards';
+import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_REGEN_PER_SEC } from '../cards';
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { CircleUnit, OMEGA, SPAWN, stepPhysics, BASE_SPEED, MAX_SCORE } from './circlePhysics';
@@ -8,14 +8,8 @@ import { computeCpuLaunchAngle } from './circleCpu';
 const MONSTER_CARDS = CARD_POOL.filter((c) => c.type === 'MONSTER');
 
 function createMonsterOnlyDeckState(): DeckState {
-  const ds = createRandomDeckState();
-  const filterSpells = (cards: any[]) => cards.filter(c => c.type === 'MONSTER').map(c => MONSTER_CARDS.find(m => m.cardNo === c.cardNo) || MONSTER_CARDS[0]);
-  return {
-    deck: filterSpells(ds.deck),
-    hand: filterSpells(ds.hand),
-    discardPile: filterSpells(ds.discardPile),
-    nextCard: ds.nextCard?.type === 'MONSTER' ? ds.nextCard : MONSTER_CARDS[0],
-  };
+  const cards = shuffleCards(createDefault15Deck().filter((c) => c.type === 'MONSTER'));
+  return { hand: cards.slice(0, 4), nextCard: cards[4] ?? null, deck: cards.slice(5), discardPile: [] };
 }
 
 export function useCircleGame() {
@@ -23,25 +17,26 @@ export function useCircleGame() {
   const [score, setScore] = useState({ p: 0, c: 0 });
   const [theta, setTheta] = useState(0);
   const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
-  const [cpuMana, setCpuMana] = useState(INITIAL_MANA);
   const [playerDeck, setPlayerDeck] = useState(createMonsterOnlyDeckState);
-  const [cpuDeck, setCpuDeck] = useState(createMonsterOnlyDeckState);
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
   const lastTimeRef = useRef(Date.now());
   const unitsRef = useRef<CircleUnit[]>([]);
   const thetaRef = useRef(0);
   const scoreRef = useRef({ p: 0, c: 0 });
+  // CPUのマナ・山札は画面に出さないのでrefで持つ（state updater内の副作用はStrictModeで二重実行されるため）
+  const cpuManaRef = useRef(INITIAL_MANA);
+  const cpuDeckRef = useRef<DeckState>(createMonsterOnlyDeckState());
 
   const resetGame = useCallback(() => {
     setUnits([]);
     setScore({ p: 0, c: 0 });
     setTheta(0);
     setPlayerMana(INITIAL_MANA);
-    setCpuMana(INITIAL_MANA);
     setPlayerDeck(createMonsterOnlyDeckState());
-    setCpuDeck(createMonsterOnlyDeckState());
     setGameResult('playing');
+    cpuManaRef.current = INITIAL_MANA;
+    cpuDeckRef.current = createMonsterOnlyDeckState();
 
     unitsRef.current = [];
     thetaRef.current = 0;
@@ -92,7 +87,7 @@ export function useCircleGame() {
 
       // Mana regen
       setPlayerMana(prev => Math.min(MAX_MANA, prev + DEFAULT_MANA_REGEN_PER_SEC * dt));
-      setCpuMana(prev => Math.min(MAX_MANA, prev + DEFAULT_MANA_REGEN_PER_SEC * dt));
+      cpuManaRef.current = Math.min(MAX_MANA, cpuManaRef.current + DEFAULT_MANA_REGEN_PER_SEC * dt);
 
       // Physics & Combat
       let currentUnits = unitsRef.current;
@@ -163,30 +158,16 @@ export function useCircleGame() {
     if (gameResult !== 'playing') return;
 
     const interval = setInterval(() => {
-      setCpuMana(currentMana => {
-        let newMana = currentMana;
-        setCpuDeck(currentDeck => {
-          const hand = currentDeck.hand;
-          if (hand.length === 0) return currentDeck;
+      const deck = cpuDeckRef.current;
+      const idx = Math.floor(Math.random() * deck.hand.length);
+      const cardToPlay = deck.hand[idx];
+      if (!cardToPlay || cpuManaRef.current < cardToPlay.manaCost) return;
 
-          // Pick random card
-          const idx = Math.floor(Math.random() * hand.length);
-          const cardToPlay = hand[idx];
-
-          if (cardToPlay && newMana >= cardToPlay.manaCost) {
-            newMana -= cardToPlay.manaCost;
-
-            // speed is needed for launch angle computation
-            const speed = (cardToPlay.speed || 10) / 10 * BASE_SPEED;
-            const [tx, ty] = computeCpuLaunchAngle(speed, thetaRef.current, OMEGA);
-
-            spawnUnit('c', cardToPlay.cardNo, tx, ty);
-            return drawNextCardFromDeck(currentDeck, idx, cardToPlay);
-          }
-          return currentDeck;
-        });
-        return newMana;
-      });
+      cpuManaRef.current -= cardToPlay.manaCost;
+      const speed = (cardToPlay.speed || 10) / 10 * BASE_SPEED;
+      const [tx, ty] = computeCpuLaunchAngle(speed, thetaRef.current, OMEGA);
+      spawnUnit('c', cardToPlay.cardNo, tx, ty);
+      cpuDeckRef.current = drawNextCardFromDeck(deck, idx, cardToPlay);
     }, 1500);
 
     return () => clearInterval(interval);
@@ -197,7 +178,6 @@ export function useCircleGame() {
     score,
     theta,
     playerMana,
-    cpuMana,
     playerDeck,
     setPlayerDeck,
     setPlayerMana,
