@@ -2,6 +2,8 @@ import React from 'react';
 import type { DemoCard } from '../types';
 
 interface CircleSidePanelProps {
+  score: { p: number; c: number };
+  maxScore: number;
   playerMana: number;
   maxMana: number;
   deckCount: number;
@@ -18,6 +20,8 @@ interface CircleSidePanelProps {
 }
 
 export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
+  score,
+  maxScore,
   playerMana,
   maxMana,
   deckCount,
@@ -50,6 +54,31 @@ export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
         boxShadow: '0 4px 16px rgba(0, 0, 0, 0.4)',
       }}
     >
+      {/* 0. スコアバー (Player vs CPU - 左右に逃がした対戦スコア) */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          backgroundColor: '#1e293b',
+          padding: '6px 12px',
+          borderRadius: '8px',
+          border: '1px solid #334155',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 'bold' }}>自軍</span>
+          <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#38bdf8' }}>{score.p}</span>
+        </div>
+        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 'bold' }}>
+          / {maxScore} 点先取
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#f87171' }}>{score.c}</span>
+          <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 'bold' }}>CPU</span>
+        </div>
+      </div>
+
       {/* 1. マナゲージ */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>

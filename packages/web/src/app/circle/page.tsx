@@ -109,25 +109,25 @@ export default function CircleModePage() {
   const fmt = (n: number) => Math.round(n * 100) / 100;
 
   return (
-    <div style={{ ...styles.container, touchAction: 'none' }}>
-      {/* Top Header */}
+    <div style={{ ...styles.container, touchAction: 'none', position: 'relative', padding: '6px 12px' }}>
+      {/* 左上タイトル（左右の余白に逃がす） */}
       <div
         style={{
+          position: 'absolute',
+          top: '10px',
+          left: '14px',
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          padding: '8px 16px',
-          backgroundColor: '#0f172a',
-          borderRadius: '8px',
-          border: '1px solid #1e293b',
-          flexShrink: 0,
+          gap: '6px',
+          color: '#64748b',
+          fontSize: '0.85rem',
+          fontWeight: 'bold',
+          pointerEvents: 'none',
+          userSelect: 'none',
+          zIndex: 10,
         }}
       >
-        <div style={{ fontSize: '1.15rem', fontWeight: 'bold' }}>Circle Mode (Experimental)</div>
-        <div style={{ display: 'flex', gap: '20px' }}>
-          <div style={{ color: '#3b82f6', fontWeight: 'bold' }}>Player: {score.p} / {MAX_SCORE}</div>
-          <div style={{ color: '#ef4444', fontWeight: 'bold' }}>CPU: {score.c} / {MAX_SCORE}</div>
-        </div>
+        <span>🔄</span> Circle Mode <span style={{ fontSize: '0.7rem', color: '#475569' }}>(Experimental)</span>
       </div>
 
       {/* Main Board & Side Panel Container */}
@@ -140,8 +140,9 @@ export default function CircleModePage() {
           justifyContent: 'center',
           gap: '24px',
           minHeight: 0,
+          minWidth: 0,
           overflow: 'hidden',
-          padding: '8px 0',
+          padding: '2px 0',
         }}
       >
         {/* 円盤ボードエリア */}
@@ -275,8 +276,10 @@ export default function CircleModePage() {
           </div>
         </div>
 
-        {/* 右サイドパネル (手札・マナ・NEXT) */}
+        {/* 右サイドパネル (手札・マナ・NEXT・スコア) */}
         <CircleSidePanel
+          score={score}
+          maxScore={MAX_SCORE}
           playerMana={playerMana}
           maxMana={MAX_MANA}
           deckCount={playerDeck.deck.length}
