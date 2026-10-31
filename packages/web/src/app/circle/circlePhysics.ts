@@ -46,6 +46,7 @@ export interface CircleUnit {
 
   isDead?: boolean;
   isEngaged?: boolean;
+  attackAnimUntil?: number;
 }
 
 export const rot = (x: number, y: number, a: number): [number, number] => [

@@ -5,14 +5,17 @@ import { useCircleGame } from './useCircleGame';
 import { CircleSidePanel } from './CircleSidePanel';
 import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
+import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
 import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
+import '../realtime-battle.css';
 
 export default function CircleModePage() {
   const {
     units,
+    attackEffects,
     score,
     theta,
     playerMana,
@@ -297,7 +300,7 @@ export default function CircleModePage() {
                     <UnitSvgRenderer
                       cardNo={u.cardNo}
                       isPlayer={isPlayer}
-                      state={u.isEngaged ? 'attacking' : 'walking'}
+                      state={(u.attackAnimUntil ?? 0) > Date.now() ? 'attacking' : u.isEngaged ? 'charging' : 'walking'}
                       size={26}
                     />
                   ) : (
@@ -327,6 +330,11 @@ export default function CircleModePage() {
                 </div>
               );
             })}
+
+            {/* Attack Effects (電撃弾・稲妻ビーム・着弾スパーク・ダメージ数値など) */}
+            {attackEffects.map(eff => (
+              <RenderAttackEffect key={eff.id} effect={eff} />
+            ))}
           </div>
         </div>
 

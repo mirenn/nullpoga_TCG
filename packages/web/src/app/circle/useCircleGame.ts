@@ -2,10 +2,61 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_REGEN_PER_SEC } from '../cards';
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
-import { CircleUnit, OMEGA, SPAWN, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE } from './circlePhysics';
+import type { AttackEffect, AttackEffectType } from '../types';
+import { CircleUnit, OMEGA, SPAWN, W, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE } from './circlePhysics';
 import { computeCpuLaunchAngle } from './circleCpu';
 
 const MONSTER_CARDS = CARD_POOL.filter((c) => c.type === 'MONSTER');
+
+function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: number, now: number): AttackEffect {
+  const toPct = (v: number) => ((v + W / 2) / W) * 100;
+  let effectType: AttackEffectType = 'slash';
+  let duration = 350;
+  let flightDuration: number | undefined;
+
+  if (a.cardNo === 6) {
+    effectType = 'lightning';
+    const distRatio = Math.min(1, distPx / (a.range || 112));
+    flightDuration = Math.round(220 + distRatio * 160);
+    duration = flightDuration + 450;
+  } else if (a.cardNo === 11) {
+    effectType = 'fireball';
+    duration = 1350;
+  } else if (a.cardNo === 1) {
+    effectType = 'bite';
+  } else if (a.cardNo === 2) {
+    effectType = 'tackle';
+  } else if (a.cardNo === 3) {
+    effectType = 'claw';
+  } else if (a.cardNo === 7) {
+    effectType = 'headbutt';
+  } else if (a.cardNo === 8) {
+    effectType = 'shuriken';
+    flightDuration = 160;
+    duration = 480;
+  } else if (a.cardNo === 9) {
+    effectType = 'blood_bite';
+  } else if (a.cardNo === 12) {
+    effectType = 'arrow';
+    flightDuration = 180;
+    duration = 480;
+  }
+
+  return {
+    id: `fx_${now}_${a.id}_${Math.random().toString(36).slice(2, 6)}`,
+    attackerId: a.id,
+    fromX: toPct(a.x),
+    fromY: toPct(a.y),
+    toX: toPct(target.x),
+    toY: toPct(target.y),
+    owner: a.owner === 'p' ? 'player' : 'cpu',
+    effectType,
+    damage: a.attack,
+    createdAt: now,
+    duration,
+    flightDuration,
+  };
+}
 
 function createMonsterOnlyDeckState(shuffle = false): DeckState {
   const monsterCards = createDefault15Deck().filter((c) => c.type === 'MONSTER');
@@ -15,6 +66,7 @@ function createMonsterOnlyDeckState(shuffle = false): DeckState {
 
 export function useCircleGame() {
   const [units, setUnits] = useState<CircleUnit[]>([]);
+  const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   const [score, setScore] = useState({ p: 0, c: 0 });
   const [theta, setTheta] = useState(0);
   const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
@@ -23,6 +75,7 @@ export function useCircleGame() {
 
   const lastTimeRef = useRef(Date.now());
   const unitsRef = useRef<CircleUnit[]>([]);
+  const attackEffectsRef = useRef<AttackEffect[]>([]);
   const thetaRef = useRef(0);
   const scoreRef = useRef({ p: 0, c: 0 });
   // CPUのマナ・山札は画面に出さないのでrefで持つ（state updater内の副作用はStrictModeで二重実行されるため）
@@ -37,6 +90,7 @@ export function useCircleGame() {
 
   const resetGame = useCallback(() => {
     setUnits([]);
+    setAttackEffects([]);
     setScore({ p: 0, c: 0 });
     setTheta(0);
     setPlayerMana(INITIAL_MANA);
@@ -46,6 +100,7 @@ export function useCircleGame() {
     cpuDeckRef.current = createMonsterOnlyDeckState(true);
 
     unitsRef.current = [];
+    attackEffectsRef.current = [];
     thetaRef.current = 0;
     scoreRef.current = { p: 0, c: 0 };
     lastTimeRef.current = Date.now();
@@ -128,20 +183,24 @@ export function useCircleGame() {
         if (nearestEnemy) {
           a.isEngaged = true;
           a.attackCooldown -= dt;
-          if (a.attackCooldown <= 0) {
+          if (a.attackCooldown <= 0 && a.attack > 0) {
             nearestEnemy.hp -= a.attack;
             a.attackCooldown = a.attackInterval;
+            a.attackAnimUntil = now + 450;
+            attackEffectsRef.current.push(createCircleAttackEffect(a, nearestEnemy, minDist, now));
           }
         } else {
           a.isEngaged = false;
         }
       }
 
-      // Remove dead
+      // Remove dead & expired attack effects
       const aliveUnits = nextUnits.filter(u => u.hp > 0);
       unitsRef.current = aliveUnits;
+      attackEffectsRef.current = attackEffectsRef.current.filter(fx => now - fx.createdAt < fx.duration);
 
       setUnits([...aliveUnits]);
+      setAttackEffects([...attackEffectsRef.current]);
       setTheta(thetaRef.current);
 
       if (scoreRef.current.p !== score.p || scoreRef.current.c !== score.c) {
@@ -182,6 +241,7 @@ export function useCircleGame() {
 
   return {
     units,
+    attackEffects,
     score,
     theta,
     playerMana,
