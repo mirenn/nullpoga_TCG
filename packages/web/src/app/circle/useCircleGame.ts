@@ -3,10 +3,8 @@ import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_R
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import type { AttackEffect, AttackEffectType } from '../types';
-import { CircleUnit, OMEGA, SPAWN, W, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE } from './circlePhysics';
+import { CircleUnit, OMEGA, SPAWN, W, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn } from './circlePhysics';
 import { computeCpuLaunchAngle } from './circleCpu';
-
-const MONSTER_CARDS = CARD_POOL.filter((c) => c.type === 'MONSTER');
 
 function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: number, now: number): AttackEffect {
   const toPct = (v: number) => ((v + W / 2) / W) * 100;
@@ -40,6 +38,8 @@ function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: num
     effectType = 'arrow';
     flightDuration = 180;
     duration = 480;
+  } else if (a.cardNo === 13) {
+    effectType = 'bite';
   }
 
   return {
@@ -107,31 +107,8 @@ export function useCircleGame() {
   }, []);
 
   const spawnUnit = useCallback((owner: 'p' | 'c', cardNo: number, tx: number, ty: number) => {
-    const card = MONSTER_CARDS.find(c => c.cardNo === cardNo) || MONSTER_CARDS[0];
-    const [sx, sy] = SPAWN[owner];
-    const l = Math.hypot(tx - sx, ty - sy) || 1;
-    // speed 10 means 10% of field per sec in normal game. In circle (radius 195), let's scale it.
-    const speed = (card.speed || 10) / 10 * BASE_SPEED;
-
-    const newUnit: CircleUnit = {
-      id: Math.random().toString(36).substring(2, 9),
-      owner,
-      x: sx,
-      y: sy,
-      vx: ((tx - sx) / l) * speed,
-      vy: ((ty - sy) / l) * speed,
-      t: 0,
-      cardNo,
-      hp: card.life || 1,
-      maxHp: card.life || 1,
-      attack: card.attack || 1,
-      attackInterval: card.attackInterval || 1,
-      attackCooldown: 0,
-      speed,
-      range: (card.range || 10) * 4, // scale range appropriately
-      isEngaged: false,
-    };
-    unitsRef.current.push(newUnit);
+    const newUnits = createCircleUnitsForSpawn(owner, cardNo, tx, ty);
+    unitsRef.current.push(...newUnits);
   }, []);
 
   // Game Loop

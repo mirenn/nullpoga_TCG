@@ -1,3 +1,5 @@
+import { CARD_POOL, HOUND_TOKEN_SPEC } from '../cards';
+
 export const W = 420;
 export const C = W / 2;
 export const R = 195;
@@ -62,6 +64,7 @@ export interface CircleUnit {
   isDead?: boolean;
   isEngaged?: boolean;
   attackAnimUntil?: number;
+  icon?: string;
 }
 
 export const rot = (x: number, y: number, a: number): [number, number] => [
@@ -270,4 +273,76 @@ export function predict(
   }
 
   return { pts, hit };
+}
+
+/**
+ * 出撃時にカードから生成されるサークルユニット群を構築する
+ * 森の狩人と猟犬 (CardNo: 12) は前衛として猟犬 (CardNo: 13) トークンを同時生成
+ */
+export function createCircleUnitsForSpawn(
+  owner: 'p' | 'c',
+  cardNo: number,
+  tx: number,
+  ty: number
+): CircleUnit[] {
+  const card = CARD_POOL.find((c) => c.cardNo === cardNo && c.type === 'MONSTER') || CARD_POOL[0];
+  const [sx, sy] = SPAWN[owner];
+  const l = Math.hypot(tx - sx, ty - sy) || 1;
+  const speed = ((card.speed || 10) / 10) * BASE_SPEED;
+
+  const mainUnit: CircleUnit = {
+    id: Math.random().toString(36).substring(2, 9),
+    owner,
+    x: sx,
+    y: sy,
+    vx: ((tx - sx) / l) * speed,
+    vy: ((ty - sy) / l) * speed,
+    t: 0,
+    cardNo,
+    hp: card.life || 1,
+    maxHp: card.life || 1,
+    attack: card.attack || 1,
+    attackInterval: card.attackInterval || 1,
+    attackCooldown: 0,
+    speed,
+    range: (card.range || 10) * 4,
+    isEngaged: false,
+    icon: card.icon,
+  };
+
+  const units: CircleUnit[] = [mainUnit];
+
+  if (cardNo === 12) {
+    const houndSpeed = ((HOUND_TOKEN_SPEC.speed || 10) / 10) * BASE_SPEED;
+    const houndLead = 14;
+    let hx = sx + ((tx - sx) / l) * houndLead;
+    let hy = sy + ((ty - sy) / l) * houndLead;
+    const hDist = Math.hypot(hx, hy);
+    if (hDist > R - 14) {
+      hx = (hx / hDist) * (R - 14);
+      hy = (hy / hDist) * (R - 14);
+    }
+    const houndUnit: CircleUnit = {
+      id: Math.random().toString(36).substring(2, 9),
+      owner,
+      x: hx,
+      y: hy,
+      vx: ((tx - sx) / l) * houndSpeed,
+      vy: ((ty - sy) / l) * houndSpeed,
+      t: 0,
+      cardNo: HOUND_TOKEN_SPEC.cardNo,
+      hp: HOUND_TOKEN_SPEC.life,
+      maxHp: HOUND_TOKEN_SPEC.life,
+      attack: HOUND_TOKEN_SPEC.attack,
+      attackInterval: HOUND_TOKEN_SPEC.attackInterval,
+      attackCooldown: 0,
+      speed: houndSpeed,
+      range: (HOUND_TOKEN_SPEC.range || 8) * 4,
+      isEngaged: false,
+      icon: HOUND_TOKEN_SPEC.icon,
+    };
+    units.push(houndUnit);
+  }
+
+  return units;
 }

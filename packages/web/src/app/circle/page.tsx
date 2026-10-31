@@ -392,7 +392,9 @@ export default function CircleModePage() {
                       size={26}
                     />
                   ) : (
-                    <div style={{ width: '100%', height: '100%', backgroundColor: teamColor, borderRadius: '50%' }} />
+                    <span style={{ fontSize: '18px', lineHeight: 1, userSelect: 'none' }}>
+                      {u.icon || (u.cardNo === 12 ? '🏹' : u.cardNo === 13 ? '🐕‍🦺' : '')}
+                    </span>
                   )}
                   {/* HP Bar */}
                   <div

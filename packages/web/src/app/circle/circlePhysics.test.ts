@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -121,4 +121,23 @@ const deepUnit: CircleUnit = { ...gravUnit, x: 0, y: 20, vx: 100, vy: 0, t: 5 };
 const [outerVx] = getUnitTangentVelocity(outerUnit, 0);
 const [deepVx] = getUnitTangentVelocity(deepUnit, 0);
 assert.ok(deepVx < outerVx * 0.55, `Expected apparent velocity in deep center (${deepVx}) to be < 55% of outer rim (${outerVx})`);
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: spawn Forest Hunter (Card 12) spawns both Hunter and vanguard Hound');
+const hunterUnits = createCircleUnitsForSpawn('p', 12, 0, 0);
+assert.strictEqual(hunterUnits.length, 2, 'Card 12 must spawn exactly 2 units: Hunter and Hound');
+const [hunter, hound] = hunterUnits;
+assert.strictEqual(hunter.cardNo, 12);
+assert.strictEqual(hunter.icon, '🏹');
+assert.strictEqual(hunter.hp, 4);
+assert.strictEqual(hunter.attack, 2);
+
+assert.strictEqual(hound.cardNo, 13);
+assert.strictEqual(hound.icon, '🐕‍🦺');
+assert.strictEqual(hound.hp, 4);
+assert.strictEqual(hound.attack, 1);
+
+// 前衛猟犬が先行して出撃し、移動速度も狩人より速いことを確認
+assert.ok(hound.speed > hunter.speed, 'Hound must have faster speed than hunter');
+assert.ok(hound.y < hunter.y, 'Hound must spawn ahead (closer to center y=0) when launched from player spawn');
 console.log('  -> PASSED');
