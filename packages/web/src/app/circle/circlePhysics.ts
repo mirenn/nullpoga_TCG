@@ -68,16 +68,26 @@ export const reflect = (u: CircleUnit, nx: number, ny: number, vn: number) => {
 export type StepResult = 'hole' | 'dead' | null;
 
 /**
- * 攻撃対象 b が a の探知範囲内にいるか判定する
- * 電気クラゲ(cardNo=6)は進行方向(vx,vy)への長方形、それ以外は全方位円形
+ * ユニットの現在の軌道接線ベクトル (dx/dt, dy/dt) を返す
+ * 自力の推進ベクトル(初速ブースト込み)と盤面回転による流速(-w*y, w*x)の合成ベクトル
  */
-export function isInAttackRange(a: CircleUnit, b: CircleUnit): boolean {
+export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA): [number, number] {
+  const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
+  return [u.vx * boostScale - w * u.y, u.vy * boostScale + w * u.x];
+}
+
+/**
+ * 攻撃対象 b が a の探知範囲内にいるか判定する
+ * 電気クラゲ(cardNo=6)は軌道の接線方向(実際の移動方向)への長方形、それ以外は全方位円形
+ */
+export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA): boolean {
   const dx = b.x - a.x;
   const dy = b.y - a.y;
   if (a.cardNo === JELLYFISH_CARD_NO) {
-    const len = Math.hypot(a.vx, a.vy) || 1;
-    const fx = a.vx / len;
-    const fy = a.vy / len;
+    const [tvx, tvy] = getUnitTangentVelocity(a, w);
+    const len = Math.hypot(tvx, tvy) || 1;
+    const fx = tvx / len;
+    const fy = tvy / len;
     const forward = dx * fx + dy * fy;
     const lateral = Math.abs(-dx * fy + dy * fx);
     return forward >= 0 && forward <= a.range && lateral <= JELLYFISH_HALF_WIDTH;
@@ -89,16 +99,9 @@ export function isInAttackRange(a: CircleUnit, b: CircleUnit): boolean {
  * ユニットの物理挙動を1ステップ進める
  */
 export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA): StepResult {
-  const x = u.x;
-  const y = u.y;
-
-  // 射出直後は初速ボーナスを乗せ、時間経過(u.t)とともに本来のカード速度(u.speed)へ減衰させる
-  const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
-  const currentVx = u.vx * boostScale;
-  const currentVy = u.vy * boostScale;
-
-  u.x += (currentVx - w * y) * dt;
-  u.y += (currentVy + w * x) * dt;
+  const [tvx, tvy] = getUnitTangentVelocity(u, w);
+  u.x += tvx * dt;
+  u.y += tvy * dt;
 
   const d = Math.hypot(u.x, u.y);
   if (d < HOLE) return 'hole';

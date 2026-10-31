@@ -6,7 +6,7 @@ import { CircleSidePanel } from './CircleSidePanel';
 import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH } from './circlePhysics';
+import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 
@@ -243,9 +243,10 @@ export default function CircleModePage() {
                 />
               )}
 
-              {/* 電気クラゲの進行方向・長方形探知範囲 */}
+              {/* 電気クラゲの進行方向(軌道の接線方向)・長方形探知範囲 */}
               {units.filter(u => u.cardNo === JELLYFISH_CARD_NO).map(u => {
-                const deg = (Math.atan2(u.vy, u.vx) * 180) / Math.PI;
+                const [tvx, tvy] = getUnitTangentVelocity(u, OMEGA);
+                const deg = (Math.atan2(tvy, tvx) * 180) / Math.PI;
                 const col = u.owner === 'p' ? '#3b82f6' : '#ef4444';
                 return (
                   <rect

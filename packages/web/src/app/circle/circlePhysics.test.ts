@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, JELLYFISH_CARD_NO, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, JELLYFISH_CARD_NO, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -54,9 +54,14 @@ const jelly: CircleUnit = {
 const enemyFront: CircleUnit = { ...jelly, id: 'ef', owner: 'c', x: 15, y: 10 }; // 前方90px, 横15px (範囲内)
 const enemySide: CircleUnit = { ...jelly, id: 'es', owner: 'c', x: 50, y: 80 };  // 前方20px, 横50px (横幅26px外)
 const enemyBack: CircleUnit = { ...jelly, id: 'eb', owner: 'c', x: 0, y: 130 };  // 後方30px (範囲外)
-assert.strictEqual(isInAttackRange(jelly, enemyFront), true);
-assert.strictEqual(isInAttackRange(jelly, enemySide), false);
-assert.strictEqual(isInAttackRange(jelly, enemyBack), false);
+assert.strictEqual(isInAttackRange(jelly, enemyFront, 0), true);
+assert.strictEqual(isInAttackRange(jelly, enemySide, 0), false);
+assert.strictEqual(isInAttackRange(jelly, enemyBack, 0), false);
+// 回転あり(OMEGA)では軌道の接線方向(-w*yによる左向き成分が加わった斜め左上)へ探知範囲が向くことを確認
+const [tvx, tvy] = getUnitTangentVelocity(jelly, OMEGA);
+assert.ok(tvx < 0 && tvy < 0, 'Expected tangent velocity to curve top-left under rotation');
+const tangentEnemy: CircleUnit = { ...jelly, id: 'et', owner: 'c', x: jelly.x + tvx, y: jelly.y + tvy };
+assert.strictEqual(isInAttackRange(jelly, tangentEnemy, OMEGA), true);
 // isEngaged=true でも前進が止まらないことを確認
 const prevY = jelly.y;
 stepPhysics(jelly, 0.1, 0, 0);
