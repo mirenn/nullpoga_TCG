@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity } from './circlePhysics';
+import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -220,13 +220,69 @@ export default function CircleModePage() {
               {/* Bumpers */}
               {BUMPERS.map(([ba, bd, br], i) => (
                 <circle
-                  key={i}
+                  key={`bumper-${i}`}
                   cx={fmt(Math.cos(ba + theta) * bd)}
                   cy={fmt(Math.sin(ba + theta) * bd)}
                   r={br}
                   fill={isLight ? '#94a3b8' : '#64748b'}
                 />
               ))}
+
+              {/* Rails (当たるとレールに沿ってスーッと進むガイドレール) */}
+              {RAILS.map(([a1, d1, a2, d2], i) => {
+                const x1 = fmt(Math.cos(a1 + theta) * d1);
+                const y1 = fmt(Math.sin(a1 + theta) * d1);
+                const x2 = fmt(Math.cos(a2 + theta) * d2);
+                const y2 = fmt(Math.sin(a2 + theta) * d2);
+                const mx = fmt((x1 + x2) / 2);
+                const my = fmt((y1 + y2) / 2);
+                const deg = fmt((Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI);
+                return (
+                  <g key={`rail-${i}`}>
+                    <line
+                      x1={x1} y1={y1} x2={x2} y2={y2}
+                      stroke="#0ea5e9" strokeOpacity={0.2} strokeWidth={16} strokeLinecap="round"
+                    />
+                    <line
+                      x1={x1} y1={y1} x2={x2} y2={y2}
+                      stroke="#0284c7" strokeWidth={6} strokeLinecap="round"
+                    />
+                    <line
+                      x1={x1} y1={y1} x2={x2} y2={y2}
+                      stroke="#e0f2fe" strokeWidth={2} strokeDasharray="6,4" strokeLinecap="round"
+                    />
+                    <polygon
+                      points="-4,-5 5,0 -4,5"
+                      fill="#38bdf8"
+                      transform={`translate(${mx}, ${my}) rotate(${deg})`}
+                    />
+                  </g>
+                );
+              })}
+
+              {/* Gravity Wells (重力スイングバイを発生させる重力源) */}
+              {GRAVITY_WELLS.map(([ga, gd, gr], i) => {
+                const gx = fmt(Math.cos(ga + theta) * gd);
+                const gy = fmt(Math.sin(ga + theta) * gd);
+                return (
+                  <g key={`grav-${i}`}>
+                    <circle
+                      cx={gx} cy={gy} r={gr}
+                      fill="rgba(139, 92, 246, 0.08)"
+                      stroke="#8b5cf6" strokeOpacity={0.45} strokeWidth={1.5} strokeDasharray="4,4"
+                    />
+                    <circle
+                      cx={gx} cy={gy} r={fmt(gr * 0.52)}
+                      fill="rgba(139, 92, 246, 0.12)"
+                      stroke="#a855f7" strokeOpacity={0.35} strokeWidth={1}
+                    />
+                    <circle
+                      cx={gx} cy={gy} r={8}
+                      fill="#4c1d95" stroke="#c084fc" strokeWidth={2}
+                    />
+                  </g>
+                );
+              })}
 
               {/* Center Hole */}
               <circle cx={0} cy={0} r={HOLE} fill="#000" />

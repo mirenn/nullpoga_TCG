@@ -14,7 +14,21 @@ export const JELLYFISH_HALF_WIDTH = 26; // 通常モードの ENGAGE_HALF_WIDTH_
 export const TAU = Math.PI * 2;
 export const GAPS = [0, Math.PI];
 export const GAPW = 0.38;
-export const BUMPERS: [number, number, number][] = [[0.5, 135, 14], [2.6, 135, 14], [4.7, 135, 14]]; // [角度, 中心距離, 半径]
+export const BUMPERS: [number, number, number][] = [[0.5, 135, 14], [0.5 + Math.PI, 135, 14]]; // [角度, 中心距離, 半径]
+// レール: [始点角度, 始点距離, 終点角度, 終点距離]（当たるとレールに沿って内周側へスーッと滑走）
+export const RAILS: [number, number, number, number][] = [
+  [1.75, 150, 2.35, 100],
+  [1.75 + Math.PI, 150, 2.35 + Math.PI, 100],
+];
+export const RAIL_CAPTURE_WIDTH = 9;
+export const RAIL_SPEED_MULT = 1.25;
+// 重力源: [角度, 中心距離, 重力圏半径]（近くを通ると重力スイングバイで軌道が曲がり加速）
+export const GRAVITY_WELLS: [number, number, number][] = [
+  [2.75, 135, 44],
+  [2.75 + Math.PI, 135, 44],
+];
+export const GRAVITY_BEND_RATE = 3.2;
+export const GRAVITY_BOOST_RATE = 1.4;
 
 export const SPAWN: Record<'p' | 'c', [number, number]> = {
   p: [0, R - 14],
@@ -136,6 +150,66 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
       const v2 = u.vx * mx + u.vy * my;
       if (v2 < 0) {
         reflect(u, mx, my, v2);
+      }
+    }
+  }
+
+  // レールの滑走判定（当たると反射せずレールに沿ってスーッと進む）
+  for (const [a1, d1, a2, d2] of RAILS) {
+    const x1 = Math.cos(a1 + th) * d1;
+    const y1 = Math.sin(a1 + th) * d1;
+    const x2 = Math.cos(a2 + th) * d2;
+    const y2 = Math.sin(a2 + th) * d2;
+    const rdx = x2 - x1;
+    const rdy = y2 - y1;
+    const rLen = Math.hypot(rdx, rdy) || 1;
+    const tx = rdx / rLen;
+    const ty = rdy / rLen;
+    const s = (u.x - x1) * tx + (u.y - y1) * ty;
+    if (s >= 0 && s <= rLen) {
+      const cx = x1 + s * tx;
+      const cy = y1 + s * ty;
+      if (Math.hypot(u.x - cx, u.y - cy) < RAIL_CAPTURE_WIDTH + UR) {
+        const dir = u.vx * tx + u.vy * ty < -u.speed * 0.25 ? -1 : 1;
+        const glideSpeed = Math.max(Math.hypot(u.vx, u.vy), u.speed * RAIL_SPEED_MULT);
+        u.vx = tx * dir * glideSpeed;
+        u.vy = ty * dir * glideSpeed;
+        u.x += (cx - u.x) * 0.35;
+        u.y += (cy - u.y) * 0.35;
+      }
+    }
+  }
+
+  // 重力源による重力スイングバイ（軌道を中心側へ曲げつつ接近加速を残す）
+  for (const [ga, gd, gr] of GRAVITY_WELLS) {
+    const gx = Math.cos(ga + th) * gd;
+    const gy = Math.sin(ga + th) * gd;
+    const dx = gx - u.x;
+    const dy = gy - u.y;
+    const dg = Math.hypot(dx, dy);
+    if (dg < gr && dg > 6) {
+      const mx = dx / dg;
+      const my = dy / dg;
+      const vLen = Math.hypot(u.vx, u.vy) || 1;
+      const vxUnit = u.vx / vLen;
+      const vyUnit = u.vy / vLen;
+      const dotV = mx * vxUnit + my * vyUnit;
+      const falloff = 1 - (dg / gr) * 0.5;
+      let px = mx - dotV * vxUnit;
+      let py = my - dotV * vyUnit;
+      if (Math.hypot(px, py) < 0.25) {
+        px = -vyUnit * 0.4;
+        py = vxUnit * 0.4;
+      }
+      const bend = vLen * GRAVITY_BEND_RATE * falloff * dt;
+      const boost = u.speed * GRAVITY_BOOST_RATE * (dotV > 0 ? dotV : dotV * 0.2) * falloff * dt;
+      u.vx += px * bend + vxUnit * boost;
+      u.vy += py * bend + vyUnit * boost;
+      const newSpeed = Math.hypot(u.vx, u.vy);
+      const maxSpeed = u.speed * 1.65;
+      if (newSpeed > maxSpeed) {
+        u.vx = (u.vx / newSpeed) * maxSpeed;
+        u.vy = (u.vy / newSpeed) * maxSpeed;
       }
     }
   }
