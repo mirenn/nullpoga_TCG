@@ -168,19 +168,27 @@ export default function CircleModePage() {
               maxWidth: '100%',
               aspectRatio: '1 / 1',
               position: 'relative',
-              backgroundColor: isLight ? '#eef2f7' : '#1c2230',
-              borderRadius: '50%',
-              border: `2px solid ${fg}`,
-              overflow: 'hidden',
               cursor: (draggedCardIndex !== null || selectedCardIndex !== null) ? 'crosshair' : 'default',
-              boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
             }}
           >
+            {/* 円の外側（四隅）でも真横方向などを狙えるよう、イベントは四角い外枠で受け、円の見た目はこの内側に分ける */}
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                backgroundColor: isLight ? '#eef2f7' : '#1c2230',
+                borderRadius: '50%',
+                border: `2px solid ${fg}`,
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+                boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
+              }}
+            />
             <svg
               width="100%"
               height="100%"
               viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}
-              style={{ display: 'block', width: '100%', height: '100%' }}
+              style={{ position: 'absolute', inset: 0, display: 'block', width: '100%', height: '100%' }}
             >
               {/* Board Rotational Lines */}
               {Array.from({ length: 12 }).map((_, i) => {
