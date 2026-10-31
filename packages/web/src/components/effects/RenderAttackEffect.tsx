@@ -125,22 +125,33 @@ export const RenderAttackEffect = React.memo(function RenderAttackEffect({ effec
 
           {/* クラゲから標的へ一瞬走る稲妻放電ライン（着弾時刻に発火） */}
           <div
-            className="lightning-beam-line"
             style={{
               position: 'absolute',
-              left: `${minX}%`,
-              width: `${widthX}%`,
-              top: beamTop,
+              left: fromLeft,
+              top: `${effect.fromY}%`,
+              width: `${Math.max(5, Math.hypot(effect.toX - effect.fromX, effect.toY - effect.fromY))}%`,
               height: '3px',
-              transform: 'translateY(-50%)',
-              backgroundColor: '#38bdf8',
-              boxShadow: '0 0 12px #38bdf8, 0 0 24px #0ea5e9',
-              borderRadius: '2px',
+              transformOrigin: '0 50%',
+              transform: `translateY(-50%) rotate(${(Math.atan2(effect.toY - effect.fromY, effect.toX - effect.fromX) * 180) / Math.PI}deg)`,
               pointerEvents: 'none',
               zIndex: 37,
-              '--impact-delay': `${flightTime}ms`,
-            } as React.CSSProperties}
-          />
+            }}
+          >
+            <div
+              className="lightning-beam-line"
+              style={{
+                position: 'absolute',
+                left: '50%',
+                width: '100%',
+                top: 0,
+                height: '3px',
+                backgroundColor: '#38bdf8',
+                boxShadow: '0 0 12px #38bdf8, 0 0 24px #0ea5e9',
+                borderRadius: '2px',
+                '--impact-delay': `${flightTime}ms`,
+              } as React.CSSProperties}
+            />
+          </div>
 
           {/* 着弾地点のバチバチ放電スパーク ＆ シアン衝撃波リング（着弾時刻に発火） */}
           <div

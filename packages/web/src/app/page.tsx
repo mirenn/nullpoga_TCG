@@ -496,6 +496,21 @@ export default function RealtimeDemoPage() {
                 📖 ガイド・図鑑
               </button>
 
+              {/* Circle Mode Button */}
+              <a
+                href="/circle"
+                style={{
+                  ...styles.guideToggleButton,
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="円形モードを遊ぶ"
+              >
+                ⭕ 円形モード
+              </a>
+
               {/* サイドパネル折りたたみ / 展開トグル */}
               <button
                 type="button"
