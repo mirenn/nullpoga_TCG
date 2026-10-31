@@ -6,6 +6,9 @@ export const RING = 70;
 export const UR = 7;
 // SPEED scalar reference from prototype. We will scale card speed using this.
 export const BASE_SPEED = 110;
+// 射出時の初速ボーナスと減衰率（外周の回転流速を突破して狙った方向へ飛び出し、減速後は回転に流される）
+export const LAUNCH_SPEED_BONUS = 200;
+export const LAUNCH_DECAY_RATE = 1.4;
 export const TAU = Math.PI * 2;
 export const GAPS = [0, Math.PI];
 export const GAPW = 0.38;
@@ -71,8 +74,10 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   const y = u.y;
 
   // 交戦中は前進速度(vx,vy)を無視し、回転の流され(-w*y, w*x)のみ適用する
-  const currentVx = u.isEngaged ? 0 : u.vx;
-  const currentVy = u.isEngaged ? 0 : u.vy;
+  // 射出直後は初速ボーナスを乗せ、時間経過(u.t)とともに本来のカード速度(u.speed)へ減衰させる
+  const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
+  const currentVx = u.isEngaged ? 0 : u.vx * boostScale;
+  const currentVy = u.isEngaged ? 0 : u.vy * boostScale;
 
   u.x += (currentVx - w * y) * dt;
   u.y += (currentVy + w * x) * dt;
