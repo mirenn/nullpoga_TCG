@@ -149,6 +149,8 @@ export default function CircleModePage() {
           style={{
             flex: 1,
             height: '100%',
+            minHeight: 0,
+            minWidth: 0,
             display: 'flex',
             justifyContent: 'center',
             alignItems: 'center',
@@ -161,8 +163,10 @@ export default function CircleModePage() {
             onPointerLeave={handlePointerLeave}
             onPointerUp={handlePointerUp}
             style={{
-              width: W,
-              height: W,
+              height: '100%',
+              maxHeight: '100%',
+              maxWidth: '100%',
+              aspectRatio: '1 / 1',
               position: 'relative',
               backgroundColor: isLight ? '#eef2f7' : '#1c2230',
               borderRadius: '50%',
@@ -172,7 +176,12 @@ export default function CircleModePage() {
               boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
             }}
           >
-            <svg width={W} height={W} viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}>
+            <svg
+              width="100%"
+              height="100%"
+              viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}
+              style={{ display: 'block', width: '100%', height: '100%' }}
+            >
               {/* Board Rotational Lines */}
               {Array.from({ length: 12 }).map((_, i) => {
                 const a = theta + (i * Math.PI) / 6;
@@ -232,11 +241,11 @@ export default function CircleModePage() {
                 key={u.id}
                 style={{
                   position: 'absolute',
-                  left: u.x + W / 2,
-                  top: u.y + W / 2,
+                  left: `${((u.x + W / 2) / W) * 100}%`,
+                  top: `${((u.y + W / 2) / W) * 100}%`,
                   transform: 'translate(-50%, -50%)',
-                  width: 24,
-                  height: 24,
+                  width: 28,
+                  height: 28,
                   pointerEvents: 'none',
                 }}
               >

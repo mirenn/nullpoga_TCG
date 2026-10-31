@@ -37,7 +37,7 @@ export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
       style={{
         width: '260px',
         height: '100%',
-        maxHeight: '440px',
+        maxHeight: '100%',
         display: 'flex',
         flexDirection: 'column',
         gap: '10px',
