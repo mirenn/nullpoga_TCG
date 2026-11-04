@@ -30,6 +30,12 @@ export const GRAVITY_WELLS: [number, number, number][] = [
   [2.75, 135, 44],
   [2.75 + Math.PI, 135, 44],
 ];
+// 外周壁のとげ: [中心角度, 半角幅]（盤面と一緒に回転し、ここで跳ね返るとダメージ。無限バウンドを防ぐ）
+export const SPIKES: [number, number][] = [
+  [1.15, 0.3],
+  [1.15 + Math.PI, 0.3],
+];
+export const SPIKE_DAMAGE = 2;
 export const GRAVITY_BEND_RATE = 3.2;
 export const GRAVITY_BOOST_RATE = 1.4;
 
@@ -147,6 +153,8 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   // 外周壁の反射
   if (d > R - ur && vn > 0) {
     reflect(u, nx, ny, vn);
+    const a = Math.atan2(u.y, u.x) - th;
+    if (SPIKES.some(([sa, sw]) => Math.abs(angDiff(a, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
   }
 
   // リング壁(すき間あり)の反射

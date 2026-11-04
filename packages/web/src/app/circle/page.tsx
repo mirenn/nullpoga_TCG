@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
+import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -256,6 +256,19 @@ export default function CircleModePage() {
                   fill={isLight ? '#94a3b8' : '#64748b'}
                 />
               ))}
+
+              {/* Spikes (外周壁のとげ: 跳ね返るとダメージ) */}
+              {SPIKES.map(([sa, sw], i) => {
+                const teeth = 7;
+                const step = (sw * 2) / teeth;
+                const d = Array.from({ length: teeth }, (_, k) => {
+                  const a0 = sa - sw + k * step + theta;
+                  const am = a0 + step / 2;
+                  const a1 = a0 + step;
+                  return `M ${fmt(Math.cos(a0) * R)} ${fmt(Math.sin(a0) * R)} L ${fmt(Math.cos(am) * (R - 11))} ${fmt(Math.sin(am) * (R - 11))} L ${fmt(Math.cos(a1) * R)} ${fmt(Math.sin(a1) * R)} Z`;
+                }).join(' ');
+                return <path key={`spike-${i}`} d={d} fill="#dc2626" stroke="#7f1d1d" strokeWidth={1} strokeLinejoin="round" />;
+              })}
 
               {/* Rails (当たるとレールに沿ってスーッと進むガイドレール) */}
               {RAILS.map(([a1, d1, a2, d2], i) => {

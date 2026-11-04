@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -31,6 +31,18 @@ const u2: CircleUnit = {
 
 stepPhysics(u2, 0.1, 0, 0);
 assert.ok(u2.vy < 0);
+assert.strictEqual(u2.hp, 1, 'Plain outer wall must not damage');
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: spiked outer wall damages on bounce');
+const [spikeA] = SPIKES[0];
+const spikeUnit: CircleUnit = {
+  ...u2, id: 'spike1', hp: 5,
+  x: Math.cos(spikeA) * 190, y: Math.sin(spikeA) * 190,
+  vx: Math.cos(spikeA) * 100, vy: Math.sin(spikeA) * 100,
+};
+stepPhysics(spikeUnit, 0.1, 0, 0);
+assert.strictEqual(spikeUnit.hp, 5 - SPIKE_DAMAGE);
 console.log('  -> PASSED');
 
 console.log('Testing circlePhysics: slow unit launches into right side (x > 0) before rotation sweeps it');
