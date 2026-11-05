@@ -154,17 +154,19 @@ assert.ok(hound.speed > hunter.speed, 'Hound must have faster speed than hunter'
 assert.ok(hound.y < hunter.y, 'Hound must spawn ahead (closer to center y=0) when launched from player spawn');
 console.log('  -> PASSED');
 
-console.log('Testing circlePhysics: side area entry via slit, outer pocket bounce, and return to main circle');
+console.log('Testing circlePhysics: rotating slit allows side area entry only when aligned with side entrance');
 const slitUnit: CircleUnit = {
   id: 'slit1', owner: 'p',
-  x: R - 10, y: 10, // 切れ込み角度内 (atan2(10, 185) ≈ 0.054 < SIDE_GAPW)
+  x: R - 10, y: 10, // 右サイド入り口付近 (atan2(10, 185) ≈ 0.054)
   vx: 110, vy: 25,
   t: 5, cardNo: 1, hp: 5, maxHp: 5, attack: 1, attackInterval: 1, attackCooldown: 0, speed: 110, range: 10,
 };
 let enteredSide = false;
 let returnedToMain = false;
-for (let i = 0; i < 180; i++) {
-  stepPhysics(slitUnit, 1 / 60, 0, OMEGA);
+let simTh = 0;
+for (let i = 0; i < 240; i++) {
+  simTh += OMEGA / 60;
+  stepPhysics(slitUnit, 1 / 60, simTh, OMEGA);
   const d = Math.hypot(slitUnit.x, slitUnit.y);
   if (d > R + 15) enteredSide = true;
   if (enteredSide) {
@@ -176,19 +178,31 @@ for (let i = 0; i < 180; i++) {
     }
   }
 }
-assert.strictEqual(enteredSide, true, 'Unit aiming at slit must enter side area (d > R)');
-assert.strictEqual(returnedToMain, true, 'Unit in side area must bounce and return through slit to main circle');
+assert.strictEqual(enteredSide, true, 'Unit aiming at aligned rotating slit must enter side area (d > R)');
+assert.strictEqual(returnedToMain, true, 'Unit in side area must bounce and return through rotating slit to main circle');
 
-// 切れ込み以外の仕切り壁（サイド領域と重なる角度だが SIDE_GAPW の外）では円内に跳ね返ることを確認
-const prongAngle = SIDE_GAPW + 0.12;
-const prongUnit: CircleUnit = {
+// 切れ込みが回転して斜め方向(th = π/4)に移動しているときは、右サイド正面(y=0)でも壁で跳ね返ることを確認
+const closedGateUnit: CircleUnit = {
   ...slitUnit,
-  id: 'prong1',
-  x: Math.cos(prongAngle) * (R - 9),
-  y: Math.sin(prongAngle) * (R - 9),
-  vx: Math.cos(prongAngle) * 100,
-  vy: Math.sin(prongAngle) * 100,
+  id: 'closed1',
+  x: R - 9,
+  y: 0,
+  vx: 100,
+  vy: 0,
 };
-stepPhysics(prongUnit, 0.05, 0, 0);
-assert.ok(Math.hypot(prongUnit.x, prongUnit.y) < R, 'Unit hitting circle wall outside slit must not enter side area');
+stepPhysics(closedGateUnit, 0.05, Math.PI / 4, 0);
+assert.ok(Math.hypot(closedGateUnit.x, closedGateUnit.y) < R, 'Unit must reflect when rotating slit is away from side area');
+assert.ok(closedGateUnit.vx < 0, 'Unit velocity must reflect inward when rotating slit is closed');
+
+// 切れ込みが上下方向(th = 0 で g = π/2 の切れ込みが真下 y = R に位置)にあるとき、上下端にはサイド領域がないため飛び出さず跳ね返ることを確認
+const topWallUnit: CircleUnit = {
+  ...slitUnit,
+  id: 'top1',
+  x: 0,
+  y: R - 9,
+  vx: 0,
+  vy: 100,
+};
+stepPhysics(topWallUnit, 0.05, 0, 0);
+assert.ok(Math.hypot(topWallUnit.x, topWallUnit.y) < R, 'Unit must not exit at top/bottom even when rotating slit passes there');
 console.log('  -> PASSED');

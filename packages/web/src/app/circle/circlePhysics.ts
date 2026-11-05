@@ -6,12 +6,13 @@ export const C = W / 2;
 export const R = 195;
 export const SIDE_CX = 180;
 export const SIDE_R = 88;
-export const SIDE_GAPS = [0, Math.PI];
+export const SIDE_GAPS = [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2];
 export const SIDE_GAPW = 0.2;
 // メイン円(半径R)とサイド円(中心±SIDE_CX, 半径SIDE_R)の交点座標・角度
 export const SIDE_INT_X = (R * R + SIDE_CX * SIDE_CX - SIDE_R * SIDE_R) / (2 * SIDE_CX);
 export const SIDE_INT_Y = Math.sqrt(Math.max(0, R * R - SIDE_INT_X * SIDE_INT_X));
 export const SIDE_MAIN_ANGLE = Math.atan2(SIDE_INT_Y, SIDE_INT_X);
+export const SIDE_DOOR_SPAN = SIDE_MAIN_ANGLE - 0.05;
 export const HOLE = 12;
 export const RING = 70;
 export const UR = 7;
@@ -166,7 +167,10 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   const ny = u.y / d;
   const vn = u.vx * nx + u.vy * ny;
   const a = Math.atan2(u.y, u.x);
-  const inSideSlit = SIDE_GAPS.some((g) => Math.abs(angDiff(a, g)) < SIDE_GAPW);
+  // 両サイド領域の接続角度内であり、かつ盤面と一緒に回転する切れ込み(SIDE_GAPS + th)と重なっているときだけ通過可能
+  const inSideDoorSpan = Math.abs(angDiff(a, 0)) < SIDE_DOOR_SPAN || Math.abs(angDiff(a, Math.PI)) < SIDE_DOOR_SPAN;
+  const inRotatingSlit = SIDE_GAPS.some((g) => Math.abs(angDiff(a - th, g)) < SIDE_GAPW);
+  const inSideSlit = inSideDoorSpan && inRotatingSlit;
 
   // 外周壁の反射と両サイド領域（円の端の切れ込みから出入り）
   if (!wasInSide) {
@@ -179,10 +183,19 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
       u.y = ny * (R - ur);
     }
   } else {
+    const sideAngle = u.x >= 0 ? 0 : Math.PI;
+    const slitDiffs = SIDE_GAPS.map((g) => angDiff(g + th, sideAngle));
+    const nearestDiff = slitDiffs.reduce((best, cur) => (Math.abs(cur) < Math.abs(best) ? cur : best), slitDiffs[0]);
+    const clampedOffset = Math.max(-SIDE_DOOR_SPAN * 0.75, Math.min(SIDE_DOOR_SPAN * 0.75, nearestDiff));
+    const gateAngle = sideAngle + clampedOffset;
+
     if (!inSideSlit && d < R + ur) {
-      if (vn < 0) {
-        reflect(u, nx, ny, vn);
-      }
+      // 仕切り壁の裏側に当たった場合は、回転する切れ込み(gateAngle)の方向へ壁沿いに滑らせて合流させる
+      const tanDir = angDiff(gateAngle, a) >= 0 ? 1 : -1;
+      const tx = -ny * tanDir;
+      const ty = nx * tanDir;
+      u.vx = tx * u.speed * 0.85 + nx * u.speed * 0.2;
+      u.vy = ty * u.speed * 0.85 + ny * u.speed * 0.2;
       u.x = nx * (R + ur);
       u.y = ny * (R + ur);
     }
@@ -200,10 +213,11 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
       u.x = scx + snx * (SIDE_R - ur);
       u.y = sny * (SIDE_R - ur);
     }
-    // サイド領域に入ったユニットが滞留しすぎず切れ込みから円内へ戻れるよう緩やかに誘導
-    const gateX = u.x >= 0 ? R - 16 : -(R - 16);
+    // サイド領域に入ったユニットが滞留しすぎず回転する切れ込みから円内へ戻れるよう誘導
+    const gateX = Math.cos(gateAngle) * (R - 16);
+    const gateY = Math.sin(gateAngle) * (R - 16);
     const gx = gateX - u.x;
-    const gy = -u.y;
+    const gy = gateY - u.y;
     const gd = Math.hypot(gx, gy) || 1;
     const pull = u.speed * 0.55 * dt;
     u.vx += (gx / gd) * pull;

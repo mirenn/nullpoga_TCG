@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, SIDE_MAIN_ANGLE, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale, angDiff } from './circlePhysics';
+import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -270,7 +270,7 @@ export default function CircleModePage() {
                 />
               ))}
 
-              {/* Spikes (外周壁のとげ: 跳ね返るとダメージ。両サイド切れ込み上では非表示) */}
+              {/* Spikes (外周壁のとげ: 跳ね返るとダメージ) */}
               {SPIKES.map(([sa, sw], i) => {
                 const teeth = 7;
                 const step = (sw * 2) / teeth;
@@ -278,13 +278,12 @@ export default function CircleModePage() {
                   const a0 = sa - sw + k * step + theta;
                   const am = a0 + step / 2;
                   const a1 = a0 + step;
-                  if (SIDE_GAPS.some((g) => Math.abs(angDiff(am, g)) < SIDE_GAPW)) return '';
                   return `M ${fmt(Math.cos(a0) * R)} ${fmt(Math.sin(a0) * R)} L ${fmt(Math.cos(am) * (R - 11))} ${fmt(Math.sin(am) * (R - 11))} L ${fmt(Math.cos(a1) * R)} ${fmt(Math.sin(a1) * R)} Z`;
                 }).join(' ');
                 return <path key={`spike-${i}`} d={d} fill="#dc2626" stroke="#7f1d1d" strokeWidth={1} strokeLinejoin="round" />;
               })}
 
-              {/* 両サイド領域の外周壁と、円の端の切れ込み付き外周壁 */}
+              {/* 両サイド領域の外周壁と上下の固定外枠 */}
               <path
                 d={`M ${fmt(SIDE_INT_X)} ${fmt(-SIDE_INT_Y)} A ${SIDE_R} ${SIDE_R} 0 ${SIDE_INT_X < SIDE_CX ? 1 : 0} 1 ${fmt(SIDE_INT_X)} ${fmt(SIDE_INT_Y)}`}
                 fill="none" stroke={fg} strokeWidth={2.5}
@@ -293,30 +292,27 @@ export default function CircleModePage() {
                 d={`M ${fmt(-SIDE_INT_X)} ${fmt(SIDE_INT_Y)} A ${SIDE_R} ${SIDE_R} 0 ${SIDE_INT_X < SIDE_CX ? 1 : 0} 1 ${fmt(-SIDE_INT_X)} ${fmt(-SIDE_INT_Y)}`}
                 fill="none" stroke={fg} strokeWidth={2.5}
               />
+              <path
+                d={`M ${fmt(SIDE_INT_X)} ${fmt(SIDE_INT_Y)} A ${R} ${R} 0 0 1 ${fmt(-SIDE_INT_X)} ${fmt(SIDE_INT_Y)}`}
+                fill="none" stroke={fg} strokeWidth={1.8} strokeOpacity={0.5}
+              />
+              <path
+                d={`M ${fmt(-SIDE_INT_X)} ${fmt(-SIDE_INT_Y)} A ${R} ${R} 0 0 1 ${fmt(SIDE_INT_X)} ${fmt(-SIDE_INT_Y)}`}
+                fill="none" stroke={fg} strokeWidth={1.8} strokeOpacity={0.5}
+              />
+
+              {/* 円の回転(theta)に合わせて移動する切れ込み付き外周リング壁 */}
               {SIDE_GAPS.map((gapAngle, i) => {
-                const startAngle = gapAngle + SIDE_GAPW;
-                const endAngle = (i + 1 < SIDE_GAPS.length ? SIDE_GAPS[i + 1] : SIDE_GAPS[0] + Math.PI * 2) - SIDE_GAPW;
+                const startAngle = gapAngle + SIDE_GAPW + theta;
+                const endAngle = (i + 1 < SIDE_GAPS.length ? SIDE_GAPS[i + 1] : SIDE_GAPS[0] + Math.PI * 2) - SIDE_GAPW + theta;
                 return (
                   <path
                     key={`outer-wall-${i}`}
                     d={`M ${fmt(Math.cos(startAngle) * R)} ${fmt(Math.sin(startAngle) * R)} A ${R} ${R} 0 0 1 ${fmt(Math.cos(endAngle) * R)} ${fmt(Math.sin(endAngle) * R)}`}
-                    fill="none" stroke={fg} strokeWidth={2.5} strokeLinecap="round"
+                    fill="none" stroke={fg} strokeWidth={4.5} strokeLinecap="round"
                   />
                 );
               })}
-              {/* サイド領域の入り口にある「円の端の切れ込み」仕切り壁を強調 */}
-              {[
-                [SIDE_GAPW, SIDE_MAIN_ANGLE],
-                [-SIDE_MAIN_ANGLE, -SIDE_GAPW],
-                [Math.PI - SIDE_MAIN_ANGLE, Math.PI - SIDE_GAPW],
-                [Math.PI + SIDE_GAPW, Math.PI + SIDE_MAIN_ANGLE],
-              ].map(([a0, a1], idx) => (
-                <path
-                  key={`slit-prong-${idx}`}
-                  d={`M ${fmt(Math.cos(a0) * R)} ${fmt(Math.sin(a0) * R)} A ${R} ${R} 0 0 1 ${fmt(Math.cos(a1) * R)} ${fmt(Math.sin(a1) * R)}`}
-                  fill="none" stroke={fg} strokeWidth={4.5} strokeLinecap="round"
-                />
-              ))}
 
               {/* Rails (当たるとレールに沿ってスーッと進むガイドレール) */}
               {RAILS.map(([a1, d1, a2, d2], i) => {
