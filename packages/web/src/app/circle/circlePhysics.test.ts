@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, SIDE_CX, SIDE_R, SIDE_GAPW, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -152,4 +152,43 @@ assert.strictEqual(hound.attack, 1);
 // 前衛猟犬が先行して出撃し、移動速度も狩人より速いことを確認
 assert.ok(hound.speed > hunter.speed, 'Hound must have faster speed than hunter');
 assert.ok(hound.y < hunter.y, 'Hound must spawn ahead (closer to center y=0) when launched from player spawn');
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: side area entry via slit, outer pocket bounce, and return to main circle');
+const slitUnit: CircleUnit = {
+  id: 'slit1', owner: 'p',
+  x: R - 10, y: 10, // 切れ込み角度内 (atan2(10, 185) ≈ 0.054 < SIDE_GAPW)
+  vx: 110, vy: 25,
+  t: 5, cardNo: 1, hp: 5, maxHp: 5, attack: 1, attackInterval: 1, attackCooldown: 0, speed: 110, range: 10,
+};
+let enteredSide = false;
+let returnedToMain = false;
+for (let i = 0; i < 180; i++) {
+  stepPhysics(slitUnit, 1 / 60, 0, OMEGA);
+  const d = Math.hypot(slitUnit.x, slitUnit.y);
+  if (d > R + 15) enteredSide = true;
+  if (enteredSide) {
+    const sd = Math.hypot(slitUnit.x - SIDE_CX, slitUnit.y);
+    assert.ok(sd <= SIDE_R, `Expected unit inside side pocket to stay within SIDE_R (${SIDE_R}), got ${sd}`);
+    if (d < R - 10) {
+      returnedToMain = true;
+      break;
+    }
+  }
+}
+assert.strictEqual(enteredSide, true, 'Unit aiming at slit must enter side area (d > R)');
+assert.strictEqual(returnedToMain, true, 'Unit in side area must bounce and return through slit to main circle');
+
+// 切れ込み以外の仕切り壁（サイド領域と重なる角度だが SIDE_GAPW の外）では円内に跳ね返ることを確認
+const prongAngle = SIDE_GAPW + 0.12;
+const prongUnit: CircleUnit = {
+  ...slitUnit,
+  id: 'prong1',
+  x: Math.cos(prongAngle) * (R - 9),
+  y: Math.sin(prongAngle) * (R - 9),
+  vx: Math.cos(prongAngle) * 100,
+  vy: Math.sin(prongAngle) * 100,
+};
+stepPhysics(prongUnit, 0.05, 0, 0);
+assert.ok(Math.hypot(prongUnit.x, prongUnit.y) < R, 'Unit hitting circle wall outside slit must not enter side area');
 console.log('  -> PASSED');

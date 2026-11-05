@@ -1,8 +1,17 @@
 import { CARD_POOL, HOUND_TOKEN_SPEC } from '../cards';
 
 export const W = 420;
+export const BW = 560;
 export const C = W / 2;
 export const R = 195;
+export const SIDE_CX = 180;
+export const SIDE_R = 88;
+export const SIDE_GAPS = [0, Math.PI];
+export const SIDE_GAPW = 0.2;
+// メイン円(半径R)とサイド円(中心±SIDE_CX, 半径SIDE_R)の交点座標・角度
+export const SIDE_INT_X = (R * R + SIDE_CX * SIDE_CX - SIDE_R * SIDE_R) / (2 * SIDE_CX);
+export const SIDE_INT_Y = Math.sqrt(Math.max(0, R * R - SIDE_INT_X * SIDE_INT_X));
+export const SIDE_MAIN_ANGLE = Math.atan2(SIDE_INT_Y, SIDE_INT_X);
 export const HOLE = 12;
 export const RING = 70;
 export const UR = 7;
@@ -108,8 +117,14 @@ export function getDepthScale(x: number, y: number): number {
  */
 export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA): [number, number] {
   const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
+  const d = Math.hypot(u.x, u.y);
   const depthScale = getDepthScale(u.x, u.y);
-  return [u.vx * boostScale * depthScale - w * u.y, u.vy * boostScale * depthScale + w * u.x];
+  // サイド領域(d > R)では円盤の回転流速を減衰させ、壁への張り付きを防ぐ
+  const rotScale = d <= R - UR ? 1 : Math.max(0, 1 - (d - (R - UR)) / 14);
+  return [
+    u.vx * boostScale * depthScale - w * rotScale * u.y,
+    u.vy * boostScale * depthScale + w * rotScale * u.x,
+  ];
 }
 
 /**
@@ -136,6 +151,7 @@ export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA)
  * ユニットの物理挙動を1ステップ進める
  */
 export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA): StepResult {
+  const wasInSide = Math.hypot(u.x, u.y) > R;
   const [tvx, tvy] = getUnitTangentVelocity(u, w);
   u.x += tvx * dt;
   u.y += tvy * dt;
@@ -149,12 +165,54 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   const nx = u.x / d;
   const ny = u.y / d;
   const vn = u.vx * nx + u.vy * ny;
+  const a = Math.atan2(u.y, u.x);
+  const inSideSlit = SIDE_GAPS.some((g) => Math.abs(angDiff(a, g)) < SIDE_GAPW);
 
-  // 外周壁の反射
-  if (d > R - ur && vn > 0) {
-    reflect(u, nx, ny, vn);
-    const a = Math.atan2(u.y, u.x) - th;
-    if (SPIKES.some(([sa, sw]) => Math.abs(angDiff(a, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
+  // 外周壁の反射と両サイド領域（円の端の切れ込みから出入り）
+  if (!wasInSide) {
+    if (!inSideSlit && d > R - ur) {
+      if (vn > 0) {
+        reflect(u, nx, ny, vn);
+        if (SPIKES.some(([sa, sw]) => Math.abs(angDiff(a - th, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
+      }
+      u.x = nx * (R - ur);
+      u.y = ny * (R - ur);
+    }
+  } else {
+    if (!inSideSlit && d < R + ur) {
+      if (vn < 0) {
+        reflect(u, nx, ny, vn);
+      }
+      u.x = nx * (R + ur);
+      u.y = ny * (R + ur);
+    }
+    const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
+    const sdx = u.x - scx;
+    const sdy = u.y;
+    const sd = Math.hypot(sdx, sdy) || 1;
+    if (sd > SIDE_R - ur) {
+      const snx = sdx / sd;
+      const sny = sdy / sd;
+      const svn = u.vx * snx + u.vy * sny;
+      if (svn > 0) {
+        reflect(u, snx, sny, svn);
+      }
+      u.x = scx + snx * (SIDE_R - ur);
+      u.y = sny * (SIDE_R - ur);
+    }
+    // サイド領域に入ったユニットが滞留しすぎず切れ込みから円内へ戻れるよう緩やかに誘導
+    const gateX = u.x >= 0 ? R - 16 : -(R - 16);
+    const gx = gateX - u.x;
+    const gy = -u.y;
+    const gd = Math.hypot(gx, gy) || 1;
+    const pull = u.speed * 0.55 * dt;
+    u.vx += (gx / gd) * pull;
+    u.vy += (gy / gd) * pull;
+    const vLen = Math.hypot(u.vx, u.vy) || 1;
+    if (vLen > u.speed * 1.35) {
+      u.vx = (u.vx / vLen) * u.speed * 1.35;
+      u.vy = (u.vy / vLen) * u.speed * 1.35;
+    }
   }
 
   // リング壁(すき間あり)の反射

@@ -3,11 +3,12 @@ import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_R
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import type { AttackEffect, AttackEffectType } from '../types';
-import { CircleUnit, OMEGA, SPAWN, W, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn } from './circlePhysics';
+import { CircleUnit, OMEGA, SPAWN, W, BW, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn } from './circlePhysics';
 import { computeCpuLaunchAngle } from './circleCpu';
 
 function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: number, now: number): AttackEffect {
-  const toPct = (v: number) => ((v + W / 2) / W) * 100;
+  const toPctX = (v: number) => ((v + BW / 2) / BW) * 100;
+  const toPctY = (v: number) => ((v + W / 2) / W) * 100;
   let effectType: AttackEffectType = 'slash';
   let duration = 350;
   let flightDuration: number | undefined;
@@ -45,10 +46,10 @@ function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: num
   return {
     id: `fx_${now}_${a.id}_${Math.random().toString(36).slice(2, 6)}`,
     attackerId: a.id,
-    fromX: toPct(a.x),
-    fromY: toPct(a.y),
-    toX: toPct(target.x),
-    toY: toPct(target.y),
+    fromX: toPctX(a.x),
+    fromY: toPctY(a.y),
+    toX: toPctX(target.x),
+    toY: toPctY(target.y),
     owner: a.owner === 'p' ? 'player' : 'cpu',
     effectType,
     damage: a.attack,

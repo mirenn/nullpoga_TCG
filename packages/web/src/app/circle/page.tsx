@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, R, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
+import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, SIDE_MAIN_ANGLE, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale, angDiff } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -35,8 +35,8 @@ export default function CircleModePage() {
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
-    // Translate client coordinates to game coordinates (-W/2 to W/2)
-    const x = ((e.clientX - rect.left) / rect.width) * W - W / 2;
+    // Translate client coordinates to game coordinates (-BW/2..BW/2, -W/2..W/2)
+    const x = ((e.clientX - rect.left) / rect.width) * BW - BW / 2;
     const y = ((e.clientY - rect.top) / rect.height) * W - W / 2;
     setMousePos([x, y]);
   }, []);
@@ -170,29 +170,23 @@ export default function CircleModePage() {
               height: '100%',
               maxHeight: '100%',
               maxWidth: '100%',
-              aspectRatio: '1 / 1',
+              aspectRatio: `${BW} / ${W}`,
               position: 'relative',
               cursor: (draggedCardIndex !== null || selectedCardIndex !== null) ? 'crosshair' : 'default',
             }}
           >
-            {/* 円の外側（四隅）でも真横方向などを狙えるよう、イベントは四角い外枠で受け、円の見た目はこの内側に分ける */}
-            <div
-              style={{
-                position: 'absolute',
-                inset: 0,
-                backgroundColor: isLight ? '#eef2f7' : '#1c2230',
-                borderRadius: '50%',
-                border: `2px solid ${fg}`,
-                boxSizing: 'border-box',
-                overflow: 'hidden',
-                boxShadow: '0 8px 30px rgba(0,0,0,0.4)',
-              }}
-            />
             <svg
               width="100%"
               height="100%"
-              viewBox={`${-W / 2} ${-W / 2} ${W} ${W}`}
-              style={{ position: 'absolute', inset: 0, display: 'block', width: '100%', height: '100%' }}
+              viewBox={`${-BW / 2} ${-W / 2} ${BW} ${W}`}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                display: 'block',
+                width: '100%',
+                height: '100%',
+                filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.45))',
+              }}
             >
               <defs>
                 {/* 中心に向かって深く（遠くに）落ち込むすり鉢状の陰影グラデーション */}
@@ -205,6 +199,25 @@ export default function CircleModePage() {
                   <stop offset="100%" stopColor="#eef2f7" stopOpacity={0} />
                 </radialGradient>
               </defs>
+
+              {/* 両サイド領域とメイン円のベース背景 */}
+              <circle cx={-SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
+              <circle cx={SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
+              <circle cx={0} cy={0} r={R} fill={isLight ? '#eef2f7' : '#1c2230'} />
+
+              {/* 両サイド領域の補助グリッド（切れ込みへの誘導ライン・同心円） */}
+              {[-SIDE_CX, SIDE_CX].map((scx) => (
+                <g key={`side-grid-${scx}`}>
+                  <circle
+                    cx={scx} cy={0} r={fmt(SIDE_R * 0.62)}
+                    fill="none" stroke={dim} strokeWidth={1} strokeDasharray="4,4"
+                  />
+                  <line
+                    x1={scx} y1={0} x2={scx > 0 ? R - 18 : -(R - 18)} y2={0}
+                    stroke={dim} strokeWidth={1.2} strokeDasharray="3,3"
+                  />
+                </g>
+              ))}
 
               {/* すり鉢状の深度グラデーション背景 */}
               <circle cx={0} cy={0} r={R} fill="url(#circleFunnelGrad)" />
@@ -257,7 +270,7 @@ export default function CircleModePage() {
                 />
               ))}
 
-              {/* Spikes (外周壁のとげ: 跳ね返るとダメージ) */}
+              {/* Spikes (外周壁のとげ: 跳ね返るとダメージ。両サイド切れ込み上では非表示) */}
               {SPIKES.map(([sa, sw], i) => {
                 const teeth = 7;
                 const step = (sw * 2) / teeth;
@@ -265,10 +278,45 @@ export default function CircleModePage() {
                   const a0 = sa - sw + k * step + theta;
                   const am = a0 + step / 2;
                   const a1 = a0 + step;
+                  if (SIDE_GAPS.some((g) => Math.abs(angDiff(am, g)) < SIDE_GAPW)) return '';
                   return `M ${fmt(Math.cos(a0) * R)} ${fmt(Math.sin(a0) * R)} L ${fmt(Math.cos(am) * (R - 11))} ${fmt(Math.sin(am) * (R - 11))} L ${fmt(Math.cos(a1) * R)} ${fmt(Math.sin(a1) * R)} Z`;
                 }).join(' ');
                 return <path key={`spike-${i}`} d={d} fill="#dc2626" stroke="#7f1d1d" strokeWidth={1} strokeLinejoin="round" />;
               })}
+
+              {/* 両サイド領域の外周壁と、円の端の切れ込み付き外周壁 */}
+              <path
+                d={`M ${fmt(SIDE_INT_X)} ${fmt(-SIDE_INT_Y)} A ${SIDE_R} ${SIDE_R} 0 ${SIDE_INT_X < SIDE_CX ? 1 : 0} 1 ${fmt(SIDE_INT_X)} ${fmt(SIDE_INT_Y)}`}
+                fill="none" stroke={fg} strokeWidth={2.5}
+              />
+              <path
+                d={`M ${fmt(-SIDE_INT_X)} ${fmt(SIDE_INT_Y)} A ${SIDE_R} ${SIDE_R} 0 ${SIDE_INT_X < SIDE_CX ? 1 : 0} 1 ${fmt(-SIDE_INT_X)} ${fmt(-SIDE_INT_Y)}`}
+                fill="none" stroke={fg} strokeWidth={2.5}
+              />
+              {SIDE_GAPS.map((gapAngle, i) => {
+                const startAngle = gapAngle + SIDE_GAPW;
+                const endAngle = (i + 1 < SIDE_GAPS.length ? SIDE_GAPS[i + 1] : SIDE_GAPS[0] + Math.PI * 2) - SIDE_GAPW;
+                return (
+                  <path
+                    key={`outer-wall-${i}`}
+                    d={`M ${fmt(Math.cos(startAngle) * R)} ${fmt(Math.sin(startAngle) * R)} A ${R} ${R} 0 0 1 ${fmt(Math.cos(endAngle) * R)} ${fmt(Math.sin(endAngle) * R)}`}
+                    fill="none" stroke={fg} strokeWidth={2.5} strokeLinecap="round"
+                  />
+                );
+              })}
+              {/* サイド領域の入り口にある「円の端の切れ込み」仕切り壁を強調 */}
+              {[
+                [SIDE_GAPW, SIDE_MAIN_ANGLE],
+                [-SIDE_MAIN_ANGLE, -SIDE_GAPW],
+                [Math.PI - SIDE_MAIN_ANGLE, Math.PI - SIDE_GAPW],
+                [Math.PI + SIDE_GAPW, Math.PI + SIDE_MAIN_ANGLE],
+              ].map(([a0, a1], idx) => (
+                <path
+                  key={`slit-prong-${idx}`}
+                  d={`M ${fmt(Math.cos(a0) * R)} ${fmt(Math.sin(a0) * R)} A ${R} ${R} 0 0 1 ${fmt(Math.cos(a1) * R)} ${fmt(Math.sin(a1) * R)}`}
+                  fill="none" stroke={fg} strokeWidth={4.5} strokeLinecap="round"
+                />
+              ))}
 
               {/* Rails (当たるとレールに沿ってスーッと進むガイドレール) */}
               {RAILS.map(([a1, d1, a2, d2], i) => {
@@ -381,7 +429,7 @@ export default function CircleModePage() {
                   data-owner={u.owner}
                   style={{
                     position: 'absolute',
-                    left: `${((u.x + W / 2) / W) * 100}%`,
+                    left: `${((u.x + BW / 2) / BW) * 100}%`,
                     top: `${((u.y + W / 2) / W) * 100}%`,
                     transform: `translate(-50%, -50%) scale(${fmt(depthScale)})`,
                     zIndex: Math.round(depthScale * 100),
