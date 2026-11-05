@@ -105,7 +105,6 @@ export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
               width: `${Math.min(100, (playerMana / maxMana) * 100)}%`,
               height: '100%',
               background: 'linear-gradient(90deg, #2563eb, #38bdf8)',
-              transition: 'width 0.1s linear',
             }}
           />
           {/* 目盛り (1〜9) */}
