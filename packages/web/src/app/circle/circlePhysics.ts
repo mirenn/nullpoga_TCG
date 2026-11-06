@@ -1,0 +1,579 @@
+import { CARD_POOL, HOUND_TOKEN_SPEC } from '../cards';
+
+export const W = 420;
+export const BW = 616;
+export const C = W / 2;
+export const R = 195;
+export const SIDE_CX = 152;
+export const SIDE_R = 150;
+export const SIDE_GAPS = [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2];
+export const SIDE_GAPW = 0.2;
+// メイン円(半径R)とサイド円(中心±SIDE_CX, 半径SIDE_R)の交点座標・角度
+export const SIDE_INT_X = (R * R + SIDE_CX * SIDE_CX - SIDE_R * SIDE_R) / (2 * SIDE_CX);
+export const SIDE_INT_Y = Math.sqrt(Math.max(0, R * R - SIDE_INT_X * SIDE_INT_X));
+export const SIDE_MAIN_ANGLE = Math.atan2(SIDE_INT_Y, SIDE_INT_X);
+export const SIDE_DOOR_SPAN = SIDE_MAIN_ANGLE - 0.06;
+export const HOLE = 12;
+export const RING = 70;
+export const UR = 7;
+export const MIN_DEPTH_SCALE = 0.35;
+// SPEED scalar reference from prototype. We will scale card speed using this.
+export const BASE_SPEED = 110;
+// 射出時の初速ボーナスと減衰率（外周の回転流速を突破して狙った方向へ飛び出し、減速後は回転に流される）
+export const LAUNCH_SPEED_BONUS = 200;
+export const LAUNCH_DECAY_RATE = 1.4;
+export const JELLYFISH_CARD_NO = 6;
+export const JELLYFISH_HALF_WIDTH = 26; // 通常モードの ENGAGE_HALF_WIDTH_Y(6.5) * 4
+export const TAU = Math.PI * 2;
+export const GAPS = [0, Math.PI];
+export const GAPW = 0.38;
+export const BUMPERS: [number, number, number][] = [[0.5, 135, 14], [0.5 + Math.PI, 135, 14]]; // [角度, 中心距離, 半径]
+// レール: [始点角度, 始点距離, 終点角度, 終点距離]（当たるとレールに沿って内周側へスーッと滑走）
+export const RAILS: [number, number, number, number][] = [
+  [1.75, 150, 2.35, 100],
+  [1.75 + Math.PI, 150, 2.35 + Math.PI, 100],
+];
+export const RAIL_CAPTURE_WIDTH = 9;
+export const RAIL_SPEED_MULT = 1.25;
+// 重力源: [角度, 中心距離, 重力圏半径]（近くを通ると重力スイングバイで軌道が曲がり加速）
+export const GRAVITY_WELLS: [number, number, number][] = [
+  [2.75, 135, 44],
+  [2.75 + Math.PI, 135, 44],
+];
+// 外周壁のとげ: [中心角度, 半角幅]（盤面と一緒に回転し、ここで跳ね返るとダメージ。無限バウンドを防ぐ）
+export const SPIKES: [number, number][] = [
+  [1.15, 0.3],
+  [1.15 + Math.PI, 0.3],
+];
+export const SPIKE_DAMAGE = 2;
+export const GRAVITY_BEND_RATE = 3.2;
+export const GRAVITY_BOOST_RATE = 1.4;
+
+export const SPAWN: Record<'p' | 'c', [number, number]> = {
+  p: [0, R - 14],
+  c: [0, -(R - 14)],
+};
+
+// 回転速度 (20度/s)
+export const OMEGA = (20 * Math.PI) / 180;
+export const MAX_SCORE = 10;
+export const DISK_PHASE_DURATION = 20;
+export const DISK_TRANSITION_DURATION = 3;
+export const PARRY_COOLDOWN = 8;
+export const PARRY_DURATION = 0.7;
+export const PARRY_THETA_STEP = 0.45;
+export const COOK_READY_TIME = 1.5;
+export const COOK_BURN_TIME = 6.5;
+export const SLINGSHOT_WHEEL_MIN = 1.2;
+
+export interface DiskPhase {
+  name: string;
+  hint: string;
+  omega: number;
+  gaps: number[];
+  gapw: number;
+  bumpers: [number, number, number][];
+  rails: [number, number, number, number][];
+  gravityWells: [number, number, number][];
+  spikes: [number, number][];
+}
+
+// すべてのフェーズでギミックの角度・個数を固定し、大きさ・開口幅・回転速度だけを滑らかに変形させる
+export const DISK_PHASES: DiskPhase[] = [
+  {
+    name: '通常',
+    hint: '標準バランス',
+    omega: OMEGA,
+    gaps: GAPS,
+    gapw: GAPW,
+    bumpers: BUMPERS,
+    rails: RAILS,
+    gravityWells: GRAVITY_WELLS,
+    spikes: SPIKES,
+  },
+  {
+    name: '大開口',
+    hint: '内周ゲート拡大・レール延長',
+    omega: OMEGA * 1.2,
+    gaps: GAPS,
+    gapw: 0.78,
+    bumpers: [[0.5, 140, 10], [0.5 + Math.PI, 140, 10]],
+    rails: [
+      [1.75, 162, 2.35, 78],
+      [1.75 + Math.PI, 162, 2.35 + Math.PI, 78],
+    ],
+    gravityWells: [[2.75, 135, 32], [2.75 + Math.PI, 135, 32]],
+    spikes: [[1.15, 0.2], [1.15 + Math.PI, 0.2]],
+  },
+  {
+    name: '逆回転',
+    hint: '逆回転・重力エリア拡大',
+    omega: -OMEGA,
+    gaps: GAPS,
+    gapw: 0.42,
+    bumpers: BUMPERS,
+    rails: RAILS,
+    gravityWells: [[2.75, 125, 64], [2.75 + Math.PI, 125, 64]],
+    spikes: SPIKES,
+  },
+  {
+    name: '鉄壁',
+    hint: 'ゲート縮小・巨大バンパー',
+    omega: OMEGA * 0.8,
+    gaps: GAPS,
+    gapw: 0.24,
+    bumpers: [[0.5, 125, 24], [0.5 + Math.PI, 125, 24]],
+    rails: [
+      [1.75, 145, 2.35, 110],
+      [1.75 + Math.PI, 145, 2.35 + Math.PI, 110],
+    ],
+    gravityWells: [[2.75, 135, 40], [2.75 + Math.PI, 135, 40]],
+    spikes: [[1.15, 0.46], [1.15 + Math.PI, 0.46]],
+  },
+];
+
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
+export function getDiskPhase(elapsedSec: number): DiskPhase {
+  const safeSec = Math.max(0, elapsedSec);
+  const idx = Math.floor(safeSec / DISK_PHASE_DURATION) % DISK_PHASES.length;
+  const tInPhase = safeSec % DISK_PHASE_DURATION;
+  const transStart = DISK_PHASE_DURATION - DISK_TRANSITION_DURATION;
+  if (tInPhase <= transStart) return DISK_PHASES[idx];
+
+  const next = DISK_PHASES[(idx + 1) % DISK_PHASES.length];
+  const cur = DISK_PHASES[idx];
+  const raw = (tInPhase - transStart) / DISK_TRANSITION_DURATION;
+  const s = raw * raw * (3 - 2 * raw); // smoothstep
+
+  return {
+    name: cur.name,
+    hint: `まもなく「${next.name}」へ変形中…`,
+    omega: lerp(cur.omega, next.omega, s),
+    gaps: cur.gaps,
+    gapw: lerp(cur.gapw, next.gapw, s),
+    bumpers: cur.bumpers.map(([a, d, r], i) => [a, lerp(d, next.bumpers[i][1], s), lerp(r, next.bumpers[i][2], s)]),
+    rails: cur.rails.map(([a1, d1, a2, d2], i) => [
+      a1,
+      lerp(d1, next.rails[i][1], s),
+      a2,
+      lerp(d2, next.rails[i][3], s),
+    ]),
+    gravityWells: cur.gravityWells.map(([a, d, r], i) => [
+      a,
+      lerp(d, next.gravityWells[i][1], s),
+      lerp(r, next.gravityWells[i][2], s),
+    ]),
+    spikes: cur.spikes.map(([a, w], i) => [a, lerp(w, next.spikes[i][1], s)]),
+  };
+}
+
+export interface CircleUnit {
+  id: string;
+  owner: 'p' | 'c';
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  t: number; // lifetime
+
+  // Game stats
+  cardNo: number;
+  hp: number;
+  maxHp: number;
+  attack: number;
+  attackInterval: number;
+  attackCooldown: number;
+  speed: number;
+  range: number;
+
+  isDead?: boolean;
+  isEngaged?: boolean;
+  attackAnimUntil?: number;
+  icon?: string;
+  cookTime?: number;
+  isCooked?: boolean;
+}
+
+export const rot = (x: number, y: number, a: number): [number, number] => [
+  x * Math.cos(a) - y * Math.sin(a),
+  x * Math.sin(a) + y * Math.cos(a),
+];
+
+export const angDiff = (a: number, b: number): number => {
+  let d = (a - b) % TAU;
+  if (d > Math.PI) d -= TAU;
+  if (d < -Math.PI) d += TAU;
+  return d;
+};
+
+export const reflect = (u: CircleUnit, nx: number, ny: number, vn: number) => {
+  u.vx -= 2 * vn * nx;
+  u.vy -= 2 * vn * ny;
+};
+
+export const isSideSlitOpen = (sideSign: 1 | -1, th: number): boolean => {
+  const sideAngle = sideSign > 0 ? 0 : Math.PI;
+  return SIDE_GAPS.some((g) => Math.abs(angDiff(g + th, sideAngle)) < SIDE_GAPW * 1.4);
+};
+
+export type StepResult = 'hole' | 'dead' | null;
+
+/**
+ * 中心に向かって深く（遠くに）なるすり鉢状の遠近スケール係数 (MIN_DEPTH_SCALE 〜 1.0)
+ * 外周付近は手前(1.0)に見え、内周(RING〜中心HOLE)へ進むほど遠くの深い谷底へ縮小する
+ */
+export function getDepthScale(x: number, y: number): number {
+  const ratio = Math.min(1, Math.hypot(x, y) / R);
+  const curve = 1 - Math.pow(1 - ratio, 2.2);
+  return MIN_DEPTH_SCALE + (1 - MIN_DEPTH_SCALE) * curve;
+}
+
+/**
+ * ユニットの現在の軌道接線ベクトル (dx/dt, dy/dt) を返す
+ * 自力の推進ベクトル(初速ブースト・遠近深度スケール込み)と盤面回転による流速(-w*y, w*x)の合成ベクトル
+ */
+export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA, sideW: number = 0): [number, number] {
+  const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
+  const d = Math.hypot(u.x, u.y);
+  const depthScale = getDepthScale(u.x, u.y);
+  // サイド領域(d > R)ではメイン円盤の回転流速を減衰させ、代わりにマウスホイールによる左右円盤の回転流速(sideW)を与える
+  const rotScale = d <= R - UR ? 1 : Math.max(0, 1 - (d - (R - UR)) / 14);
+  const sideScale = 1 - rotScale;
+  const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
+  return [
+    u.vx * boostScale * depthScale - w * rotScale * u.y - sideW * sideScale * u.y,
+    u.vy * boostScale * depthScale + w * rotScale * u.x + sideW * sideScale * (u.x - scx),
+  ];
+}
+
+/**
+ * 攻撃対象 b が a の探知範囲内にいるか判定する
+ * 電気クラゲ(cardNo=6)は軌道の接線方向(実際の移動方向)への長方形、それ以外は全方位円形（遠近深度スケールを反映）
+ */
+export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA): boolean {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const depthScale = getDepthScale(a.x, a.y);
+  if (a.cardNo === JELLYFISH_CARD_NO) {
+    const [tvx, tvy] = getUnitTangentVelocity(a, w);
+    const len = Math.hypot(tvx, tvy) || 1;
+    const fx = tvx / len;
+    const fy = tvy / len;
+    const forward = dx * fx + dy * fy;
+    const lateral = Math.abs(-dx * fy + dy * fx);
+    return forward >= 0 && forward <= a.range * depthScale && lateral <= JELLYFISH_HALF_WIDTH * depthScale;
+  }
+  return Math.hypot(dx, dy) < a.range * depthScale;
+}
+
+/**
+ * ユニットの物理挙動を1ステップ進める
+ */
+export function stepPhysics(
+  u: CircleUnit,
+  dt: number,
+  th: number,
+  w: number = OMEGA,
+  sideW: number = 0,
+  disk: DiskPhase = DISK_PHASES[0]
+): StepResult {
+  const wasInSide = Math.hypot(u.x, u.y) > R;
+  const [tvx, tvy] = getUnitTangentVelocity(u, w, sideW);
+  u.x += tvx * dt;
+  u.y += tvy * dt;
+
+  const d = Math.hypot(u.x, u.y);
+  if (d < HOLE) return 'hole';
+
+  const ur = UR * getDepthScale(u.x, u.y);
+
+  // 速度ベクトルの法線成分 (反射計算用)
+  const nx = u.x / d;
+  const ny = u.y / d;
+  const vn = u.vx * nx + u.vy * ny;
+  const a = Math.atan2(u.y, u.x);
+  // 両サイド領域の接続角度内であり、かつ盤面と一緒に回転する切れ込み(SIDE_GAPS + th)と重なっているときだけ通過可能
+  const inSideDoorSpan = Math.abs(angDiff(a, 0)) < SIDE_DOOR_SPAN || Math.abs(angDiff(a, Math.PI)) < SIDE_DOOR_SPAN;
+  const inRotatingSlit = SIDE_GAPS.some((g) => Math.abs(angDiff(a - th, g)) < SIDE_GAPW);
+  const inSideSlit = inSideDoorSpan && inRotatingSlit;
+
+  // 外周壁の反射と両サイド領域（円の端の切れ込みから出入り）
+  if (!wasInSide) {
+    if (!inSideSlit && d > R - ur) {
+      if (vn > 0) {
+        reflect(u, nx, ny, vn);
+        if (disk.spikes.some(([sa, sw]) => Math.abs(angDiff(a - th, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
+      }
+      u.x = nx * (R - ur);
+      u.y = ny * (R - ur);
+    }
+  } else {
+    u.cookTime = (u.cookTime ?? 0) + dt * (1 + Math.abs(sideW) * 0.6);
+    if (u.cookTime >= COOK_BURN_TIME) return 'dead';
+    if (u.cookTime >= COOK_READY_TIME && !u.isCooked) {
+      u.isCooked = true;
+      u.attack += 1;
+    }
+
+    const sideAngle = u.x >= 0 ? 0 : Math.PI;
+    const slitDiffs = SIDE_GAPS.map((g) => angDiff(g + th, sideAngle));
+    const nearestDiff = slitDiffs.reduce((best, cur) => (Math.abs(cur) < Math.abs(best) ? cur : best), slitDiffs[0]);
+    const clampedOffset = Math.max(-SIDE_DOOR_SPAN * 0.75, Math.min(SIDE_DOOR_SPAN * 0.75, nearestDiff));
+    const gateAngle = sideAngle + clampedOffset;
+
+    // 完熟後にスリットが開いているタイミングでホイールを強く回すと中央ホールへ向けて高速スリングショット射出
+    if (u.isCooked && Math.abs(sideW) >= SLINGSHOT_WHEEL_MIN && isSideSlitOpen(u.x >= 0 ? 1 : -1, th)) {
+      const hd = Math.hypot(u.x, u.y) || 1;
+      const slingSpd = u.speed * 1.45;
+      u.vx = (-u.x / hd) * slingSpd;
+      u.vy = (-u.y / hd) * slingSpd;
+      u.t = -dt;
+      if (d <= R + 25) {
+        u.x = Math.cos(gateAngle) * (R - ur - 2);
+        u.y = Math.sin(gateAngle) * (R - ur - 2);
+      }
+    } else {
+      if (!inSideSlit && d < R + ur) {
+        // 仕切り壁の裏側に当たった場合は、内向き圧力を保ちつつ回転する切れ込み(gateAngle)の方向へ壁沿いに滑らせて合流させる
+        const tanDir = angDiff(gateAngle, a) >= 0 ? 1 : -1;
+        const tx = -ny * tanDir;
+        const ty = nx * tanDir;
+        u.vx = tx * u.speed * 0.95 - nx * u.speed * 0.35;
+        u.vy = ty * u.speed * 0.95 - ny * u.speed * 0.35;
+        u.x = nx * (R + ur);
+        u.y = ny * (R + ur);
+      }
+      const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
+      const sdx = u.x - scx;
+      const sdy = u.y;
+      const sd = Math.hypot(sdx, sdy) || 1;
+      if (sd > SIDE_R - ur) {
+        const snx = sdx / sd;
+        const sny = sdy / sd;
+        const svn = u.vx * snx + u.vy * sny;
+        if (svn > 0) {
+          reflect(u, snx, sny, svn);
+        }
+        u.x = scx + snx * (SIDE_R - ur);
+        u.y = sny * (SIDE_R - ur);
+      }
+      if (Math.abs(sideW) > 0.01) {
+        u.vx += (-sdy / sd) * sideW * 45 * dt;
+        u.vy += (sdx / sd) * sideW * 45 * dt;
+      }
+      // サイド領域に入ったユニットが滞留しすぎず回転する切れ込みから円内へ戻れるよう誘導
+      const gateX = Math.cos(gateAngle) * (R - 16);
+      const gateY = Math.sin(gateAngle) * (R - 16);
+      const gx = gateX - u.x;
+      const gy = gateY - u.y;
+      const gd = Math.hypot(gx, gy) || 1;
+      const pull = u.speed * 0.55 * dt;
+      u.vx += (gx / gd) * pull;
+      u.vy += (gy / gd) * pull;
+      const vLen = Math.hypot(u.vx, u.vy) || 1;
+      if (vLen > u.speed * 1.35) {
+        u.vx = (u.vx / vLen) * u.speed * 1.35;
+        u.vy = (u.vy / vLen) * u.speed * 1.35;
+      }
+    }
+  }
+
+  // リング壁(すき間あり)の反射
+  if (Math.abs(d - RING) < ur) {
+    const a = Math.atan2(u.y, u.x) - th;
+    if (!disk.gaps.some((g) => Math.abs(angDiff(a, g)) < disk.gapw) && vn * (d - RING) < 0) {
+      reflect(u, nx, ny, vn);
+    }
+  }
+
+  // バンパーの反射
+  for (const [ba, bd, br] of disk.bumpers) {
+    const dx = u.x - Math.cos(ba + th) * bd;
+    const dy = u.y - Math.sin(ba + th) * bd;
+    const dd = Math.hypot(dx, dy);
+    if (dd < br + ur) {
+      const mx = dx / dd;
+      const my = dy / dd;
+      const v2 = u.vx * mx + u.vy * my;
+      if (v2 < 0) {
+        reflect(u, mx, my, v2);
+      }
+    }
+  }
+
+  // レールの滑走判定（当たると反射せずレールに沿ってスーッと進む）
+  for (const [a1, d1, a2, d2] of disk.rails) {
+    const x1 = Math.cos(a1 + th) * d1;
+    const y1 = Math.sin(a1 + th) * d1;
+    const x2 = Math.cos(a2 + th) * d2;
+    const y2 = Math.sin(a2 + th) * d2;
+    const rdx = x2 - x1;
+    const rdy = y2 - y1;
+    const rLen = Math.hypot(rdx, rdy) || 1;
+    const tx = rdx / rLen;
+    const ty = rdy / rLen;
+    const s = (u.x - x1) * tx + (u.y - y1) * ty;
+    if (s >= 0 && s <= rLen) {
+      const cx = x1 + s * tx;
+      const cy = y1 + s * ty;
+      if (Math.hypot(u.x - cx, u.y - cy) < RAIL_CAPTURE_WIDTH + ur) {
+        const dir = u.vx * tx + u.vy * ty < -u.speed * 0.25 ? -1 : 1;
+        const glideSpeed = Math.max(Math.hypot(u.vx, u.vy), u.speed * RAIL_SPEED_MULT);
+        u.vx = tx * dir * glideSpeed;
+        u.vy = ty * dir * glideSpeed;
+        u.x += (cx - u.x) * 0.35;
+        u.y += (cy - u.y) * 0.35;
+      }
+    }
+  }
+
+  // 重力源による重力スイングバイ（軌道を中心側へ曲げつつ接近加速を残す）
+  for (const [ga, gd, gr] of disk.gravityWells) {
+    const gx = Math.cos(ga + th) * gd;
+    const gy = Math.sin(ga + th) * gd;
+    const dx = gx - u.x;
+    const dy = gy - u.y;
+    const dg = Math.hypot(dx, dy);
+    if (dg < gr && dg > 6) {
+      const mx = dx / dg;
+      const my = dy / dg;
+      const vLen = Math.hypot(u.vx, u.vy) || 1;
+      const vxUnit = u.vx / vLen;
+      const vyUnit = u.vy / vLen;
+      const dotV = mx * vxUnit + my * vyUnit;
+      const falloff = 1 - (dg / gr) * 0.5;
+      let px = mx - dotV * vxUnit;
+      let py = my - dotV * vyUnit;
+      if (Math.hypot(px, py) < 0.25) {
+        px = -vyUnit * 0.4;
+        py = vxUnit * 0.4;
+      }
+      const bend = vLen * GRAVITY_BEND_RATE * falloff * dt;
+      const boost = u.speed * GRAVITY_BOOST_RATE * (dotV > 0 ? dotV : dotV * 0.2) * falloff * dt;
+      u.vx += px * bend + vxUnit * boost;
+      u.vy += py * bend + vyUnit * boost;
+      const newSpeed = Math.hypot(u.vx, u.vy);
+      const maxSpeed = u.speed * 1.65;
+      if (newSpeed > maxSpeed) {
+        u.vx = (u.vx / newSpeed) * maxSpeed;
+        u.vy = (u.vy / newSpeed) * maxSpeed;
+      }
+    }
+  }
+
+  u.t += dt;
+  // プロトタイプでは14秒で消滅する処理があったが、今回は不要かもしれない？とりあえず残すか長くする
+  if (u.t > 30) return 'dead';
+
+  return null;
+}
+
+export function predict(
+  startX: number,
+  startY: number,
+  targetX: number,
+  targetY: number,
+  speed: number,
+  currentTheta: number,
+  w: number = OMEGA,
+  disk: DiskPhase = DISK_PHASES[0]
+): { pts: [number, number][]; hit: boolean } {
+  const l = Math.hypot(targetX - startX, targetY - startY) || 1;
+  const vx = ((targetX - startX) / l) * speed;
+  const vy = ((targetY - startY) / l) * speed;
+
+  const u: CircleUnit = {
+    id: 'pred', owner: 'p',
+    x: startX, y: startY, vx, vy, t: 0,
+    cardNo: 0, hp: 1, maxHp: 1, attack: 0, attackInterval: 1, attackCooldown: 0, speed, range: 0
+  };
+
+  const pts: [number, number][] = [[u.x, u.y]];
+  let th = currentTheta;
+  let hit = false;
+
+  for (let i = 0; i < 320; i++) {
+    th += w / 60;
+    const r = stepPhysics(u, 1 / 60, th, w, 0, disk);
+    pts.push([u.x, u.y]);
+    if (r) {
+      hit = r === 'hole';
+      break;
+    }
+  }
+
+  return { pts, hit };
+}
+
+/**
+ * 出撃時にカードから生成されるサークルユニット群を構築する
+ * 森の狩人と猟犬 (CardNo: 12) は前衛として猟犬 (CardNo: 13) トークンを同時生成
+ */
+export function createCircleUnitsForSpawn(
+  owner: 'p' | 'c',
+  cardNo: number,
+  tx: number,
+  ty: number
+): CircleUnit[] {
+  const card = CARD_POOL.find((c) => c.cardNo === cardNo && c.type === 'MONSTER') || CARD_POOL[0];
+  const [sx, sy] = SPAWN[owner];
+  const l = Math.hypot(tx - sx, ty - sy) || 1;
+  const speed = ((card.speed || 10) / 10) * BASE_SPEED;
+
+  const mainUnit: CircleUnit = {
+    id: Math.random().toString(36).substring(2, 9),
+    owner,
+    x: sx,
+    y: sy,
+    vx: ((tx - sx) / l) * speed,
+    vy: ((ty - sy) / l) * speed,
+    t: 0,
+    cardNo,
+    hp: card.life || 1,
+    maxHp: card.life || 1,
+    attack: card.attack || 1,
+    attackInterval: card.attackInterval || 1,
+    attackCooldown: 0,
+    speed,
+    range: (card.range || 10) * 4,
+    isEngaged: false,
+    icon: card.icon,
+  };
+
+  const units: CircleUnit[] = [mainUnit];
+
+  if (cardNo === 12) {
+    const houndSpeed = ((HOUND_TOKEN_SPEC.speed || 10) / 10) * BASE_SPEED;
+    const houndLead = 14;
+    let hx = sx + ((tx - sx) / l) * houndLead;
+    let hy = sy + ((ty - sy) / l) * houndLead;
+    const hDist = Math.hypot(hx, hy);
+    if (hDist > R - 14) {
+      hx = (hx / hDist) * (R - 14);
+      hy = (hy / hDist) * (R - 14);
+    }
+    const houndUnit: CircleUnit = {
+      id: Math.random().toString(36).substring(2, 9),
+      owner,
+      x: hx,
+      y: hy,
+      vx: ((tx - sx) / l) * houndSpeed,
+      vy: ((ty - sy) / l) * houndSpeed,
+      t: 0,
+      cardNo: HOUND_TOKEN_SPEC.cardNo,
+      hp: HOUND_TOKEN_SPEC.life,
+      maxHp: HOUND_TOKEN_SPEC.life,
+      attack: HOUND_TOKEN_SPEC.attack,
+      attackInterval: HOUND_TOKEN_SPEC.attackInterval,
+      attackCooldown: 0,
+      speed: houndSpeed,
+      range: (HOUND_TOKEN_SPEC.range || 8) * 4,
+      isEngaged: false,
+      icon: HOUND_TOKEN_SPEC.icon,
+    };
+    units.push(houndUnit);
+  }
+
+  return units;
+}
