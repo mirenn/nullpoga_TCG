@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, GAPS, GAPW, BUMPERS, RAILS, GRAVITY_WELLS, SPIKES, predict, OMEGA, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
+import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, DISK_PHASE_DURATION, predict, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -19,6 +19,8 @@ export default function CircleModePage() {
     score,
     theta,
     sideTheta,
+    elapsedTime,
+    disk,
     rotateSideByWheel,
     playerMana,
     playerDeck,
@@ -101,11 +103,11 @@ export default function CircleModePage() {
       const card = playerDeck.hand[cardIndex];
       if (card) {
         const speed = (card.speed || 10) / 10 * BASE_SPEED;
-        return predict(SPAWN.p[0], SPAWN.p[1], mousePos[0], mousePos[1], speed, theta, OMEGA);
+        return predict(SPAWN.p[0], SPAWN.p[1], mousePos[0], mousePos[1], speed, theta, disk.omega, disk);
       }
     }
     return null;
-  }, [draggedCardIndex, selectedCardIndex, mousePos, playerDeck, theta]);
+  }, [draggedCardIndex, selectedCardIndex, mousePos, playerDeck, theta, disk]);
 
   // SVG Render styles
   const isLight = true; // Use light mode colors for simplicity
@@ -132,7 +134,10 @@ export default function CircleModePage() {
           zIndex: 10,
         }}
       >
-        <span>🔄</span> Circle Mode <span style={{ fontSize: '0.7rem', color: '#475569' }}>(Experimental)</span>
+        <span>🔄</span> Circle Mode
+        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+          [{disk.name} · 切替まで {Math.ceil(DISK_PHASE_DURATION - (elapsedTime % DISK_PHASE_DURATION))}s]
+        </span>
       </div>
 
       {/* Main Board & Side Panel Container */}
@@ -262,17 +267,18 @@ export default function CircleModePage() {
               })}
 
               {/* Gaps / Rings */}
-              {GAPS.map((gapAngle, i) => {
-                const startAngle = gapAngle + GAPW + theta;
-                const endAngle = (i + 1 < GAPS.length ? GAPS[i + 1] : GAPS[0] + Math.PI * 2) - GAPW + theta;
-                const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 0 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
+              {disk.gaps.map((gapAngle, i) => {
+                const startAngle = gapAngle + disk.gapw + theta;
+                const endAngle = (i + 1 < disk.gaps.length ? disk.gaps[i + 1] : disk.gaps[0] + Math.PI * 2) - disk.gapw + theta;
+                const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
+                const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 ${largeArc} 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
                 return (
                   <path key={i} d={path} fill="none" stroke={fg} strokeWidth={5} strokeLinecap="round" />
                 );
               })}
 
               {/* Bumpers */}
-              {BUMPERS.map(([ba, bd, br], i) => (
+              {disk.bumpers.map(([ba, bd, br], i) => (
                 <circle
                   key={`bumper-${i}`}
                   cx={fmt(Math.cos(ba + theta) * bd)}
@@ -283,7 +289,7 @@ export default function CircleModePage() {
               ))}
 
               {/* Spikes (外周壁のとげ: 跳ね返るとダメージ) */}
-              {SPIKES.map(([sa, sw], i) => {
+              {disk.spikes.map(([sa, sw], i) => {
                 const teeth = 7;
                 const step = (sw * 2) / teeth;
                 const d = Array.from({ length: teeth }, (_, k) => {
@@ -327,7 +333,7 @@ export default function CircleModePage() {
               })}
 
               {/* Rails (当たるとレールに沿ってスーッと進むガイドレール) */}
-              {RAILS.map(([a1, d1, a2, d2], i) => {
+              {disk.rails.map(([a1, d1, a2, d2], i) => {
                 const x1 = fmt(Math.cos(a1 + theta) * d1);
                 const y1 = fmt(Math.sin(a1 + theta) * d1);
                 const x2 = fmt(Math.cos(a2 + theta) * d2);
@@ -359,7 +365,7 @@ export default function CircleModePage() {
               })}
 
               {/* Gravity Wells (重力スイングバイを発生させる重力源) */}
-              {GRAVITY_WELLS.map(([ga, gd, gr], i) => {
+              {disk.gravityWells.map(([ga, gd, gr], i) => {
                 const gx = fmt(Math.cos(ga + theta) * gd);
                 const gy = fmt(Math.sin(ga + theta) * gd);
                 return (
@@ -402,7 +408,7 @@ export default function CircleModePage() {
 
               {/* 電気クラゲの進行方向(軌道の接線方向)・長方形探知範囲（中心ほど深く小さくなる遠近スケール反映） */}
               {units.filter(u => u.cardNo === JELLYFISH_CARD_NO).map(u => {
-                const [tvx, tvy] = getUnitTangentVelocity(u, OMEGA);
+                const [tvx, tvy] = getUnitTangentVelocity(u, disk.omega);
                 const deg = (Math.atan2(tvy, tvx) * 180) / Math.PI;
                 const depthScale = getDepthScale(u.x, u.y);
                 const col = u.owner === 'p' ? '#3b82f6' : '#ef4444';

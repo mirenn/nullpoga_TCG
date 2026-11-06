@@ -3,7 +3,7 @@ import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_R
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import type { AttackEffect, AttackEffectType } from '../types';
-import { CircleUnit, OMEGA, SPAWN, W, BW, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn } from './circlePhysics';
+import { CircleUnit, SPAWN, W, BW, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn, getDiskPhase } from './circlePhysics';
 import { computeCpuLaunchAngle } from './circleCpu';
 
 function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: number, now: number): AttackEffect {
@@ -71,11 +71,13 @@ export function useCircleGame() {
   const [score, setScore] = useState({ p: 0, c: 0 });
   const [theta, setTheta] = useState(0);
   const [sideTheta, setSideTheta] = useState(0);
+  const [elapsedTime, setElapsedTime] = useState(0);
   const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
   const [playerDeck, setPlayerDeck] = useState(() => createMonsterOnlyDeckState(false));
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
 
   const lastTimeRef = useRef(Date.now());
+  const elapsedTimeRef = useRef(0);
   const unitsRef = useRef<CircleUnit[]>([]);
   const attackEffectsRef = useRef<AttackEffect[]>([]);
   const thetaRef = useRef(0);
@@ -98,6 +100,7 @@ export function useCircleGame() {
     setScore({ p: 0, c: 0 });
     setTheta(0);
     setSideTheta(0);
+    setElapsedTime(0);
     setPlayerMana(INITIAL_MANA);
     setPlayerDeck(createMonsterOnlyDeckState(true));
     setGameResult('playing');
@@ -109,6 +112,7 @@ export function useCircleGame() {
     thetaRef.current = 0;
     sideThetaRef.current = 0;
     sideOmegaRef.current = 0;
+    elapsedTimeRef.current = 0;
     scoreRef.current = { p: 0, c: 0 };
     lastTimeRef.current = Date.now();
   }, []);
@@ -137,8 +141,10 @@ export function useCircleGame() {
       const now = Date.now();
       const dt = Math.min(0.05, (now - lastTimeRef.current) / 1000);
       lastTimeRef.current = now;
+      elapsedTimeRef.current += dt;
+      const disk = getDiskPhase(elapsedTimeRef.current);
 
-      thetaRef.current = (thetaRef.current + OMEGA * dt) % (Math.PI * 2);
+      thetaRef.current = (thetaRef.current + disk.omega * dt) % (Math.PI * 2);
       if (Math.abs(sideOmegaRef.current) > 0.001) {
         sideThetaRef.current = (sideThetaRef.current + sideOmegaRef.current * dt) % (Math.PI * 2);
         sideOmegaRef.current *= Math.exp(-5 * dt);
@@ -156,7 +162,7 @@ export function useCircleGame() {
       // Update physics
       const nextUnits: CircleUnit[] = [];
       for (const u of currentUnits) {
-        const res = stepPhysics(u, dt, thetaRef.current, OMEGA, sideOmegaRef.current);
+        const res = stepPhysics(u, dt, thetaRef.current, disk.omega, sideOmegaRef.current, disk);
         if (res === 'hole') {
           scoreRef.current[u.owner]++;
         } else if (res !== 'dead') {
@@ -170,7 +176,7 @@ export function useCircleGame() {
         let minDist = Infinity;
 
         for (const b of nextUnits) {
-          if (a.owner !== b.owner && isInAttackRange(a, b)) {
+          if (a.owner !== b.owner && isInAttackRange(a, b, disk.omega)) {
             const dist = Math.hypot(a.x - b.x, a.y - b.y);
             if (dist < minDist) {
               minDist = dist;
@@ -202,6 +208,7 @@ export function useCircleGame() {
       setAttackEffects([...attackEffectsRef.current]);
       setTheta(thetaRef.current);
       setSideTheta(sideThetaRef.current);
+      setElapsedTime(elapsedTimeRef.current);
 
       if (scoreRef.current.p !== score.p || scoreRef.current.c !== score.c) {
         setScore({ ...scoreRef.current });
@@ -231,7 +238,8 @@ export function useCircleGame() {
 
       cpuManaRef.current -= cardToPlay.manaCost;
       const speed = (cardToPlay.speed || 10) / 10 * BASE_SPEED;
-      const [tx, ty] = computeCpuLaunchAngle(speed, thetaRef.current, OMEGA);
+      const disk = getDiskPhase(elapsedTimeRef.current);
+      const [tx, ty] = computeCpuLaunchAngle(speed, thetaRef.current, disk.omega, disk);
       spawnUnit('c', cardToPlay.cardNo, tx, ty);
       cpuDeckRef.current = drawNextCardFromDeck(deck, idx, cardToPlay);
     }, 1500);
@@ -245,6 +253,8 @@ export function useCircleGame() {
     score,
     theta,
     sideTheta,
+    elapsedTime,
+    disk: getDiskPhase(elapsedTime),
     rotateSideByWheel,
     playerMana,
     playerDeck,

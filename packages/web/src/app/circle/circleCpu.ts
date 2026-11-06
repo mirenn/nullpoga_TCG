@@ -1,6 +1,11 @@
-import { SPAWN, predict, OMEGA } from './circlePhysics';
+import { SPAWN, predict, OMEGA, DiskPhase, DISK_PHASES } from './circlePhysics';
 
-export function computeCpuLaunchAngle(speed: number, currentTheta: number, w: number = OMEGA): [number, number] {
+export function computeCpuLaunchAngle(
+  speed: number,
+  currentTheta: number,
+  w: number = OMEGA,
+  disk: DiskPhase = DISK_PHASES[0]
+): [number, number] {
   const [sx, sy] = SPAWN.c;
 
   // CPUは少しランダムに数パターンの角度を試し、穴に入る軌道を探す
@@ -22,7 +27,7 @@ export function computeCpuLaunchAngle(speed: number, currentTheta: number, w: nu
     const tx = Math.sin(angleOffset) * 200;
     const ty = SPAWN.c[1] + Math.cos(angleOffset) * 200;
 
-    const { hit } = predict(sx, sy, tx, ty, speed, currentTheta, w);
+    const { hit } = predict(sx, sy, tx, ty, speed, currentTheta, w, disk);
 
     if (hit) {
       // 完璧すぎないように少し誤差を入れる

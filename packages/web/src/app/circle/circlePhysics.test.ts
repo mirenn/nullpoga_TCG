@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, SIDE_CX, SIDE_R, SIDE_GAPW, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, SIDE_CX, SIDE_R, SIDE_GAPW, DISK_PHASES, DISK_PHASE_DURATION, getDiskPhase, RING, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -213,4 +213,20 @@ stepPhysics(sideSpinPos, 0.05, 0, 0, 2.5);
 stepPhysics(sideSpinNeg, 0.05, 0, 0, -2.5);
 assert.ok(sideSpinPos.y > 5, `Expected positive sideW to sweep unit downward (+y), got y=${sideSpinPos.y}`);
 assert.ok(sideSpinNeg.y < -5, `Expected negative sideW to sweep unit upward (-y), got y=${sideSpinNeg.y}`);
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: deterministic disk phase rotation over time');
+assert.strictEqual(getDiskPhase(0), DISK_PHASES[0]);
+assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION + 0.1), DISK_PHASES[1]);
+assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * 2 + 0.1), DISK_PHASES[2]);
+assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * 3 + 0.1), DISK_PHASES[3]);
+assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * DISK_PHASES.length + 0.1), DISK_PHASES[0]);
+assert.ok(DISK_PHASES[1].omega < 0, 'Phase 1 must reverse rotation direction');
+// Phase 0 では真下(angle = π/2)の内周リング壁は閉じているが、Phase 1/2 では開いて通過できることを確認
+const ringCheckUnitP0: CircleUnit = { ...slitUnit, id: 'ringP0', x: 0, y: RING + 4, vx: 0, vy: -100, t: 5 };
+const ringCheckUnitP2: CircleUnit = { ...ringCheckUnitP0, id: 'ringP2' };
+stepPhysics(ringCheckUnitP0, 1 / 60, 0, 0, 0, DISK_PHASES[0]);
+stepPhysics(ringCheckUnitP2, 1 / 60, 0, 0, 0, DISK_PHASES[2]);
+assert.ok(ringCheckUnitP0.vy > 0, 'Unit must bounce off inner ring at π/2 during Phase 0');
+assert.ok(ringCheckUnitP2.vy < 0, 'Unit must pass straight through inner ring gap at π/2 during Phase 2');
 console.log('  -> PASSED');

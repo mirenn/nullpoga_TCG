@@ -57,6 +57,83 @@ export const SPAWN: Record<'p' | 'c', [number, number]> = {
 // 回転速度 (20度/s)
 export const OMEGA = (20 * Math.PI) / 180;
 export const MAX_SCORE = 10;
+export const DISK_PHASE_DURATION = 15;
+
+export interface DiskPhase {
+  name: string;
+  omega: number;
+  gaps: number[];
+  gapw: number;
+  bumpers: [number, number, number][];
+  rails: [number, number, number, number][];
+  gravityWells: [number, number, number][];
+  spikes: [number, number][];
+}
+
+export const DISK_PHASES: DiskPhase[] = [
+  {
+    name: '通常盤',
+    omega: OMEGA,
+    gaps: GAPS,
+    gapw: GAPW,
+    bumpers: BUMPERS,
+    rails: RAILS,
+    gravityWells: GRAVITY_WELLS,
+    spikes: SPIKES,
+  },
+  {
+    name: '逆転重力盤',
+    omega: -OMEGA * 1.15,
+    gaps: [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2],
+    gapw: 0.28,
+    bumpers: [[1.55, 145, 13], [1.55 + Math.PI, 145, 13]],
+    rails: [],
+    gravityWells: [
+      [0.8, 125, 50],
+      [0.8 + Math.PI, 125, 50],
+      [2.35, 135, 46],
+      [2.35 + Math.PI, 135, 46],
+    ],
+    spikes: [[0.3, 0.28], [0.3 + Math.PI, 0.28]],
+  },
+  {
+    name: '高速レール盤',
+    omega: OMEGA * 1.35,
+    gaps: [Math.PI / 2, (Math.PI * 3) / 2],
+    gapw: 0.52,
+    bumpers: [[1.25, 135, 12], [1.25 + Math.PI, 135, 12]],
+    rails: [
+      [0.35, 162, 1.05, 88],
+      [1.9, 162, 2.55, 88],
+      [0.35 + Math.PI, 162, 1.05 + Math.PI, 88],
+      [1.9 + Math.PI, 162, 2.55 + Math.PI, 88],
+    ],
+    gravityWells: [],
+    spikes: [[2.8, 0.3], [2.8 + Math.PI, 0.3]],
+  },
+  {
+    name: '要塞ピンボール盤',
+    omega: -OMEGA * 0.75,
+    gaps: [0.4, 0.4 + Math.PI],
+    gapw: 0.32,
+    bumpers: [
+      [0.2, 145, 15],
+      [1.25, 115, 14],
+      [2.25, 145, 15],
+      [0.2 + Math.PI, 145, 15],
+      [1.25 + Math.PI, 115, 14],
+      [2.25 + Math.PI, 145, 15],
+    ],
+    rails: [[2.6, 140, 3.1, 88], [2.6 + Math.PI, 140, 3.1 + Math.PI, 88]],
+    gravityWells: [[0.85, 145, 40], [0.85 + Math.PI, 145, 40]],
+    spikes: [[1.7, 0.36], [1.7 + Math.PI, 0.36]],
+  },
+];
+
+export function getDiskPhase(elapsedSec: number): DiskPhase {
+  const idx = Math.floor(Math.max(0, elapsedSec) / DISK_PHASE_DURATION) % DISK_PHASES.length;
+  return DISK_PHASES[idx];
+}
 
 export interface CircleUnit {
   id: string;
@@ -153,7 +230,14 @@ export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA)
 /**
  * ユニットの物理挙動を1ステップ進める
  */
-export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA, sideW: number = 0): StepResult {
+export function stepPhysics(
+  u: CircleUnit,
+  dt: number,
+  th: number,
+  w: number = OMEGA,
+  sideW: number = 0,
+  disk: DiskPhase = DISK_PHASES[0]
+): StepResult {
   const wasInSide = Math.hypot(u.x, u.y) > R;
   const [tvx, tvy] = getUnitTangentVelocity(u, w, sideW);
   u.x += tvx * dt;
@@ -179,7 +263,7 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
     if (!inSideSlit && d > R - ur) {
       if (vn > 0) {
         reflect(u, nx, ny, vn);
-        if (SPIKES.some(([sa, sw]) => Math.abs(angDiff(a - th, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
+        if (disk.spikes.some(([sa, sw]) => Math.abs(angDiff(a - th, sa)) < sw)) u.hp -= SPIKE_DAMAGE;
       }
       u.x = nx * (R - ur);
       u.y = ny * (R - ur);
@@ -238,13 +322,13 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   // リング壁(すき間あり)の反射
   if (Math.abs(d - RING) < ur) {
     const a = Math.atan2(u.y, u.x) - th;
-    if (!GAPS.some((g) => Math.abs(angDiff(a, g)) < GAPW) && vn * (d - RING) < 0) {
+    if (!disk.gaps.some((g) => Math.abs(angDiff(a, g)) < disk.gapw) && vn * (d - RING) < 0) {
       reflect(u, nx, ny, vn);
     }
   }
 
   // バンパーの反射
-  for (const [ba, bd, br] of BUMPERS) {
+  for (const [ba, bd, br] of disk.bumpers) {
     const dx = u.x - Math.cos(ba + th) * bd;
     const dy = u.y - Math.sin(ba + th) * bd;
     const dd = Math.hypot(dx, dy);
@@ -259,7 +343,7 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   }
 
   // レールの滑走判定（当たると反射せずレールに沿ってスーッと進む）
-  for (const [a1, d1, a2, d2] of RAILS) {
+  for (const [a1, d1, a2, d2] of disk.rails) {
     const x1 = Math.cos(a1 + th) * d1;
     const y1 = Math.sin(a1 + th) * d1;
     const x2 = Math.cos(a2 + th) * d2;
@@ -285,7 +369,7 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
   }
 
   // 重力源による重力スイングバイ（軌道を中心側へ曲げつつ接近加速を残す）
-  for (const [ga, gd, gr] of GRAVITY_WELLS) {
+  for (const [ga, gd, gr] of disk.gravityWells) {
     const gx = Math.cos(ga + th) * gd;
     const gy = Math.sin(ga + th) * gd;
     const dx = gx - u.x;
@@ -332,7 +416,8 @@ export function predict(
   targetY: number,
   speed: number,
   currentTheta: number,
-  w: number = OMEGA
+  w: number = OMEGA,
+  disk: DiskPhase = DISK_PHASES[0]
 ): { pts: [number, number][]; hit: boolean } {
   const l = Math.hypot(targetX - startX, targetY - startY) || 1;
   const vx = ((targetX - startX) / l) * speed;
@@ -350,7 +435,7 @@ export function predict(
 
   for (let i = 0; i < 320; i++) {
     th += w / 60;
-    const r = stepPhysics(u, 1 / 60, th, w);
+    const r = stepPhysics(u, 1 / 60, th, w, 0, disk);
     pts.push([u.x, u.y]);
     if (r) {
       hit = r === 'hole';
