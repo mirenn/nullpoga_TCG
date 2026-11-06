@@ -58,6 +58,12 @@ export const SPAWN: Record<'p' | 'c', [number, number]> = {
 export const OMEGA = (20 * Math.PI) / 180;
 export const MAX_SCORE = 10;
 export const DISK_PHASE_DURATION = 15;
+export const PARRY_COOLDOWN = 8;
+export const PARRY_DURATION = 0.7;
+export const PARRY_THETA_STEP = 0.45;
+export const COOK_READY_TIME = 1.5;
+export const COOK_BURN_TIME = 6.5;
+export const SLINGSHOT_WHEEL_MIN = 1.2;
 
 export interface DiskPhase {
   name: string;
@@ -158,6 +164,8 @@ export interface CircleUnit {
   isEngaged?: boolean;
   attackAnimUntil?: number;
   icon?: string;
+  cookTime?: number;
+  isCooked?: boolean;
 }
 
 export const rot = (x: number, y: number, a: number): [number, number] => [
@@ -175,6 +183,11 @@ export const angDiff = (a: number, b: number): number => {
 export const reflect = (u: CircleUnit, nx: number, ny: number, vn: number) => {
   u.vx -= 2 * vn * nx;
   u.vy -= 2 * vn * ny;
+};
+
+export const isSideSlitOpen = (sideSign: 1 | -1, th: number): boolean => {
+  const sideAngle = sideSign > 0 ? 0 : Math.PI;
+  return SIDE_GAPS.some((g) => Math.abs(angDiff(g + th, sideAngle)) < SIDE_GAPW * 1.4);
 };
 
 export type StepResult = 'hole' | 'dead' | null;
@@ -269,53 +282,73 @@ export function stepPhysics(
       u.y = ny * (R - ur);
     }
   } else {
+    u.cookTime = (u.cookTime ?? 0) + dt * (1 + Math.abs(sideW) * 0.6);
+    if (u.cookTime >= COOK_BURN_TIME) return 'dead';
+    if (u.cookTime >= COOK_READY_TIME && !u.isCooked) {
+      u.isCooked = true;
+      u.attack += 1;
+    }
+
     const sideAngle = u.x >= 0 ? 0 : Math.PI;
     const slitDiffs = SIDE_GAPS.map((g) => angDiff(g + th, sideAngle));
     const nearestDiff = slitDiffs.reduce((best, cur) => (Math.abs(cur) < Math.abs(best) ? cur : best), slitDiffs[0]);
     const clampedOffset = Math.max(-SIDE_DOOR_SPAN * 0.75, Math.min(SIDE_DOOR_SPAN * 0.75, nearestDiff));
     const gateAngle = sideAngle + clampedOffset;
 
-    if (!inSideSlit && d < R + ur) {
-      // 仕切り壁の裏側に当たった場合は、内向き圧力を保ちつつ回転する切れ込み(gateAngle)の方向へ壁沿いに滑らせて合流させる
-      const tanDir = angDiff(gateAngle, a) >= 0 ? 1 : -1;
-      const tx = -ny * tanDir;
-      const ty = nx * tanDir;
-      u.vx = tx * u.speed * 0.95 - nx * u.speed * 0.35;
-      u.vy = ty * u.speed * 0.95 - ny * u.speed * 0.35;
-      u.x = nx * (R + ur);
-      u.y = ny * (R + ur);
-    }
-    const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
-    const sdx = u.x - scx;
-    const sdy = u.y;
-    const sd = Math.hypot(sdx, sdy) || 1;
-    if (sd > SIDE_R - ur) {
-      const snx = sdx / sd;
-      const sny = sdy / sd;
-      const svn = u.vx * snx + u.vy * sny;
-      if (svn > 0) {
-        reflect(u, snx, sny, svn);
+    // 完熟後にスリットが開いているタイミングでホイールを強く回すと中央ホールへ向けて高速スリングショット射出
+    if (u.isCooked && Math.abs(sideW) >= SLINGSHOT_WHEEL_MIN && isSideSlitOpen(u.x >= 0 ? 1 : -1, th)) {
+      const hd = Math.hypot(u.x, u.y) || 1;
+      const slingSpd = u.speed * 1.45;
+      u.vx = (-u.x / hd) * slingSpd;
+      u.vy = (-u.y / hd) * slingSpd;
+      u.t = -dt;
+      if (d <= R + 25) {
+        u.x = Math.cos(gateAngle) * (R - ur - 2);
+        u.y = Math.sin(gateAngle) * (R - ur - 2);
       }
-      u.x = scx + snx * (SIDE_R - ur);
-      u.y = sny * (SIDE_R - ur);
-    }
-    if (Math.abs(sideW) > 0.01) {
-      u.vx += (-sdy / sd) * sideW * 45 * dt;
-      u.vy += (sdx / sd) * sideW * 45 * dt;
-    }
-    // サイド領域に入ったユニットが滞留しすぎず回転する切れ込みから円内へ戻れるよう誘導
-    const gateX = Math.cos(gateAngle) * (R - 16);
-    const gateY = Math.sin(gateAngle) * (R - 16);
-    const gx = gateX - u.x;
-    const gy = gateY - u.y;
-    const gd = Math.hypot(gx, gy) || 1;
-    const pull = u.speed * 0.55 * dt;
-    u.vx += (gx / gd) * pull;
-    u.vy += (gy / gd) * pull;
-    const vLen = Math.hypot(u.vx, u.vy) || 1;
-    if (vLen > u.speed * 1.35) {
-      u.vx = (u.vx / vLen) * u.speed * 1.35;
-      u.vy = (u.vy / vLen) * u.speed * 1.35;
+    } else {
+      if (!inSideSlit && d < R + ur) {
+        // 仕切り壁の裏側に当たった場合は、内向き圧力を保ちつつ回転する切れ込み(gateAngle)の方向へ壁沿いに滑らせて合流させる
+        const tanDir = angDiff(gateAngle, a) >= 0 ? 1 : -1;
+        const tx = -ny * tanDir;
+        const ty = nx * tanDir;
+        u.vx = tx * u.speed * 0.95 - nx * u.speed * 0.35;
+        u.vy = ty * u.speed * 0.95 - ny * u.speed * 0.35;
+        u.x = nx * (R + ur);
+        u.y = ny * (R + ur);
+      }
+      const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
+      const sdx = u.x - scx;
+      const sdy = u.y;
+      const sd = Math.hypot(sdx, sdy) || 1;
+      if (sd > SIDE_R - ur) {
+        const snx = sdx / sd;
+        const sny = sdy / sd;
+        const svn = u.vx * snx + u.vy * sny;
+        if (svn > 0) {
+          reflect(u, snx, sny, svn);
+        }
+        u.x = scx + snx * (SIDE_R - ur);
+        u.y = sny * (SIDE_R - ur);
+      }
+      if (Math.abs(sideW) > 0.01) {
+        u.vx += (-sdy / sd) * sideW * 45 * dt;
+        u.vy += (sdx / sd) * sideW * 45 * dt;
+      }
+      // サイド領域に入ったユニットが滞留しすぎず回転する切れ込みから円内へ戻れるよう誘導
+      const gateX = Math.cos(gateAngle) * (R - 16);
+      const gateY = Math.sin(gateAngle) * (R - 16);
+      const gx = gateX - u.x;
+      const gy = gateY - u.y;
+      const gd = Math.hypot(gx, gy) || 1;
+      const pull = u.speed * 0.55 * dt;
+      u.vx += (gx / gd) * pull;
+      u.vy += (gy / gd) * pull;
+      const vLen = Math.hypot(u.vx, u.vy) || 1;
+      if (vLen > u.speed * 1.35) {
+        u.vx = (u.vx / vLen) * u.speed * 1.35;
+        u.vy = (u.vy / vLen) * u.speed * 1.35;
+      }
     }
   }
 

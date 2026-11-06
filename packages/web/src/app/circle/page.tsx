@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, DISK_PHASE_DURATION, predict, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
+import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, DISK_PHASE_DURATION, COOK_BURN_TIME, isSideSlitOpen, predict, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -17,6 +17,9 @@ export default function CircleModePage() {
     units,
     attackEffects,
     score,
+    parryCd,
+    isParryActive,
+    triggerPlayerParry,
     theta,
     sideTheta,
     elapsedTime,
@@ -75,9 +78,14 @@ export default function CircleModePage() {
     setDraggedCardIndex(idx);
   }, []);
 
-  // Keyboard shortcut [1] - [4] for card selection, Escape to cancel
+  // Keyboard shortcut [1] - [4] for card selection, Space for Ring Parry, Escape to cancel
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && gameResult === 'playing') {
+        e.preventDefault();
+        triggerPlayerParry();
+        return;
+      }
       if (e.key === 'Escape') {
         setSelectedCardIndex(null);
         return;
@@ -95,7 +103,7 @@ export default function CircleModePage() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [playerDeck.hand, playerMana]);
+  }, [playerDeck.hand, playerMana, gameResult, triggerPlayerParry]);
 
   const prediction = useMemo(() => {
     const cardIndex = draggedCardIndex !== null ? draggedCardIndex : selectedCardIndex;
@@ -209,8 +217,25 @@ export default function CircleModePage() {
               </defs>
 
               {/* 両サイド領域のベース背景と補助グリッド（メイン円の背景より先に描くことでメイン円内への食み出しを自然にマスク） */}
-              <circle cx={-SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
-              <circle cx={SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
+              <circle cx={-SIDE_CX} cy={0} r={SIDE_R} fill={isSideSlitOpen(-1, theta) ? '#fef3c7' : (isLight ? '#e2e8f0' : '#18202c')} />
+              <circle cx={SIDE_CX} cy={0} r={SIDE_R} fill={isSideSlitOpen(1, theta) ? '#fef3c7' : (isLight ? '#e2e8f0' : '#18202c')} />
+              {([-1, 1] as const).map((sideSign) => {
+                const scx = sideSign * SIDE_CX;
+                const open = isSideSlitOpen(sideSign, theta);
+                return (
+                  <text
+                    key={`pot-label-${sideSign}`}
+                    x={sideSign * (R + 48)}
+                    y={-SIDE_R + 22}
+                    textAnchor="middle"
+                    fontSize={10}
+                    fontWeight="bold"
+                    fill={open ? '#d97706' : '#64748b'}
+                  >
+                    {open ? '🔥OPEN! ホイール射出' : '🍲鍋: ホイール調理'}
+                  </text>
+                );
+              })}
               {[-SIDE_CX, SIDE_CX].map((scx) => (
                 <g key={`side-grid-${scx}`}>
                   {[0.55, 0.8].map((ratio) => (
@@ -273,7 +298,7 @@ export default function CircleModePage() {
                 const largeArc = endAngle - startAngle > Math.PI ? 1 : 0;
                 const path = `M ${fmt(Math.cos(startAngle) * RING)} ${fmt(Math.sin(startAngle) * RING)} A ${RING} ${RING} 0 ${largeArc} 1 ${fmt(Math.cos(endAngle) * RING)} ${fmt(Math.sin(endAngle) * RING)}`;
                 return (
-                  <path key={i} d={path} fill="none" stroke={fg} strokeWidth={5} strokeLinecap="round" />
+                  <path key={i} d={path} fill="none" stroke={isParryActive ? '#f59e0b' : fg} strokeWidth={isParryActive ? 7 : 5} strokeLinecap="round" />
                 );
               })}
 
@@ -450,8 +475,9 @@ export default function CircleModePage() {
                     width: 30,
                     height: 30,
                     borderRadius: '50%',
-                    border: `2px solid ${teamColor}`,
-                    backgroundColor: teamBg,
+                    border: `2px solid ${u.isCooked ? '#f59e0b' : teamColor}`,
+                    backgroundColor: u.isCooked ? 'rgba(245, 158, 11, 0.28)' : teamBg,
+                    boxShadow: u.isCooked ? '0 0 10px rgba(245, 158, 11, 0.85)' : undefined,
                     boxSizing: 'border-box',
                     display: 'flex',
                     alignItems: 'center',
@@ -459,6 +485,27 @@ export default function CircleModePage() {
                     pointerEvents: 'none',
                   }}
                 >
+                  {(u.isCooked || (u.cookTime ?? 0) > 0.2) && (
+                    <span
+                      style={{
+                        position: 'absolute',
+                        top: -11,
+                        fontSize: '9px',
+                        fontWeight: 'bold',
+                        color: (u.cookTime ?? 0) > COOK_BURN_TIME * 0.72 ? '#ef4444' : '#f59e0b',
+                        backgroundColor: 'rgba(15, 23, 42, 0.85)',
+                        padding: '0 3px',
+                        borderRadius: 3,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {(u.cookTime ?? 0) > COOK_BURN_TIME * 0.72
+                        ? '💥焦げ寸前!'
+                        : u.isCooked
+                          ? '🔥2倍!'
+                          : `🍲${Math.min(99, Math.round(((u.cookTime ?? 0) / 1.5) * 100))}%`}
+                    </span>
+                  )}
                   {hasUnitSvg(u.cardNo) ? (
                     <UnitSvgRenderer
                       cardNo={u.cardNo}
@@ -507,6 +554,8 @@ export default function CircleModePage() {
         <CircleSidePanel
           score={score}
           maxScore={MAX_SCORE}
+          parryCd={parryCd}
+          onTriggerParry={triggerPlayerParry}
           playerMana={playerMana}
           maxMana={MAX_MANA}
           deckCount={playerDeck.deck.length}

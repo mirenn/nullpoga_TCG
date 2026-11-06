@@ -4,6 +4,8 @@ import type { DemoCard } from '../types';
 interface CircleSidePanelProps {
   score: { p: number; c: number };
   maxScore: number;
+  parryCd?: { p: number; c: number };
+  onTriggerParry?: () => void;
   playerMana: number;
   maxMana: number;
   deckCount: number;
@@ -22,6 +24,8 @@ interface CircleSidePanelProps {
 export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
   score,
   maxScore,
+  parryCd = { p: 0, c: 0 },
+  onTriggerParry,
   playerMana,
   maxMana,
   deckCount,
@@ -76,6 +80,46 @@ export const CircleSidePanel: React.FC<CircleSidePanelProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <span style={{ fontSize: '15px', fontWeight: 'bold', color: '#f87171' }}>{score.c}</span>
           <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 'bold' }}>CPU</span>
+        </div>
+      </div>
+
+      {/* 0.5. リング反転パリィ (LoL風スキルCDの読み合い) */}
+      <div style={{ display: 'flex', gap: '6px', alignItems: 'stretch' }}>
+        <button
+          type="button"
+          onClick={onTriggerParry}
+          disabled={parryCd.p > 0 || gameResult !== 'playing'}
+          style={{
+            flex: 1,
+            padding: '5px 8px',
+            borderRadius: '6px',
+            border: parryCd.p <= 0 ? '1px solid #f59e0b' : '1px solid #334155',
+            backgroundColor: parryCd.p <= 0 ? '#78350f' : '#1e293b',
+            color: parryCd.p <= 0 ? '#fef3c7' : '#64748b',
+            fontSize: '11px',
+            fontWeight: 'bold',
+            cursor: parryCd.p <= 0 && gameResult === 'playing' ? 'pointer' : 'not-allowed',
+            textAlign: 'left',
+          }}
+        >
+          🛡️ パリィ [Space] {parryCd.p <= 0 ? 'READY' : `${parryCd.p.toFixed(1)}s`}
+        </button>
+        <div
+          title="敵のパリィがCD中の間は中央リングの隙間を邪魔されずに突破できます"
+          style={{
+            padding: '5px 8px',
+            borderRadius: '6px',
+            border: parryCd.c > 0 ? '1px solid #22c55e' : '1px solid #ef4444',
+            backgroundColor: parryCd.c > 0 ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+            color: parryCd.c > 0 ? '#4ade80' : '#fca5a5',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            display: 'flex',
+            alignItems: 'center',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {parryCd.c > 0 ? `🎯敵CD ${parryCd.c.toFixed(1)}s` : '⚠️敵パリィ可'}
         </div>
       </div>
 

@@ -1,4 +1,20 @@
-import { SPAWN, predict, OMEGA, DiskPhase, DISK_PHASES } from './circlePhysics';
+import { SPAWN, predict, OMEGA, RING, angDiff, CircleUnit, DiskPhase, DISK_PHASES } from './circlePhysics';
+
+/** 敵ユニットが内周リングの隙間を通過しそうな瞬間にパリィ（リング急回転）を発動すべきか判定 */
+export function shouldCpuParry(
+  units: readonly CircleUnit[],
+  currentTheta: number,
+  disk: DiskPhase = DISK_PHASES[0]
+): boolean {
+  return units.some((u) => {
+    if (u.owner !== 'p' || u.hp <= 0) return false;
+    const d = Math.hypot(u.x, u.y);
+    if (d <= RING || d > RING + 32) return false;
+    if (u.vx * u.x + u.vy * u.y >= 0) return false;
+    const a = Math.atan2(u.y, u.x) - currentTheta;
+    return disk.gaps.some((g) => Math.abs(angDiff(a, g)) < disk.gapw);
+  });
+}
 
 export function computeCpuLaunchAngle(
   speed: number,

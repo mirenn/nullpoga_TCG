@@ -1,5 +1,5 @@
 import * as assert from 'node:assert';
-import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, SIDE_CX, SIDE_R, SIDE_GAPW, DISK_PHASES, DISK_PHASE_DURATION, getDiskPhase, RING, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
+import { stepPhysics, predict, isInAttackRange, getUnitTangentVelocity, getDepthScale, createCircleUnitsForSpawn, JELLYFISH_CARD_NO, RAILS, GRAVITY_WELLS, SPIKES, SPIKE_DAMAGE, SIDE_CX, SIDE_R, SIDE_GAPW, DISK_PHASES, DISK_PHASE_DURATION, getDiskPhase, RING, COOK_READY_TIME, COOK_BURN_TIME, SLINGSHOT_WHEEL_MIN, CircleUnit, SPAWN, R, OMEGA, BASE_SPEED } from './circlePhysics';
 
 console.log('Testing circlePhysics: shoots straight to hole when omega = 0 from gap angle');
 const u1: CircleUnit = {
@@ -229,4 +229,31 @@ stepPhysics(ringCheckUnitP0, 1 / 60, 0, 0, 0, DISK_PHASES[0]);
 stepPhysics(ringCheckUnitP2, 1 / 60, 0, 0, 0, DISK_PHASES[2]);
 assert.ok(ringCheckUnitP0.vy > 0, 'Unit must bounce off inner ring at π/2 during Phase 0');
 assert.ok(ringCheckUnitP2.vy < 0, 'Unit must pass straight through inner ring gap at π/2 during Phase 2');
+console.log('  -> PASSED');
+
+console.log('Testing circlePhysics: side pot cooking, slingshot launch, and overheat burn');
+const potUnit: CircleUnit = {
+  ...slitUnit,
+  id: 'pot1',
+  x: R + 18,
+  y: 0,
+  vx: 0,
+  vy: 0,
+  attack: 1,
+  cookTime: 0,
+  isCooked: false,
+};
+// 1. 完熟時間までサイド鍋で調理すると isCooked=true & 攻撃力+1
+stepPhysics(potUnit, COOK_READY_TIME + 0.1, Math.PI / 4, 0, 0);
+assert.strictEqual(potUnit.isCooked, true, 'Unit in side pot must become cooked after COOK_READY_TIME');
+assert.strictEqual(potUnit.attack, 2, 'Cooked unit must gain +1 attack');
+// 2. スリットが開いている角度(th=0)でホイールを強く回すとメイン円内へスリングショット射出(vx < 0, t = 0)
+stepPhysics(potUnit, 0.05, 0, 0, SLINGSHOT_WHEEL_MIN + 0.5);
+assert.ok(Math.hypot(potUnit.x, potUnit.y) < R, 'Slingshot must launch unit into main circle');
+assert.ok(potUnit.vx < -potUnit.speed, 'Slingshot must propel unit inward toward center hole');
+assert.strictEqual(potUnit.t, 0, 'Slingshot must reset t=0 for launch boost');
+// 3. サイド鍋に放置しすぎると焦げ付き(dead)
+const burnUnit: CircleUnit = { ...slitUnit, id: 'burn1', x: R + 35, y: 0, vx: 0, vy: 0, cookTime: 0, isCooked: false };
+const burnRes = stepPhysics(burnUnit, COOK_BURN_TIME + 0.1, Math.PI / 4, 0, 0);
+assert.strictEqual(burnRes, 'dead', 'Unit left in side pot past COOK_BURN_TIME must burn and die');
 console.log('  -> PASSED');

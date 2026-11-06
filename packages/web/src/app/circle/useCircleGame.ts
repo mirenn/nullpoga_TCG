@@ -3,8 +3,8 @@ import { CARD_POOL, createDefault15Deck, shuffleCards, DeckState, DEFAULT_MANA_R
 import { INITIAL_MANA, MAX_MANA } from '../engine/engineTypes';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import type { AttackEffect, AttackEffectType } from '../types';
-import { CircleUnit, SPAWN, W, BW, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, createCircleUnitsForSpawn, getDiskPhase } from './circlePhysics';
-import { computeCpuLaunchAngle } from './circleCpu';
+import { CircleUnit, SPAWN, W, BW, stepPhysics, isInAttackRange, BASE_SPEED, MAX_SCORE, PARRY_COOLDOWN, PARRY_DURATION, PARRY_THETA_STEP, createCircleUnitsForSpawn, getDiskPhase } from './circlePhysics';
+import { computeCpuLaunchAngle, shouldCpuParry } from './circleCpu';
 
 function createCircleAttackEffect(a: CircleUnit, target: CircleUnit, distPx: number, now: number): AttackEffect {
   const toPctX = (v: number) => ((v + BW / 2) / BW) * 100;
@@ -69,6 +69,8 @@ export function useCircleGame() {
   const [units, setUnits] = useState<CircleUnit[]>([]);
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   const [score, setScore] = useState({ p: 0, c: 0 });
+  const [parryCd, setParryCd] = useState({ p: 0, c: 0 });
+  const [isParryActive, setIsParryActive] = useState(false);
   const [theta, setTheta] = useState(0);
   const [sideTheta, setSideTheta] = useState(0);
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -78,6 +80,8 @@ export function useCircleGame() {
 
   const lastTimeRef = useRef(Date.now());
   const elapsedTimeRef = useRef(0);
+  const parryCdRef = useRef({ p: 0, c: 0 });
+  const parryActiveUntilRef = useRef(0);
   const unitsRef = useRef<CircleUnit[]>([]);
   const attackEffectsRef = useRef<AttackEffect[]>([]);
   const thetaRef = useRef(0);
@@ -98,6 +102,8 @@ export function useCircleGame() {
     setUnits([]);
     setAttackEffects([]);
     setScore({ p: 0, c: 0 });
+    setParryCd({ p: 0, c: 0 });
+    setIsParryActive(false);
     setTheta(0);
     setSideTheta(0);
     setElapsedTime(0);
@@ -113,8 +119,22 @@ export function useCircleGame() {
     sideThetaRef.current = 0;
     sideOmegaRef.current = 0;
     elapsedTimeRef.current = 0;
+    parryCdRef.current = { p: 0, c: 0 };
+    parryActiveUntilRef.current = 0;
     scoreRef.current = { p: 0, c: 0 };
     lastTimeRef.current = Date.now();
+  }, []);
+
+  const triggerPlayerParry = useCallback(() => {
+    if (parryCdRef.current.p > 0) return false;
+    const disk = getDiskPhase(elapsedTimeRef.current);
+    parryCdRef.current.p = PARRY_COOLDOWN;
+    parryActiveUntilRef.current = elapsedTimeRef.current + PARRY_DURATION;
+    thetaRef.current = (thetaRef.current - Math.sign(disk.omega || 1) * PARRY_THETA_STEP) % (Math.PI * 2);
+    setParryCd({ ...parryCdRef.current });
+    setIsParryActive(true);
+    setTheta(thetaRef.current);
+    return true;
   }, []);
 
   const rotateSideByWheel = useCallback((deltaY: number) => {
@@ -144,7 +164,19 @@ export function useCircleGame() {
       elapsedTimeRef.current += dt;
       const disk = getDiskPhase(elapsedTimeRef.current);
 
-      thetaRef.current = (thetaRef.current + disk.omega * dt) % (Math.PI * 2);
+      parryCdRef.current.p = Math.max(0, parryCdRef.current.p - dt);
+      parryCdRef.current.c = Math.max(0, parryCdRef.current.c - dt);
+
+      if (parryCdRef.current.c <= 0 && shouldCpuParry(unitsRef.current, thetaRef.current, disk)) {
+        parryCdRef.current.c = PARRY_COOLDOWN;
+        parryActiveUntilRef.current = elapsedTimeRef.current + PARRY_DURATION;
+        thetaRef.current = (thetaRef.current - Math.sign(disk.omega || 1) * PARRY_THETA_STEP) % (Math.PI * 2);
+      }
+
+      const parryActive = elapsedTimeRef.current < parryActiveUntilRef.current;
+      const effectiveOmega = parryActive ? -disk.omega * 2.5 : disk.omega;
+
+      thetaRef.current = (thetaRef.current + effectiveOmega * dt) % (Math.PI * 2);
       if (Math.abs(sideOmegaRef.current) > 0.001) {
         sideThetaRef.current = (sideThetaRef.current + sideOmegaRef.current * dt) % (Math.PI * 2);
         sideOmegaRef.current *= Math.exp(-5 * dt);
@@ -162,9 +194,9 @@ export function useCircleGame() {
       // Update physics
       const nextUnits: CircleUnit[] = [];
       for (const u of currentUnits) {
-        const res = stepPhysics(u, dt, thetaRef.current, disk.omega, sideOmegaRef.current, disk);
+        const res = stepPhysics(u, dt, thetaRef.current, effectiveOmega, sideOmegaRef.current, disk);
         if (res === 'hole') {
-          scoreRef.current[u.owner]++;
+          scoreRef.current[u.owner] = Math.min(MAX_SCORE, scoreRef.current[u.owner] + (u.isCooked ? 2 : 1));
         } else if (res !== 'dead') {
           nextUnits.push(u);
         }
@@ -209,6 +241,8 @@ export function useCircleGame() {
       setTheta(thetaRef.current);
       setSideTheta(sideThetaRef.current);
       setElapsedTime(elapsedTimeRef.current);
+      setParryCd({ ...parryCdRef.current });
+      setIsParryActive(parryActive);
 
       if (scoreRef.current.p !== score.p || scoreRef.current.c !== score.c) {
         setScore({ ...scoreRef.current });
@@ -251,6 +285,9 @@ export function useCircleGame() {
     units,
     attackEffects,
     score,
+    parryCd,
+    isParryActive,
+    triggerPlayerParry,
     theta,
     sideTheta,
     elapsedTime,
