@@ -141,7 +141,7 @@ export default function CircleModePage() {
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '24px',
+          gap: '12px',
           minHeight: 0,
           minWidth: 0,
           overflow: 'hidden',
@@ -200,26 +200,32 @@ export default function CircleModePage() {
                 </radialGradient>
               </defs>
 
-              {/* 両サイド領域とメイン円のベース背景 */}
+              {/* 両サイド領域のベース背景と補助グリッド（メイン円の背景より先に描くことでメイン円内への食み出しを自然にマスク） */}
               <circle cx={-SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
               <circle cx={SIDE_CX} cy={0} r={SIDE_R} fill={isLight ? '#e2e8f0' : '#18202c'} />
-              <circle cx={0} cy={0} r={R} fill={isLight ? '#eef2f7' : '#1c2230'} />
-
-              {/* 両サイド領域の補助グリッド（切れ込みへの誘導ライン・同心円） */}
               {[-SIDE_CX, SIDE_CX].map((scx) => (
                 <g key={`side-grid-${scx}`}>
-                  <circle
-                    cx={scx} cy={0} r={fmt(SIDE_R * 0.62)}
-                    fill="none" stroke={dim} strokeWidth={1} strokeDasharray="4,4"
-                  />
-                  <line
-                    x1={scx} y1={0} x2={scx > 0 ? R - 18 : -(R - 18)} y2={0}
-                    stroke={dim} strokeWidth={1.2} strokeDasharray="3,3"
-                  />
+                  {[0.55, 0.8].map((ratio) => (
+                    <circle
+                      key={ratio}
+                      cx={scx} cy={0} r={fmt(SIDE_R * ratio)}
+                      fill="none" stroke={dim} strokeWidth={1} strokeDasharray="4,4"
+                    />
+                  ))}
+                  {[-0.45, 0, 0.45].map((ang) => (
+                    <line
+                      key={ang}
+                      x1={scx} y1={0}
+                      x2={fmt(scx + (scx > 0 ? 1 : -1) * Math.cos(ang) * SIDE_R)}
+                      y2={fmt(Math.sin(ang) * SIDE_R)}
+                      stroke={dim} strokeWidth={1} strokeDasharray="3,3"
+                    />
+                  ))}
                 </g>
               ))}
 
-              {/* すり鉢状の深度グラデーション背景 */}
+              {/* メイン円のベース背景とすり鉢状の深度グラデーション */}
+              <circle cx={0} cy={0} r={R} fill={isLight ? '#eef2f7' : '#1c2230'} />
               <circle cx={0} cy={0} r={R} fill="url(#circleFunnelGrad)" />
 
               {/* 遠近感を表す同心円グリッド（中心に向かうほど間隔が詰まり深さを強調） */}
