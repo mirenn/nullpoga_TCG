@@ -205,4 +205,12 @@ const topWallUnit: CircleUnit = {
 };
 stepPhysics(topWallUnit, 0.05, 0, 0);
 assert.ok(Math.hypot(topWallUnit.x, topWallUnit.y) < R, 'Unit must not exit at top/bottom even when rotating slit passes there');
+
+// マウスホイールによる左右円盤の回転(sideW)でサイド領域内のユニットが回転方向へ運ばれることを確認
+const sideSpinPos: CircleUnit = { ...slitUnit, id: 'spinPos', x: 240, y: 0, vx: 0, vy: 0 };
+const sideSpinNeg: CircleUnit = { ...slitUnit, id: 'spinNeg', x: 240, y: 0, vx: 0, vy: 0 };
+stepPhysics(sideSpinPos, 0.05, 0, 0, 2.5);
+stepPhysics(sideSpinNeg, 0.05, 0, 0, -2.5);
+assert.ok(sideSpinPos.y > 5, `Expected positive sideW to sweep unit downward (+y), got y=${sideSpinPos.y}`);
+assert.ok(sideSpinNeg.y < -5, `Expected negative sideW to sweep unit upward (-y), got y=${sideSpinNeg.y}`);
 console.log('  -> PASSED');

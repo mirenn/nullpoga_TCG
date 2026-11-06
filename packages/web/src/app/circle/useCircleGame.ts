@@ -70,6 +70,7 @@ export function useCircleGame() {
   const [attackEffects, setAttackEffects] = useState<AttackEffect[]>([]);
   const [score, setScore] = useState({ p: 0, c: 0 });
   const [theta, setTheta] = useState(0);
+  const [sideTheta, setSideTheta] = useState(0);
   const [playerMana, setPlayerMana] = useState(INITIAL_MANA);
   const [playerDeck, setPlayerDeck] = useState(() => createMonsterOnlyDeckState(false));
   const [gameResult, setGameResult] = useState<'playing' | 'win' | 'lose'>('playing');
@@ -78,6 +79,8 @@ export function useCircleGame() {
   const unitsRef = useRef<CircleUnit[]>([]);
   const attackEffectsRef = useRef<AttackEffect[]>([]);
   const thetaRef = useRef(0);
+  const sideThetaRef = useRef(0);
+  const sideOmegaRef = useRef(0);
   const scoreRef = useRef({ p: 0, c: 0 });
   // CPUのマナ・山札は画面に出さないのでrefで持つ（state updater内の副作用はStrictModeで二重実行されるため）
   const cpuManaRef = useRef(INITIAL_MANA);
@@ -94,6 +97,7 @@ export function useCircleGame() {
     setAttackEffects([]);
     setScore({ p: 0, c: 0 });
     setTheta(0);
+    setSideTheta(0);
     setPlayerMana(INITIAL_MANA);
     setPlayerDeck(createMonsterOnlyDeckState(true));
     setGameResult('playing');
@@ -103,8 +107,19 @@ export function useCircleGame() {
     unitsRef.current = [];
     attackEffectsRef.current = [];
     thetaRef.current = 0;
+    sideThetaRef.current = 0;
+    sideOmegaRef.current = 0;
     scoreRef.current = { p: 0, c: 0 };
     lastTimeRef.current = Date.now();
+  }, []);
+
+  const rotateSideByWheel = useCallback((deltaY: number) => {
+    const dir = Math.sign(deltaY);
+    if (!dir) return;
+    const mag = Math.min(Math.abs(deltaY), 120) / 100;
+    sideThetaRef.current = (sideThetaRef.current + dir * mag * 0.16) % (Math.PI * 2);
+    sideOmegaRef.current = Math.max(-4.5, Math.min(4.5, sideOmegaRef.current + dir * mag * 2.2));
+    setSideTheta(sideThetaRef.current);
   }, []);
 
   const spawnUnit = useCallback((owner: 'p' | 'c', cardNo: number, tx: number, ty: number) => {
@@ -124,6 +139,12 @@ export function useCircleGame() {
       lastTimeRef.current = now;
 
       thetaRef.current = (thetaRef.current + OMEGA * dt) % (Math.PI * 2);
+      if (Math.abs(sideOmegaRef.current) > 0.001) {
+        sideThetaRef.current = (sideThetaRef.current + sideOmegaRef.current * dt) % (Math.PI * 2);
+        sideOmegaRef.current *= Math.exp(-5 * dt);
+      } else {
+        sideOmegaRef.current = 0;
+      }
 
       // Mana regen
       setPlayerMana(prev => Math.min(MAX_MANA, prev + DEFAULT_MANA_REGEN_PER_SEC * dt));
@@ -135,7 +156,7 @@ export function useCircleGame() {
       // Update physics
       const nextUnits: CircleUnit[] = [];
       for (const u of currentUnits) {
-        const res = stepPhysics(u, dt, thetaRef.current, OMEGA);
+        const res = stepPhysics(u, dt, thetaRef.current, OMEGA, sideOmegaRef.current);
         if (res === 'hole') {
           scoreRef.current[u.owner]++;
         } else if (res !== 'dead') {
@@ -180,6 +201,7 @@ export function useCircleGame() {
       setUnits([...aliveUnits]);
       setAttackEffects([...attackEffectsRef.current]);
       setTheta(thetaRef.current);
+      setSideTheta(sideThetaRef.current);
 
       if (scoreRef.current.p !== score.p || scoreRef.current.c !== score.c) {
         setScore({ ...scoreRef.current });
@@ -222,6 +244,8 @@ export function useCircleGame() {
     attackEffects,
     score,
     theta,
+    sideTheta,
+    rotateSideByWheel,
     playerMana,
     playerDeck,
     setPlayerDeck,

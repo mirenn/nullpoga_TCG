@@ -116,15 +116,17 @@ export function getDepthScale(x: number, y: number): number {
  * ユニットの現在の軌道接線ベクトル (dx/dt, dy/dt) を返す
  * 自力の推進ベクトル(初速ブースト・遠近深度スケール込み)と盤面回転による流速(-w*y, w*x)の合成ベクトル
  */
-export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA): [number, number] {
+export function getUnitTangentVelocity(u: CircleUnit, w: number = OMEGA, sideW: number = 0): [number, number] {
   const boostScale = u.speed > 0 ? 1 + (LAUNCH_SPEED_BONUS / u.speed) * Math.exp(-u.t * LAUNCH_DECAY_RATE) : 1;
   const d = Math.hypot(u.x, u.y);
   const depthScale = getDepthScale(u.x, u.y);
-  // サイド領域(d > R)では円盤の回転流速を減衰させ、壁への張り付きを防ぐ
+  // サイド領域(d > R)ではメイン円盤の回転流速を減衰させ、代わりにマウスホイールによる左右円盤の回転流速(sideW)を与える
   const rotScale = d <= R - UR ? 1 : Math.max(0, 1 - (d - (R - UR)) / 14);
+  const sideScale = 1 - rotScale;
+  const scx = u.x >= 0 ? SIDE_CX : -SIDE_CX;
   return [
-    u.vx * boostScale * depthScale - w * rotScale * u.y,
-    u.vy * boostScale * depthScale + w * rotScale * u.x,
+    u.vx * boostScale * depthScale - w * rotScale * u.y - sideW * sideScale * u.y,
+    u.vy * boostScale * depthScale + w * rotScale * u.x + sideW * sideScale * (u.x - scx),
   ];
 }
 
@@ -151,9 +153,9 @@ export function isInAttackRange(a: CircleUnit, b: CircleUnit, w: number = OMEGA)
 /**
  * ユニットの物理挙動を1ステップ進める
  */
-export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA): StepResult {
+export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = OMEGA, sideW: number = 0): StepResult {
   const wasInSide = Math.hypot(u.x, u.y) > R;
-  const [tvx, tvy] = getUnitTangentVelocity(u, w);
+  const [tvx, tvy] = getUnitTangentVelocity(u, w, sideW);
   u.x += tvx * dt;
   u.y += tvy * dt;
 
@@ -212,6 +214,10 @@ export function stepPhysics(u: CircleUnit, dt: number, th: number, w: number = O
       }
       u.x = scx + snx * (SIDE_R - ur);
       u.y = sny * (SIDE_R - ur);
+    }
+    if (Math.abs(sideW) > 0.01) {
+      u.vx += (-sdy / sd) * sideW * 45 * dt;
+      u.vy += (sdx / sd) * sideW * 45 * dt;
     }
     // サイド領域に入ったユニットが滞留しすぎず回転する切れ込みから円内へ戻れるよう誘導
     const gateX = Math.cos(gateAngle) * (R - 16);

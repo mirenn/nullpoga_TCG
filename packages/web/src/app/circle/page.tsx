@@ -18,6 +18,8 @@ export default function CircleModePage() {
     attackEffects,
     score,
     theta,
+    sideTheta,
+    rotateSideByWheel,
     playerMana,
     playerDeck,
     setPlayerDeck,
@@ -166,6 +168,7 @@ export default function CircleModePage() {
             onPointerMove={handlePointerMove}
             onPointerLeave={handlePointerLeave}
             onPointerUp={handlePointerUp}
+            onWheel={(e) => rotateSideByWheel(e.deltaY)}
             style={{
               height: '100%',
               maxHeight: '100%',
@@ -212,15 +215,18 @@ export default function CircleModePage() {
                       fill="none" stroke={dim} strokeWidth={1} strokeDasharray="4,4"
                     />
                   ))}
-                  {[-0.45, 0, 0.45].map((ang) => (
-                    <line
-                      key={ang}
-                      x1={scx} y1={0}
-                      x2={fmt(scx + (scx > 0 ? 1 : -1) * Math.cos(ang) * SIDE_R)}
-                      y2={fmt(Math.sin(ang) * SIDE_R)}
-                      stroke={dim} strokeWidth={1} strokeDasharray="3,3"
-                    />
-                  ))}
+                  {Array.from({ length: 10 }, (_, k) => {
+                    const a = sideTheta + (k * Math.PI) / 5;
+                    return (
+                      <line
+                        key={k}
+                        x1={scx} y1={0}
+                        x2={fmt(scx + Math.cos(a) * SIDE_R)}
+                        y2={fmt(Math.sin(a) * SIDE_R)}
+                        stroke={dim} strokeWidth={1.2}
+                      />
+                    );
+                  })}
                 </g>
               ))}
 
