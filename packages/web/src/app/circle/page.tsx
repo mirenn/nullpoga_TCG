@@ -7,7 +7,7 @@ import { GameResultModal } from '../../components/modals/GameResultModal';
 import { UnitSvgRenderer, hasUnitSvg } from '../../components/units/UnitSvgRenderer';
 import { RenderAttackEffect } from '../../components/effects/RenderAttackEffect';
 import { MAX_MANA } from '../engine/engineTypes';
-import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, DISK_PHASE_DURATION, COOK_BURN_TIME, isSideSlitOpen, predict, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
+import { MAX_SCORE, W, BW, R, SIDE_CX, SIDE_R, SIDE_GAPS, SIDE_GAPW, SIDE_INT_X, SIDE_INT_Y, HOLE, RING, DISK_PHASES, DISK_PHASE_DURATION, DISK_TRANSITION_DURATION, COOK_BURN_TIME, isSideSlitOpen, predict, BASE_SPEED, SPAWN, JELLYFISH_CARD_NO, JELLYFISH_HALF_WIDTH, getUnitTangentVelocity, getDepthScale } from './circlePhysics';
 import { drawNextCardFromDeck } from '../engine/deckUtils';
 import { styles } from '../page.styles';
 import '../realtime-battle.css';
@@ -125,28 +125,63 @@ export default function CircleModePage() {
 
   return (
     <div style={{ ...styles.container, touchAction: 'none', position: 'relative', padding: '6px 12px' }}>
-      {/* 左上タイトル（左右の余白に逃がす） */}
-      <div
-        style={{
-          position: 'absolute',
-          top: '10px',
-          left: '14px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          color: '#64748b',
-          fontSize: '0.85rem',
-          fontWeight: 'bold',
-          pointerEvents: 'none',
-          userSelect: 'none',
-          zIndex: 10,
-        }}
-      >
-        <span>🔄</span> Circle Mode
-        <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
-          [{disk.name} · 切替まで {Math.ceil(DISK_PHASE_DURATION - (elapsedTime % DISK_PHASE_DURATION))}s]
-        </span>
-      </div>
+      {/* 左上タイトル＆円盤フェーズ進行ゲージ */}
+      {(() => {
+        const phaseIdx = Math.floor(elapsedTime / DISK_PHASE_DURATION) % DISK_PHASES.length;
+        const tInPhase = elapsedTime % DISK_PHASE_DURATION;
+        const remSec = Math.ceil(DISK_PHASE_DURATION - tInPhase);
+        const isTransitioning = tInPhase > DISK_PHASE_DURATION - DISK_TRANSITION_DURATION;
+        return (
+          <div
+            style={{
+              position: 'absolute',
+              top: '8px',
+              left: '14px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
+              backgroundColor: 'rgba(15, 23, 42, 0.85)',
+              border: `1px solid ${isTransitioning ? '#f59e0b' : '#334155'}`,
+              borderRadius: '8px',
+              padding: '6px 10px',
+              pointerEvents: 'none',
+              userSelect: 'none',
+              zIndex: 10,
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', fontWeight: 'bold' }}>
+              {DISK_PHASES.map((p, i) => (
+                <React.Fragment key={p.name}>
+                  <span
+                    style={{
+                      padding: '1px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: i === phaseIdx ? (isTransitioning ? '#d97706' : '#2563eb') : 'transparent',
+                      color: i === phaseIdx ? '#fff' : '#64748b',
+                    }}
+                  >
+                    {i + 1}.{p.name}
+                  </span>
+                  {i < DISK_PHASES.length - 1 && <span style={{ color: '#475569', fontSize: '9px' }}>▸</span>}
+                </React.Fragment>
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: isTransitioning ? '#fbbf24' : '#94a3b8' }}>
+              <span>{disk.hint}</span>
+              <span style={{ fontWeight: 'bold', marginLeft: '8px' }}>次まで {remSec}s</span>
+            </div>
+            <div style={{ width: '100%', height: '3px', backgroundColor: '#1e293b', borderRadius: '2px', overflow: 'hidden' }}>
+              <div
+                style={{
+                  width: `${(tInPhase / DISK_PHASE_DURATION) * 100}%`,
+                  height: '100%',
+                  backgroundColor: isTransitioning ? '#f59e0b' : '#38bdf8',
+                }}
+              />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Main Board & Side Panel Container */}
       <div

@@ -57,7 +57,8 @@ export const SPAWN: Record<'p' | 'c', [number, number]> = {
 // 回転速度 (20度/s)
 export const OMEGA = (20 * Math.PI) / 180;
 export const MAX_SCORE = 10;
-export const DISK_PHASE_DURATION = 15;
+export const DISK_PHASE_DURATION = 20;
+export const DISK_TRANSITION_DURATION = 3;
 export const PARRY_COOLDOWN = 8;
 export const PARRY_DURATION = 0.7;
 export const PARRY_THETA_STEP = 0.45;
@@ -67,6 +68,7 @@ export const SLINGSHOT_WHEEL_MIN = 1.2;
 
 export interface DiskPhase {
   name: string;
+  hint: string;
   omega: number;
   gaps: number[];
   gapw: number;
@@ -76,9 +78,11 @@ export interface DiskPhase {
   spikes: [number, number][];
 }
 
+// すべてのフェーズでギミックの角度・個数を固定し、大きさ・開口幅・回転速度だけを滑らかに変形させる
 export const DISK_PHASES: DiskPhase[] = [
   {
-    name: '通常盤',
+    name: '通常',
+    hint: '標準バランス',
     omega: OMEGA,
     gaps: GAPS,
     gapw: GAPW,
@@ -88,57 +92,80 @@ export const DISK_PHASES: DiskPhase[] = [
     spikes: SPIKES,
   },
   {
-    name: '逆転重力盤',
-    omega: -OMEGA * 1.15,
-    gaps: [0, Math.PI / 2, Math.PI, (Math.PI * 3) / 2],
-    gapw: 0.28,
-    bumpers: [[1.55, 145, 13], [1.55 + Math.PI, 145, 13]],
-    rails: [],
-    gravityWells: [
-      [0.8, 125, 50],
-      [0.8 + Math.PI, 125, 50],
-      [2.35, 135, 46],
-      [2.35 + Math.PI, 135, 46],
-    ],
-    spikes: [[0.3, 0.28], [0.3 + Math.PI, 0.28]],
-  },
-  {
-    name: '高速レール盤',
-    omega: OMEGA * 1.35,
-    gaps: [Math.PI / 2, (Math.PI * 3) / 2],
-    gapw: 0.52,
-    bumpers: [[1.25, 135, 12], [1.25 + Math.PI, 135, 12]],
+    name: '大開口',
+    hint: '内周ゲート拡大・レール延長',
+    omega: OMEGA * 1.2,
+    gaps: GAPS,
+    gapw: 0.78,
+    bumpers: [[0.5, 140, 10], [0.5 + Math.PI, 140, 10]],
     rails: [
-      [0.35, 162, 1.05, 88],
-      [1.9, 162, 2.55, 88],
-      [0.35 + Math.PI, 162, 1.05 + Math.PI, 88],
-      [1.9 + Math.PI, 162, 2.55 + Math.PI, 88],
+      [1.75, 162, 2.35, 78],
+      [1.75 + Math.PI, 162, 2.35 + Math.PI, 78],
     ],
-    gravityWells: [],
-    spikes: [[2.8, 0.3], [2.8 + Math.PI, 0.3]],
+    gravityWells: [[2.75, 135, 32], [2.75 + Math.PI, 135, 32]],
+    spikes: [[1.15, 0.2], [1.15 + Math.PI, 0.2]],
   },
   {
-    name: '要塞ピンボール盤',
-    omega: -OMEGA * 0.75,
-    gaps: [0.4, 0.4 + Math.PI],
-    gapw: 0.32,
-    bumpers: [
-      [0.2, 145, 15],
-      [1.25, 115, 14],
-      [2.25, 145, 15],
-      [0.2 + Math.PI, 145, 15],
-      [1.25 + Math.PI, 115, 14],
-      [2.25 + Math.PI, 145, 15],
+    name: '逆回転',
+    hint: '逆回転・重力エリア拡大',
+    omega: -OMEGA,
+    gaps: GAPS,
+    gapw: 0.42,
+    bumpers: BUMPERS,
+    rails: RAILS,
+    gravityWells: [[2.75, 125, 64], [2.75 + Math.PI, 125, 64]],
+    spikes: SPIKES,
+  },
+  {
+    name: '鉄壁',
+    hint: 'ゲート縮小・巨大バンパー',
+    omega: OMEGA * 0.8,
+    gaps: GAPS,
+    gapw: 0.24,
+    bumpers: [[0.5, 125, 24], [0.5 + Math.PI, 125, 24]],
+    rails: [
+      [1.75, 145, 2.35, 110],
+      [1.75 + Math.PI, 145, 2.35 + Math.PI, 110],
     ],
-    rails: [[2.6, 140, 3.1, 88], [2.6 + Math.PI, 140, 3.1 + Math.PI, 88]],
-    gravityWells: [[0.85, 145, 40], [0.85 + Math.PI, 145, 40]],
-    spikes: [[1.7, 0.36], [1.7 + Math.PI, 0.36]],
+    gravityWells: [[2.75, 135, 40], [2.75 + Math.PI, 135, 40]],
+    spikes: [[1.15, 0.46], [1.15 + Math.PI, 0.46]],
   },
 ];
 
+const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+
 export function getDiskPhase(elapsedSec: number): DiskPhase {
-  const idx = Math.floor(Math.max(0, elapsedSec) / DISK_PHASE_DURATION) % DISK_PHASES.length;
-  return DISK_PHASES[idx];
+  const safeSec = Math.max(0, elapsedSec);
+  const idx = Math.floor(safeSec / DISK_PHASE_DURATION) % DISK_PHASES.length;
+  const tInPhase = safeSec % DISK_PHASE_DURATION;
+  const transStart = DISK_PHASE_DURATION - DISK_TRANSITION_DURATION;
+  if (tInPhase <= transStart) return DISK_PHASES[idx];
+
+  const next = DISK_PHASES[(idx + 1) % DISK_PHASES.length];
+  const cur = DISK_PHASES[idx];
+  const raw = (tInPhase - transStart) / DISK_TRANSITION_DURATION;
+  const s = raw * raw * (3 - 2 * raw); // smoothstep
+
+  return {
+    name: cur.name,
+    hint: `まもなく「${next.name}」へ変形中…`,
+    omega: lerp(cur.omega, next.omega, s),
+    gaps: cur.gaps,
+    gapw: lerp(cur.gapw, next.gapw, s),
+    bumpers: cur.bumpers.map(([a, d, r], i) => [a, lerp(d, next.bumpers[i][1], s), lerp(r, next.bumpers[i][2], s)]),
+    rails: cur.rails.map(([a1, d1, a2, d2], i) => [
+      a1,
+      lerp(d1, next.rails[i][1], s),
+      a2,
+      lerp(d2, next.rails[i][3], s),
+    ]),
+    gravityWells: cur.gravityWells.map(([a, d, r], i) => [
+      a,
+      lerp(d, next.gravityWells[i][1], s),
+      lerp(r, next.gravityWells[i][2], s),
+    ]),
+    spikes: cur.spikes.map(([a, w], i) => [a, lerp(w, next.spikes[i][1], s)]),
+  };
 }
 
 export interface CircleUnit {

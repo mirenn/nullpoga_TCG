@@ -215,20 +215,32 @@ assert.ok(sideSpinPos.y > 5, `Expected positive sideW to sweep unit downward (+y
 assert.ok(sideSpinNeg.y < -5, `Expected negative sideW to sweep unit upward (-y), got y=${sideSpinNeg.y}`);
 console.log('  -> PASSED');
 
-console.log('Testing circlePhysics: deterministic disk phase rotation over time');
+console.log('Testing circlePhysics: deterministic disk phase rotation and smooth transition over time');
 assert.strictEqual(getDiskPhase(0), DISK_PHASES[0]);
 assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION + 0.1), DISK_PHASES[1]);
 assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * 2 + 0.1), DISK_PHASES[2]);
 assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * 3 + 0.1), DISK_PHASES[3]);
 assert.strictEqual(getDiskPhase(DISK_PHASE_DURATION * DISK_PHASES.length + 0.1), DISK_PHASES[0]);
-assert.ok(DISK_PHASES[1].omega < 0, 'Phase 1 must reverse rotation direction');
-// Phase 0 では真下(angle = π/2)の内周リング壁は閉じているが、Phase 1/2 では開いて通過できることを確認
-const ringCheckUnitP0: CircleUnit = { ...slitUnit, id: 'ringP0', x: 0, y: RING + 4, vx: 0, vy: -100, t: 5 };
-const ringCheckUnitP2: CircleUnit = { ...ringCheckUnitP0, id: 'ringP2' };
+assert.ok(DISK_PHASES[2].omega < 0, 'Phase 2 must reverse rotation direction');
+// 切替直前の変形期間(最後3秒)は前後のフェーズの中間値へ滑らかに補間されることを確認
+const midTrans = getDiskPhase(DISK_PHASE_DURATION - 1.5);
+assert.ok(midTrans.gapw > DISK_PHASES[0].gapw && midTrans.gapw < DISK_PHASES[1].gapw, 'Transition must smoothly interpolate gapw');
+// Phase 0(通常: gapw=0.38)では角度0.55radの内周リング壁は閉じているが、Phase 1(大開口: gapw=0.78)では開いて通過できることを確認
+const testAng = 0.55;
+const ringCheckUnitP0: CircleUnit = {
+  ...slitUnit,
+  id: 'ringP0',
+  x: Math.cos(testAng) * (RING + 4),
+  y: Math.sin(testAng) * (RING + 4),
+  vx: -Math.cos(testAng) * 100,
+  vy: -Math.sin(testAng) * 100,
+  t: 5,
+};
+const ringCheckUnitP1: CircleUnit = { ...ringCheckUnitP0, id: 'ringP1' };
 stepPhysics(ringCheckUnitP0, 1 / 60, 0, 0, 0, DISK_PHASES[0]);
-stepPhysics(ringCheckUnitP2, 1 / 60, 0, 0, 0, DISK_PHASES[2]);
-assert.ok(ringCheckUnitP0.vy > 0, 'Unit must bounce off inner ring at π/2 during Phase 0');
-assert.ok(ringCheckUnitP2.vy < 0, 'Unit must pass straight through inner ring gap at π/2 during Phase 2');
+stepPhysics(ringCheckUnitP1, 1 / 60, 0, 0, 0, DISK_PHASES[1]);
+assert.ok(ringCheckUnitP0.vx > 0, 'Unit must bounce off inner ring at 0.55rad during Phase 0');
+assert.ok(ringCheckUnitP1.vx < 0, 'Unit must pass straight through widened inner ring gap at 0.55rad during Phase 1');
 console.log('  -> PASSED');
 
 console.log('Testing circlePhysics: side pot cooking, slingshot launch, and overheat burn');
